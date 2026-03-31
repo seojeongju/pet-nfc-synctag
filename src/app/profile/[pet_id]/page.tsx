@@ -17,17 +17,20 @@ export default async function PublicProfilePage({
   params, 
   searchParams 
 }: { 
-  params: { pet_id: string },
-  searchParams?: { tag?: string }
+  params: Promise<{ pet_id: string }>,
+  searchParams: Promise<{ tag?: string }>
 }) {
+  const { pet_id } = await params;
+  const { tag } = await searchParams;
+
   const db = getDB();
   const auth = getAuth(db);
   const session = await auth.api.getSession({
-    headers: headers(),
+    headers: await headers(),
   });
 
-  const pet = await getPet(params.pet_id) as any;
-  const tagId = searchParams?.tag || null;
+  const pet = await getPet(pet_id) as any;
+  const tagId = tag || null;
 
   if (!pet) {
     notFound();

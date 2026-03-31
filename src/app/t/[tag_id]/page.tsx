@@ -4,9 +4,9 @@ import { headers } from "next/headers";
 
 export const runtime = "edge";
 
-export default async function TagResolvePage({ params }: { params: { tag_id: string } }) {
+export default async function TagResolvePage({ params }: { params: Promise<{ tag_id: string }> }) {
   const db = getDB();
-  const { tag_id } = params;
+  const { tag_id } = await params;
 
   // 1. Find the pet linked to this tag
   const tag = await db
@@ -19,7 +19,7 @@ export default async function TagResolvePage({ params }: { params: { tag_id: str
   }
 
   // 2. Initial Scan Log (Server Side Info)
-  const headerList = headers();
+  const headerList = await headers();
   const ip = headerList.get("x-real-ip") || "unknown";
   const userAgent = headerList.get("user-agent") || "unknown";
 
