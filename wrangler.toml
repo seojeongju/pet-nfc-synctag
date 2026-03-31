@@ -2,10 +2,12 @@ name = "pet-id-connect"
 compatibility_date = "2024-03-30"
 pages_build_output_dir = ".vercel/output/static"
 
+compatibility_flags = ["nodejs_compat"]
+
 [[d1_databases]]
 binding = "DB"
 database_name = "pet-id-db"
-database_id = "YOUR_D1_DATABASE_ID" # TODO: User should update this after creating D1 via dashboard
+database_id = "f81947c1-9465-4124-8a67-2b5b9574c990"
 
 [[r2_buckets]]
 binding = "R2"
