@@ -2,8 +2,6 @@
 import { getDB, getR2 } from "@/lib/db";
 import { nanoid } from "nanoid";
 
-export const runtime = "edge";
-
 interface PetData {
     name: string;
     breed?: string;

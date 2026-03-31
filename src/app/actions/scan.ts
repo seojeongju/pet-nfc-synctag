@@ -1,8 +1,6 @@
 "use server";
 import { getDB } from "@/lib/db";
 
-export const runtime = "edge";
-
 export async function updateScanLocation(tagId: string, lat: number, lng: number) {
   const db = getDB();
   

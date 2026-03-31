@@ -3,7 +3,7 @@
 import { signIn } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { PawPrint, Chrome, MessageSquare, ArrowLeft } from "lucide-react";
+import { PawPrint, MessageSquare, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 export default function LoginPage() {
@@ -44,7 +44,6 @@ export default function LoginPage() {
               className="w-full h-16 rounded-[24px] border-slate-100 hover:bg-slate-50 text-slate-700 font-bold text-lg flex items-center justify-center gap-4 transition-all active:scale-[0.98] shadow-sm"
               onClick={() => handleLogin("google")}
             >
-              <Chrome className="w-6 h-6 text-rose-500" />
               Google로 계속하기
             </Button>
 

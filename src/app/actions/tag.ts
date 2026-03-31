@@ -2,8 +2,6 @@
 import { getDB } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 
-export const runtime = "edge";
-
 export async function linkTag(petId: string, tagId: string) {
     const db = getDB();
     
