@@ -12,7 +12,7 @@ export default async function NewPetPage() {
   const db = getDB();
   const auth = getAuth(db);
   const session = await auth.api.getSession({
-    headers: headers(),
+    headers: await headers(),
   });
 
   if (!session) {
