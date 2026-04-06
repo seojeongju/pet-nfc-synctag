@@ -6,10 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
-import { createPet, updatePet } from "@/app/actions/pet";
+import { createPet, updatePet, uploadToR2 } from "@/app/actions/pet";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { PawPrint, Camera, Loader2 } from "lucide-react";
+import { useState, useRef } from "react";
+import { PawPrint, Camera, Loader2, X } from "lucide-react";
 
 interface PetFormProps {
     ownerId: string;
@@ -26,6 +26,10 @@ interface PetFormProps {
 export function PetForm({ ownerId, initialData }: PetFormProps) {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(initialData?.photo_url || null);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
     const { register, handleSubmit, formState: { errors } } = useForm({
         defaultValues: initialData || {
             name: "",
@@ -35,13 +39,36 @@ export function PetForm({ ownerId, initialData }: PetFormProps) {
         }
     });
 
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setSelectedFile(file);
+            const url = URL.createObjectURL(file);
+            setPreviewUrl(url);
+        }
+    };
+
     const onSubmit = async (data: any) => {
         setIsLoading(true);
         try {
+            let photoUrl = initialData?.photo_url;
+
+            // 이미지가 새로 선택되었을 경우 업로드를 진행합니다.
+            if (selectedFile) {
+                const formData = new FormData();
+                formData.append("file", selectedFile);
+                const uploadResult = await uploadToR2(formData);
+                if (uploadResult) {
+                    photoUrl = uploadResult;
+                }
+            }
+
+            const petData = { ...data, photo_url: photoUrl };
+
             if (initialData) {
-                await updatePet(initialData.id, data);
+                await updatePet(initialData.id, petData);
             } else {
-                await createPet(ownerId, data);
+                await createPet(ownerId, petData);
             }
             router.push("/dashboard");
             router.refresh();
@@ -55,19 +82,43 @@ export function PetForm({ ownerId, initialData }: PetFormProps) {
     return (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex flex-col items-center gap-6">
-                <div className="relative group cursor-pointer">
+                <input 
+                    type="file" 
+                    accept="image/*" 
+                    className="hidden" 
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                />
+                <div 
+                    className="relative group cursor-pointer"
+                    onClick={() => fileInputRef.current?.click()}
+                >
                     <div className="w-32 h-32 rounded-[40px] bg-teal-50 border-2 border-dashed border-teal-200 flex items-center justify-center text-teal-400 group-hover:bg-teal-100 transition-colors overflow-hidden">
-                        {initialData?.photo_url ? (
-                            <img src={initialData.photo_url} alt="Pet" className="w-full h-full object-cover" />
+                        {previewUrl ? (
+                            <img src={previewUrl} alt="Pet Preview" className="w-full h-full object-cover" />
                         ) : (
                             <PawPrint className="w-12 h-12" />
                         )}
                     </div>
+                    {previewUrl && (
+                        <div 
+                            className="absolute -top-2 -right-2 w-8 h-8 bg-rose-500 rounded-full shadow-lg flex items-center justify-center text-white hover:bg-rose-600 transition-colors z-10"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setPreviewUrl(null);
+                                setSelectedFile(null);
+                            }}
+                        >
+                            <X className="w-4 h-4" />
+                        </div>
+                    )}
                     <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center text-teal-600 border border-slate-100 group-hover:scale-110 transition-transform">
                         <Camera className="w-5 h-5" />
                     </div>
                 </div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">아이 사진 등록 (선택)</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                    {previewUrl ? "사진 변경" : "아이 사진 등록 (선택)"}
+                </p>
             </div>
 
             <div className="grid gap-6">

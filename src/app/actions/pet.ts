@@ -22,8 +22,8 @@ export async function uploadToR2(formData: FormData) {
         httpMetadata: { contentType: file.type }
     });
     
-    // Using a placeholder for R2 public URL
-    return key;
+    // Return the proxy API path and key
+    return `/api/r2/${key}`;
 }
 
 export async function createPet(ownerId: string, data: PetData) {
