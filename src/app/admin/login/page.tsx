@@ -8,10 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ShieldCheck, ArrowLeft, Lock, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 export default function AdminLoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -23,16 +21,24 @@ export default function AdminLoginPage() {
     setError("");
 
     try {
-      const { error: signInError } = await signIn.email({
+      const result = await signIn.email({
         email,
         password,
         callbackURL: "/admin",
       });
+      const signInError = result?.error;
 
       if (signInError) {
-        setError(signInError.message || "로그인에 실패했습니다. 정보를 확인해 주세요.");
+        const rawMessage = signInError.message || "로그인에 실패했습니다. 정보를 확인해 주세요.";
+        const normalizedMessage =
+          rawMessage.toLowerCase().includes("invalid email or password")
+            ? "이메일 또는 비밀번호가 올바르지 않습니다."
+            : rawMessage;
+        setError(normalizedMessage);
       } else {
-        router.push("/admin");
+        // OAuth가 아닌 이메일 로그인은 명시적으로 이동시켜 무반응처럼 보이는 문제를 방지합니다.
+        window.location.assign("/admin");
+        return;
       }
     } catch (err: unknown) {
       console.error("Login Error:", err);
@@ -108,7 +114,7 @@ export default function AdminLoginPage() {
                 disabled={loading}
                 className="w-full h-14 bg-slate-800 hover:bg-slate-900 text-white font-black rounded-2xl text-sm shadow-xl hover:shadow-slate-500/20 transition-all active:scale-[0.98]"
               >
-                {loading ? <Loader2 className="w-6 h-6 animate-spin text-white" /> : "콘솔 인증하기"}
+                {loading ? <Loader2 className="w-6 h-6 animate-spin text-white" /> : "로그인"}
               </Button>
             </form>
 
