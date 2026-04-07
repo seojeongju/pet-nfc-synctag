@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { LayoutDashboard, Tag, Package, Home, LogOut, ChevronRight, Bell } from "lucide-react";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
+import { adminUi } from "@/styles/admin/ui";
 
 export const runtime = "edge";
 
@@ -56,7 +58,7 @@ export default async function AdminAuthenticatedLayout({
             <p className="hidden lg:block px-4 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">메인 메뉴</p>
             <div className="grid grid-cols-2 gap-2 lg:grid-cols-1 lg:gap-2">
               {navItems.map((item) => (
-                <Link key={item.href} href={item.href} className="flex items-center justify-between px-3 lg:px-4 py-3 lg:py-4 rounded-2xl bg-slate-50 hover:bg-teal-50 transition-all group border border-slate-100">
+                <Link key={item.href} href={item.href} className={cn("flex items-center justify-between px-3 lg:px-4 py-3 lg:py-4 hover:bg-teal-50 transition-all group", adminUi.subtleCard)}>
                   <div className="flex items-center gap-3 lg:gap-4 relative z-10 min-w-0">
                     <item.icon className={`w-4 h-4 lg:w-5 lg:h-5 ${item.color} group-hover:scale-110 transition-transform`} />
                     <span className="font-black text-[10px] lg:text-xs text-slate-800 uppercase tracking-wide truncate">{item.label}</span>
@@ -68,11 +70,11 @@ export default async function AdminAuthenticatedLayout({
           </nav>
 
           <div className="hidden lg:block p-6 space-y-4 border-t border-slate-100 mb-6 mt-4">
-            <Link href="/dashboard" className="flex items-center gap-4 px-4 py-4 rounded-2xl bg-slate-50 hover:bg-white text-slate-500 hover:text-slate-900 transition-all group border border-slate-100">
+            <Link href="/dashboard" className={cn("flex items-center gap-4 px-4 py-4 bg-slate-50 text-slate-500 hover:text-slate-900 transition-all group", adminUi.subtleCard)}>
               <Home className="w-5 h-5" />
               <span className="font-black text-[10px] uppercase tracking-widest">사용자 화면</span>
             </Link>
-            <Link href="/logout" className="flex items-center gap-4 px-4 py-4 rounded-2xl hover:bg-rose-500/10 transition-all text-rose-500 border border-transparent hover:border-rose-500/20 bg-white">
+            <Link href="/logout" className="flex items-center gap-4 px-4 py-4 rounded-2xl hover:bg-rose-500/10 transition-all text-rose-500 border border-rose-100/0 hover:border-rose-500/20 bg-white shadow-md">
               <LogOut className="w-5 h-5" />
               <span className="font-black text-[10px] uppercase tracking-widest">안전 로그아웃</span>
             </Link>
@@ -89,7 +91,7 @@ export default async function AdminAuthenticatedLayout({
             </div>
 
             <div className="flex items-center gap-2 lg:gap-8">
-              <button className="relative p-2 lg:p-2.5 rounded-2xl bg-slate-50 hover:bg-slate-100 transition-all">
+              <button className={cn("relative p-2 lg:p-2.5 rounded-2xl transition-all", adminUi.subtleCard)}>
                 <Bell className="w-4 h-4 lg:w-5 lg:h-5 text-slate-500" />
                 <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-white" />
               </button>

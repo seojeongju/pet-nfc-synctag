@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ShieldCheck, ArrowLeft, Lock, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
+import { adminUi } from "@/styles/admin/ui";
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
@@ -71,7 +73,7 @@ export default function AdminLoginPage() {
            </div>
         </div>
 
-        <Card className="border-none shadow-2xl rounded-[40px] overflow-hidden bg-white/80 backdrop-blur-md">
+        <Card className="border-slate-100 shadow-2xl rounded-[40px] overflow-hidden bg-white/80 backdrop-blur-md">
           <CardHeader className="pt-10 pb-6 text-center">
             <CardTitle className="text-xl font-bold text-slate-800">보안 로그인</CardTitle>
             <CardDescription className="text-slate-400">계정 정보를 입력해 세션을 시작하세요</CardDescription>
@@ -86,7 +88,7 @@ export default function AdminLoginPage() {
                   placeholder="admin@petid-connect.com" 
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="h-14 bg-slate-50 border-slate-100 rounded-2xl text-slate-900 focus:ring-teal-500/20 text-sm font-bold shadow-inner transition-all hover:bg-slate-100 focus:bg-white"
+                  className={`${adminUi.input} h-14 rounded-2xl text-slate-900 focus:ring-teal-500/20 text-sm shadow-inner transition-all hover:bg-slate-100 focus:bg-white`}
                   required
                 />
               </div>
@@ -98,7 +100,7 @@ export default function AdminLoginPage() {
                   placeholder="••••••••" 
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-14 bg-slate-50 border-slate-100 rounded-2xl text-slate-900 focus:ring-teal-500/20 text-sm font-bold tracking-[0.3em] shadow-inner transition-all hover:bg-slate-100 focus:bg-white"
+                  className={`${adminUi.input} h-14 rounded-2xl text-slate-900 focus:ring-teal-500/20 text-sm tracking-[0.3em] shadow-inner transition-all hover:bg-slate-100 focus:bg-white`}
                   required
                 />
               </div>
@@ -112,7 +114,7 @@ export default function AdminLoginPage() {
               <Button 
                 type="submit" 
                 disabled={loading}
-                className="w-full h-14 bg-slate-800 hover:bg-slate-900 text-white font-black rounded-2xl text-sm shadow-xl hover:shadow-slate-500/20 transition-all active:scale-[0.98]"
+                className={cn("w-full h-14 rounded-2xl text-sm active:scale-[0.98]", adminUi.darkButton)}
               >
                 {loading ? <Loader2 className="w-6 h-6 animate-spin text-white" /> : "로그인"}
               </Button>

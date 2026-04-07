@@ -2,13 +2,15 @@
 
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Card, CardContent } from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
+import { AdminCard } from "@/components/admin/ui/AdminCard";
 import { 
   Users, Package, CheckCircle, ArrowUpRight, 
   TrendingUp, Shield, Layers, Activity, Database
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { adminUi } from "@/styles/admin/ui";
 
 interface AdminDashboardClientProps {
   stats: {
@@ -107,7 +109,7 @@ export default function AdminDashboardClient({ stats, ops, failureTop }: AdminDa
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 lg:pt-10 space-y-6 lg:space-y-10 relative z-10"
+        className={adminUi.pageContainer}
       >
         {/* Header Section */}
         <motion.div variants={itemVariants} className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -132,7 +134,7 @@ export default function AdminDashboardClient({ stats, ops, failureTop }: AdminDa
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
           {statCards.map((card, idx) => (
             <motion.div key={idx} variants={itemVariants}>
-              <Card className="bg-white border-slate-100 shadow-xl rounded-[32px] overflow-hidden group hover:bg-slate-50 transition-all duration-500 hover:-translate-y-1">
+              <AdminCard variant="kpi" className="shadow-xl rounded-[32px] overflow-hidden group hover:bg-slate-50 transition-all duration-500 hover:-translate-y-1">
                 <CardContent className="p-7">
                   <div className="flex items-center justify-between mb-6">
                     <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-500 group-hover:scale-110", card.glowColor, card.color)}>
@@ -150,34 +152,34 @@ export default function AdminDashboardClient({ stats, ops, failureTop }: AdminDa
                     </p>
                   </div>
                 </CardContent>
-              </Card>
+              </AdminCard>
             </motion.div>
           ))}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card className="bg-white border-slate-100 shadow-md rounded-2xl">
+          <AdminCard variant="subtle">
             <CardContent className="p-5">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">활성화율</p>
               <p className="text-2xl font-black text-indigo-500 mt-2">{ops.activationRate}%</p>
             </CardContent>
-          </Card>
-          <Card className="bg-white border-slate-100 shadow-md rounded-2xl">
+          </AdminCard>
+          <AdminCard variant="subtle">
             <CardContent className="p-5">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">최근 7일 연결</p>
               <p className="text-2xl font-black text-teal-500 mt-2">{ops.recentLinks}</p>
             </CardContent>
-          </Card>
-          <Card className="bg-white border-slate-100 shadow-md rounded-2xl">
+          </AdminCard>
+          <AdminCard variant="subtle">
             <CardContent className="p-5">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">최근 7일 실패 등록</p>
               <p className="text-2xl font-black text-rose-500 mt-2">{ops.failedRegistrations7d}</p>
             </CardContent>
-          </Card>
+          </AdminCard>
         </div>
 
         <motion.div variants={itemVariants}>
-          <Card className="bg-white border-slate-100 shadow-md rounded-2xl">
+          <AdminCard variant="subtle">
             <CardContent className="p-5">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">최근 이상 이벤트</p>
               {anomalies.length > 0 ? (
@@ -190,11 +192,11 @@ export default function AdminDashboardClient({ stats, ops, failureTop }: AdminDa
                 <p className="text-sm font-bold text-teal-600">탐지된 이상 이벤트가 없습니다.</p>
               )}
             </CardContent>
-          </Card>
+          </AdminCard>
         </motion.div>
 
         <motion.div variants={itemVariants}>
-          <Card className="bg-white border-slate-100 shadow-md rounded-2xl">
+          <AdminCard variant="subtle">
             <CardContent className="p-5 space-y-4">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">이상 탐지 임계치 설정</p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -205,7 +207,7 @@ export default function AdminDashboardClient({ stats, ops, failureTop }: AdminDa
                     min={1}
                     value={unsoldThreshold}
                     onChange={(e) => setUnsoldThreshold(Number(e.target.value) || 1)}
-                    className="w-full h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-slate-800"
+                    className={cn(adminUi.input, "w-full text-slate-800")}
                   />
                 </label>
                 <label className="text-xs font-bold text-slate-500 space-y-1">
@@ -216,7 +218,7 @@ export default function AdminDashboardClient({ stats, ops, failureTop }: AdminDa
                     max={100}
                     value={activationThreshold}
                     onChange={(e) => setActivationThreshold(Number(e.target.value) || 1)}
-                    className="w-full h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-slate-800"
+                    className={cn(adminUi.input, "w-full text-slate-800")}
                   />
                 </label>
                 <label className="text-xs font-bold text-slate-500 space-y-1">
@@ -226,16 +228,16 @@ export default function AdminDashboardClient({ stats, ops, failureTop }: AdminDa
                     min={1}
                     value={failedThreshold}
                     onChange={(e) => setFailedThreshold(Number(e.target.value) || 1)}
-                    className="w-full h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-slate-800"
+                    className={cn(adminUi.input, "w-full text-slate-800")}
                   />
                 </label>
               </div>
             </CardContent>
-          </Card>
+          </AdminCard>
         </motion.div>
 
         <motion.div variants={itemVariants}>
-          <Card className="bg-white border-slate-100 shadow-md rounded-2xl">
+          <AdminCard variant="subtle">
             <CardContent className="p-5 space-y-3">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">실패 이벤트 Top 5 (최근 7일)</p>
               {failureTop.length > 0 ? (
@@ -251,14 +253,14 @@ export default function AdminDashboardClient({ stats, ops, failureTop }: AdminDa
                 <p className="text-sm font-bold text-teal-600">최근 7일 실패 이벤트가 없습니다.</p>
               )}
             </CardContent>
-          </Card>
+          </AdminCard>
         </motion.div>
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8">
            {/* System Insights */}
            <motion.div variants={itemVariants} className="lg:col-span-2">
-              <Card className="bg-white border-slate-100 rounded-[28px] lg:rounded-[40px] p-5 lg:p-8 h-full shadow-xl">
+              <AdminCard variant="section" className="rounded-[28px] lg:rounded-[40px] p-5 lg:p-8 h-full">
                  <div className="flex items-center justify-between mb-8">
                     <div className="space-y-1">
                        <h3 className="text-lg lg:text-xl font-black text-slate-900 px-1">최근 비즈니스 통찰</h3>
@@ -292,12 +294,12 @@ export default function AdminDashboardClient({ stats, ops, failureTop }: AdminDa
                        </div>
                     </div>
                  </div>
-              </Card>
+              </AdminCard>
            </motion.div>
 
            {/* Quick Actions Panel */}
            <motion.div variants={itemVariants}>
-              <Card className="bg-gradient-to-br from-slate-900 to-slate-800 border-white/50 rounded-[28px] lg:rounded-[40px] p-5 lg:p-8 h-full relative overflow-hidden group shadow-2xl">
+              <AdminCard variant="section" className="bg-gradient-to-br from-slate-900 to-slate-800 border-white/50 rounded-[28px] lg:rounded-[40px] p-5 lg:p-8 h-full relative overflow-hidden group shadow-2xl">
                  <div className="relative z-10 flex flex-col h-full justify-between gap-10">
                     <div className="space-y-6">
                        <div className="w-16 h-16 rounded-[24px] bg-teal-500/10 flex items-center justify-center text-teal-400 border border-teal-500/20">
@@ -318,12 +320,12 @@ export default function AdminDashboardClient({ stats, ops, failureTop }: AdminDa
                     </Link>
                     <div className="grid grid-cols-2 gap-3">
                       <Link href="/admin/tags" className="block">
-                        <button className="w-full h-11 bg-slate-800 hover:bg-slate-700 text-white text-xs font-black rounded-xl transition-all">
+                        <button className={cn("w-full h-11 text-xs rounded-xl", adminUi.darkButton)}>
                           감사 로그 보기
                         </button>
                       </Link>
                       <Link href="/admin/tags" className="block">
-                        <button className="w-full h-11 bg-slate-800 hover:bg-slate-700 text-white text-xs font-black rounded-xl transition-all">
+                        <button className={cn("w-full h-11 text-xs rounded-xl", adminUi.darkButton)}>
                           재고 등록하기
                         </button>
                       </Link>
@@ -332,7 +334,7 @@ export default function AdminDashboardClient({ stats, ops, failureTop }: AdminDa
                  
                  {/* Decorative Glow */}
                  <div className="absolute top-0 right-0 w-40 h-40 bg-teal-500/5 rounded-full blur-[80px] group-hover:bg-teal-500/10 transition-all duration-700" />
-              </Card>
+              </AdminCard>
            </motion.div>
         </div>
 
