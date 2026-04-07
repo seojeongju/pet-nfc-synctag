@@ -156,11 +156,12 @@ export default async function DashboardPage() {
     );
   } catch (error: any) {
     // Next.js redirect() throws a special error that should not be caught
-    if (error?.digest?.startsWith("NEXT_REDIRECT")) {
+    if (error?.digest?.includes("NEXT_REDIRECT")) {
       throw error;
     }
     
     console.error("Dashboard error:", error);
+    // Important: if this is an auth error, we might still want to redirect to login
     redirect("/login");
   }
 }
