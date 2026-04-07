@@ -13,6 +13,7 @@ export const getAuth = (env: any) => {
         database: env.DB, // D1 네이티브 드라이버 자동 감지 및 배치 처리 지원
         secret: env.BETTER_AUTH_SECRET,
         baseURL: env.BETTER_AUTH_URL,
+        trustHost: true, // Edge Runtime 호스트 인식을 위해 최상위 옵션으로 이동
         socialProviders: {
             google: {
                 clientId: env.GOOGLE_CLIENT_ID || "",
@@ -23,11 +24,5 @@ export const getAuth = (env: any) => {
                 clientSecret: env.KAKAO_CLIENT_SECRET || "",
             }
         },
-        // Cloudflare Pages용 안정성 옵션 (세션 캐시 등 충돌 방지)
-        advanced: {
-            cookieCache: {
-                enabled: false // Edge 환경 로그아웃/세션 유실 방지 가이드 반영
-            }
-        }
     });
 };
