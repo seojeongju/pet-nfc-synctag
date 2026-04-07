@@ -1,5 +1,6 @@
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { NextResponse } from "next/server";
+import { getAuth } from "@/lib/auth";
 
 export const runtime = "edge";
 
@@ -19,6 +20,10 @@ export async function GET() {
     database: {
       isBound: !!env.DB,
       connectionTest: "Pending",
+    },
+    auth: {
+      initialization: "Pending",
+      error: null as string | null,
     }
   };
 
@@ -29,6 +34,14 @@ export async function GET() {
     } catch (e: any) {
       diagnostics.database.connectionTest = `Failed: ${e.message}`;
     }
+  }
+
+  try {
+    const auth = getAuth(env);
+    diagnostics.auth.initialization = "Success";
+  } catch (e: any) {
+    diagnostics.auth.initialization = "Failed";
+    diagnostics.auth.error = e.message || String(e);
   }
 
   return NextResponse.json(diagnostics);

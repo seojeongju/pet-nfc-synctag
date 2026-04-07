@@ -9,12 +9,14 @@ import { getAuth } from "@/lib/auth";
 import { getDB } from "@/lib/db";
 import { redirect } from "next/navigation";
 
+import { getRequestContext } from "@cloudflare/next-on-pages";
+
 export const runtime = "edge";
 
 export default async function DashboardPage() {
   try {
-    const db = getDB();
-    const auth = getAuth(db);
+    const context = getRequestContext();
+    const auth = getAuth(context.env);
     const session = await auth.api.getSession({
       headers: await headers(),
     });
