@@ -13,16 +13,22 @@ export default async function AdminAuthenticatedLayout({
 }: {
   children: React.ReactNode;
 }) {
-  type SessionUser = { role?: string; image?: string | null; name?: string | null };
+  type SessionUser = { id: string; image?: string | null; name?: string | null };
   const context = getRequestContext();
   const auth = getAuth(context.env);
   const session = await auth.api.getSession({
     headers: await headers(),
   });
   const user = session?.user as SessionUser | undefined;
+  const roleRow = user
+    ? await context.env.DB
+        .prepare("SELECT role FROM user WHERE id = ?")
+        .bind(user.id)
+        .first<{ role?: string | null }>()
+    : null;
 
   // 보안 체크: 관리자 권한(role === 'admin')이 없는 경우 전용 로그인 페이지로 안내
-  if (!session || user?.role !== "admin") {
+  if (!session || roleRow?.role !== "admin") {
     redirect("/admin/login");
   }
 

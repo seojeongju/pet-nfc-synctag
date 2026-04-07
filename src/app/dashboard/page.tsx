@@ -6,7 +6,6 @@ import { getRequestContext } from "@cloudflare/next-on-pages";
 import DashboardClient from "@/components/dashboard/DashboardClient";
 
 export const runtime = "edge";
-type SessionUserRole = { role?: string };
 
 export default async function DashboardPage() {
   try {
@@ -21,7 +20,11 @@ export default async function DashboardPage() {
     }
 
     const pets = await getPets(session.user.id);
-    const isAdmin = (session.user as SessionUserRole).role === "admin";
+    const roleRow = await context.env.DB
+      .prepare("SELECT role FROM user WHERE id = ?")
+      .bind(session.user.id)
+      .first<{ role?: string | null }>();
+    const isAdmin = roleRow?.role === "admin";
 
     return (
       <DashboardClient 
