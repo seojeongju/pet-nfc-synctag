@@ -1,17 +1,18 @@
--- User Table (Singular, CamelCase)
+-- 0001_initial_base_schema.sql
+-- User Table 
 CREATE TABLE IF NOT EXISTS user (
     id TEXT PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
     name TEXT,
     emailVerified BOOLEAN NOT NULL DEFAULT FALSE,
     image TEXT,
-    role TEXT DEFAULT 'user', -- 추가된 권한 필드
+    role TEXT DEFAULT 'user',
     subscriptionStatus TEXT DEFAULT 'free',
     createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Session Table (Singular, CamelCase)
+-- Session Table
 CREATE TABLE IF NOT EXISTS session (
     id TEXT PRIMARY KEY,
     userId TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,
@@ -23,7 +24,7 @@ CREATE TABLE IF NOT EXISTS session (
     updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Account Table (Singular, CamelCase)
+-- Account Table
 CREATE TABLE IF NOT EXISTS account (
     id TEXT PRIMARY KEY,
     userId TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,
@@ -40,7 +41,7 @@ CREATE TABLE IF NOT EXISTS account (
     updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Verification Table (Singular, CamelCase)
+-- Verification Table
 CREATE TABLE IF NOT EXISTS verification (
     id TEXT PRIMARY KEY,
     identifier TEXT NOT NULL,
@@ -59,32 +60,17 @@ CREATE TABLE IF NOT EXISTS pets (
     photo_url TEXT,
     medical_info TEXT,
     emergency_contact TEXT,
-    is_lost BOOLEAN DEFAULT 0, -- 실종 상태 플래그
-    theme_color TEXT DEFAULT '#14b8a6', -- 프로필 테마 컬러
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS tags (
-    id TEXT PRIMARY KEY, -- NFC UID (Unique across the system)
+    id TEXT PRIMARY KEY,
     pet_id TEXT REFERENCES pets(id) ON DELETE SET NULL,
     is_active BOOLEAN DEFAULT TRUE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
-
-CREATE TABLE IF NOT EXISTS health_records (
-    id TEXT PRIMARY KEY,
-    pet_id TEXT NOT NULL REFERENCES pets(id) ON DELETE CASCADE,
-    type TEXT NOT NULL, -- 'vaccine', 'medical', 'grooming', 'note'
-    title TEXT NOT NULL,
-    description TEXT,
-    record_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_health_records_pet_id ON health_records(pet_id);
 
 CREATE TABLE IF NOT EXISTS scan_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
