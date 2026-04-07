@@ -1,6 +1,9 @@
 "use server";
 import { getDB } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+import { getAuth } from "@/lib/auth";
+import { getRequestContext } from "@cloudflare/next-on-pages";
 
 function normalizeUid(uid: string): string {
     return uid.trim().toUpperCase();
@@ -11,6 +14,17 @@ function isValidUidFormat(uid: string): boolean {
     const hexWithColon = /^([0-9A-F]{2}:){3,15}[0-9A-F]{2}$/;
     const alnum = /^[A-Z0-9_-]{8,32}$/;
     return hexWithColon.test(uid) || alnum.test(uid);
+}
+
+async function getActorEmailSafe() {
+    try {
+        const context = getRequestContext();
+        const auth = getAuth(context.env);
+        const session = await auth.api.getSession({ headers: await headers() });
+        return session?.user?.email ?? "system";
+    } catch {
+        return "system";
+    }
 }
 
 export async function linkTag(petId: string, tagId: string) {
@@ -55,6 +69,19 @@ export async function linkTag(petId: string, tagId: string) {
     await db.prepare(
         "INSERT INTO tag_link_logs (tag_id, pet_id, action) VALUES (?, ?, 'link')"
     ).bind(normalizedTagId, petId).run();
+    await db.prepare(`
+        CREATE TABLE IF NOT EXISTS admin_action_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            action TEXT NOT NULL,
+            actor_email TEXT,
+            success BOOLEAN NOT NULL DEFAULT 1,
+            payload TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `).run();
+    await db.prepare(
+        "INSERT INTO admin_action_logs (action, actor_email, success, payload) VALUES (?, ?, 1, ?)"
+    ).bind("tag_link", await getActorEmailSafe(), JSON.stringify({ tagId: normalizedTagId, petId })).run();
     
     revalidatePath(`/profile/${petId}`);
     revalidatePath(`/dashboard`);
@@ -83,6 +110,19 @@ export async function unlinkTag(tagId: string) {
         await db.prepare(
             "INSERT INTO tag_link_logs (tag_id, pet_id, action) VALUES (?, ?, 'unlink')"
         ).bind(normalizedTagId, existing.pet_id).run();
+        await db.prepare(`
+            CREATE TABLE IF NOT EXISTS admin_action_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                action TEXT NOT NULL,
+                actor_email TEXT,
+                success BOOLEAN NOT NULL DEFAULT 1,
+                payload TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `).run();
+        await db.prepare(
+            "INSERT INTO admin_action_logs (action, actor_email, success, payload) VALUES (?, ?, 1, ?)"
+        ).bind("tag_unlink", await getActorEmailSafe(), JSON.stringify({ tagId: normalizedTagId, petId: existing.pet_id })).run();
     }
         
     revalidatePath(`/dashboard`);

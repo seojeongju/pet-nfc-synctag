@@ -1,11 +1,12 @@
 "use client";
 import { useState, useTransition, useEffect } from "react";
-import { registerBulkTags, getAllTags } from "@/app/actions/admin";
+import { registerBulkTags, getAllTags, getTagOpsStats, getTagLinkLogs, getAdminAuditLogs } from "@/app/actions/admin";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, CheckCircle, AlertCircle, Package, Database, Layers, ArrowUpRight } from "lucide-react";
+import { Plus, Search, CheckCircle, AlertCircle, Package, Database, Layers, ArrowUpRight, BarChart3, History, ShieldCheck, Download, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function AdminTagsPage() {
   type AdminTag = {
@@ -18,17 +19,100 @@ export default function AdminTagsPage() {
   };
   const [uids, setUids] = useState("");
   const [tags, setTags] = useState<AdminTag[]>([]);
+  const [opsStats, setOpsStats] = useState<{
+    totalCount: number;
+    activeCount: number;
+    unsoldCount: number;
+    activationRate: number;
+    recentLinks: number;
+    failedRegistrations7d: number;
+    batches: Array<{
+      batch_id: string;
+      total_count: number;
+      active_count: number;
+      unsold_count: number;
+      latest_created_at: string;
+    }>;
+  } | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [linkLogs, setLinkLogs] = useState<Array<{
+    id: number;
+    tag_id: string;
+    pet_id: string;
+    action: "link" | "unlink";
+    created_at: string;
+    pet_name?: string | null;
+    owner_email?: string | null;
+  }>>([]);
+  const [auditLogs, setAuditLogs] = useState<Array<{
+    id: number;
+    action: string;
+    actor_email?: string | null;
+    success: number;
+    payload?: string | null;
+    created_at: string;
+  }>>([]);
+  const [auditSuccessFilter, setAuditSuccessFilter] = useState<"all" | "success" | "failed">("all");
+  const [auditDaysFilter, setAuditDaysFilter] = useState<7 | 30 | 90>(30);
+  const [auditActorFilter, setAuditActorFilter] = useState("");
+  const [auditActionFilter, setAuditActionFilter] = useState("");
+  const [auditSortBy, setAuditSortBy] = useState<"created_at" | "action" | "success">("created_at");
+  const [auditSortOrder, setAuditSortOrder] = useState<"asc" | "desc">("desc");
+  const [auditPage, setAuditPage] = useState(1);
+  const auditPageSize = 10;
+  const [auditTotalCount, setAuditTotalCount] = useState(0);
+  const [selectedAudit, setSelectedAudit] = useState<{
+    id: number;
+    action: string;
+    actor_email?: string | null;
+    success: number;
+    payload?: string | null;
+    created_at: string;
+  } | null>(null);
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
-    fetchTags();
+    const success = (searchParams.get("success") as "all" | "success" | "failed") || "all";
+    const days = Number(searchParams.get("days") || 30) as 7 | 30 | 90;
+    const actor = searchParams.get("actor") || "";
+    const action = searchParams.get("action") || "";
+    const sortBy = (searchParams.get("sortBy") as "created_at" | "action" | "success") || "created_at";
+    const sortOrder = (searchParams.get("sortOrder") as "asc" | "desc") || "desc";
+    const page = Number(searchParams.get("page") || 1);
+    setAuditSuccessFilter(success);
+    setAuditDaysFilter([7, 30, 90].includes(days) ? days : 30);
+    setAuditActorFilter(actor);
+    setAuditActionFilter(action);
+    setAuditSortBy(sortBy);
+    setAuditSortOrder(sortOrder);
+    setAuditPage(Number.isFinite(page) && page > 0 ? page : 1);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchTags = async () => {
-    const results = await getAllTags();
+    const [results, stats, logs, audits] = await Promise.all([
+      getAllTags(),
+      getTagOpsStats(),
+      getTagLinkLogs(30),
+      getAdminAuditLogs({
+        limit: auditPageSize,
+        page: auditPage,
+        success: auditSuccessFilter,
+        days: auditDaysFilter,
+        actorEmail: auditActorFilter,
+        action: auditActionFilter,
+        sortBy: auditSortBy,
+        sortOrder: auditSortOrder,
+      }),
+    ]);
     setTags(results);
+    setOpsStats(stats);
+    setLinkLogs(logs);
+    setAuditLogs(audits.rows);
+    setAuditTotalCount(audits.total);
   };
 
   const filteredTags = tags.filter(tag => 
@@ -36,19 +120,30 @@ export default function AdminTagsPage() {
     (tag.pet_name && tag.pet_name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
+  const normalizeUid = (uid: string) => uid.trim().toUpperCase();
+  const uidTokens = uids
+    .split(/[\n,]/)
+    .map((u) => normalizeUid(u))
+    .filter((u) => u.length > 0);
+  const uniqueTokens = Array.from(new Set(uidTokens));
+  const duplicateInInputCount = uidTokens.length - uniqueTokens.length;
+  const validUidPattern = /^([0-9A-F]{2}:){3,15}[0-9A-F]{2}$|^[A-Z0-9_-]{8,32}$/;
+  const invalidInInputCount = uniqueTokens.filter((u) => !validUidPattern.test(u)).length;
+
   const handleRegister = async () => {
     if (!uids.trim()) return;
 
-    const uidList = Array.from(new Set(
-      uids.split(/[\n,]/).map(u => u.trim()).filter(u => u.length > 0)
-    ));
+    const uidList = uids.split(/[\n,]/).map((u) => u.trim()).filter((u) => u.length > 0);
 
     if (uidList.length === 0) return;
 
     startTransition(async () => {
       try {
         const result = await registerBulkTags(uidList);
-        setMessage({ type: "success", text: `${result.count}개의 태그가 성공적으로 등록되었습니다.` });
+        setMessage({
+          type: "success",
+          text: `등록 ${result.registeredCount}개 / 실패 ${result.failedCount}개 (중복입력 ${result.duplicateInRequest}, 기존중복 ${result.duplicateExisting}, 형식오류 ${result.invalidCount})`,
+        });
         setUids("");
         fetchTags();
       } catch {
@@ -56,6 +151,82 @@ export default function AdminTagsPage() {
       }
     });
   };
+
+  const exportAuditCsv = () => {
+    if (auditLogs.length === 0) return;
+    const escapeCsv = (value: string) => `"${value.replace(/"/g, '""')}"`;
+    const rows = [
+      ["created_at", "action", "actor_email", "success", "summary"],
+      ...auditLogs.map((log) => {
+        let summary = "-";
+        try {
+          const payload = log.payload ? JSON.parse(log.payload) : null;
+          if (payload?.registeredCount !== undefined) {
+            summary = `registered=${payload.registeredCount};failed=${payload.failedCount ?? 0}`;
+          } else if (payload?.error) {
+            summary = String(payload.error);
+          }
+        } catch {
+          summary = log.payload || "-";
+        }
+        return [
+          new Date(log.created_at).toISOString(),
+          log.action,
+          log.actor_email || "system",
+          log.success ? "success" : "failed",
+          summary,
+        ];
+      }),
+    ];
+    const csv = rows.map((row) => row.map((col) => escapeCsv(String(col))).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `admin-audit-logs-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  useEffect(() => {
+    fetchTags();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auditSuccessFilter, auditDaysFilter, auditActorFilter, auditActionFilter, auditSortBy, auditSortOrder, auditPage]);
+
+  useEffect(() => {
+    setAuditPage(1);
+  }, [auditSuccessFilter, auditDaysFilter, auditActorFilter, auditActionFilter, auditSortBy, auditSortOrder]);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    params.set("success", auditSuccessFilter);
+    params.set("days", String(auditDaysFilter));
+    if (auditActorFilter.trim()) params.set("actor", auditActorFilter.trim());
+    if (auditActionFilter) params.set("action", auditActionFilter);
+    params.set("sortBy", auditSortBy);
+    params.set("sortOrder", auditSortOrder);
+    params.set("page", String(auditPage));
+    router.replace(`/admin/tags?${params.toString()}`);
+  }, [auditSuccessFilter, auditDaysFilter, auditActorFilter, auditActionFilter, auditSortBy, auditSortOrder, auditPage, router]);
+
+  const summarizePayload = (payloadRaw?: string | null) => {
+    if (!payloadRaw) return "-";
+    try {
+      const payload = JSON.parse(payloadRaw);
+      if (payload?.registeredCount !== undefined) {
+        return `등록 ${payload.registeredCount} / 실패 ${payload.failedCount ?? 0}`;
+      }
+      if (payload?.tagId && payload?.petId) {
+        return `tagId=${payload.tagId}, petId=${payload.petId}`;
+      }
+      if (payload?.error) return String(payload.error);
+      return JSON.stringify(payload);
+    } catch {
+      return payloadRaw;
+    }
+  };
+
+  const auditTotalPages = Math.max(1, Math.ceil(auditTotalCount / auditPageSize));
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -97,6 +268,34 @@ export default function AdminTagsPage() {
           </Link>
         </motion.div>
 
+        {/* KPI Cards */}
+        <motion.div variants={itemVariants} className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          <Card className="bg-slate-900/60 border-white/5 rounded-3xl p-5">
+            <p className="text-[10px] text-slate-500 font-black uppercase">총 태그</p>
+            <p className="text-2xl font-black text-white mt-2">{opsStats?.totalCount ?? 0}</p>
+          </Card>
+          <Card className="bg-slate-900/60 border-white/5 rounded-3xl p-5">
+            <p className="text-[10px] text-slate-500 font-black uppercase">활성</p>
+            <p className="text-2xl font-black text-teal-400 mt-2">{opsStats?.activeCount ?? 0}</p>
+          </Card>
+          <Card className="bg-slate-900/60 border-white/5 rounded-3xl p-5">
+            <p className="text-[10px] text-slate-500 font-black uppercase">미판매</p>
+            <p className="text-2xl font-black text-amber-400 mt-2">{opsStats?.unsoldCount ?? 0}</p>
+          </Card>
+          <Card className="bg-slate-900/60 border-white/5 rounded-3xl p-5">
+            <p className="text-[10px] text-slate-500 font-black uppercase">활성화율</p>
+            <p className="text-2xl font-black text-indigo-300 mt-2">{opsStats?.activationRate ?? 0}%</p>
+          </Card>
+          <Card className="bg-slate-900/60 border-white/5 rounded-3xl p-5 col-span-2 lg:col-span-1">
+            <p className="text-[10px] text-slate-500 font-black uppercase">최근 7일 연결</p>
+            <p className="text-2xl font-black text-cyan-300 mt-2">{opsStats?.recentLinks ?? 0}</p>
+          </Card>
+          <Card className="bg-slate-900/60 border-white/5 rounded-3xl p-5 col-span-2 lg:col-span-1">
+            <p className="text-[10px] text-slate-500 font-black uppercase">최근 7일 실패 등록</p>
+            <p className="text-2xl font-black text-rose-300 mt-2">{opsStats?.failedRegistrations7d ?? 0}</p>
+          </Card>
+        </motion.div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Bulk Input Form */}
           <motion.div variants={itemVariants} className="lg:col-span-1 h-fit">
@@ -116,6 +315,20 @@ export default function AdminTagsPage() {
                   placeholder="예: 04:A1:B2:C3, 04:D4:E5:F6..."
                   className="w-full h-80 bg-slate-950/80 border border-white/5 rounded-[32px] p-6 text-sm font-mono text-teal-400/80 focus:border-teal-500/50 focus:ring-4 focus:ring-teal-500/5 outline-none transition-all resize-none shadow-inner custom-scrollbar"
                 />
+              </div>
+              <div className="rounded-2xl bg-slate-950/70 border border-white/5 p-4 text-[11px] font-bold text-slate-400 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span>입력 UID</span>
+                  <span className="text-slate-200">{uidTokens.length}개</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>중복 UID(입력 내)</span>
+                  <span className={duplicateInInputCount > 0 ? "text-amber-400" : "text-slate-200"}>{duplicateInInputCount}개</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>형식 오류</span>
+                  <span className={invalidInInputCount > 0 ? "text-rose-400" : "text-slate-200"}>{invalidInInputCount}개</span>
+                </div>
               </div>
 
               <AnimatePresence>
@@ -231,9 +444,263 @@ export default function AdminTagsPage() {
                   </tbody>
                 </table>
               </div>
+
+              <div className="space-y-4 pt-4 border-t border-white/5">
+                <div className="flex items-center gap-2 text-slate-300">
+                  <BarChart3 className="w-4 h-4 text-teal-400" />
+                  <h4 className="text-sm font-black">최근 배치 등록 통계</h4>
+                </div>
+                <div className="space-y-2">
+                  {(opsStats?.batches ?? []).length > 0 ? (
+                    (opsStats?.batches ?? []).map((batch) => (
+                      <div key={batch.batch_id} className="rounded-2xl border border-white/5 bg-slate-950/60 p-4 flex items-center justify-between gap-4">
+                        <div>
+                          <p className="text-xs font-black text-white">{batch.batch_id}</p>
+                          <p className="text-[10px] text-slate-500 font-bold">{new Date(batch.latest_created_at).toLocaleString()}</p>
+                        </div>
+                        <div className="flex items-center gap-4 text-[10px] font-black uppercase">
+                          <span className="text-slate-300">총 {batch.total_count}</span>
+                          <span className="text-teal-400">활성 {batch.active_count}</span>
+                          <span className="text-amber-400">미판매 {batch.unsold_count}</span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-white/10 p-6 text-center text-xs text-slate-500 font-bold">
+                      표시할 배치 통계가 없습니다.
+                    </div>
+                  )}
+                </div>
+              </div>
             </Card>
           </motion.div>
         </div>
+
+        <motion.div variants={itemVariants}>
+          <Card className="bg-slate-900/40 border-white/5 rounded-[40px] p-8 space-y-6 shadow-2xl backdrop-blur-sm">
+            <div className="flex items-center gap-2 text-slate-300">
+              <History className="w-4 h-4 text-cyan-300" />
+              <h4 className="text-sm font-black">태그 연결 이력 대시보드</h4>
+            </div>
+            <div className="overflow-x-auto custom-scrollbar">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-white/5">
+                    <th className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">시각</th>
+                    <th className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">액션</th>
+                    <th className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">태그 UID</th>
+                    <th className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">반려동물</th>
+                    <th className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">소유자</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {linkLogs.length > 0 ? (
+                    linkLogs.map((log) => (
+                      <tr key={log.id} className="hover:bg-white/5 transition-colors">
+                        <td className="py-4 px-4 text-[11px] text-slate-400 font-bold">{new Date(log.created_at).toLocaleString()}</td>
+                        <td className="py-4 px-4">
+                          <span className={cn(
+                            "px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border",
+                            log.action === "link"
+                              ? "bg-teal-500/10 text-teal-400 border-teal-500/20"
+                              : "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                          )}>
+                            {log.action}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-[11px] text-slate-200 font-mono font-bold">{log.tag_id}</td>
+                        <td className="py-4 px-4 text-[11px] text-white font-bold">{log.pet_name || "알 수 없음"}</td>
+                        <td className="py-4 px-4 text-[11px] text-slate-400 font-bold">{log.owner_email || "-"}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="py-14 text-center text-xs text-slate-500 font-bold">
+                        연결/해제 이력이 아직 없습니다.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </motion.div>
+
+        <motion.div variants={itemVariants}>
+          <Card className="bg-slate-900/40 border-white/5 rounded-[40px] p-8 space-y-6 shadow-2xl backdrop-blur-sm">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2 text-slate-300">
+                  <ShieldCheck className="w-4 h-4 text-violet-300" />
+                  <h4 className="text-sm font-black">관리자 액션 로그 / 감사 패널</h4>
+                </div>
+                <Button onClick={exportAuditCsv} disabled={auditLogs.length === 0} variant="outline" className="h-9 rounded-xl border-white/10 bg-slate-900 text-slate-200 hover:bg-slate-800">
+                  <Download className="w-4 h-4 mr-1" />
+                  CSV
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <select
+                  value={auditSuccessFilter}
+                  onChange={(e) => setAuditSuccessFilter(e.target.value as "all" | "success" | "failed")}
+                  className="h-10 rounded-xl border border-white/10 bg-slate-950 text-xs font-bold text-slate-200 px-3 outline-none"
+                >
+                  <option value="all">전체 결과</option>
+                  <option value="success">성공만</option>
+                  <option value="failed">실패만</option>
+                </select>
+                <select
+                  value={auditDaysFilter}
+                  onChange={(e) => setAuditDaysFilter(Number(e.target.value) as 7 | 30 | 90)}
+                  className="h-10 rounded-xl border border-white/10 bg-slate-950 text-xs font-bold text-slate-200 px-3 outline-none"
+                >
+                  <option value={7}>최근 7일</option>
+                  <option value={30}>최근 30일</option>
+                  <option value={90}>최근 90일</option>
+                </select>
+                <input
+                  value={auditActorFilter}
+                  onChange={(e) => setAuditActorFilter(e.target.value)}
+                  placeholder="실행자 이메일 필터"
+                  className="h-10 rounded-xl border border-white/10 bg-slate-950 text-xs font-bold text-slate-200 px-3 outline-none placeholder:text-slate-500"
+                />
+                <select
+                  value={auditActionFilter}
+                  onChange={(e) => setAuditActionFilter(e.target.value)}
+                  className="h-10 rounded-xl border border-white/10 bg-slate-950 text-xs font-bold text-slate-200 px-3 outline-none"
+                >
+                  <option value="">전체 액션</option>
+                  <option value="bulk_register">bulk_register</option>
+                  <option value="tag_link">tag_link</option>
+                  <option value="tag_unlink">tag_unlink</option>
+                </select>
+                <div className="flex gap-2">
+                  <select
+                    value={auditSortBy}
+                    onChange={(e) => setAuditSortBy(e.target.value as "created_at" | "action" | "success")}
+                    className="h-10 flex-1 rounded-xl border border-white/10 bg-slate-950 text-xs font-bold text-slate-200 px-3 outline-none"
+                  >
+                    <option value="created_at">정렬: 시각</option>
+                    <option value="action">정렬: 액션</option>
+                    <option value="success">정렬: 결과</option>
+                  </select>
+                  <select
+                    value={auditSortOrder}
+                    onChange={(e) => setAuditSortOrder(e.target.value as "asc" | "desc")}
+                    className="h-10 w-28 rounded-xl border border-white/10 bg-slate-950 text-xs font-bold text-slate-200 px-3 outline-none"
+                  >
+                    <option value="desc">내림차순</option>
+                    <option value="asc">오름차순</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div className="overflow-x-auto custom-scrollbar">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-white/5">
+                    <th className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">시각</th>
+                    <th className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">액션</th>
+                    <th className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">실행자</th>
+                    <th className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">결과</th>
+                    <th className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">요약</th>
+                    <th className="py-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">상세</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {auditLogs.length > 0 ? (
+                    auditLogs.map((log) => {
+                      const summary = summarizePayload(log.payload);
+                      return (
+                        <tr key={log.id} className="hover:bg-white/5 transition-colors">
+                          <td className="py-4 px-4 text-[11px] text-slate-400 font-bold">{new Date(log.created_at).toLocaleString()}</td>
+                          <td className="py-4 px-4 text-[11px] text-slate-200 font-bold">{log.action}</td>
+                          <td className="py-4 px-4 text-[11px] text-slate-400 font-bold">{log.actor_email || "system"}</td>
+                          <td className="py-4 px-4">
+                            <span className={cn(
+                              "px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border",
+                              log.success ? "bg-teal-500/10 text-teal-400 border-teal-500/20" : "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                            )}>
+                              {log.success ? "success" : "failed"}
+                            </span>
+                          </td>
+                          <td className="py-4 px-4 text-[11px] text-slate-300 font-bold">{summary}</td>
+                          <td className="py-4 px-4">
+                            <button
+                              onClick={() => setSelectedAudit(log)}
+                              className="h-8 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-black inline-flex items-center gap-1"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              보기
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="py-14 text-center text-xs text-slate-500 font-bold">
+                        표시할 관리자 감사 로그가 없습니다.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-slate-500 font-bold">
+                총 {auditTotalCount}건 중 {auditTotalCount === 0 ? 0 : (auditPage - 1) * auditPageSize + 1}-{Math.min(auditPage * auditPageSize, auditTotalCount)}건
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  className="h-8 rounded-lg border-white/10 bg-slate-900 text-slate-200 hover:bg-slate-800"
+                  onClick={() => setAuditPage((p) => Math.max(1, p - 1))}
+                  disabled={auditPage <= 1}
+                >
+                  이전
+                </Button>
+                <span className="text-xs text-slate-300 font-black">{auditPage} / {auditTotalPages}</span>
+                <Button
+                  variant="outline"
+                  className="h-8 rounded-lg border-white/10 bg-slate-900 text-slate-200 hover:bg-slate-800"
+                  onClick={() => setAuditPage((p) => Math.min(auditTotalPages, p + 1))}
+                  disabled={auditPage >= auditTotalPages}
+                >
+                  다음
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </motion.div>
+
+        {selectedAudit && (
+          <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+            <div className="w-full max-w-2xl rounded-2xl bg-slate-900 border border-white/10 p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h5 className="text-sm font-black text-white">감사 로그 상세</h5>
+                <button onClick={() => setSelectedAudit(null)} className="text-xs font-black text-slate-400 hover:text-white">닫기</button>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <p className="text-slate-400">액션: <span className="text-slate-200 font-bold">{selectedAudit.action}</span></p>
+                <p className="text-slate-400">결과: <span className="text-slate-200 font-bold">{selectedAudit.success ? "success" : "failed"}</span></p>
+                <p className="text-slate-400">실행자: <span className="text-slate-200 font-bold">{selectedAudit.actor_email || "system"}</span></p>
+                <p className="text-slate-400">시각: <span className="text-slate-200 font-bold">{new Date(selectedAudit.created_at).toLocaleString()}</span></p>
+              </div>
+              <pre className="rounded-xl bg-slate-950 border border-white/10 p-4 text-[11px] text-slate-300 overflow-auto max-h-80">
+{(() => {
+  if (!selectedAudit.payload) return "{}";
+  try {
+    const parsed = JSON.parse(selectedAudit.payload);
+    return JSON.stringify(parsed, null, 2);
+  } catch {
+    return selectedAudit.payload;
+  }
+})()}
+              </pre>
+            </div>
+          </div>
+        )}
       </motion.div>
     </div>
   );
