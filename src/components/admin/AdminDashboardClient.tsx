@@ -70,10 +70,10 @@ export default function AdminDashboardClient({ stats }: AdminDashboardClientProp
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 font-outfit pb-20 relative overflow-hidden">
+    <div className="min-h-screen bg-[#F8FAFC] font-outfit pb-20 relative overflow-hidden">
       {/* Background Ambience */}
-      <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-teal-500/5 blur-[120px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-indigo-500/5 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-teal-500/10 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-indigo-500/10 blur-[120px] rounded-full pointer-events-none" />
 
       <motion.div 
         variants={containerVariants}
@@ -88,14 +88,14 @@ export default function AdminDashboardClient({ stats }: AdminDashboardClientProp
                 <Activity className="w-3.5 h-3.5" />
                 시스템 관리 콘솔
              </div>
-             <h1 className="text-4xl font-black text-white tracking-tight">관리자 대시보드</h1>
+             <h1 className="text-4xl font-black text-slate-900 tracking-tight">관리자 대시보드</h1>
              <p className="text-slate-500 text-sm font-bold">실시간 시스템 리소스 및 자산 관리 현황</p>
           </div>
           
           <div className="flex items-center gap-4">
-             <div className="px-5 py-3 glass-dark rounded-2xl flex items-center gap-3 border-white/5">
+             <div className="px-5 py-3 bg-white rounded-2xl flex items-center gap-3 border border-slate-100 shadow-sm">
                 <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
-                <span className="text-xs font-bold text-slate-300">실시간 상태: 정상</span>
+                <span className="text-xs font-bold text-slate-600">실시간 상태: 정상</span>
              </div>
           </div>
         </motion.div>
@@ -104,20 +104,20 @@ export default function AdminDashboardClient({ stats }: AdminDashboardClientProp
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {statCards.map((card, idx) => (
             <motion.div key={idx} variants={itemVariants}>
-              <Card className="bg-slate-900/50 border-white/5 shadow-2xl rounded-[32px] overflow-hidden group hover:bg-slate-900 transition-all duration-500 hover:-translate-y-1">
+              <Card className="bg-white border-slate-100 shadow-xl rounded-[32px] overflow-hidden group hover:bg-slate-50 transition-all duration-500 hover:-translate-y-1">
                 <CardContent className="p-7">
                   <div className="flex items-center justify-between mb-6">
                     <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-500 group-hover:scale-110", card.glowColor, card.color)}>
                        <card.icon className="w-7 h-7" />
                     </div>
-                    <div className="h-8 w-8 rounded-full border border-white/5 flex items-center justify-center text-slate-600 group-hover:text-teal-400 transition-colors">
+                    <div className="h-8 w-8 rounded-full border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-teal-500 transition-colors">
                        <ArrowUpRight className="w-4 h-4" />
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{card.title}</p>
-                    <h2 className="text-3xl font-black text-white tracking-tighter tabular-nums">{card.value.toLocaleString()}</h2>
-                    <p className="text-[10px] font-bold text-slate-600 pt-3 border-t border-white/5 mt-4">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{card.title}</p>
+                    <h2 className="text-3xl font-black text-slate-900 tracking-tighter tabular-nums">{card.value.toLocaleString()}</h2>
+                    <p className="text-[10px] font-bold text-slate-500 pt-3 border-t border-slate-100 mt-4">
                        {card.description}
                     </p>
                   </div>
@@ -131,13 +131,13 @@ export default function AdminDashboardClient({ stats }: AdminDashboardClientProp
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
            {/* System Insights */}
            <motion.div variants={itemVariants} className="lg:col-span-2">
-              <Card className="bg-slate-900/40 border-white/5 rounded-[40px] p-8 h-full shadow-2xl">
+              <Card className="bg-white border-slate-100 rounded-[40px] p-8 h-full shadow-xl">
                  <div className="flex items-center justify-between mb-8">
                     <div className="space-y-1">
-                       <h3 className="text-xl font-black text-white px-1">최근 비즈니스 통찰</h3>
+                       <h3 className="text-xl font-black text-slate-900 px-1">최근 비즈니스 통찰</h3>
                        <p className="text-xs font-bold text-slate-500 px-1 italic">Pet-ID Core 시스템 분석 결과</p>
                     </div>
-                    <TrendingUp className="w-6 h-6 text-slate-700" />
+                    <TrendingUp className="w-6 h-6 text-slate-400" />
                  </div>
                  
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -146,7 +146,7 @@ export default function AdminDashboardClient({ stats }: AdminDashboardClientProp
                           <Package className="w-5 h-5" />
                        </div>
                        <div>
-                          <h4 className="font-bold text-slate-200 text-sm">재고 경보: 등록 필요</h4>
+                          <h4 className="font-bold text-slate-800 text-sm">재고 경보: 등록 필요</h4>
                           <p className="text-xs text-slate-500 mt-2 leading-relaxed">
                              현재 미판매 재고가 <span className="text-amber-500 font-black">{stats.unsoldTags}개</span> 남았습니다. 원활한 판매를 위해 추가 태그 UID 등록을 권장합니다.
                           </p>
@@ -158,7 +158,7 @@ export default function AdminDashboardClient({ stats }: AdminDashboardClientProp
                           <CheckCircle className="w-5 h-5" />
                        </div>
                        <div>
-                          <h4 className="font-bold text-slate-200 text-sm">시스템 무결성 확인</h4>
+                          <h4 className="font-bold text-slate-800 text-sm">시스템 무결성 확인</h4>
                           <p className="text-xs text-slate-500 mt-2 leading-relaxed">
                              모든 NFC 인식표 정보가 암호화되어 안전하게 관리되고 있습니다. 최근 24시간 내 보안 이슈가 발견되지 않았습니다.
                           </p>
@@ -170,7 +170,7 @@ export default function AdminDashboardClient({ stats }: AdminDashboardClientProp
 
            {/* Quick Actions Panel */}
            <motion.div variants={itemVariants}>
-              <Card className="bg-gradient-to-br from-slate-900 to-slate-950 border-white/5 rounded-[40px] p-8 h-full relative overflow-hidden group shadow-2xl">
+              <Card className="bg-gradient-to-br from-slate-900 to-slate-800 border-white/50 rounded-[40px] p-8 h-full relative overflow-hidden group shadow-2xl">
                  <div className="relative z-10 flex flex-col h-full justify-between gap-10">
                     <div className="space-y-6">
                        <div className="w-16 h-16 rounded-[24px] bg-teal-500/10 flex items-center justify-center text-teal-400 border border-teal-500/20">
@@ -198,7 +198,7 @@ export default function AdminDashboardClient({ stats }: AdminDashboardClientProp
         </div>
 
         {/* Footer Info */}
-        <motion.div variants={itemVariants} className="flex flex-col items-center gap-4 opacity-30 pt-10 border-t border-white/5">
+        <motion.div variants={itemVariants} className="flex flex-col items-center gap-4 opacity-60 pt-10 border-t border-slate-200">
            <div className="flex items-center gap-6">
               <Database className="w-4 h-4 text-slate-500" />
               <Layers className="w-4 h-4 text-slate-500" />
