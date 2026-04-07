@@ -1,56 +1,58 @@
--- Users Table
-CREATE TABLE IF NOT EXISTS users (
+-- User Table (Singular, CamelCase)
+CREATE TABLE IF NOT EXISTS user (
     id TEXT PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
     name TEXT,
-    email_verified BOOLEAN DEFAULT FALSE,
+    emailVerified BOOLEAN NOT NULL DEFAULT FALSE,
     image TEXT,
-    subscription_status TEXT DEFAULT 'free',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    subscriptionStatus TEXT DEFAULT 'free',
+    createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Better-Auth Tables
-CREATE TABLE IF NOT EXISTS sessions (
+-- Session Table (Singular, CamelCase)
+CREATE TABLE IF NOT EXISTS session (
     id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    userId TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,
     token TEXT UNIQUE NOT NULL,
-    expires_at DATETIME NOT NULL,
-    ip_address TEXT,
-    user_agent TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    expiresAt DATETIME NOT NULL,
+    ipAddress TEXT,
+    userAgent TEXT,
+    createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS accounts (
+-- Account Table (Singular, CamelCase)
+CREATE TABLE IF NOT EXISTS account (
     id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    account_id TEXT NOT NULL,
-    provider_id TEXT NOT NULL,
-    access_token TEXT,
-    refresh_token TEXT,
-    access_token_expires_at DATETIME,
-    refresh_token_expires_at DATETIME,
+    userId TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,
+    accountId TEXT NOT NULL,
+    providerId TEXT NOT NULL,
+    accessToken TEXT,
+    refreshToken TEXT,
+    accessTokenExpiresAt DATETIME,
+    refreshTokenExpiresAt DATETIME,
     scope TEXT,
-    id_token TEXT,
+    idToken TEXT,
     password TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS verifications (
+-- Verification Table (Singular, CamelCase)
+CREATE TABLE IF NOT EXISTS verification (
     id TEXT PRIMARY KEY,
     identifier TEXT NOT NULL,
     value TEXT NOT NULL,
-    expires_at DATETIME NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    expiresAt DATETIME NOT NULL,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Pet-ID Specific Tables
 CREATE TABLE IF NOT EXISTS pets (
     id TEXT PRIMARY KEY,
-    owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    owner_id TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     breed TEXT,
     photo_url TEXT,
