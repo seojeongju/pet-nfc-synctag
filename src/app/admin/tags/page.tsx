@@ -1,5 +1,5 @@
 "use client";
-import { useState, useTransition, useEffect } from "react";
+import { Suspense, useState, useTransition, useEffect } from "react";
 import { registerBulkTags, getAllTags, getTagOpsStats, getTagLinkLogs, getAdminAuditLogs } from "@/app/actions/admin";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function AdminTagsPage() {
+function AdminTagsPageContent() {
   type AdminTag = {
     id: string;
     pet_name?: string | null;
@@ -703,6 +703,14 @@ export default function AdminTagsPage() {
         )}
       </motion.div>
     </div>
+  );
+}
+
+export default function AdminTagsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-950" />}>
+      <AdminTagsPageContent />
+    </Suspense>
   );
 }
 
