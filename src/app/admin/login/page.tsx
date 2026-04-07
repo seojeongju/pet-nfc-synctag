@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ShieldCheck, ArrowLeft, Lock, Loader2, MessageSquare } from "lucide-react";
+import { ShieldCheck, ArrowLeft, Lock, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -17,20 +17,13 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSocialLogin = async (provider: "google" | "kakao") => {
-    await signIn.social({
-      provider,
-      callbackURL: "/admin",
-    });
-  };
-
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
     try {
-      const { data, error: signInError } = await signIn.email({
+      const { error: signInError } = await signIn.email({
         email,
         password,
         callbackURL: "/admin",
@@ -41,7 +34,7 @@ export default function AdminLoginPage() {
       } else {
         router.push("/admin");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Login Error:", err);
       setError("서버 통신 중 오류가 발생했습니다.");
     } finally {
@@ -65,22 +58,22 @@ export default function AdminLoginPage() {
            <div className="space-y-2 mt-6">
              <div className="flex items-center justify-center gap-2 text-slate-500 font-extrabold tracking-[0.2em] text-[10px] uppercase">
                 <Lock className="w-3.5 h-3.5" />
-                Authorized Console Access
+                관리자 콘솔 접근
              </div>
-             <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">판매자 로그인</h1>
-             <p className="text-slate-400 text-sm font-medium">Seller Management Center</p>
+             <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">관리자 로그인</h1>
+             <p className="text-slate-400 text-sm font-medium">관리자 운영 센터</p>
            </div>
         </div>
 
         <Card className="border-none shadow-2xl rounded-[40px] overflow-hidden bg-white/80 backdrop-blur-md">
           <CardHeader className="pt-10 pb-6 text-center">
-            <CardTitle className="text-xl font-bold text-slate-800">Secure Login</CardTitle>
-            <CardDescription className="text-slate-400">Enter credentials to initiate session</CardDescription>
+            <CardTitle className="text-xl font-bold text-slate-800">보안 로그인</CardTitle>
+            <CardDescription className="text-slate-400">계정 정보를 입력해 세션을 시작하세요</CardDescription>
           </CardHeader>
           <CardContent className="px-10 pb-10 space-y-7">
             <form onSubmit={handleEmailLogin} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-[10px] font-black text-slate-500 px-2 uppercase tracking-widest">Admin Identifier</Label>
+                <Label htmlFor="email" className="text-[10px] font-black text-slate-500 px-2 uppercase tracking-widest">관리자 아이디</Label>
                 <Input 
                   id="email"
                   type="email" 
@@ -92,7 +85,7 @@ export default function AdminLoginPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-[10px] font-black text-slate-500 px-2 uppercase tracking-widest">Access Token</Label>
+                <Label htmlFor="password" className="text-[10px] font-black text-slate-500 px-2 uppercase tracking-widest">비밀번호</Label>
                 <Input 
                   id="password"
                   type="password" 
@@ -119,35 +112,17 @@ export default function AdminLoginPage() {
               </Button>
             </form>
 
-            <div className="relative py-4">
-              <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-slate-100"></span></div>
-              <div className="relative flex justify-center text-[9px] uppercase font-black tracking-widest"><span className="bg-white/80 px-4 text-slate-400 backdrop-blur-xl">Or Social Access</span></div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <Button 
-                variant="outline" 
-                className="h-14 rounded-2xl border-slate-100 bg-white hover:bg-slate-50 text-slate-700 font-black text-[10px] uppercase tracking-widest transition-all active:scale-[0.98] shadow-sm flex items-center justify-center"
-                onClick={() => handleSocialLogin("google")}
-              >
-                Google
-              </Button>
-
-              <Button 
-                variant="outline" 
-                className="h-14 rounded-2xl border-none bg-[#FEE500] hover:bg-[#FEE500]/90 text-slate-900 font-black text-[10px] uppercase tracking-widest transition-all active:scale-[0.98] shadow-sm flex items-center justify-center gap-2"
-                onClick={() => handleSocialLogin("kakao")}
-              >
-                <MessageSquare className="w-4 h-4 fill-current" />
-                Kakao
-              </Button>
+            <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-center">
+              <p className="text-[11px] font-bold text-slate-500">
+                관리자 계정은 이메일/비밀번호 로그인만 지원합니다.
+              </p>
             </div>
           </CardContent>
         </Card>
 
         <footer className="text-center pt-4 mb-8">
            <p className="text-[10px] text-slate-400 font-black tracking-[0.4em] uppercase text-center w-full">
-             Seller Management System © 2024
+             관리자 운영 시스템 © 2024
            </p>
         </footer>
       </div>

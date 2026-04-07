@@ -7,7 +7,7 @@ import { LayoutDashboard, ShieldCheck, ArrowRight, Sparkles, Heart } from "lucid
 import { cn } from "@/lib/utils";
 
 interface HomeClientProps {
-  session: any;
+  session: { user: { name?: string | null } } | null;
   isAdmin: boolean;
   dashboardLink: string;
   buttonLabel: string;

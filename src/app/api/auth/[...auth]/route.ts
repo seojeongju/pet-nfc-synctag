@@ -3,24 +3,26 @@ import { getRequestContext } from "@cloudflare/next-on-pages";
 import { NextResponse } from "next/server";
 
 export const runtime = "edge";
+const toError = (e: unknown): Error => (e instanceof Error ? e : new Error(String(e)));
 
 export async function GET(req: Request) {
     try {
         const context = getRequestContext();
         const auth = getAuth(context.env);
         return await auth.handler(req);
-    } catch (e: any) {
+    } catch (e: unknown) {
+        const err = toError(e);
         console.error("Auth GET error:", {
-            message: e.message,
-            name: e.name,
-            stack: e.stack,
-            cause: e.cause
+            message: err.message,
+            name: err.name,
+            stack: err.stack,
+            cause: (err as Error & { cause?: unknown }).cause
         });
         return NextResponse.json({ 
             error: "Auth GET Handler Failed", 
-            message: e.message || String(e),
-            details: e.toString(),
-            stack: process.env.NODE_ENV === "development" ? e.stack : undefined 
+            message: err.message || String(e),
+            details: err.toString(),
+            stack: process.env.NODE_ENV === "development" ? err.stack : undefined 
         }, { status: 500 });
     }
 }
@@ -30,18 +32,19 @@ export async function POST(req: Request) {
         const context = getRequestContext();
         const auth = getAuth(context.env);
         return await auth.handler(req);
-    } catch (e: any) {
+    } catch (e: unknown) {
+        const err = toError(e);
         console.error("Auth POST error:", {
-            message: e.message,
-            name: e.name,
-            stack: e.stack,
-            cause: e.cause
+            message: err.message,
+            name: err.name,
+            stack: err.stack,
+            cause: (err as Error & { cause?: unknown }).cause
         });
         return NextResponse.json({ 
             error: "Auth POST Handler Failed", 
-            message: e.message || String(e),
-            details: e.toString(),
-            stack: process.env.NODE_ENV === "development" ? e.stack : undefined 
+            message: err.message || String(e),
+            details: err.toString(),
+            stack: process.env.NODE_ENV === "development" ? err.stack : undefined 
         }, { status: 500 });
     }
 }

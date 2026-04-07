@@ -3,10 +3,17 @@ import { NextResponse } from "next/server";
 import { getAuth } from "@/lib/auth";
 
 export const runtime = "edge";
+type DiagEnv = CloudflareEnv & {
+  BETTER_AUTH_SECRET?: string;
+  BETTER_AUTH_URL?: string;
+  NEXT_PUBLIC_APP_URL?: string;
+  GOOGLE_CLIENT_ID?: string;
+  KAKAO_CLIENT_ID?: string;
+};
 
 export async function GET() {
   const context = getRequestContext();
-  const env = context.env as any;
+  const env = context.env as DiagEnv;
 
   const diagnostics = {
     timestamp: new Date().toISOString(),
@@ -29,19 +36,21 @@ export async function GET() {
 
   if (env.DB) {
     try {
-      await (env.DB as any).prepare("SELECT 1").run();
+      await env.DB.prepare("SELECT 1").run();
       diagnostics.database.connectionTest = "Success";
-    } catch (e: any) {
-      diagnostics.database.connectionTest = `Failed: ${e.message}`;
+    } catch (e: unknown) {
+      const err = e instanceof Error ? e : new Error(String(e));
+      diagnostics.database.connectionTest = `Failed: ${err.message}`;
     }
   }
 
   try {
-    const auth = getAuth(env);
+    getAuth(env);
     diagnostics.auth.initialization = "Success";
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const err = e instanceof Error ? e : new Error(String(e));
     diagnostics.auth.initialization = "Failed";
-    diagnostics.auth.error = e.message || String(e);
+    diagnostics.auth.error = err.message || String(e);
   }
 
   return NextResponse.json(diagnostics);

@@ -6,6 +6,7 @@ import { getRequestContext } from "@cloudflare/next-on-pages";
 import DashboardClient from "@/components/dashboard/DashboardClient";
 
 export const runtime = "edge";
+type SessionUserRole = { role?: string };
 
 export default async function DashboardPage() {
   try {
@@ -20,7 +21,7 @@ export default async function DashboardPage() {
     }
 
     const pets = await getPets(session.user.id);
-    const isAdmin = (session.user as any).role === "admin";
+    const isAdmin = (session.user as SessionUserRole).role === "admin";
 
     return (
       <DashboardClient 
@@ -29,8 +30,9 @@ export default async function DashboardPage() {
         isAdmin={isAdmin}
       />
     );
-  } catch (error: any) {
-    if (error?.digest?.includes("NEXT_REDIRECT")) {
+  } catch (error: unknown) {
+    const redirectError = error as { digest?: string };
+    if (redirectError.digest?.includes("NEXT_REDIRECT")) {
       throw error;
     }
     

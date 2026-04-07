@@ -4,21 +4,28 @@ import { motion, useScroll, useTransform } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
-  Phone, Info, AlertTriangle, Heart, Share2, 
+  Phone, AlertTriangle, Heart, Share2, 
   ArrowLeft, ShieldCheck, PawPrint, Home, 
-  Settings, MessageSquare, Plus, Activity,
+  Settings, Activity,
   Calendar, Fingerprint, MapPin
 } from "lucide-react";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
 import { LocationShare } from "@/components/LocationShare";
 import { TagManageCard } from "@/components/TagManageCard";
 import { useRef } from "react";
+import Image from "next/image";
 
 interface PetProfileClientProps {
-  pet: any;
+  pet: {
+    id: string;
+    name: string;
+    breed?: string | null;
+    photo_url?: string | null;
+    emergency_contact?: string | null;
+    medical_info?: string | null;
+  };
   isOwner: boolean;
-  petTags: any[];
+  petTags: Array<{ id: string; is_active?: boolean }>;
   tagId: string | null;
 }
 
@@ -38,7 +45,7 @@ export default function PetProfileClient({ pet, isOwner, petTags, tagId }: PetPr
 
   const itemVariants = {
     hidden: { opacity: 0, y: 30 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } as any }
+    visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] as const } }
   };
 
   return (
@@ -50,11 +57,7 @@ export default function PetProfileClient({ pet, isOwner, petTags, tagId }: PetPr
           className="absolute inset-0 z-0"
         >
           {pet.photo_url ? (
-            <img 
-              src={pet.photo_url} 
-              alt={pet.name} 
-              className="w-full h-full object-cover"
-            />
+            <Image src={pet.photo_url} alt={pet.name} fill className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white/20">
               <PawPrint className="w-40 h-40" />
@@ -179,7 +182,7 @@ export default function PetProfileClient({ pet, isOwner, petTags, tagId }: PetPr
                     </h4>
                     <div className="p-5 rounded-[24px] bg-slate-50 border border-slate-100 italic">
                        <p className="text-xs font-bold text-slate-500 leading-relaxed italic">
-                         "{pet.medical_info || "등록된 건강 정보가 없습니다. 아이를 안전하게 보호해 주세요."}"
+                         &quot;{pet.medical_info || "등록된 건강 정보가 없습니다. 아이를 안전하게 보호해 주세요."}&quot;
                        </p>
                     </div>
                  </div>

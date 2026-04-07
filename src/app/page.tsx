@@ -4,6 +4,7 @@ import { getRequestContext } from "@cloudflare/next-on-pages";
 import HomeClient from "@/components/landing/HomeClient";
 
 export const runtime = "edge";
+type SessionUserRole = { role?: string };
 
 export default async function Home() {
   const context = getRequestContext();
@@ -12,7 +13,7 @@ export default async function Home() {
     headers: await headers(),
   });
 
-  const isAdmin = (session?.user as any)?.role === "admin";
+  const isAdmin = (session?.user as SessionUserRole | undefined)?.role === "admin";
   const dashboardLink = isAdmin ? "/admin" : "/dashboard";
   const buttonLabel = session 
     ? (isAdmin ? "관리자 센터 바로가기" : "내 대시보드로 이동") 

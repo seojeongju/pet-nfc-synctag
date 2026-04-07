@@ -11,7 +11,7 @@ declare module "@cloudflare/next-on-pages" {
   export function getRequestContext(): {
     env: CloudflareEnv;
     context: {
-        waitUntil(promise: Promise<any>): void;
+        waitUntil(promise: Promise<unknown>): void;
     };
   };
 }

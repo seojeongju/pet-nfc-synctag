@@ -42,13 +42,15 @@ export async function getAllTags() {
  */
 export async function getAdminStats() {
     const db = getDB();
+    type CountRow = Record<string, number>;
+    type BatchResult = { results: CountRow[] };
     
     const stats = await db.batch([
         db.prepare("SELECT count(*) as total FROM tags"),
         db.prepare("SELECT count(*) as active FROM tags WHERE status = 'active'"),
         db.prepare("SELECT count(*) as unsold FROM tags WHERE status = 'unsold'"),
         db.prepare("SELECT count(*) as total_users FROM user")
-    ]) as any[];
+    ]) as BatchResult[];
     
     return {
         totalTags: stats[0].results[0].total,

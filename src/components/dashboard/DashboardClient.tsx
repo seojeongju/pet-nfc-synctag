@@ -8,11 +8,11 @@ import {
   LogOut, ShieldCheck, Heart, History, Activity, Home
 } from "lucide-react";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 interface DashboardClientProps {
-  session: any;
-  pets: any[];
+  session: { user: { name?: string | null; image?: string | null } };
+  pets: Array<{ id: string; name: string; breed?: string | null; photo_url?: string | null }>;
   isAdmin: boolean;
 }
 
@@ -29,7 +29,7 @@ export default function DashboardClient({ session, pets, isAdmin }: DashboardCli
 
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } as any }
+    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] as const } }
   };
 
   return (
@@ -81,7 +81,7 @@ export default function DashboardClient({ session, pets, isAdmin }: DashboardCli
             <div className="absolute inset-0 bg-teal-200 rounded-full blur-md opacity-0 group-hover:opacity-40 transition-opacity" />
             <div className="w-14 h-14 rounded-full border-4 border-white shadow-xl overflow-hidden relative z-10 bg-white">
                {session.user.image ? (
-                 <img src={session.user.image} alt="" className="w-full h-full object-cover" />
+                 <Image src={session.user.image} alt="" width={56} height={56} className="w-full h-full object-cover" />
                ) : (
                  <div className="w-full h-full flex items-center justify-center bg-teal-50 text-teal-500"><PawPrint className="w-6 h-6" /></div>
                )}
@@ -144,7 +144,7 @@ export default function DashboardClient({ session, pets, isAdmin }: DashboardCli
                     <Card className="rounded-[32px] border-none shadow-app shadow-app-hover overflow-hidden bg-white text-center p-0">
                        <div className="h-28 bg-slate-100 relative overflow-hidden">
                           {pet.photo_url ? (
-                            <img src={pet.photo_url} alt={pet.name} className="w-full h-full object-cover transition-transform duration-700 hover:scale-110" />
+                            <Image src={pet.photo_url} alt={pet.name} width={150} height={112} className="w-full h-full object-cover transition-transform duration-700 hover:scale-110" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-slate-300"><PawPrint className="w-12 h-12" /></div>
                           )}

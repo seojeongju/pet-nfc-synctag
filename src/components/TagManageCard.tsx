@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 
 interface TagManageCardProps {
     petId: string;
-    existingTags: any[];
+    existingTags: Array<{ id: string; is_active?: boolean }>;
 }
 
 export function TagManageCard({ petId, existingTags }: TagManageCardProps) {

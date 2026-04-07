@@ -7,6 +7,7 @@ import { getRequestContext } from "@cloudflare/next-on-pages";
 import PetProfileClient from "@/components/profile/PetProfileClient";
 
 export const runtime = "edge";
+type PetDetail = { id: string; owner_id: string };
 
 export default async function PublicProfilePage({ 
   params, 
@@ -24,7 +25,7 @@ export default async function PublicProfilePage({
     headers: await headers(),
   });
 
-  const pet = await getPet(pet_id) as any;
+  const pet = await getPet(pet_id) as PetDetail | null;
   const tagId = tag || null;
 
   if (!pet) {

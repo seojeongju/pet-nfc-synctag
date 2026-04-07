@@ -1,15 +1,23 @@
 "use client";
 import { useState, useTransition, useEffect } from "react";
 import { registerBulkTags, getAllTags } from "@/app/actions/admin";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tag, Plus, Search, FileUp, CheckCircle, AlertCircle, Package, Database, Layers, Activity, ArrowUpRight } from "lucide-react";
+import { Plus, Search, CheckCircle, AlertCircle, Package, Database, Layers, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function AdminTagsPage() {
+  type AdminTag = {
+    id: string;
+    pet_name?: string | null;
+    owner_email?: string | null;
+    batch_id?: string | null;
+    status: string;
+    created_at: string;
+  };
   const [uids, setUids] = useState("");
-  const [tags, setTags] = useState<any[]>([]);
+  const [tags, setTags] = useState<AdminTag[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -43,7 +51,7 @@ export default function AdminTagsPage() {
         setMessage({ type: "success", text: `${result.count}개의 태그가 성공적으로 등록되었습니다.` });
         setUids("");
         fetchTags();
-      } catch (e: any) {
+      } catch {
         setMessage({ type: "error", text: "태그 등록 중 오류가 발생했습니다." });
       }
     });
@@ -56,7 +64,7 @@ export default function AdminTagsPage() {
 
   const itemVariants = {
     hidden: { opacity: 0, scale: 0.95, y: 20 },
-    visible: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } as any }
+    visible: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] as const } }
   };
 
   return (
@@ -75,9 +83,9 @@ export default function AdminTagsPage() {
           <div className="space-y-1">
              <div className="flex items-center gap-2 text-teal-500 font-black text-[10px] uppercase tracking-[0.2em]">
                 <Package className="w-3.5 h-3.5" />
-                Inventory Assets
+                태그 자산
              </div>
-             <h1 className="text-4xl font-black text-white tracking-tight">Tag Inventory</h1>
+             <h1 className="text-4xl font-black text-white tracking-tight">태그 인벤토리</h1>
              <p className="text-slate-500 text-sm font-bold">시스템 전체 NFC 마스터 데이터 관리 및 인벤토리 추적</p>
           </div>
           
@@ -85,7 +93,7 @@ export default function AdminTagsPage() {
              <div className="w-10 h-10 rounded-2xl glass-dark flex items-center justify-center group-hover:scale-110 transition-transform">
                 <Layers className="w-4 h-4" />
              </div>
-             Dashbaord
+             대시보드
           </Link>
         </motion.div>
 
@@ -98,7 +106,7 @@ export default function AdminTagsPage() {
                   <Plus className="w-5 h-5 text-teal-400" />
                   신규 태그 등록
                 </h3>
-                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">NFC UID Bulk Entry</p>
+                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">NFC UID 대량 등록</p>
               </div>
 
               <div className="relative z-10">
@@ -147,9 +155,9 @@ export default function AdminTagsPage() {
                 <div className="space-y-1">
                   <h3 className="text-xl font-black text-white flex items-center gap-2">
                     <Database className="w-5 h-5 text-teal-400" />
-                    Asset Inventory ({filteredTags.length})
+                    자산 목록 ({filteredTags.length})
                   </h3>
-                  <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Master Data List</p>
+                  <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">마스터 데이터 목록</p>
                 </div>
                 <div className="relative group min-w-[240px]">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-teal-400 transition-colors" />
@@ -167,10 +175,10 @@ export default function AdminTagsPage() {
                 <table className="w-full text-left">
                   <thead>
                     <tr className="border-b border-white/5">
-                      <th className="py-5 px-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] w-[40%]">Device ID (UID)</th>
-                      <th className="py-5 px-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Status</th>
-                      <th className="py-5 px-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Assignment</th>
-                      <th className="py-5 px-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Log</th>
+                      <th className="py-5 px-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] w-[40%]">태그 UID</th>
+                      <th className="py-5 px-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">상태</th>
+                      <th className="py-5 px-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">연결 정보</th>
+                      <th className="py-5 px-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">등록일</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
@@ -183,7 +191,7 @@ export default function AdminTagsPage() {
                                <span className="font-mono text-sm font-bold text-slate-300 group-hover:text-white transition-colors">{tag.id}</span>
                             </div>
                             {tag.batch_id && (
-                                <p className="text-[9px] text-slate-600 font-black mt-1 uppercase tracking-tighter ml-5">Batch: {tag.batch_id}</p>
+                                <p className="text-[9px] text-slate-600 font-black mt-1 uppercase tracking-tighter ml-5">배치: {tag.batch_id}</p>
                             )}
                           </td>
                           <td className="py-5 px-6">
@@ -202,7 +210,7 @@ export default function AdminTagsPage() {
                                     <p className="text-[10px] text-slate-500 font-bold truncate max-w-[150px]">{tag.owner_email}</p>
                                 </div>
                             ) : (
-                                <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Unassigned</span>
+                                <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest">미할당</span>
                             )}
                           </td>
                           <td className="py-5 px-6 text-[10px] font-black text-slate-600 uppercase tabular-nums">
@@ -215,7 +223,7 @@ export default function AdminTagsPage() {
                             <td colSpan={4} className="py-24 text-center">
                                <div className="flex flex-col items-center gap-3 opacity-20">
                                   <Database className="w-12 h-12 text-slate-400" />
-                                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest">No Inventory Found</p>
+                                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest">등록된 인벤토리가 없습니다</p>
                                </div>
                             </td>
                         </tr>

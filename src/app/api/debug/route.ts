@@ -2,6 +2,7 @@ import { getRequestContext } from "@cloudflare/next-on-pages";
 import { NextResponse } from "next/server";
 
 export const runtime = "edge";
+type DebugEnv = CloudflareEnv & Record<string, unknown>;
 
 export async function GET() {
   try {
@@ -10,7 +11,7 @@ export async function GET() {
       return NextResponse.json({ status: "Error", message: "No context found" });
     }
 
-    const env = context.env as any;
+    const env = context.env as DebugEnv;
     
     return NextResponse.json({
       status: "Success",
@@ -22,11 +23,12 @@ export async function GET() {
       },
       env_keys: Object.keys(env).filter(k => !k.includes("SECRET") && !k.includes("ID")), // 보안을 위해 키 이름만 노출
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error instanceof Error ? error : new Error(String(error));
     return NextResponse.json({
       status: "Fatal Error",
-      message: error.message || String(error),
-      stack: error.stack
+      message: err.message || String(error),
+      stack: err.stack
     }, { status: 500 });
   }
 }

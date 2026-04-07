@@ -22,6 +22,12 @@ interface PetFormProps {
         photo_url?: string;
     };
 }
+type PetFormValues = {
+    name: string;
+    breed?: string;
+    medical_info?: string;
+    emergency_contact?: string;
+};
 
 export function PetForm({ ownerId, initialData }: PetFormProps) {
     const router = useRouter();
@@ -30,7 +36,7 @@ export function PetForm({ ownerId, initialData }: PetFormProps) {
     const [previewUrl, setPreviewUrl] = useState<string | null>(initialData?.photo_url || null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-    const { register, handleSubmit, formState: { errors } } = useForm({
+    const { register, handleSubmit, formState: { errors } } = useForm<PetFormValues>({
         defaultValues: initialData || {
             name: "",
             breed: "",
@@ -48,7 +54,7 @@ export function PetForm({ ownerId, initialData }: PetFormProps) {
         }
     };
 
-    const onSubmit = async (data: any) => {
+    const onSubmit = async (data: PetFormValues) => {
         setIsLoading(true);
         try {
             let photoUrl = initialData?.photo_url;

@@ -1,6 +1,15 @@
 import { betterAuth } from "better-auth";
 
-export const getAuth = (env: any) => {
+type AuthEnv = CloudflareEnv & {
+    BETTER_AUTH_SECRET?: string;
+    BETTER_AUTH_URL?: string;
+    GOOGLE_CLIENT_ID?: string;
+    GOOGLE_CLIENT_SECRET?: string;
+    KAKAO_CLIENT_ID?: string;
+    KAKAO_CLIENT_SECRET?: string;
+};
+
+export const getAuth = (env: AuthEnv) => {
     // 필수 환경 변수 체크 - 누락될 경우 구체적인 에러 발생 유도
     if (!env.BETTER_AUTH_SECRET) {
         throw new Error("Missing BETTER_AUTH_SECRET in environment variables");

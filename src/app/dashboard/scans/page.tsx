@@ -8,6 +8,16 @@ import { Bell, MapPin, Clock, Smartphone, PawPrint } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const runtime = "edge";
+type ScanLog = {
+    id: string;
+    pet_photo?: string | null;
+    pet_name: string;
+    scanned_at: string;
+    latitude?: number | null;
+    longitude?: number | null;
+    user_agent?: string | null;
+    ip_address?: string | null;
+};
 
 export default async function ScansPage() {
     const context = getRequestContext();
@@ -31,7 +41,7 @@ export default async function ScansPage() {
 
             <div className="space-y-6 px-2">
                 {logs.length > 0 ? (
-                    logs.map((log: any, idx: number) => (
+                    logs.map((log: ScanLog, idx: number) => (
                         <div key={log.id} className="relative flex gap-6 group">
                             {/* Vertical Line */}
                             {idx !== logs.length - 1 && (

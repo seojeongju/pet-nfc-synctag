@@ -4,9 +4,10 @@ import { revalidatePath } from "next/cache";
 
 export async function linkTag(petId: string, tagId: string) {
     const db = getDB();
+    type ExistingTag = { id: string; status: string; pet_id?: string | null };
     
     // 1. 관리자가 등록한 태그인지 확인 ('unsold' 상태여야 함)
-    const existingTag = await db.prepare("SELECT id, status FROM tags WHERE id = ?").bind(tagId).first() as any;
+    const existingTag = await db.prepare("SELECT id, status, pet_id FROM tags WHERE id = ?").bind(tagId).first<ExistingTag>();
     
     if (!existingTag) {
         throw new Error("등록되지 않은 정품 NFC 태그가 아닙니다. 관리자에게 문의하세요.");
