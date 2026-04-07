@@ -90,8 +90,18 @@ export default async function Home() {
         </div>
       </div>
 
-      <footer className="py-8 text-center text-[10px] text-slate-300 font-bold tracking-widest uppercase">
-        Pet-ID Connect © 2024. All Rights Reserved.
+      <footer className="py-12 text-center space-y-4">
+        <div className="flex items-center justify-center gap-4 text-[10px] text-slate-300 font-bold tracking-widest uppercase">
+          <span>Pet-ID Connect © 2024. All Rights Reserved.</span>
+        </div>
+        {!isAdmin && (
+          <Link 
+            href="/admin/login" 
+            className="inline-block text-[9px] text-slate-200 hover:text-teal-400 font-bold transition-colors tracking-tighter"
+          >
+            SELLER LOGIN
+          </Link>
+        )}
       </footer>
     </div>
   );
