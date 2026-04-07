@@ -1,22 +1,56 @@
-"use client";
-
+import { useState } from "react";
 import { signIn } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ShieldCheck, MessageSquare, ArrowLeft, Lock } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ShieldCheck, MessageSquare, ArrowLeft, Lock, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function AdminLoginPage() {
-  const handleLogin = async (provider: "google" | "kakao") => {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSocialLogin = async (provider: "google" | "kakao") => {
     await signIn.social({
       provider,
       callbackURL: "/admin",
     });
   };
 
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    try {
+      const { data, error: signInError } = await signIn.email({
+        email,
+        password,
+        callbackURL: "/admin",
+      });
+
+      if (signInError) {
+        setError(signInError.message || "로그인에 실패했습니다. 정보를 확인해 주세요.");
+      } else {
+        // 로그인 성공 시 리다이렉트
+        router.push("/admin");
+      }
+    } catch (err: any) {
+      console.error("Login Error:", err);
+      setError("서버 통신 중 오류가 발생했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-900 flex flex-col font-outfit items-center justify-center p-6 relative overflow-hidden">
-      {/* Background decoration for professional look */}
+      {/* Background decoration */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
       <div className="absolute bottom-0 left-0 w-96 h-96 bg-indigo-500/10 rounded-full translate-y-1/2 -translate-x-1/2 blur-3xl"></div>
 
@@ -34,41 +68,88 @@ export default function AdminLoginPage() {
            <div className="space-y-2">
              <div className="flex items-center justify-center gap-2 text-teal-500 font-black tracking-widest text-[10px] uppercase">
                 <Lock className="w-3 h-3" />
-                Authorized Personnel Only
+                Authorized Seller Access
              </div>
              <h1 className="text-4xl font-black text-white tracking-tight">판매자 센터</h1>
-             <p className="text-slate-400 text-sm font-bold">NFC 태그 관리 및 재고 현황을 확인하세요.</p>
+             <p className="text-slate-400 text-sm font-bold">전용 계정 정보로 안전하게 로그인하세요.</p>
            </div>
         </div>
 
         <Card className="border-slate-800 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)] rounded-[48px] overflow-hidden bg-slate-800/50 backdrop-blur-2xl border">
-          <CardHeader className="pt-12 pb-8 text-center bg-gradient-to-b from-slate-800/80 to-transparent">
-            <CardTitle className="text-2xl font-black text-white">관리자 로그인</CardTitle>
-            <CardDescription className="text-slate-500 text-xs font-bold leading-relaxed px-10">
-              등록된 관리자 계정으로 소셜 로그인을 진행해 주세요. 보안을 위해 활동 내역이 기록됩니다.
+          <CardHeader className="pt-10 pb-4 text-center">
+            <CardTitle className="text-xl font-bold text-white">전용 로그린</CardTitle>
+            <CardDescription className="text-slate-500 text-xs font-bold">
+              ID 및 비밀번호를 입력해 주세요.
             </CardDescription>
           </CardHeader>
-          <CardContent className="p-10 pt-4 space-y-5">
-            <Button 
-              variant="outline" 
-              className="w-full h-18 rounded-[28px] border-slate-700 bg-white hover:bg-slate-50 text-slate-900 font-black text-lg flex items-center justify-center gap-4 transition-all active:scale-[0.98] shadow-2xl"
-              onClick={() => handleLogin("google")}
-            >
-              Google로 관리 시작
-            </Button>
+          <CardContent className="px-10 pb-10 pt-4 space-y-6">
+            <form onSubmit={handleEmailLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-xs font-bold text-slate-400 px-1 uppercase tracking-tighter">Admin ID (Email)</Label>
+                <Input 
+                  id="email"
+                  type="email" 
+                  placeholder="admin@example.com" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="h-14 bg-slate-900/50 border-slate-700 rounded-2xl text-white focus:ring-teal-500 text-sm font-bold"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-xs font-bold text-slate-400 px-1 uppercase tracking-tighter">Password</Label>
+                <Input 
+                  id="password"
+                  type="password" 
+                  placeholder="••••••••" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="h-14 bg-slate-900/50 border-slate-700 rounded-2xl text-white focus:ring-teal-500 text-sm font-bold tracking-widest"
+                  required
+                />
+              </div>
 
-            <Button 
-              variant="outline" 
-              className="w-full h-18 rounded-[28px] border-none bg-[#FEE500] hover:bg-[#FEE500]/90 text-slate-900 font-black text-lg flex items-center justify-center gap-4 transition-all active:scale-[0.98] shadow-2xl"
-              onClick={() => handleLogin("kakao")}
-            >
-              <MessageSquare className="w-7 h-7 fill-current" />
-              카카오로 관리 시작
-            </Button>
+              {error && (
+                <p className="text-[10px] text-rose-500 font-bold bg-rose-500/10 py-2 rounded-lg text-center animate-shake">
+                  ❌ {error}
+                </p>
+              )}
 
-            <div className="pt-10 text-center">
+              <Button 
+                type="submit" 
+                disabled={loading}
+                className="w-full h-14 bg-teal-500 hover:bg-teal-600 text-white font-black rounded-2xl text-md shadow-xl shadow-teal-500/20 transition-all active:scale-95"
+              >
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "관리 시작하기"}
+              </Button>
+            </form>
+
+            <div className="relative py-2">
+              <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-slate-700/50"></span></div>
+              <div className="relative flex justify-center text-[10px] uppercase font-black"><span className="bg-slate-800/10 px-4 text-slate-600 backdrop-blur-xl">OR Login With</span></div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Button 
+                variant="outline" 
+                className="h-14 rounded-2xl border-slate-700 bg-white hover:bg-slate-50 text-slate-900 font-bold text-xs transition-all active:scale-[0.98]"
+                onClick={() => handleSocialLogin("google")}
+              >
+                Google
+              </Button>
+
+              <Button 
+                variant="outline" 
+                className="h-14 rounded-2xl border-none bg-[#FEE500] hover:bg-[#FEE500]/90 text-slate-900 font-bold text-xs transition-all active:scale-[0.98]"
+                onClick={() => handleSocialLogin("kakao")}
+              >
+                Kakao
+              </Button>
+            </div>
+
+            <div className="pt-6 text-center">
                <p className="text-[10px] text-slate-600 font-bold leading-relaxed max-w-[200px] mx-auto opacity-50">
-                 권한이 없는 경우 접근이 제한될 수 있습니다. 문의: admin@wow3d.net
+                 Authorized Access Only. All activities are monitored.
                </p>
             </div>
           </CardContent>

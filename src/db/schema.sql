@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS user (
     name TEXT,
     emailVerified BOOLEAN NOT NULL DEFAULT FALSE,
     image TEXT,
+    role TEXT DEFAULT 'user', -- 추가된 권한 필드
     subscriptionStatus TEXT DEFAULT 'free',
     createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP

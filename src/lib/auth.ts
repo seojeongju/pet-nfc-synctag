@@ -14,6 +14,9 @@ export const getAuth = (env: any) => {
         secret: env.BETTER_AUTH_SECRET,
         baseURL: env.BETTER_AUTH_URL,
         trustHost: true, // Edge Runtime 호스트 인식을 위해 최상위 옵션으로 이동
+        emailAndPassword: {
+            enabled: true
+        },
         socialProviders: {
             google: {
                 clientId: env.GOOGLE_CLIENT_ID || "",
