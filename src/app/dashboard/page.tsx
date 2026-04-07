@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, MapPin, Activity, History, PawPrint, Search, Bell, Settings, LogOut } from "lucide-react";
+import { Plus, MapPin, Activity, History, PawPrint, Search, Bell, Settings, LogOut, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { getPets } from "@/app/actions/pet";
 import { cn } from "@/lib/utils";
@@ -26,9 +26,33 @@ export default async function DashboardPage() {
     }
 
     const pets = await getPets(session.user.id);
+    const isAdmin = (session.user as any).role === "admin";
 
     return (
       <div className="space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-700 font-outfit pb-24">
+        {isAdmin && (
+          <section className="px-2">
+            <div className="w-full bg-slate-900 rounded-[32px] p-6 text-white flex flex-col md:flex-row items-center justify-between gap-4 shadow-2xl shadow-slate-200">
+              <div className="flex items-center gap-4 text-center md:text-left">
+                <div className="w-12 h-12 rounded-2xl bg-teal-500/20 flex items-center justify-center text-teal-400">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="font-black text-sm">관리자님, 환영합니다! 🛡️</h4>
+                  <p className="text-[10px] text-white/50 font-bold uppercase tracking-widest mt-0.5">ADMINISTRATOR PRIVILEGE</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 w-full md:w-auto">
+                <Link href="/admin" className="flex-1 md:flex-none">
+                  <Button className="w-full bg-teal-500 hover:bg-teal-600 text-white font-black rounded-2xl px-6 h-12 shadow-lg shadow-teal-500/20 transition-all active:scale-95">
+                    관리자 센터로 이동
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* Top Welcome Section */}
         <section className="space-y-4 px-2">
           <div className="flex items-center justify-between">
