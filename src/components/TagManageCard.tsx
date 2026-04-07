@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { linkTag, unlinkTag } from "@/app/actions/tag";
-import { Loader2, Plus, Trash2, Smartphone, ShieldCheck } from "lucide-react";
+import { Loader2, Plus, Trash2, Smartphone, ShieldCheck, Box, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 interface TagManageCardProps {
     petId: string;
@@ -35,76 +37,108 @@ export function TagManageCard({ petId, existingTags }: TagManageCardProps) {
     };
 
     return (
-        <Card className="border-none shadow-xl rounded-[32px] overflow-hidden bg-slate-50/50 backdrop-blur-sm">
-            <CardContent className="p-8 space-y-6">
+        <Card className="border-none shadow-app rounded-[40px] overflow-hidden bg-white/90 backdrop-blur-md relative">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/5 blur-3xl pointer-events-none" />
+            
+            <CardContent className="p-8 space-y-7 relative z-10">
                 <div className="flex items-center justify-between">
                     <div className="space-y-1">
-                        <h3 className="text-lg font-extrabold text-slate-800 flex items-center gap-2">
-                           <Smartphone className="w-5 h-5 text-teal-500" />
+                        <div className="flex items-center gap-2 text-teal-600 font-black text-[10px] uppercase tracking-[0.2em]">
+                           <Zap className="w-3.5 h-3.5" />
+                           Smart Connect
+                        </div>
+                        <h3 className="text-xl font-black text-slate-800 flex items-center gap-2 tracking-tight">
                            NFC 태그 관리
                         </h3>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">연결된 스마트 인식표</p>
+                        <p className="text-[11px] font-bold text-slate-400">아이의 정보를 담은 스마트 인식표 목록</p>
                     </div>
                 </div>
 
-                <div className="space-y-4">
-                    {existingTags.length > 0 ? (
-                        existingTags.map((tag) => (
-                            <div key={tag.id} className="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm border border-slate-100 group">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-teal-50 flex items-center justify-center text-teal-600">
-                                        <Smartphone className="w-5 h-5" />
-                                    </div>
-                                    <div className="space-y-0.5">
-                                        <div className="flex items-center gap-2">
-                                           <span className="text-sm font-bold text-slate-700">{tag.id}</span>
-                                           <ShieldCheck className="w-3 h-3 text-teal-500" />
-                                        </div>
-                                        <span className={tag.is_active ? "text-[10px] text-teal-500 font-bold uppercase tracking-widest" : "text-[10px] text-slate-300 font-bold uppercase"}>
-                                            {tag.is_active ? "Active" : "Inactive"}
-                                        </span>
-                                    </div>
-                                </div>
-                                <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="text-slate-200 hover:text-rose-500 hover:bg-rose-50 rounded-full opacity-0 group-hover:opacity-100 transition-all"
-                                    onClick={() => handleUnlink(tag.id)}
-                                    disabled={isPending}
+                <div className="space-y-3">
+                    <AnimatePresence mode="popLayout">
+                        {existingTags.length > 0 ? (
+                            existingTags.map((tag, index) => (
+                                <motion.div 
+                                    key={tag.id}
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 20 }}
+                                    transition={{ delay: index * 0.1 }}
+                                    className="flex items-center justify-between p-5 bg-white rounded-[24px] shadow-sm border border-slate-100 group hover:shadow-md transition-all"
                                 >
-                                    <Trash2 className="w-4 h-4" />
-                                </Button>
-                            </div>
-                        ))
-                    ) : (
-                        <div className="py-8 text-center bg-white rounded-2xl border-2 border-dashed border-teal-50">
-                            <p className="text-xs font-bold text-slate-400">연결된 태그가 없습니다.</p>
-                        </div>
-                    )}
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-teal-50 group-hover:text-teal-500 transition-colors">
+                                            <Smartphone className="w-6 h-6" />
+                                        </div>
+                                        <div className="space-y-0.5">
+                                            <div className="flex items-center gap-2">
+                                               <span className="text-sm font-black text-slate-700">{tag.id}</span>
+                                               <ShieldCheck className="w-3.5 h-3.5 text-teal-500" />
+                                            </div>
+                                            <div className="flex items-center gap-1.5">
+                                               <span className={cn(
+                                                    "w-1.5 h-1.5 rounded-full",
+                                                    tag.is_active ? "bg-teal-500 animate-pulse" : "bg-slate-300"
+                                               )} />
+                                               <span className={cn(
+                                                    "text-[9px] font-black uppercase tracking-widest",
+                                                    tag.is_active ? "text-teal-500" : "text-slate-400"
+                                               )}>
+                                                    {tag.is_active ? "Verified & Active" : "Inactive"}
+                                               </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="w-10 h-10 text-slate-200 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-all focus:ring-0"
+                                        onClick={() => handleUnlink(tag.id)}
+                                        disabled={isPending}
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                </motion.div>
+                            ))
+                        ) : (
+                            <motion.div 
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                className="py-12 flex flex-col items-center gap-4 bg-slate-50/50 rounded-[32px] border-2 border-dashed border-slate-100"
+                            >
+                                <Box className="w-12 h-12 text-slate-200" />
+                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest text-center">
+                                   연결된 태그 데이터가 <br /> 없습니다.
+                                </p>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
 
-                <div className="relative group">
-                    <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-teal-500 transition-colors">
+                <div className="relative group pt-2">
+                    <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-teal-500 transition-colors z-10">
                         <Plus className="w-5 h-5" />
                     </div>
                     <Input 
-                        placeholder="새 태그 ID 입력" 
+                        placeholder="새 태그 ID 입력 (뒷면 참조)" 
                         value={newTagId}
                         onChange={(e) => setNewTagId(e.target.value)}
-                        className="h-14 pl-12 pr-12 rounded-2xl border-none shadow-inner bg-white focus:ring-2 focus:ring-teal-100 transition-all font-bold text-sm"
+                        className="h-16 pl-14 pr-16 rounded-[24px] border-none shadow-inner bg-slate-50 focus:bg-white focus:ring-4 focus:ring-teal-500/10 transition-all font-bold text-sm placeholder:text-slate-300"
                     />
-                    <button 
+                    <motion.button 
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                         onClick={handleLink}
                         disabled={isPending || !newTagId}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-teal-500 hover:bg-teal-600 active:bg-teal-700 text-white rounded-xl shadow-lg shadow-teal-200 flex items-center justify-center transition-all disabled:opacity-50"
+                        className="absolute right-3 top-3 bottom-3 w-10 bg-slate-900 hover:bg-teal-500 text-white rounded-2xl shadow-lg flex items-center justify-center transition-all disabled:opacity-30 z-10"
                     >
-                        {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-6 h-6" />}
-                    </button>
+                        {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-5 h-5" />}
+                    </motion.button>
                 </div>
                 
                 <div className="text-center pt-2">
-                   <p className="text-[10px] text-slate-300 font-medium">
-                     *태그 ID는 제품 뒷면 혹은 스캔 시 표시되는 고유 번호입니다.
+                   <p className="text-[10px] text-slate-300 font-bold uppercase tracking-tighter opacity-70">
+                     * NFC Secure Link Protocol Enabled
                    </p>
                 </div>
             </CardContent>

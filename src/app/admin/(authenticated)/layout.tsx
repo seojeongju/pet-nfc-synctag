@@ -3,7 +3,8 @@ import { getRequestContext } from "@cloudflare/next-on-pages";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { LayoutDashboard, Tag, Users, Package, Home, LogOut } from "lucide-react";
+import { LayoutDashboard, Tag, Users, Package, Home, LogOut, ChevronRight, Bell } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export const runtime = "edge";
 
@@ -24,64 +25,96 @@ export default async function AdminAuthenticatedLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50 font-outfit">
-      {/* Admin Sidebar */}
-      <aside className="w-64 bg-slate-900 text-white flex flex-col sticky top-0 h-screen shadow-2xl">
-        <div className="p-6 border-b border-white/10 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-teal-500 flex items-center justify-center">
-            <Package className="w-5 h-5 text-white" />
+    <div className="flex min-h-screen bg-slate-950 font-outfit text-slate-300 overflow-hidden">
+      {/* Premium Admin Sidebar */}
+      <aside className="w-72 glass-dark border-r border-white/5 flex flex-col sticky top-0 h-screen z-20 transition-all duration-500">
+        <div className="p-8 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-[14px] bg-teal-500 flex items-center justify-center shadow-lg shadow-teal-500/20">
+            <Package className="w-5 h-5 text-slate-950" />
           </div>
-          <span className="font-black tracking-tight text-lg uppercase">SELLER ADMIN</span>
+          <div className="flex flex-col">
+            <span className="font-black tracking-tighter text-white text-lg leading-none italic uppercase">Pet-ID</span>
+            <span className="text-[10px] font-black text-teal-400 tracking-[0.3em] uppercase mt-1">Master Console</span>
+          </div>
         </div>
         
-        <nav className="flex-1 p-4 space-y-2 mt-4">
-          <Link href="/admin" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-colors group">
-            <LayoutDashboard className="w-5 h-5 text-teal-400 group-hover:scale-110 transition-transform" />
-            <span className="font-bold text-sm text-slate-300">Dashboard</span>
+        <nav className="flex-1 px-4 space-y-2 mt-4">
+          <p className="px-4 text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] mb-4">Main Navigation</p>
+          
+          <Link href="/admin" className="flex items-center justify-between px-4 py-4 rounded-2xl hover:bg-white/5 transition-all group relative overflow-hidden">
+             <div className="flex items-center gap-4 relative z-10">
+                <LayoutDashboard className="w-5 h-5 text-teal-400 group-hover:scale-110 transition-transform" />
+                <span className="font-black text-xs text-white uppercase tracking-wider">Operational Dashboard</span>
+             </div>
+             <ChevronRight className="w-3 h-3 text-slate-700 group-hover:text-teal-400 transition-colors" />
           </Link>
-          <Link href="/admin/tags" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-colors group">
-            <Tag className="w-5 h-5 text-amber-400 group-hover:scale-110 transition-transform" />
-            <span className="font-bold text-sm text-slate-300">Tag Inventory</span>
+
+          <Link href="/admin/tags" className="flex items-center justify-between px-4 py-4 rounded-2xl hover:bg-white/5 transition-all group relative overflow-hidden">
+             <div className="flex items-center gap-4 relative z-10">
+                <Tag className="w-5 h-5 text-amber-400 group-hover:scale-110 transition-transform" />
+                <span className="font-black text-xs text-white uppercase tracking-wider">Inventory Assets</span>
+             </div>
+             <ChevronRight className="w-3 h-3 text-slate-700 group-hover:text-amber-400 transition-colors" />
           </Link>
         </nav>
 
-        <div className="p-4 border-t border-white/10 space-y-2 pb-8">
-          <Link href="/dashboard" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-teal-500/10 transition-colors text-slate-400 hover:text-teal-400">
+        {/* Sidebar Footer Services */}
+        <div className="p-6 space-y-4 border-t border-white/5 mb-6">
+          <Link href="/dashboard" className="flex items-center gap-4 px-4 py-4 rounded-2xl bg-white/5 hover:bg-white text-slate-400 hover:text-slate-950 transition-all group">
             <Home className="w-5 h-5" />
-            <span className="font-bold text-sm">User Mode Dashboard</span>
+            <span className="font-black text-[10px] uppercase tracking-widest">Client Interface</span>
           </Link>
-          <Link href="/logout" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-rose-500/20 transition-colors text-rose-400">
+          <Link href="/logout" className="flex items-center gap-4 px-4 py-4 rounded-2xl hover:bg-rose-500/10 transition-all text-rose-500 border border-transparent hover:border-rose-500/20">
             <LogOut className="w-5 h-5" />
-            <span className="font-bold text-sm">Seller Sign Out</span>
+            <span className="font-black text-[10px] uppercase tracking-widest">Secure Sign Out</span>
           </Link>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto bg-slate-50/50">
-        <header className="h-16 bg-white border-b px-8 flex items-center justify-between sticky top-0 z-10 backdrop-blur-md bg-white/80">
-            <h2 className="text-slate-800 font-extrabold flex items-center gap-2">
-               판매자 관리 센터
-               <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse"></span>
-            </h2>
+      {/* Dynamic Main Workspace */}
+      <div className="flex-1 flex flex-col relative h-screen overflow-hidden">
+        {/* Immersive Header */}
+        <header className="h-20 glass-dark border-b border-white/5 flex items-center justify-between px-10 z-10 sticky top-0">
             <div className="flex items-center gap-4">
-                <div className="text-right">
-                    <p className="text-xs font-black text-slate-900">{session.user.name}</p>
-                    <p className="text-[10px] text-teal-500 font-black uppercase tracking-widest opacity-70">Authenticated Admin</p>
-                </div>
-                <div className="w-10 h-10 rounded-full border-2 border-teal-50 shadow-sm overflow-hidden">
-                    {session.user.image ? (
-                        <img src={session.user.image} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                        <div className="w-full h-full bg-slate-100" />
-                    )}
+                <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse shadow-[0_0_8px_rgba(20,184,166,0.5)]" />
+                <h2 className="text-white text-sm font-black uppercase tracking-[0.1em] italic">
+                   System Online: <span className="text-slate-500 font-bold ml-1">Live Management Monitoring</span>
+                </h2>
+            </div>
+            
+            <div className="flex items-center gap-8">
+                <button className="relative p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 transition-all">
+                   <Bell className="w-5 h-5 text-slate-400" />
+                   <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-slate-900" />
+                </button>
+                <div className="flex items-center gap-4 group cursor-pointer p-1 pr-4 rounded-full hover:bg-white/5 transition-all">
+                    <div className="w-10 h-10 rounded-full border-2 border-teal-500/30 overflow-hidden shadow-lg group-hover:border-teal-500 transition-colors">
+                        {session.user.image ? (
+                            <img src={session.user.image} alt={session.user.name || ""} className="w-full h-full object-cover" />
+                        ) : (
+                            <div className="w-full h-full bg-slate-800 flex items-center justify-center uppercase font-black text-teal-400 text-xs">
+                               {(session.user.name || "A").charAt(0)}
+                            </div>
+                        )}
+                    </div>
+                    <div className="text-right hidden sm:block">
+                        <p className="text-xs font-black text-white leading-none uppercase tracking-tighter">{session.user.name}</p>
+                        <p className="text-[9px] text-teal-500 font-black uppercase tracking-[0.2em] mt-1.5 opacity-80 italic">Verified Root</p>
+                    </div>
                 </div>
             </div>
         </header>
-        <div className="p-8">
-            {children}
-        </div>
-      </main>
+
+        {/* Scrollable Viewport */}
+        <main className="flex-1 overflow-y-auto custom-scrollbar relative">
+            <div className="min-h-full">
+               {children}
+            </div>
+            
+            {/* Ambient Lighting Overlay */}
+            <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-teal-500/5 blur-[120px] rounded-full pointer-events-none -z-10" />
+        </main>
+      </div>
     </div>
   );
 }

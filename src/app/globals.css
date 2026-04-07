@@ -71,9 +71,41 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased selection:bg-teal-100 selection:text-teal-900;
+    font-feature-settings: "cv11", "ss01";
+    scroll-behavior: smooth;
   }
   html {
     @apply font-sans;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 앱 스타일 커스텀 스크롤바 */
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-200 rounded-full hover:bg-slate-300 transition-colors;
+  }
+
+  /* 프리미엄 앱 유틸리티 */
+  .glass {
+    @apply bg-white/70 backdrop-blur-xl border border-white/20 shadow-xl;
+  }
+  
+  .glass-dark {
+    @apply bg-slate-900/70 backdrop-blur-xl border border-white/10 shadow-2xl;
+  }
+
+  .shadow-app {
+    box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.05), 0 10px 20px -10px rgba(0, 0, 0, 0.05);
+  }
+
+  .shadow-app-hover {
+    @apply hover:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] transition-all duration-500;
   }
 }
