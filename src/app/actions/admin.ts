@@ -2,15 +2,28 @@
 import { getDB } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 
+function normalizeUid(uid: string): string {
+    return uid.trim().toUpperCase();
+}
+
+function isValidUidFormat(uid: string): boolean {
+    const hexWithColon = /^([0-9A-F]{2}:){3,15}[0-9A-F]{2}$/;
+    const alnum = /^[A-Z0-9_-]{8,32}$/;
+    return hexWithColon.test(uid) || alnum.test(uid);
+}
+
 /**
  * NFC 태그를 시스템에 대량으로 미리 등록합니다 (관리자 전용)
  */
 export async function registerBulkTags(uids: string[], batchId?: string) {
     const db = getDB();
     const currentBatch = batchId || `BATCH-${Date.now()}`;
+    const normalizedUids = Array.from(
+        new Set(uids.map(normalizeUid).filter(isValidUidFormat))
+    );
     
     // 중복 제거 및 트랜잭션 처리 (D1 배치는 순차 처리 권장)
-    const queries = uids.map(uid => 
+    const queries = normalizedUids.map(uid => 
         db.prepare("INSERT OR IGNORE INTO tags (id, status, batch_id) VALUES (?, 'unsold', ?)")
           .bind(uid, currentBatch)
     );
@@ -18,7 +31,7 @@ export async function registerBulkTags(uids: string[], batchId?: string) {
     await db.batch(queries);
     
     revalidatePath("/admin/tags");
-    return { success: true, count: uids.length, batchId: currentBatch };
+    return { success: true, count: normalizedUids.length, batchId: currentBatch };
 }
 
 /**

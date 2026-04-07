@@ -1,14 +1,18 @@
 "use client";
 
+import { useEffect, useState, useTransition } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
   Plus, MapPin, PawPrint, Search, Bell, Settings, 
-  LogOut, ShieldCheck, Heart, History, Activity, Home
+  LogOut, ShieldCheck, Heart, History, Activity, Home, Smartphone, CheckCircle, AlertCircle
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { Input } from "@/components/ui/input";
+import { linkTag } from "@/app/actions/tag";
+import { useRouter } from "next/navigation";
 
 interface DashboardClientProps {
   session: { user: { name?: string | null; image?: string | null } };
@@ -17,6 +21,34 @@ interface DashboardClientProps {
 }
 
 export default function DashboardClient({ session, pets, isAdmin }: DashboardClientProps) {
+  const [isPending, startTransition] = useTransition();
+  const [selectedPetId, setSelectedPetId] = useState("");
+  const [tagId, setTagId] = useState("");
+  const [tagMessage, setTagMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (pets.length > 0 && !selectedPetId) {
+      setSelectedPetId(pets[0].id);
+    }
+  }, [pets, selectedPetId]);
+
+  const handleQuickNfcRegister = () => {
+    if (!selectedPetId || !tagId.trim()) return;
+    setTagMessage(null);
+    startTransition(async () => {
+      try {
+        await linkTag(selectedPetId, tagId.trim());
+        setTagMessage({ type: "success", text: "NFC 태그가 반려동물에 연결되었습니다." });
+        setTagId("");
+        router.refresh();
+      } catch (e: unknown) {
+        const err = e instanceof Error ? e.message : "NFC 태그 등록에 실패했습니다.";
+        setTagMessage({ type: "error", text: err });
+      }
+    });
+  };
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -123,6 +155,77 @@ export default function DashboardClient({ session, pets, isAdmin }: DashboardCli
             {/* Background design elements */}
             <div className="absolute top-0 right-0 w-40 h-40 bg-teal-500/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl block" />
             <div className="absolute bottom-4 right-6 w-16 h-16 opacity-50"><Heart className="w-full h-full text-white/5 rotate-12" /></div>
+          </Card>
+        </motion.section>
+
+        {/* Quick NFC Register */}
+        <motion.section variants={itemVariants}>
+          <Card className="rounded-[32px] border-none shadow-app bg-white">
+            <CardContent className="p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-teal-50 text-teal-500 flex items-center justify-center">
+                  <Smartphone className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">NFC 빠른 등록</h3>
+                  <p className="text-[11px] text-slate-400 font-bold">대시보드에서 바로 태그를 연결하세요.</p>
+                </div>
+              </div>
+
+              {pets.length > 0 ? (
+                <>
+                  <select
+                    value={selectedPetId}
+                    onChange={(e) => setSelectedPetId(e.target.value)}
+                    className="w-full h-12 rounded-2xl border border-slate-100 bg-slate-50 px-4 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/20"
+                  >
+                    {pets.map((pet) => (
+                      <option key={pet.id} value={pet.id}>
+                        {pet.name} {pet.breed ? `(${pet.breed})` : ""}
+                      </option>
+                    ))}
+                  </select>
+
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={tagId}
+                      onChange={(e) => setTagId(e.target.value)}
+                      placeholder="NFC 태그 UID 입력"
+                      className="h-12 rounded-2xl border-slate-100 bg-slate-50 font-bold"
+                    />
+                    <Button
+                      onClick={handleQuickNfcRegister}
+                      disabled={isPending || !selectedPetId || !tagId.trim()}
+                      className="h-12 rounded-2xl bg-slate-900 hover:bg-teal-500 text-white px-5 font-black"
+                    >
+                      등록
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center space-y-2">
+                  <p className="text-xs font-bold text-slate-500">먼저 반려동물을 등록해야 NFC 태그를 연결할 수 있어요.</p>
+                  <Link href="/dashboard/pets/new" className="text-xs font-black text-teal-600 underline underline-offset-4">
+                    반려동물 등록하러 가기
+                  </Link>
+                </div>
+              )}
+
+              {tagMessage && (
+                <div
+                  className={`rounded-2xl px-4 py-3 text-xs font-bold flex items-center gap-2 ${
+                    tagMessage.type === "success" ? "bg-teal-50 text-teal-600" : "bg-rose-50 text-rose-500"
+                  }`}
+                >
+                  {tagMessage.type === "success" ? (
+                    <CheckCircle className="w-4 h-4" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4" />
+                  )}
+                  <span>{tagMessage.text}</span>
+                </div>
+              )}
+            </CardContent>
           </Card>
         </motion.section>
 
