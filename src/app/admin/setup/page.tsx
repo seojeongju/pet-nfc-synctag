@@ -32,23 +32,31 @@ export default async function AdminSetupPage() {
           const auth = getAuth(context.env);
           
           try {
-            // 1. 이미 존재하는지 확인 또는 바로 생성 시도
-            await auth.api.signUpEmail({
-              body: {
-                email: adminEmail,
-                password: adminPassword,
-                name: "Admin",
-              },
-            });
+            const existing = await context.env.DB
+              .prepare("SELECT id FROM user WHERE email = ?")
+              .bind(adminEmail)
+              .first<{ id: string }>();
+
+            // 1. 계정이 없을 때만 생성
+            if (!existing) {
+              await auth.api.signUpEmail({
+                body: {
+                  email: adminEmail,
+                  password: adminPassword,
+                  name: "Admin",
+                },
+              });
+            }
 
             // 2. 관리자 권한 부여 (role 업데이트)
             await context.env.DB.prepare(
                 "UPDATE user SET role = 'admin' WHERE email = ?"
             ).bind(adminEmail).run();
 
-            console.log("Admin created successfully");
+            console.log("Admin bootstrap completed");
           } catch (e) {
             console.error("Setup failed:", e);
+            throw e;
           }
         }}>
           <button type="submit" className="w-full h-14 bg-teal-500 hover:bg-teal-600 text-white font-black rounded-2xl transition-all active:scale-95">
