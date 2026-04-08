@@ -199,14 +199,14 @@ export function PetForm({ ownerId, subjectKind: kindProp, initialData }: PetForm
                 </div>
             </div>
 
-            <Button 
+            <button 
                 type="submit" 
                 disabled={isLoading}
-                className="w-full h-16 rounded-[28px] bg-teal-600 hover:bg-teal-700 text-lg font-extrabold shadow-xl shadow-teal-100 transition-all active:scale-95 gap-3"
+                className="w-full h-16 rounded-[28px] bg-teal-600 hover:bg-teal-700 text-lg font-extrabold shadow-xl shadow-teal-100 transition-all active:scale-95 gap-3 text-white flex items-center justify-center"
             >
                 {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : <FormIcon className="w-6 h-6" />}
                 {initialData ? "정보 수정하기" : `${meta.label} 등록 완료`}
-            </Button>
+            </button>
         </form>
     );
 }
