@@ -21,7 +21,7 @@ export const subjectKindMeta: Record<
   }
 > = {
   pet: {
-    label: "링크유 - 펫",
+    label: "링크유 - 펫 (반려동물)",
     description: "반려동물 · NFC로 빠른 연결 · 가족에게 닿는 도움말",
     listHeading: "함께하는 아이들",
     registerTitle: "새로운 아이 등록",
@@ -30,7 +30,7 @@ export const subjectKindMeta: Record<
     emptyRegisterHint: "먼저 반려동물을 등록해야 NFC 태그를 연결할 수 있어요.",
   },
   elder: {
-    label: "링크유 - 메모리",
+    label: "링크유 - 메모리 (기억 동행)",
     description: "기억 동행 · 안심 알림과 가족 연결 · 긴급 연락 (BLE 연동 예정)",
     listHeading: "함께하는 가족",
     registerTitle: "가족 프로필 등록",
@@ -39,7 +39,7 @@ export const subjectKindMeta: Record<
     emptyRegisterHint: "먼저 가족 프로필을 등록해야 태그를 연결할 수 있어요.",
   },
   child: {
-    label: "링크유 - 키즈",
+    label: "링크유 - 키즈 (우리 아이 안심)",
     description: "우리 아이 안심 · 안심 울타리와 알림으로 연결 (BLE·안심 구역 연동 예정)",
     listHeading: "우리 아이 프로필",
     registerTitle: "아이 프로필 등록",
@@ -48,7 +48,7 @@ export const subjectKindMeta: Record<
     emptyRegisterHint: "먼저 아이 프로필을 등록해야 태그를 연결할 수 있어요.",
   },
   luggage: {
-    label: "링크유 - 캐리",
+    label: "링크유 - 태그 (수화물·가방)",
     description: "수화물·가방 · 수하물·캐리어 NFC로 주인 연결 · 분실 시 단서 기록",
     listHeading: "등록한 소지품",
     registerTitle: "소지품 등록",
@@ -63,8 +63,8 @@ export const subjectKindNfcPublic: Record<
   SubjectKind,
   { roleLine: string; callCta: string; hideMedicalBlock: boolean; idCardLabel: string; scanHintLabel: string; scanHintBody: string }
 > = {
-  pet: { roleLine: "NFC 공개 프로필 · 링크유 - 펫", callCta: "보호자에게 연락하기", hideMedicalBlock: true, idCardLabel: "식별 메모", scanHintLabel: "스캔 기록", scanHintBody: "위치 공유로 보호자에게 도움을 줄 수 있어요." },
-  elder: { roleLine: "NFC 공개 프로필 · 링크유 - 메모리", callCta: "보호자·가족에게 연락하기", hideMedicalBlock: true, idCardLabel: "참고 메모", scanHintLabel: "안내", scanHintBody: "필요할 때 가족에게 연락해 주세요." },
-  child: { roleLine: "NFC 공개 프로필 · 링크유 - 키즈", callCta: "보호자에게 연락하기", hideMedicalBlock: true, idCardLabel: "식별", scanHintLabel: "안내", scanHintBody: "보호자 연락을 우선해 주세요." },
-  luggage: { roleLine: "NFC 공개 프로필 · 링크유 - 캐리", callCta: "등록자에게 연락하기", hideMedicalBlock: true, idCardLabel: "소지품", scanHintLabel: "분실 안내", scanHintBody: "주인에게 연락해 주시면 감사하겠습니다." },
+  pet: { roleLine: "NFC 공개 프로필 · 링크유 - 펫 (반려동물)", callCta: "보호자에게 연락하기", hideMedicalBlock: true, idCardLabel: "식별 메모", scanHintLabel: "스캔 기록", scanHintBody: "위치 공유로 보호자에게 도움을 줄 수 있어요." },
+  elder: { roleLine: "NFC 공개 프로필 · 링크유 - 메모리 (기억 동행)", callCta: "보호자·가족에게 연락하기", hideMedicalBlock: true, idCardLabel: "참고 메모", scanHintLabel: "안내", scanHintBody: "필요할 때 가족에게 연락해 주세요." },
+  child: { roleLine: "NFC 공개 프로필 · 링크유 - 키즈 (우리 아이 안심)", callCta: "보호자에게 연락하기", hideMedicalBlock: true, idCardLabel: "식별", scanHintLabel: "안내", scanHintBody: "보호자 연락을 우선해 주세요." },
+  luggage: { roleLine: "NFC 공개 프로필 · 링크유 - 태그 (수화물·가방)", callCta: "등록자에게 연락하기", hideMedicalBlock: true, idCardLabel: "소지품", scanHintLabel: "분실 안내", scanHintBody: "주인에게 연락해 주시면 감사하겠습니다." },
 };

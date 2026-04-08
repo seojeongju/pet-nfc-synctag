@@ -73,7 +73,7 @@ export default function MultiModeHomeClient({
             <br />
             한 번에 연결하는 스마트 명함 · Link-U
           </p>
-          <div className="mt-8 grid grid-cols-2 gap-3 w-full max-w-[260px] relative z-10">
+          <div className="mt-8 grid grid-cols-2 gap-3 w-full max-w-[320px] relative z-10">
             {SUBJECT_KINDS.map((k) => {
               const Icon = modeIcons[k];
               const meta = subjectKindMeta[k];
@@ -81,10 +81,10 @@ export default function MultiModeHomeClient({
                 <Link
                   key={k}
                   href={`/${k}`}
-                  className="flex items-center gap-2 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 px-3 py-3 hover:bg-white/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  className="flex items-center justify-center gap-2.5 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 px-3 py-3.5 hover:bg-white/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
                 >
                   <Icon className="w-5 h-5 text-teal-300 shrink-0" />
-                  <span className="text-left text-[11px] font-black text-white leading-tight">{meta.label}</span>
+                  <span className="text-center text-[11px] font-black text-white leading-tight">{meta.label}</span>
                 </Link>
               );
             })}
