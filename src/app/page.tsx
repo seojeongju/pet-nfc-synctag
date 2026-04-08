@@ -5,24 +5,16 @@ export const runtime = "edge";
 
 export default async function Home() {
   const { session, isAdmin } = await getLandingSessionState();
-  const hubPath = "/hub";
-  const guardianEntryLink = session
-    ? isAdmin
-      ? "/admin"
-      : hubPath
-    : `/login?callbackUrl=${encodeURIComponent(hubPath)}`;
-  const guardianButtonLabel = session
-    ? isAdmin
-      ? "관리자 센터 바로가기"
-      : "모드 선택 · 대시보드"
-    : "로그인하고 시작하기";
+  /** 메인 랜딩 하단은 관리자 진입만 강조 (보호자는 상단 모드 타일 → 각 모드 페이지에서 로그인) */
+  const adminEntryLink = isAdmin ? "/admin" : "/admin/login";
+  const adminButtonLabel = isAdmin ? "관리자 센터" : "관리자 로그인";
 
   return (
     <MultiModeHomeClient
       session={session}
       isAdmin={isAdmin}
-      guardianEntryLink={guardianEntryLink}
-      guardianButtonLabel={guardianButtonLabel}
+      adminEntryLink={adminEntryLink}
+      adminButtonLabel={adminButtonLabel}
     />
   );
 }

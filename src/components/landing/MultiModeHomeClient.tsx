@@ -7,12 +7,12 @@ import {
   Baby,
   Briefcase,
   type LucideIcon,
-  LayoutDashboard,
   PawPrint,
   ShieldCheck,
   Sparkles,
   UserRound,
 } from "lucide-react";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
 
@@ -26,15 +26,16 @@ const modeIcons: Record<SubjectKind, LucideIcon> = {
 interface MultiModeHomeClientProps {
   session: { user: { name?: string | null } } | null;
   isAdmin: boolean;
-  guardianEntryLink: string;
-  guardianButtonLabel: string;
+  /** 관리자 콘솔 또는 관리자 로그인 (하단 소형 버튼 전용) */
+  adminEntryLink: string;
+  adminButtonLabel: string;
 }
 
 export default function MultiModeHomeClient({
   session,
   isAdmin,
-  guardianEntryLink,
-  guardianButtonLabel,
+  adminEntryLink,
+  adminButtonLabel,
 }: MultiModeHomeClientProps) {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-outfit overflow-hidden relative">
@@ -45,12 +46,29 @@ export default function MultiModeHomeClient({
         <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative rounded-[40px] overflow-hidden border-4 border-white shadow-[0_20px_50px_rgba(0,0,0,0.08)] bg-gradient-to-br from-slate-800 via-slate-900 to-teal-900 aspect-[5/4] flex flex-col items-center justify-center text-center px-6"
+          className="relative rounded-[40px] overflow-hidden border-4 border-white shadow-[0_25px_60px_rgba(0,0,0,0.12)] bg-slate-950 aspect-[5/4] flex flex-col items-center justify-center text-center px-6"
         >
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(45,212,191,0.15),transparent_50%)]" />
-          <Sparkles className="w-10 h-10 text-teal-300 mb-4 relative z-10" />
-          <h1 className="text-2xl font-black text-white tracking-tight relative z-10">링크유</h1>
-          <p className="text-sm text-slate-300 mt-3 font-medium leading-relaxed relative z-10">
+          <motion.div
+            initial={{ scale: 1.1, opacity: 0 }}
+            animate={{ scale: 1, opacity: 0.7 }}
+            transition={{ duration: 1.5, ease: "easeOut" }}
+            className="absolute inset-0 z-0"
+          >
+            <Image
+              src="/images/hero-bg.png"
+              alt="Link-U Premium Background"
+              fill
+              className="object-cover"
+              priority
+            />
+          </motion.div>
+
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-900/60 via-slate-900/40 to-teal-950/80 z-1" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(45,212,191,0.2),transparent_60%)] z-1" />
+
+          <Sparkles className="w-10 h-10 text-teal-300 mb-4 relative z-10 drop-shadow-[0_0_15px_rgba(94,234,212,0.5)]" />
+          <h1 className="text-2xl font-black text-white tracking-tight relative z-10 drop-shadow-md">링크유</h1>
+          <p className="text-sm text-slate-100 mt-3 font-semibold leading-relaxed relative z-10 drop-shadow-sm">
             NFC로 반려동물·어르신·아이·링크유 - 캐리까지
             <br />
             한 번에 연결하는 스마트 명함 · Link-U
@@ -63,7 +81,7 @@ export default function MultiModeHomeClient({
                 <Link
                   key={k}
                   href={`/${k}`}
-                  className="flex items-center gap-2 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/15 px-3 py-3 hover:bg-white/20 transition-colors"
+                  className="flex items-center gap-2 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 px-3 py-3 hover:bg-white/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
                 >
                   <Icon className="w-5 h-5 text-teal-300 shrink-0" />
                   <span className="text-left text-[11px] font-black text-white leading-tight">{meta.label}</span>
@@ -99,34 +117,44 @@ export default function MultiModeHomeClient({
             </div>
           )}
 
-          <Link href={guardianEntryLink} className="block w-full group">
-            <button
-              type="button"
-              className={cn(
-                "w-full h-16 flex items-center justify-center gap-3 rounded-[28px] text-base font-black shadow-xl transition-all active:scale-95 group-hover:-translate-y-0.5 duration-300",
-                isAdmin ? "bg-slate-900 text-white shadow-slate-200" : "bg-teal-500 text-white shadow-teal-500/20"
-              )}
-            >
-              {isAdmin ? (
-                <ShieldCheck className="w-6 h-6 text-teal-400" />
-              ) : (
-                <LayoutDashboard className="w-6 h-6" />
-              )}
-              {guardianButtonLabel}
-              <ArrowRight className="w-5 h-5 opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-            </button>
-          </Link>
-
-          {!session ? (
-            <p className="text-sm text-slate-400 font-bold text-center">
-              처음이시면 위 버튼으로 로그인 후 사용할 모드를 선택할 수 있어요.
+          <div className="flex flex-col items-center gap-4">
+            <Link href={adminEntryLink} className="group inline-flex">
+              <button
+                type="button"
+                className={cn(
+                  "inline-flex h-10 items-center justify-center gap-2 rounded-full px-5 text-xs font-black shadow-md transition-all active:scale-[0.98] group-hover:-translate-y-0.5",
+                  isAdmin
+                    ? "bg-slate-900 text-white shadow-slate-300/40 hover:bg-slate-800"
+                    : "border border-slate-200 bg-white text-slate-700 shadow-slate-200/80 hover:border-slate-300 hover:bg-slate-50"
+                )}
+              >
+                <ShieldCheck className={cn("h-4 w-4", isAdmin ? "text-teal-400" : "text-slate-500")} />
+                {adminButtonLabel}
+                <ArrowRight className="h-3.5 w-3.5 opacity-40 transition group-hover:translate-x-0.5 group-hover:opacity-80" />
+              </button>
+            </Link>
+            <p className="text-center text-[11px] font-bold leading-relaxed text-slate-400">
+              판매·재고·시스템 관리는 위 관리자 메뉴를 이용해 주세요.
             </p>
-          ) : (
-            <div className="flex items-center justify-center gap-2 px-6 py-2.5 bg-slate-100 rounded-full text-xs font-black text-slate-500 border border-white shadow-sm mx-auto">
-              <div className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
-              {session.user.name}님으로 입장함
-            </div>
-          )}
+            {session && !isAdmin && (
+              <Link
+                href="/hub"
+                className="text-xs font-black text-teal-600 underline-offset-4 hover:text-teal-700 hover:underline"
+              >
+                로그인한 보호자 · 대시보드로 이동
+              </Link>
+            )}
+            {session ? (
+              <div className="flex items-center justify-center gap-2 rounded-full border border-white bg-slate-100 px-5 py-2 text-xs font-black text-slate-500 shadow-sm">
+                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-teal-500" />
+                {session.user.name}님으로 로그인됨
+              </div>
+            ) : (
+              <p className="text-center text-sm font-bold text-slate-400">
+                위 카드에서 제품에 맞는 모드를 누르면 해당 안내와 보호자 로그인으로 이어져요.
+              </p>
+            )}
+          </div>
         </section>
 
         <footer className="px-4 pb-10 pt-4 flex flex-col items-center gap-4">
@@ -134,14 +162,6 @@ export default function MultiModeHomeClient({
             <ShieldCheck className="w-4 h-4" />
             <Sparkles className="w-4 h-4" />
           </div>
-          {!isAdmin && (
-            <Link
-              href="/admin/login"
-              className="text-[10px] font-black text-slate-300 hover:text-teal-400 tracking-widest uppercase transition-colors"
-            >
-              Seller Access Center
-            </Link>
-          )}
           <p className="text-[10px] text-slate-300 font-bold tracking-widest uppercase text-center leading-loose">
             링크유 Link-U © 2024 <br /> All Rights Reserved.
           </p>
