@@ -18,6 +18,7 @@ import {
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { adminUi } from "@/styles/admin/ui";
+import { isPlatformAdminRole } from "@/lib/platform-admin";
 
 export const runtime = "edge";
 
@@ -40,7 +41,7 @@ export default async function AdminAuthenticatedLayout({
         .first<{ role?: string | null }>()
     : null;
 
-  if (!session || roleRow?.role !== "admin") {
+  if (!session || !isPlatformAdminRole(roleRow?.role)) {
     redirect("/admin/login");
   }
 

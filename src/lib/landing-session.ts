@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
 import { getRequestContext } from "@cloudflare/next-on-pages";
+import { isPlatformAdminRole } from "@/lib/platform-admin";
 
 export type LandingSessionState = {
   session: { user: { id: string; name?: string | null } } | null;
@@ -19,7 +20,7 @@ export async function getLandingSessionState(): Promise<LandingSessionState> {
     .prepare("SELECT role FROM user WHERE id = ?")
     .bind(user.id)
     .first<{ role?: string | null }>();
-  const isAdmin = roleRow?.role === "admin";
+  const isAdmin = isPlatformAdminRole(roleRow?.role);
   return {
     session: { user: { id: user.id, name: user.name } },
     isAdmin,

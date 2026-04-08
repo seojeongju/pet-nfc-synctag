@@ -51,7 +51,7 @@ export default async function AdminSetupPage() {
 
             // 2. 관리자 권한 부여 (role 업데이트)
             await context.env.DB.prepare(
-                "UPDATE user SET role = 'admin' WHERE email = ?"
+                "UPDATE user SET role = 'platform_admin' WHERE email = ?"
             ).bind(adminEmail).run();
 
             console.log("Admin bootstrap completed");

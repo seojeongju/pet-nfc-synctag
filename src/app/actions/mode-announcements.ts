@@ -8,6 +8,7 @@ import { getRequestContext } from "@cloudflare/next-on-pages";
 import { nanoid } from "nanoid";
 import { parseSubjectKind, type SubjectKind } from "@/lib/subject-kind";
 import type { ModeAnnouncementAttachmentKind, ModeAnnouncementRow, ModeAnnouncementStatus } from "@/types/mode-announcement";
+import { isPlatformAdminRole } from "@/lib/platform-admin";
 
 const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
 
@@ -20,7 +21,7 @@ async function assertAdminRole() {
     .prepare("SELECT role FROM user WHERE id = ?")
     .bind(session.user.id)
     .first<{ role?: string | null }>();
-  if (row?.role !== "admin") throw new Error("관리자만 사용할 수 있습니다.");
+  if (!isPlatformAdminRole(row?.role)) throw new Error("플랫폼 관리자만 사용할 수 있습니다.");
   return session;
 }
 

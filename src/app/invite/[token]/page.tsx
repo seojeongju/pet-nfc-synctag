@@ -9,9 +9,9 @@ export const runtime = "edge";
 type SearchParams = Promise<{ err?: string; ok?: string }>;
 
 function roleLabel(role: "owner" | "admin" | "member") {
-  if (role === "owner") return "������";
-  if (role === "admin") return "������";
-  return "���";
+  if (role === "owner") return "소유자";
+  if (role === "admin") return "관리자";
+  return "멤버";
 }
 
 export default async function InviteAcceptPage({

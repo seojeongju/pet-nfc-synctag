@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { revalidatePath } from "next/cache";
+import { isPlatformAdminRole } from "@/lib/platform-admin";
 
 function normalizeUid(uid: string) {
   return uid.trim().toUpperCase();
@@ -20,7 +21,7 @@ async function assertAdmin() {
     .prepare("SELECT role FROM user WHERE id = ?")
     .bind(userId)
     .first<{ role?: string | null }>();
-  if (row?.role !== "admin") throw new Error("관리자만 접근할 수 있습니다.");
+  if (!isPlatformAdminRole(row?.role)) throw new Error("플랫폼 관리자만 접근할 수 있습니다.");
 }
 
 export type TagDiagnosticResult =

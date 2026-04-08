@@ -9,6 +9,7 @@ import { listVisibleAnnouncementsForGuardian } from "@/app/actions/mode-announce
 import { requireTenantMember } from "@/lib/tenant-membership";
 import { getTenantPlanUsageSummary, type TenantPlanUsageSummary } from "@/lib/tenant-quota";
 import { getTenantStatus } from "@/lib/tenant-status";
+import { isPlatformAdminRole } from "@/lib/platform-admin";
 
 export const runtime = "edge";
 
@@ -47,7 +48,7 @@ export default async function DashboardPage({
       tenantId ? getTenantStatus(context.env.DB, tenantId) : Promise.resolve<"active" | "suspended" | null>(null),
     ]);
 
-    const isAdmin = roleRow?.role === "admin";
+    const isAdmin = isPlatformAdminRole(roleRow?.role);
 
     return (
       <DashboardClient

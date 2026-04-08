@@ -6,7 +6,9 @@ import { nanoid } from "nanoid";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { getAuth } from "@/lib/auth";
 import { getDB } from "@/lib/db";
-import { assertTenantRole } from "@/lib/tenant-membership";
+import { assertTenantRole, getMembership } from "@/lib/tenant-membership";
+import { isPlatformAdminRole } from "@/lib/platform-admin";
+import type { D1Database } from "@cloudflare/workers-types";
 
 type TenantRole = "owner" | "admin" | "member";
 
@@ -28,7 +30,7 @@ type TenantInviteInfo = {
   created_at: string;
 };
 
-type TenantAdminView = {
+export type TenantAdminView = {
   id: string;
   name: string;
   slug: string;
@@ -38,6 +40,8 @@ type TenantAdminView = {
   members: TenantMemberInfo[];
   invites: TenantInviteInfo[];
 };
+
+type OrgActor = { userId: string; actorEmail: string; isPlatformAdmin: boolean };
 
 export type TenantAuditLogRow = {
   id: number;
@@ -57,7 +61,7 @@ const TENANT_AUDIT_ACTIONS = [
   "tenant_invite_create_by_admin",
 ] as const;
 
-async function requireAdminUser() {
+async function requirePlatformAdmin() {
   const context = getRequestContext();
   const auth = getAuth(context.env);
   const session = await auth.api.getSession({ headers: await headers() });
@@ -71,14 +75,15 @@ async function requireAdminUser() {
     .bind(userId)
     .first<{ role?: string | null; email?: string | null }>();
 
-  if (roleRow?.role !== "admin") {
-    throw new Error("관리자 권한이 필요합니다.");
+  if (!isPlatformAdminRole(roleRow?.role)) {
+    throw new Error("플랫폼 관리자 권한이 필요합니다.");
   }
 
   return { userId, actorEmail: roleRow.email ?? "system" };
 }
 
-async function assertOwnerScopedActionAllowed(tenantId: string) {
+/** 플랫폼 관리자 또는 해당 조직의 owner/admin(테넌트 관리자). */
+async function requirePlatformOrTenantOrgAdmin(tenantId: string): Promise<OrgActor> {
   const context = getRequestContext();
   const auth = getAuth(context.env);
   const session = await auth.api.getSession({ headers: await headers() });
@@ -86,14 +91,45 @@ async function assertOwnerScopedActionAllowed(tenantId: string) {
   if (!userId) {
     throw new Error("로그인이 필요합니다.");
   }
-  const globalRole = await context.env.DB
-    .prepare("SELECT role FROM user WHERE id = ?")
+  const db = context.env.DB;
+  const roleRow = await db
+    .prepare("SELECT role, email FROM user WHERE id = ?")
     .bind(userId)
-    .first<{ role?: string | null }>();
-  if (globalRole?.role === "admin") {
-    return;
+    .first<{ role?: string | null; email?: string | null }>();
+
+  if (isPlatformAdminRole(roleRow?.role)) {
+    return { userId, actorEmail: roleRow?.email ?? "system", isPlatformAdmin: true };
   }
-  await assertTenantRole(context.env.DB, userId, tenantId, "owner");
+
+  await assertTenantRole(db, userId, tenantId, "admin");
+  return { userId, actorEmail: roleRow?.email ?? "system", isPlatformAdmin: false };
+}
+
+async function assertMayAssignOwnerRole(
+  db: D1Database,
+  actor: OrgActor,
+  tenantId: string,
+  targetRole: TenantRole
+) {
+  if (targetRole !== "owner") return;
+  if (actor.isPlatformAdmin) return;
+  const m = await getMembership(db, actor.userId, tenantId);
+  if (m !== "owner") {
+    throw new Error("소유자 역할은 조직 소유자 또는 플랫폼 관리자만 지정할 수 있습니다.");
+  }
+}
+
+async function assertMayRemoveOwnerMember(db: D1Database, actor: OrgActor, tenantId: string, targetUserId: string) {
+  const row = await db
+    .prepare("SELECT role FROM tenant_members WHERE tenant_id = ? AND user_id = ?")
+    .bind(tenantId, targetUserId)
+    .first<{ role: string }>();
+  if (row?.role !== "owner") return;
+  if (actor.isPlatformAdmin) return;
+  const m = await getMembership(db, actor.userId, tenantId);
+  if (m !== "owner") {
+    throw new Error("소유자 멤버는 조직 소유자 또는 플랫폼 관리자만 제거할 수 있습니다.");
+  }
 }
 
 function safeRole(raw: string | null | undefined): TenantRole {
@@ -120,15 +156,15 @@ async function resolveUserByEmail(email: string) {
     .first<{ id: string; email: string; name?: string | null }>();
 }
 
-async function writeAdminAudit(action: string, payload: unknown) {
-  const { actorEmail } = await requireAdminUser();
+async function writeAdminAudit(actorEmail: string, action: string, payload: unknown) {
   const db = getDB();
-  await db.prepare(
-    "INSERT INTO admin_action_logs (action, actor_email, success, payload) VALUES (?, ?, 1, ?)"
-  )
-  .bind(action, actorEmail, JSON.stringify(payload))
-  .run()
-  .catch(() => {});
+  await db
+    .prepare(
+      "INSERT INTO admin_action_logs (action, actor_email, success, payload) VALUES (?, ?, 1, ?)"
+    )
+    .bind(action, actorEmail, JSON.stringify(payload))
+    .run()
+    .catch(() => {});
 }
 
 async function ensureTenantInvitesTable() {
@@ -153,9 +189,12 @@ async function ensureTenantInvitesTable() {
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_tenant_invites_status ON tenant_invites(status)").run();
 }
 
-function revalidateTenantSurfaces() {
+function revalidateTenantSurfaces(tenantId?: string) {
   revalidatePath("/admin/tenants");
   revalidatePath("/hub");
+  if (tenantId) {
+    revalidatePath(`/hub/org/${tenantId}/manage`);
+  }
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/pets");
   revalidatePath("/dashboard/scans");
@@ -167,7 +206,7 @@ export async function getTenantsAdminView(filters?: {
   email?: string;
   status?: "all" | "active" | "suspended";
 }): Promise<TenantAdminView[]> {
-  await requireAdminUser();
+  await requirePlatformAdmin();
   const db = getDB();
   await ensureTenantInvitesTable();
 
@@ -292,8 +331,102 @@ export async function getTenantsAdminView(filters?: {
   }));
 }
 
+async function loadTenantAdminView(db: ReturnType<typeof getDB>, tenantId: string): Promise<TenantAdminView | null> {
+  await ensureTenantInvitesTable();
+  const t = await db
+    .prepare(
+      "SELECT id, name, slug, status, created_at FROM tenants WHERE id = ? LIMIT 1"
+    )
+    .bind(tenantId)
+    .first<{
+      id: string;
+      name: string;
+      slug: string;
+      status: string;
+      created_at: string;
+    }>();
+  if (!t) return null;
+
+  const membersRows = await db
+    .prepare(
+      `SELECT tm.user_id, tm.role, tm.created_at, u.email, u.name
+       FROM tenant_members tm
+       INNER JOIN user u ON u.id = tm.user_id
+       WHERE tm.tenant_id = ?
+       ORDER BY CASE tm.role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END, u.email`
+    )
+    .bind(tenantId)
+    .all<{
+      user_id: string;
+      role: string;
+      created_at: string;
+      email: string;
+      name: string | null;
+    }>();
+
+  const invitesRows = await db
+    .prepare(
+      `SELECT id, tenant_id, email, role, token, status, expires_at, created_at
+       FROM tenant_invites
+       WHERE tenant_id = ? AND status = 'pending'
+       ORDER BY datetime(created_at) DESC`
+    )
+    .bind(tenantId)
+    .all<{
+      id: string;
+      tenant_id: string;
+      email: string;
+      role: string;
+      token: string;
+      status: "pending" | "accepted" | "cancelled" | "expired";
+      expires_at: string;
+      created_at: string;
+    }>();
+
+  const members: TenantMemberInfo[] = (membersRows.results ?? []).map((row) => ({
+    user_id: row.user_id,
+    email: row.email,
+    name: row.name,
+    role: safeRole(row.role),
+    created_at: row.created_at,
+  }));
+
+  const invites: TenantInviteInfo[] = (invitesRows.results ?? []).map((row) => ({
+    id: row.id,
+    email: row.email,
+    role: safeRole(row.role),
+    token: row.token,
+    status: row.status,
+    expires_at: row.expires_at,
+    created_at: row.created_at,
+  }));
+
+  return {
+    id: t.id,
+    name: t.name,
+    slug: t.slug,
+    status: t.status,
+    created_at: t.created_at,
+    member_count: members.length,
+    members,
+    invites,
+  };
+}
+
+/** 테넌트 관리자(조직 owner/admin) 또는 플랫폼 관리자 전용 단일 조직 화면. */
+export async function getTenantOrgManageContext(tenantId: string): Promise<{
+  view: TenantAdminView;
+  isPlatformAdmin: boolean;
+} | null> {
+  const actor = await requirePlatformOrTenantOrgAdmin(tenantId);
+  const db = getDB();
+  const view = await loadTenantAdminView(db, tenantId);
+  if (!view) return null;
+  return { view, isPlatformAdmin: actor.isPlatformAdmin };
+}
+
 export async function adminCreateTenantWithOwner(formData: FormData) {
-  await requireAdminUser();
+  const { actorEmail } = await requirePlatformAdmin();
   const db = getDB();
 
   const name = String(formData.get("name") ?? "").trim();
@@ -328,21 +461,29 @@ export async function adminCreateTenantWithOwner(formData: FormData) {
      VALUES (?, ?, 'owner', CURRENT_TIMESTAMP)`
   ).bind(tenantId, owner.id).run();
 
-  await writeAdminAudit("tenant_create_by_admin", { tenantId, name, slug, ownerEmail: owner.email });
-  revalidateTenantSurfaces();
+  await writeAdminAudit(actorEmail, "tenant_create_by_admin", {
+    tenantId,
+    name,
+    slug,
+    ownerEmail: owner.email,
+  });
+  revalidateTenantSurfaces(tenantId);
 }
 
 export async function adminAddTenantMember(formData: FormData) {
-  await requireAdminUser();
+  const tenantId = String(formData.get("tenant_id") ?? "").trim();
+  if (!tenantId) throw new Error("조직 정보가 올바르지 않습니다.");
+  const actor = await requirePlatformOrTenantOrgAdmin(tenantId);
   const db = getDB();
 
-  const tenantId = String(formData.get("tenant_id") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
   const role = safeRole(String(formData.get("role") ?? "member").trim());
 
-  if (!tenantId || !email) {
-    throw new Error("조직과 멤버 이메일이 필요합니다.");
+  if (!email) {
+    throw new Error("멤버 이메일이 필요합니다.");
   }
+
+  await assertMayAssignOwnerRole(db, actor, tenantId, role);
 
   const user = await resolveUserByEmail(email);
   if (!user) {
@@ -358,21 +499,25 @@ export async function adminAddTenantMember(formData: FormData) {
     .bind(tenantId, user.id, role)
     .run();
 
-  await writeAdminAudit("tenant_member_upsert_by_admin", { tenantId, email: user.email, role });
-  revalidateTenantSurfaces();
+  await writeAdminAudit(actor.actorEmail, "tenant_member_upsert_by_admin", {
+    tenantId,
+    email: user.email,
+    role,
+  });
+  revalidateTenantSurfaces(tenantId);
 }
 
 export async function adminChangeTenantMemberRole(formData: FormData) {
-  await requireAdminUser();
-  const db = getDB();
-
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
   const userId = String(formData.get("user_id") ?? "").trim();
   const role = safeRole(String(formData.get("role") ?? "member").trim());
   if (!tenantId || !userId) {
     throw new Error("변경 대상이 올바르지 않습니다.");
   }
-  await assertOwnerScopedActionAllowed(tenantId);
+  const actor = await requirePlatformOrTenantOrgAdmin(tenantId);
+  const db = getDB();
+
+  await assertMayAssignOwnerRole(db, actor, tenantId, role);
 
   const current = await db
     .prepare("SELECT role FROM tenant_members WHERE tenant_id = ? AND user_id = ?")
@@ -397,20 +542,20 @@ export async function adminChangeTenantMemberRole(formData: FormData) {
     .bind(role, tenantId, userId)
     .run();
 
-  await writeAdminAudit("tenant_member_role_change_by_admin", { tenantId, userId, role });
-  revalidateTenantSurfaces();
+  await writeAdminAudit(actor.actorEmail, "tenant_member_role_change_by_admin", { tenantId, userId, role });
+  revalidateTenantSurfaces(tenantId);
 }
 
 export async function adminRemoveTenantMember(formData: FormData) {
-  await requireAdminUser();
-  const db = getDB();
-
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
   const userId = String(formData.get("user_id") ?? "").trim();
   if (!tenantId || !userId) {
     throw new Error("삭제 대상이 올바르지 않습니다.");
   }
-  await assertOwnerScopedActionAllowed(tenantId);
+  const actor = await requirePlatformOrTenantOrgAdmin(tenantId);
+  const db = getDB();
+
+  await assertMayRemoveOwnerMember(db, actor, tenantId, userId);
 
   const current = await db
     .prepare("SELECT role FROM tenant_members WHERE tenant_id = ? AND user_id = ?")
@@ -436,53 +581,53 @@ export async function adminRemoveTenantMember(formData: FormData) {
     .bind(tenantId, userId)
     .run();
 
-  await writeAdminAudit("tenant_member_remove_by_admin", { tenantId, userId });
-  revalidateTenantSurfaces();
+  await writeAdminAudit(actor.actorEmail, "tenant_member_remove_by_admin", { tenantId, userId });
+  revalidateTenantSurfaces(tenantId);
 }
 
 export async function adminUpdateTenantStatus(formData: FormData) {
-  await requireAdminUser();
+  const { actorEmail } = await requirePlatformAdmin();
   const db = getDB();
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
   const statusRaw = String(formData.get("status") ?? "").trim();
   const status = statusRaw === "suspended" ? "suspended" : "active";
   if (!tenantId) throw new Error("조직 정보가 올바르지 않습니다.");
-  await assertOwnerScopedActionAllowed(tenantId);
 
   await db
     .prepare("UPDATE tenants SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
     .bind(status, tenantId)
     .run();
-  await writeAdminAudit("tenant_status_change_by_admin", { tenantId, status });
-  revalidateTenantSurfaces();
+  await writeAdminAudit(actorEmail, "tenant_status_change_by_admin", { tenantId, status });
+  revalidateTenantSurfaces(tenantId);
 }
 
 export async function adminRenameTenant(formData: FormData) {
-  await requireAdminUser();
-  const db = getDB();
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   if (!tenantId || !name) {
     throw new Error("조직 정보가 올바르지 않습니다.");
   }
-  await assertOwnerScopedActionAllowed(tenantId);
+  const actor = await requirePlatformOrTenantOrgAdmin(tenantId);
+  const db = getDB();
   await db
     .prepare("UPDATE tenants SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
     .bind(name, tenantId)
     .run();
-  await writeAdminAudit("tenant_rename_by_admin", { tenantId, name });
-  revalidateTenantSurfaces();
+  await writeAdminAudit(actor.actorEmail, "tenant_rename_by_admin", { tenantId, name });
+  revalidateTenantSurfaces(tenantId);
 }
 
 export async function adminCreateTenantInvite(formData: FormData): Promise<{ token: string; expiresAt: string }> {
-  const { userId } = await requireAdminUser();
-  const db = getDB();
-  await ensureTenantInvitesTable();
-
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const role = safeRole(String(formData.get("role") ?? "member").trim());
   if (!tenantId || !email) throw new Error("조직과 이메일이 필요합니다.");
+
+  const actor = await requirePlatformOrTenantOrgAdmin(tenantId);
+  const db = getDB();
+  await ensureTenantInvitesTable();
+
+  await assertMayAssignOwnerRole(db, actor, tenantId, role);
 
   const existingUser = await resolveUserByEmail(email);
   if (existingUser) throw new Error("이미 가입된 사용자입니다. 멤버 추가/갱신을 사용하세요.");
@@ -497,16 +642,21 @@ export async function adminCreateTenantInvite(formData: FormData): Promise<{ tok
        (id, tenant_id, email, role, token, status, invited_by, expires_at, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
     )
-    .bind(id, tenantId, email, role, token, userId, expiresAt)
+    .bind(id, tenantId, email, role, token, actor.userId, expiresAt)
     .run();
 
-  await writeAdminAudit("tenant_invite_create_by_admin", { tenantId, email, role, inviteId: id });
-  revalidateTenantSurfaces();
+  await writeAdminAudit(actor.actorEmail, "tenant_invite_create_by_admin", {
+    tenantId,
+    email,
+    role,
+    inviteId: id,
+  });
+  revalidateTenantSurfaces(tenantId);
   return { token, expiresAt };
 }
 
 export async function getTenantAdminAuditLogs(limit = 80): Promise<TenantAuditLogRow[]> {
-  await requireAdminUser();
+  await requirePlatformAdmin();
   const db = getDB();
   const safeLimit = Math.max(1, Math.min(limit, 200));
   const placeholders = TENANT_AUDIT_ACTIONS.map(() => "?").join(",");

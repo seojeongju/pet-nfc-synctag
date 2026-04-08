@@ -10,6 +10,7 @@ import { resolveDeviceAssignedKind } from "@/lib/device-mode";
 import { listTenantsForUser } from "@/lib/tenant-membership";
 import { resolvePersonalPlan } from "@/lib/plan-resolution";
 import { getTenantPlanUsageSummary } from "@/lib/tenant-quota";
+import { isPlatformAdminRole } from "@/lib/platform-admin";
 
 export const runtime = "edge";
 
@@ -55,7 +56,7 @@ export default async function HubPage({
     .prepare("SELECT role FROM user WHERE id = ?")
     .bind(session.user.id)
     .first<{ role?: string | null }>();
-  const isAdmin = roleRow?.role === "admin";
+  const isPlatformAdmin = isPlatformAdminRole(roleRow?.role);
 
   const tenants = await listTenantsForUser(db, session.user.id).catch(() => []);
   const personalPlan = await resolvePersonalPlan(db, session.user.id).catch(() => null);
@@ -130,12 +131,22 @@ export default async function HubPage({
                         <p className="text-[10px] font-bold text-amber-600 mt-0.5">활성 조직 플랜 없음</p>
                       )}
                     </div>
-                    <Link
-                      href={`/dashboard?kind=pet&tenant=${encodeURIComponent(t.id)}`}
-                      className="shrink-0 rounded-xl bg-slate-900 px-3 py-2 text-[10px] font-black text-white hover:bg-teal-600"
-                    >
-                      대시보드
-                    </Link>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      {(t.role === "owner" || t.role === "admin") && (
+                        <Link
+                          href={`/hub/org/${encodeURIComponent(t.id)}/manage`}
+                          className="rounded-xl border border-teal-200 bg-teal-50 px-3 py-1.5 text-[10px] font-black text-teal-700 hover:bg-teal-100"
+                        >
+                          조직 관리
+                        </Link>
+                      )}
+                      <Link
+                        href={`/dashboard?kind=pet&tenant=${encodeURIComponent(t.id)}`}
+                        className="rounded-xl bg-slate-900 px-3 py-2 text-[10px] font-black text-white hover:bg-teal-600"
+                      >
+                        대시보드
+                      </Link>
+                    </div>
                   </div>
                 );
               })}
@@ -173,12 +184,12 @@ export default async function HubPage({
           })}
         </nav>
 
-        {isAdmin && (
+        {isPlatformAdmin && (
           <Link
             href="/admin"
             className="block rounded-2xl border border-slate-900 bg-slate-900 px-5 py-4 text-center text-sm font-black text-white"
           >
-            관리자 콘솔
+            플랫폼 관리자 콘솔
           </Link>
         )}
 

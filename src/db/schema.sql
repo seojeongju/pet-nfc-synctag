@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS user (
     name TEXT,
     emailVerified BOOLEAN NOT NULL DEFAULT FALSE,
     image TEXT,
-    role TEXT DEFAULT 'user', -- 추가된 권한 필드
+    role TEXT DEFAULT 'user', -- user | platform_admin (플랫폼 운영자; 레거시 admin은 마이그레이션으로 치환)
     subscriptionStatus TEXT DEFAULT 'free',
     createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
