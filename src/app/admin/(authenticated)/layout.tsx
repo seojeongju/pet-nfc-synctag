@@ -1,4 +1,4 @@
-import { getAuth } from "@/lib/auth";
+﻿import { getAuth } from "@/lib/auth";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -120,10 +120,26 @@ export default async function AdminAuthenticatedLayout({
             </div>
 
             <div className="flex items-center gap-2 lg:gap-8">
-              <button className={cn("relative p-2 lg:p-2.5 rounded-2xl transition-all", adminUi.subtleCard)}>
+              <button type="button" className={cn("relative p-2 lg:p-2.5 rounded-2xl transition-all", adminUi.subtleCard)}>
                 <Bell className="w-4 h-4 lg:w-5 lg:h-5 text-slate-500" />
                 <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-white" />
               </button>
+              <form action="/logout" method="post" className="flex items-center">
+                <button
+                  type="submit"
+                  className={cn(
+                    "flex items-center gap-1.5 px-2.5 py-2 lg:px-3 lg:py-2.5 rounded-2xl transition-all text-rose-600 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20",
+                    adminUi.subtleCard
+                  )}
+                  title="로그아웃"
+                  aria-label="관리자 로그아웃"
+                >
+                  <LogOut className="w-4 h-4 lg:w-5 lg:h-5 shrink-0" />
+                  <span className="font-black text-[10px] lg:text-xs uppercase tracking-wide hidden sm:inline">
+                    로그아웃
+                  </span>
+                </button>
+              </form>
               <div className="flex items-center gap-2 lg:gap-4 group cursor-pointer p-1 lg:pr-4 rounded-full hover:bg-slate-50 transition-all">
                 <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full border-2 border-teal-500/20 overflow-hidden shadow-lg group-hover:border-teal-500 transition-colors">
                   {user?.image ? (
