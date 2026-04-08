@@ -192,18 +192,24 @@ export async function unlinkTag(tagId: string) {
     revalidatePath(`/dashboard`);
 }
 
-export async function getPetTags(petId: string) {
+export async function getPetTags(petId: string, tenantId?: string | null): Promise<PetTagRow[]> {
     const db = getDB();
     await assertMigration0008Applied(db);
-    const { results } = await db.prepare("SELECT * FROM tags WHERE pet_id = ?")
-        .bind(petId)
-        .all();
-    return results;
+    const tenant = (tenantId ?? "").trim();
+    const query = tenant
+        ? "SELECT t.id, t.is_active FROM tags t INNER JOIN pets p ON p.id = t.pet_id WHERE t.pet_id = ? AND p.tenant_id = ?"
+        : "SELECT t.id, t.is_active FROM tags t INNER JOIN pets p ON p.id = t.pet_id WHERE t.pet_id = ? AND p.tenant_id IS NULL";
+    const stmt = db.prepare(query);
+    const { results } = await (tenant
+        ? stmt.bind(petId, tenant)
+        : stmt.bind(petId)
+    ).all<PetTagRow>();
+    return results ?? [];
 }
 
 export type PetTagRow = { id: string; is_active?: boolean };
 
-export async function verifyOwnerAndLoadPetTags(petId: string) {
+export async function verifyOwnerAndLoadPetTags(petId: string, tenantId?: string | null) {
     const context = getRequestContext();
     const auth = getAuth(context.env);
     const session = await auth.api.getSession({ headers: await headers() });
@@ -212,14 +218,26 @@ export async function verifyOwnerAndLoadPetTags(petId: string) {
     }
     const db = getDB();
     await assertMigration0008Applied(db);
+    const tenant = (tenantId ?? "").trim();
     const pet = await db
-        .prepare("SELECT owner_id FROM pets WHERE id = ?")
+        .prepare("SELECT owner_id, tenant_id FROM pets WHERE id = ?")
         .bind(petId)
-        .first<{ owner_id: string }>();
+        .first<{ owner_id: string; tenant_id?: string | null }>();
     if (!pet || pet.owner_id !== session.user.id) {
         return { ok: false as const, error: "forbidden" as const, tags: [] as PetTagRow[] };
     }
-    const { results } = await db.prepare("SELECT id, is_active FROM tags WHERE pet_id = ?").bind(petId).all<PetTagRow>();
+    const petTenant = (pet.tenant_id ?? "").trim();
+    if (tenant !== petTenant) {
+        return { ok: false as const, error: "forbidden" as const, tags: [] as PetTagRow[] };
+    }
+    const query = tenant
+        ? "SELECT t.id, t.is_active FROM tags t INNER JOIN pets p ON p.id = t.pet_id WHERE t.pet_id = ? AND p.tenant_id = ?"
+        : "SELECT t.id, t.is_active FROM tags t INNER JOIN pets p ON p.id = t.pet_id WHERE t.pet_id = ? AND p.tenant_id IS NULL";
+    const stmt = db.prepare(query);
+    const { results } = await (tenant
+        ? stmt.bind(petId, tenant)
+        : stmt.bind(petId)
+    ).all<PetTagRow>();
     return { ok: true as const, tags: results ?? [] };
 }
 

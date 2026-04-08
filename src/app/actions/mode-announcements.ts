@@ -193,10 +193,12 @@ export async function listModeAnnouncementsForAdmin(): Promise<ModeAnnouncementR
  */
 export async function listVisibleAnnouncementsForGuardian(
   ownerId: string,
-  subjectKind: SubjectKind
+  subjectKind: SubjectKind,
+  tenantId?: string
 ): Promise<ModeAnnouncementRow[]> {
   const db = getDB();
   const kind = parseSubjectKind(subjectKind);
+  const tenant = (tenantId ?? "").trim();
 
   const { results } = await db
     .prepare(
@@ -214,6 +216,10 @@ export async function listVisibleAnnouncementsForGuardian(
             FROM tags t
             INNER JOIN pets p ON t.pet_id = p.id
             WHERE p.owner_id = ?
+              AND (
+                (? <> '' AND p.tenant_id = ?)
+                OR (? = '' AND p.tenant_id IS NULL)
+              )
               AND t.batch_id IS NOT NULL
               AND t.batch_id = m.target_batch_id
               AND COALESCE(p.subject_kind, 'pet') = m.subject_kind
@@ -223,7 +229,7 @@ export async function listVisibleAnnouncementsForGuardian(
       LIMIT 20
     `
     )
-    .bind(kind, ownerId)
+    .bind(kind, ownerId, tenant, tenant, tenant)
     .all<ModeAnnouncementRow>()
     .catch(() => ({ results: [] as ModeAnnouncementRow[] }));
 

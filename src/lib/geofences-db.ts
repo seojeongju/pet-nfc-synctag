@@ -63,14 +63,28 @@ export async function getGeofenceById(
 export async function listGeofencesForPet(
   db: D1Database,
   petId: string,
-  ownerId: string
+  userId: string
 ): Promise<GeofenceRow[]> {
   const { results } = await db
     .prepare(
-      `SELECT id, owner_id, pet_id, name, latitude, longitude, radius_meters, is_active, created_at, updated_at
-       FROM geofences WHERE pet_id = ? AND owner_id = ? ORDER BY datetime(created_at) ASC`
+      `SELECT g.id, g.owner_id, g.pet_id, g.name, g.latitude, g.longitude, g.radius_meters,
+              g.is_active, g.created_at, g.updated_at
+       FROM geofences g
+       INNER JOIN pets p ON p.id = g.pet_id
+       WHERE g.pet_id = ?
+         AND (
+           p.owner_id = ?
+           OR (
+             p.tenant_id IS NOT NULL
+             AND EXISTS (
+               SELECT 1 FROM tenant_members tm
+               WHERE tm.tenant_id = p.tenant_id AND tm.user_id = ?
+             )
+           )
+         )
+       ORDER BY datetime(g.created_at) ASC`
     )
-    .bind(petId, ownerId)
+    .bind(petId, userId, userId)
     .all<GeofenceRow>();
   return results ?? [];
 }

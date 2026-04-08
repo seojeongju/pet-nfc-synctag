@@ -42,7 +42,7 @@ export default async function DashboardPage({
         .prepare("SELECT role FROM user WHERE id = ?")
         .bind(session.user.id)
         .first<{ role?: string | null }>(),
-      listVisibleAnnouncementsForGuardian(session.user.id, subjectKind),
+      listVisibleAnnouncementsForGuardian(session.user.id, subjectKind, tenantId ?? undefined),
       tenantId ? getTenantPlanUsageSummary(context.env.DB, tenantId) : Promise.resolve<TenantPlanUsageSummary | null>(null),
       tenantId ? getTenantStatus(context.env.DB, tenantId) : Promise.resolve<"active" | "suspended" | null>(null),
     ]);

@@ -25,6 +25,31 @@ export async function isPetOwnedBy(
   return row?.owner_id === ownerId;
 }
 
+/** Pet owner, or any member of the pet's tenant (when tenant_id is set). */
+export async function canUserAccessPetForGeofence(
+  db: D1Database,
+  petId: string,
+  userId: string
+): Promise<boolean> {
+  const row = await db
+    .prepare(
+      `SELECT owner_id, tenant_id FROM pets WHERE id = ?`
+    )
+    .bind(petId)
+    .first<{ owner_id: string; tenant_id: string | null }>();
+  if (!row) return false;
+  if (row.owner_id === userId) return true;
+  const tid = row.tenant_id?.trim();
+  if (!tid) return false;
+  const m = await db
+    .prepare(
+      `SELECT 1 AS ok FROM tenant_members WHERE tenant_id = ? AND user_id = ? LIMIT 1`
+    )
+    .bind(tid, userId)
+    .first<{ ok: number }>();
+  return Boolean(m);
+}
+
 export async function insertBleLocationEvent(
   db: D1Database,
   row: {

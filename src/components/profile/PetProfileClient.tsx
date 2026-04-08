@@ -265,7 +265,7 @@ export default function PetProfileClient({
               onClick={() => {
                 setUnlockError(null);
                 startUnlock(async () => {
-                  const r = await verifyOwnerAndLoadPetTags(pet.id);
+                  const r = await verifyOwnerAndLoadPetTags(pet.id, tenantId);
                   if (r.ok) {
                     setOwnerUnlocked(true);
                     setPetTagsLive(r.tags);

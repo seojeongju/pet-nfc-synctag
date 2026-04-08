@@ -52,7 +52,12 @@ export function LocationShare({
         const { latitude, longitude } = position.coords;
         
         try {
-          await updateScanLocation(activeTag as string, latitude, longitude);
+          const res = await updateScanLocation(activeTag as string, latitude, longitude);
+          if (!res.success) {
+            setStatus("error");
+            onStatusChange?.("error");
+            return;
+          }
           setStatus("success");
           onStatusChange?.("success");
           if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {

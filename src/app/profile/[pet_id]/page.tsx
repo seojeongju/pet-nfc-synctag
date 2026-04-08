@@ -28,7 +28,17 @@ export async function generateMetadata({
     description: `${label} 연락 안내 페이지입니다. NFC 스캔 시 발견 위치를 남길 수 있습니다.`,
   };
 }
-type PetDetail = { id: string; owner_id: string; tenant_id?: string | null; subject_kind?: string | null };
+type PetDetail = {
+  id: string;
+  owner_id: string;
+  tenant_id?: string | null;
+  subject_kind?: string | null;
+  name: string;
+  breed?: string | null;
+  photo_url?: string | null;
+  emergency_contact?: string | null;
+  medical_info?: string | null;
+};
 
 export default async function PublicProfilePage({ 
   params, 
@@ -56,10 +66,10 @@ export default async function PublicProfilePage({
   const isOwner = session?.user.id === pet.owner_id;
   /** NFC(?tag=)로 들어온 보호자는 클라이언트에서 확인 전까지 태그 목록을 내려주지 않음 */
   const nfcOwnerGate = Boolean(tagId && isOwner);
-  const petTags = isOwner && !nfcOwnerGate ? await getPetTags(pet.id) : [];
-  const subjectKind = parseSubjectKind(pet.subject_kind);
   const tenantId =
     typeof pet.tenant_id === "string" && pet.tenant_id.trim() ? pet.tenant_id.trim() : null;
+  const petTags = isOwner && !nfcOwnerGate ? await getPetTags(pet.id, tenantId) : [];
+  const subjectKind = parseSubjectKind(pet.subject_kind);
   const tenantSuspended = tenantId
     ? (await getTenantStatus(context.env.DB, tenantId)) === "suspended"
     : false;

@@ -4,7 +4,10 @@ import { nanoid } from "nanoid";
 import { getAuth } from "@/lib/auth";
 import { getDB } from "@/lib/db";
 import { haversineDistanceMeters } from "@/lib/geo";
-import { isPetOwnedBy, insertBleLocationEvent } from "@/lib/ble-location-events-db";
+import {
+  canUserAccessPetForGeofence,
+  insertBleLocationEvent,
+} from "@/lib/ble-location-events-db";
 import { listGeofencesForPet } from "@/lib/geofences-db";
 
 export const runtime = "edge";
@@ -51,8 +54,8 @@ export async function POST(request: Request) {
   }
 
   const db = getDB();
-  const owned = await isPetOwnedBy(db, pet_id, userId);
-  if (!owned) {
+  const allowed = await canUserAccessPetForGeofence(db, pet_id, userId);
+  if (!allowed) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
