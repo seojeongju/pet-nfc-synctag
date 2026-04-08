@@ -11,6 +11,7 @@ import {
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { adminUi } from "@/styles/admin/ui";
+import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
 
 interface AdminDashboardClientProps {
   stats: {
@@ -28,9 +29,15 @@ interface AdminDashboardClientProps {
     action: string;
     failure_count: number;
   }>;
+  petsBySubjectKind: Record<SubjectKind, number>;
 }
 
-export default function AdminDashboardClient({ stats, ops, failureTop }: AdminDashboardClientProps) {
+export default function AdminDashboardClient({
+  stats,
+  ops,
+  failureTop,
+  petsBySubjectKind,
+}: AdminDashboardClientProps) {
   const [unsoldThreshold, setUnsoldThreshold] = useState(100);
   const [activationThreshold, setActivationThreshold] = useState(40);
   const [failedThreshold, setFailedThreshold] = useState(1);
@@ -159,6 +166,31 @@ export default function AdminDashboardClient({ stats, ops, failureTop }: AdminDa
             );
           })}
         </div>
+
+        <motion.div variants={itemVariants}>
+          <AdminCard variant="subtle">
+            <CardContent className="p-5 space-y-3">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                관리 대상 등록 (모드별)
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {SUBJECT_KINDS.map((kind) => (
+                  <div
+                    key={kind}
+                    className="rounded-2xl border border-slate-100 bg-white px-3 py-3 text-center"
+                  >
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-tight">
+                      {subjectKindMeta[kind].label}
+                    </p>
+                    <p className="text-xl font-black text-slate-900 tabular-nums mt-1">
+                      {petsBySubjectKind[kind].toLocaleString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </AdminCard>
+        </motion.div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <AdminCard variant="subtle">

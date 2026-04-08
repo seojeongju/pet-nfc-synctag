@@ -270,7 +270,7 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind }:
                   whileTap={{ scale: 0.95 }}
                   className="min-w-[150px]"
                 >
-                  <Link href={`/profile/${pet.id}`}>
+                  <Link href={`/profile/${pet.id}${kindQs}`}>
                     <Card className="rounded-[32px] border-none shadow-app shadow-app-hover overflow-hidden bg-white text-center p-0">
                        <div className="h-28 bg-slate-100 relative overflow-hidden">
                           {pet.photo_url ? (

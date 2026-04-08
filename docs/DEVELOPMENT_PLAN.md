@@ -42,13 +42,63 @@ BLE 페어링, 지오펜스, NFC 모드별 랜딩, BLE 단절 시 폰 기준 위
 
 ## 4. M0 구현 체크리스트
 
-- migrations/0003_subject_kind_ble_events.sql
-- src/lib/subject-kind.ts
-- getPets / createPet + subject_kind
-- /hub, 로그인 콜백 /hub
-- 대시보드·펫 목록·등록에 kind 쿼리
+- [x] migrations/0003_subject_kind_ble_events.sql
+- [x] src/db/schema.sql (subject_kind, ble_location_events 참고 반영)
+- [x] src/lib/subject-kind.ts
+- [x] getPets / createPet / getScanLogs + subject_kind
+- [x] /hub, 로그인·랜딩 콜백 /hub
+- [x] 대시보드·네비·펫 목록·스캔·등록에 ?kind= 연동
+- [x] npm run build 통과 (소스 UTF-8 유지)
 
-## 5. 의사결정
+
+## 5. M1 구현 체크리스트
+
+- [x] updatePet에서 subject_kind 정규화 및 빈 업데이트 방지
+- [x] /dashboard/pets/[pet_id]/edit — 소유자만, DB 기준 모드로 PetForm 수정
+- [x] 공개 프로필: subjectKind 반영, 네비·발견 안내 카피, 하단 수정 → 편집 페이지
+- [x] 대시보드·관리 목록에서 프로필 링크에 ?kind= 유지
+- [x] 관리자 대시보드: 모드별 등록 건수(getPetsSubjectKindCounts)
+
+
+
+## 6. S1 구현 체크리스트
+
+- [x] ble_location_events INSERT/SELECT 공통 모듈 (src/lib/ble-location-events-db.ts)
+- [x] 요청 본문 검증 (src/lib/ble-events-input.ts; event_type: ble-event-contract.ts; raw_meta: ble-raw-payload.ts)
+- [x] Server Actions: recordBleLocationEvent, getBleLocationEvents (src/app/actions/ble-events.ts)
+- [x] REST: POST/GET /api/ble/events (세션 쿠키, pet 소유권 검증)
+- [x] 스캔 페이지에 BLE 이벤트 목록 (?kind= 모드 필터)
+
+
+## 7. S2 구현 체크리스트
+
+- [x] migrations/0004_geofences.sql
+- [x] Haversine/geo API/dashboard UI
+
+## 8. 의사결정
 
 - 1차 위치: 보호자 스마트폰 GPS.
 - B2B 연동: 후순위.
+
+## 8. S3 구현 체크리스트
+
+- [x] /t/[tag_id] 리다이렉트에 subject_kind 기반 kind 쿼리
+- [x] subjectKindNfcPublic 메타(역할 문구·CTA·공개 시 메모 비노출)
+- [x] 비소유자: 민감 메모 카드 대신 안내, 하단 네비 랜딩/전화/로그인 분기
+- [x] NFC 진입 배너(nfcEntry), 연락처 없을 때 버튼 비활성
+
+
+### S3 보완 (프라이버시·UX)
+
+- 공개 방문자: 노인/어린이 이름·비고 필드 마스킹, 모드별 안내 문구·긴급 뱃지
+- 로그인 링크에 callbackUrl(프로필 복귀 + kind/tag)
+- 공개 하단 네비 한글 라벨, NFC 없을 때 위치 공유 안내 문구
+- generateMetadata: 브라우저 탭 제목·설명
+
+## 9. 다음 단계 (H1 하드웨어·펌웨어)
+
+- nRF52 기반 프로토타입 보드, 코인셀 전원, NFC 패시브 유지
+- BLE 페어링·광고 UUID와 `/api/ble/events` 페이로드 매핑
+- `event_type` 권장 키·별칭 정규화: `src/lib/ble-event-contract.ts` (상세: `docs/H1_BLE_INTEGRATION.md`)
+- `raw_payload` 권장 키 추출·응답 `raw_meta`: `src/lib/ble-raw-payload.ts`
+- 현장 테스트 후 태그 인벤토리·펌웨어 버전 관리(관리자 태그 화면 연동 검토)

@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS pets (
     emergency_contact TEXT,
     is_lost BOOLEAN DEFAULT 0, -- 실종 상태 플래그
     theme_color TEXT DEFAULT '#14b8a6', -- 프로필 테마 컬러
+    subject_kind TEXT DEFAULT 'pet',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -95,3 +96,34 @@ CREATE TABLE IF NOT EXISTS scan_logs (
     ip_address TEXT,
     user_agent TEXT
 );
+
+CREATE TABLE IF NOT EXISTS ble_location_events (
+    id TEXT PRIMARY KEY,
+    owner_id TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,
+    pet_id TEXT NOT NULL REFERENCES pets(id) ON DELETE CASCADE,
+    event_type TEXT NOT NULL,
+    latitude REAL,
+    longitude REAL,
+    rssi INTEGER,
+    raw_payload TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_ble_events_pet ON ble_location_events(pet_id);
+CREATE INDEX IF NOT EXISTS idx_ble_events_created ON ble_location_events(created_at);
+
+CREATE TABLE IF NOT EXISTS geofences (
+    id TEXT PRIMARY KEY,
+    owner_id TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,
+    pet_id TEXT NOT NULL REFERENCES pets(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL,
+    radius_meters REAL NOT NULL,
+    is_active INTEGER NOT NULL DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_geofences_pet ON geofences(pet_id);
+CREATE INDEX IF NOT EXISTS idx_geofences_owner ON geofences(owner_id);

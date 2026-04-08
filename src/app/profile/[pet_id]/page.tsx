@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getPet } from "@/app/actions/pet";
 import { getPetTags } from "@/app/actions/tag";
 import { notFound } from "next/navigation";
@@ -5,9 +6,28 @@ import { getAuth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import PetProfileClient from "@/components/profile/PetProfileClient";
+import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
 
 export const runtime = "edge";
-type PetDetail = { id: string; owner_id: string };
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ pet_id: string }>;
+}): Promise<Metadata> {
+  const { pet_id } = await params;
+  const row = (await getPet(pet_id)) as { name?: string; subject_kind?: string | null } | null;
+  if (!row?.name) {
+    return { title: "프로필 · Pet-ID Connect" };
+  }
+  const kind = parseSubjectKind(row.subject_kind);
+  const label = subjectKindMeta[kind].label;
+  return {
+    title: `${row.name} · ${label} · Pet-ID`,
+    description: `${label} 연락 안내 페이지입니다. NFC 스캔 시 발견 위치를 남길 수 있습니다.`,
+  };
+}
+type PetDetail = { id: string; owner_id: string; subject_kind?: string | null };
 
 export default async function PublicProfilePage({ 
   params, 
@@ -34,6 +54,7 @@ export default async function PublicProfilePage({
 
   const isOwner = session?.user.id === pet.owner_id;
   const petTags = isOwner ? await getPetTags(pet.id) : [];
+  const subjectKind = parseSubjectKind(pet.subject_kind);
 
   return (
     <PetProfileClient 
@@ -41,6 +62,9 @@ export default async function PublicProfilePage({
       isOwner={isOwner}
       petTags={petTags || []}
       tagId={tagId}
+      subjectKind={subjectKind}
+      isPublicViewer={!isOwner}
+      nfcEntry={!!tagId}
     />
   );
 }

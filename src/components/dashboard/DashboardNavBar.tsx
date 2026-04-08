@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { PawPrint, UserCircle, Bell, LayoutGrid } from "lucide-react";
+import { PawPrint, UserCircle, Bell, LayoutGrid, MapPin } from "lucide-react";
 import { parseSubjectKind } from "@/lib/subject-kind";
 
 export function DashboardNavBar() {
@@ -30,6 +30,10 @@ export function DashboardNavBar() {
           </Link>
           <Link href={`/dashboard/scans${q}`} className="text-sm font-medium hover:text-primary">
             스캔 기록
+          </Link>
+          <Link href={`/dashboard/geofences${q}`} className="text-sm font-medium hover:text-primary inline-flex items-center gap-1">
+            <MapPin className="w-4 h-4" />
+            지오펜스
           </Link>
         </nav>
         <div className="flex items-center gap-4">

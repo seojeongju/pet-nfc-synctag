@@ -60,10 +60,18 @@ export async function getPet(petId: string) {
 
 export async function updatePet(petId: string, data: Partial<PetData>) {
     const db = getDB();
-    const fields = Object.keys(data) as (keyof PetData)[];
-    const setClause = fields.map(f => `${f} = ?`).join(", ");
-    const values = fields.map(f => data[f]);
-    
+    const payload: Partial<PetData> = { ...data };
+    if (payload.subject_kind !== undefined) {
+        payload.subject_kind = parseSubjectKind(payload.subject_kind);
+    }
+    const fields = (Object.keys(payload) as (keyof PetData)[]).filter(
+        (k) => payload[k] !== undefined
+    );
+    if (fields.length === 0) return;
+
+    const setClause = fields.map((f) => `${f} = ?`).join(", ");
+    const values = fields.map((f) => payload[f]);
+
     await db.prepare(`UPDATE pets SET ${setClause}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
         .bind(...values, petId)
         .run();

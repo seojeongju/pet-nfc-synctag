@@ -164,6 +164,29 @@ export async function getAdminStats() {
     };
 }
 
+/** 관리 대상(pets) subject_kind별 건수 — COALESCE(subject_kind,'pet') 기준 */
+export async function getPetsSubjectKindCounts() {
+    const db = getDB();
+    const { results } = await db
+        .prepare(
+            `SELECT COALESCE(subject_kind, 'pet') AS k, COUNT(*) AS c FROM pets GROUP BY k`
+        )
+        .all<{ k: string; c: number }>()
+        .catch(() => ({ results: [] as { k: string; c: number }[] }));
+
+    const counts: Record<"pet" | "elder" | "child" | "luggage", number> = {
+        pet: 0,
+        elder: 0,
+        child: 0,
+        luggage: 0,
+    };
+    for (const row of results) {
+        const key = row.k as keyof typeof counts;
+        if (key in counts) counts[key] = row.c;
+    }
+    return counts;
+}
+
 export async function getTagOpsStats() {
     const db = getDB();
     const total = await db.prepare("SELECT COUNT(*) AS value FROM tags").first<{ value: number }>();

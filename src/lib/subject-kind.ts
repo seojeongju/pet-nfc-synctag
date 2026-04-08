@@ -57,3 +57,14 @@ export const subjectKindMeta: Record<
     emptyRegisterHint: "먼저 소지품을 등록해야 태그를 연결할 수 있어요.",
   },
 };
+
+/** NFC/QR (S3) */
+export const subjectKindNfcPublic: Record<
+  SubjectKind,
+  { roleLine: string; callCta: string; hideMedicalBlock: boolean; idCardLabel: string; scanHintLabel: string; scanHintBody: string }
+> = {
+  pet: { roleLine: "NFC 공개 프로필 · 반려동물", callCta: "보호자에게 연락하기", hideMedicalBlock: true, idCardLabel: "식별 메모", scanHintLabel: "스캔 기록", scanHintBody: "위치 공유로 보호자에게 도움을 줄 수 있어요." },
+  elder: { roleLine: "NFC 공개 프로필 · 케어", callCta: "보호자·가족에게 연락하기", hideMedicalBlock: true, idCardLabel: "참고 메모", scanHintLabel: "안내", scanHintBody: "필요 시 보호자에게 연락해 주세요." },
+  child: { roleLine: "NFC 공개 프로필 · 보호 대상", callCta: "보호자에게 연락하기", hideMedicalBlock: true, idCardLabel: "식별", scanHintLabel: "안내", scanHintBody: "보호자 연락을 우선해 주세요." },
+  luggage: { roleLine: "NFC 공개 프로필 · 분실물", callCta: "등록자에게 연락하기", hideMedicalBlock: true, idCardLabel: "소지품", scanHintLabel: "분실 안내", scanHintBody: "주인에게 연락해 주시면 감사하겠습니다." },
+};

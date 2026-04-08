@@ -73,7 +73,7 @@ export default async function PetsPage({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 px-2">
                 {pets.length > 0 ? (
                     pets.map((pet: PetListItem) => (
-                        <Link href={`/profile/${pet.id}`} key={pet.id} className="group">
+                        <Link href={`/profile/${pet.id}${kindQs}`} key={pet.id} className="group">
                             <Card className="rounded-[32px] border-none shadow-xl shadow-slate-100/50 overflow-hidden hover:scale-[1.02] transition-all duration-300">
                                 <div className="h-40 bg-teal-50 relative">
                                     {pet.photo_url ? (
