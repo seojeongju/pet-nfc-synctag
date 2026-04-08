@@ -150,3 +150,27 @@ export async function getPetTags(petId: string) {
         .all();
     return results;
 }
+
+export type PetTagRow = { id: string; is_active?: boolean };
+
+/**
+ * NFC 공개 진입(?tag=) 후 보호자 UI를 열 때: 세션이 실제 소유자인지 검증한 뒤 태그 목록만 반환
+ */
+export async function verifyOwnerAndLoadPetTags(petId: string) {
+    const context = getRequestContext();
+    const auth = getAuth(context.env);
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session?.user?.id) {
+        return { ok: false as const, error: "login_required" as const, tags: [] as PetTagRow[] };
+    }
+    const db = getDB();
+    const pet = await db
+        .prepare("SELECT owner_id FROM pets WHERE id = ?")
+        .bind(petId)
+        .first<{ owner_id: string }>();
+    if (!pet || pet.owner_id !== session.user.id) {
+        return { ok: false as const, error: "forbidden" as const, tags: [] as PetTagRow[] };
+    }
+    const { results } = await db.prepare("SELECT id, is_active FROM tags WHERE pet_id = ?").bind(petId).all<PetTagRow>();
+    return { ok: true as const, tags: results ?? [] };
+}

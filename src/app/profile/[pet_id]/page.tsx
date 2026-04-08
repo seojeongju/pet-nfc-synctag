@@ -53,7 +53,9 @@ export default async function PublicProfilePage({
   }
 
   const isOwner = session?.user.id === pet.owner_id;
-  const petTags = isOwner ? await getPetTags(pet.id) : [];
+  /** NFC(?tag=)로 들어온 보호자는 클라이언트에서 확인 전까지 태그 목록을 내려주지 않음 */
+  const nfcOwnerGate = Boolean(tagId && isOwner);
+  const petTags = isOwner && !nfcOwnerGate ? await getPetTags(pet.id) : [];
   const subjectKind = parseSubjectKind(pet.subject_kind);
 
   return (
@@ -65,6 +67,7 @@ export default async function PublicProfilePage({
       subjectKind={subjectKind}
       isPublicViewer={!isOwner}
       nfcEntry={!!tagId}
+      nfcOwnerGate={nfcOwnerGate}
     />
   );
 }

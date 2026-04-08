@@ -8,13 +8,14 @@ import {
   ArrowLeft, ShieldCheck, PawPrint, Home, 
   Settings, Activity,
   Calendar, Fingerprint, MapPin,
-  UserRound, Baby, Briefcase, LogIn,
+  UserRound, Baby, Briefcase,   LogIn,
+  Loader2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { LocationShare } from "@/components/LocationShare";
 import { TagManageCard } from "@/components/TagManageCard";
-import { useRef } from "react";
+import { useRef, useState, useEffect, useTransition } from "react";
 import Image from "next/image";
 import { subjectKindMeta, subjectKindNfcPublic, type SubjectKind } from "@/lib/subject-kind";
 import {
@@ -23,6 +24,7 @@ import {
   nfcPublicFinderIntro,
   nfcPublicEmergencyBadge,
 } from "@/lib/nfc-public-display";
+import { verifyOwnerAndLoadPetTags } from "@/app/actions/tag";
 
 const heroIcons: Record<SubjectKind, LucideIcon> = {
   pet: PawPrint,
@@ -46,6 +48,8 @@ interface PetProfileClientProps {
   subjectKind: SubjectKind;
   isPublicViewer: boolean;
   nfcEntry: boolean;
+  /** NFC(?tag=) 진입 + 세션이 소유자일 때 보호자 패널을 숨김 */
+  nfcOwnerGate?: boolean;
 }
 
 export default function PetProfileClient({
@@ -56,8 +60,21 @@ export default function PetProfileClient({
   subjectKind,
   isPublicViewer,
   nfcEntry,
+  nfcOwnerGate = false,
 }: PetProfileClientProps) {
   const containerRef = useRef(null);
+  const [ownerUnlocked, setOwnerUnlocked] = useState(false);
+  const [petTagsLive, setPetTagsLive] = useState(petTags);
+  const [unlockPending, startUnlock] = useTransition();
+  const [unlockError, setUnlockError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPetTagsLive(petTags);
+  }, [petTags]);
+
+  /** 발견자 UI와 동일하게 취급: 비소유자이거나, NFC 게이트에서 아직 잠금 해제 전 */
+  const treatAsPublicVisitor = isPublicViewer || (nfcOwnerGate && !ownerUnlocked);
+
   const { scrollY } = useScroll();
   
   // Parallax effects for the hero image
@@ -79,23 +96,23 @@ export default function PetProfileClient({
   const nfc = subjectKindNfcPublic[subjectKind];
   const kindQs = `?kind=${encodeURIComponent(subjectKind)}`;
   const HeroIcon = heroIcons[subjectKind];
-  const displayName = maskNameForPublicViewer(pet.name, subjectKind, isPublicViewer);
+  const displayName = maskNameForPublicViewer(pet.name, subjectKind, treatAsPublicVisitor);
   const profileLoginCallback = `/profile/${pet.id}${kindQs}${tagId ? `&tag=${encodeURIComponent(tagId)}` : ""}`;
   const loginHref = `/login?callbackUrl=${encodeURIComponent(profileLoginCallback)}`;
   const finderCopy =
     subjectKind === "pet"
       ? "아이를 발견하셨나요? 당황하지 마세요! 아래 연락처로 연락 주시면 보호자님께 즉시 전달됩니다."
       : "발견하셨나요? 아래 연락처로 연락 주시면 등록자에게 즉시 전달됩니다.";
-  const finderParagraph = isPublicViewer ? nfcPublicFinderIntro[subjectKind] : finderCopy;
+  const finderParagraph = treatAsPublicVisitor ? nfcPublicFinderIntro[subjectKind] : finderCopy;
   const idSecondary =
     subjectKind === "pet"
       ? "품종 미상"
       : subjectKind === "luggage"
         ? "메모 없음"
         : "비고 없음";
-  const breedForDisplay = maskBreedFieldForPublic(pet.breed, subjectKind, isPublicViewer, idSecondary);
+  const breedForDisplay = maskBreedFieldForPublic(pet.breed, subjectKind, treatAsPublicVisitor, idSecondary);
   const heroBreedSubtitle =
-    !isPublicViewer
+    !treatAsPublicVisitor
       ? pet.breed?.trim() || null
       : subjectKind === "elder" || subjectKind === "child"
         ? pet.breed?.trim()
@@ -126,7 +143,7 @@ export default function PetProfileClient({
           style={{ opacity: headerOpacity }}
           className="absolute top-8 left-6 right-6 z-30 flex items-center justify-between"
         >
-          <Link href={isOwner ? `/dashboard${kindQs}` : "/"}>
+          <Link href={treatAsPublicVisitor ? "/" : `/dashboard${kindQs}`}>
              <div className="w-12 h-12 rounded-2xl glass-dark border-white/10 flex items-center justify-center shadow-2xl text-white active:scale-90 transition-transform">
                 <ArrowLeft className="w-6 h-6" />
              </div>
@@ -163,12 +180,53 @@ export default function PetProfileClient({
         <div className="absolute bottom-0 left-0 w-full h-12 bg-[#FDFCFB] rounded-t-[48px] z-10" />
       </div>
 
-      {nfcEntry && isPublicViewer && (
+      {nfcEntry && treatAsPublicVisitor && (
         <div className="max-w-md mx-auto px-6 -mt-2 mb-2 relative z-20">
           <div className="rounded-2xl bg-teal-600/10 border border-teal-200 px-4 py-2 text-center">
             <p className="text-[11px] font-bold text-teal-800">
               NFC 태그로 이 페이지를 열었습니다. 발견을 도와주셔서 감사합니다.
             </p>
+          </div>
+        </div>
+      )}
+
+      {nfcOwnerGate && !ownerUnlocked && (
+        <div className="max-w-md mx-auto px-6 -mt-1 mb-3 relative z-20">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50/90 px-4 py-3 space-y-2">
+            <p className="text-[11px] font-bold text-amber-900 leading-snug">
+              이 기기에 로그인된 계정이 이 프로필의 보호자와 일치합니다. 공용 기기에서는 다른 분이 보지 못하도록, 태그·대시보드 관리는 아래를 눌러 확인 후에만 열립니다.
+            </p>
+            <Button
+              type="button"
+              disabled={unlockPending}
+              onClick={() => {
+                setUnlockError(null);
+                startUnlock(async () => {
+                  const r = await verifyOwnerAndLoadPetTags(pet.id);
+                  if (r.ok) {
+                    setOwnerUnlocked(true);
+                    setPetTagsLive(r.tags);
+                  } else if (r.error === "login_required") {
+                    setUnlockError("다시 로그인한 뒤 시도해 주세요.");
+                  } else {
+                    setUnlockError("소유자 확인에 실패했습니다.");
+                  }
+                });
+              }}
+              className="w-full h-11 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-black uppercase tracking-wide"
+            >
+              {unlockPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin inline-block mr-2 align-middle" />
+                  확인 중…
+                </>
+              ) : (
+                "보호자 화면 열기 (태그·상세 관리)"
+              )}
+            </Button>
+            {unlockError && (
+              <p className="text-[10px] font-bold text-rose-600 text-center">{unlockError}</p>
+            )}
           </div>
         </div>
       )}
@@ -198,7 +256,7 @@ export default function PetProfileClient({
                       )}
                     </h2>
                     <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-                      {isPublicViewer ? nfc.roleLine : "Digital Identification"}
+                      {treatAsPublicVisitor ? nfc.roleLine : "Digital Identification"}
                     </p>
                  </div>
                  <motion.div 
@@ -208,7 +266,7 @@ export default function PetProfileClient({
                  >
                     <AlertTriangle className="w-5 h-5" />
                     <span className="text-[8px] font-black mt-0.5">
-                      {isPublicViewer ? nfcPublicEmergencyBadge[subjectKind] : "긴급"}
+                      {treatAsPublicVisitor ? nfcPublicEmergencyBadge[subjectKind] : "긴급"}
                     </span>
                  </motion.div>
               </div>
@@ -223,7 +281,7 @@ export default function PetProfileClient({
                  <a href={`tel:${pet.emergency_contact}`} className="group">
                     <Button className="w-full h-20 rounded-[28px] bg-teal-500 hover:bg-teal-600 text-white font-black text-lg shadow-xl shadow-teal-500/20 transition-all active:scale-[0.97] flex items-center justify-center gap-4 border-b-4 border-teal-700">
                        <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center"><Phone className="w-6 h-6 animate-pulse" /></div>
-                       {isPublicViewer ? nfc.callCta : "보호자님 호출하기"}
+                       {treatAsPublicVisitor ? nfc.callCta : "보호자님 호출하기"}
                     </Button>
                  </a>
                  ) : (
@@ -231,7 +289,7 @@ export default function PetProfileClient({
                       등록된 연락처가 없습니다
                     </Button>
                  )}
-                 {isPublicViewer && !tagId && (
+                 {treatAsPublicVisitor && !tagId && (
                    <p className="text-[11px] text-slate-400 text-center font-medium -mt-1">
                      NFC 태그로 스캔한 경우에만 발견 위치를 보호자에게 전달할 수 있어요.
                    </p>
@@ -248,21 +306,21 @@ export default function PetProfileClient({
               <div className="w-10 h-10 rounded-[14px] bg-slate-50 flex items-center justify-center text-slate-400"><Fingerprint className="w-5 h-5" /></div>
               <div>
                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                   {isPublicViewer ? nfc.idCardLabel : "Identification"}
+                   {treatAsPublicVisitor ? nfc.idCardLabel : "Identification"}
                  </p>
                  <p className="text-xs font-black text-slate-900 mt-0.5">{breedForDisplay}</p>
               </div>
            </div>
            <div className="bg-white p-6 rounded-[32px] shadow-sm border border-slate-100 space-y-3">
               <div className="w-10 h-10 rounded-[14px] bg-slate-50 flex items-center justify-center text-slate-400">
-                {isPublicViewer ? <MapPin className="w-5 h-5" /> : <Calendar className="w-5 h-5" />}
+                {treatAsPublicVisitor ? <MapPin className="w-5 h-5" /> : <Calendar className="w-5 h-5" />}
               </div>
               <div>
                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                   {isPublicViewer ? nfc.scanHintLabel : "Age Status"}
+                   {treatAsPublicVisitor ? nfc.scanHintLabel : "Age Status"}
                  </p>
                  <p className="text-xs font-black text-slate-900 mt-0.5 leading-snug">
-                   {isPublicViewer ? nfc.scanHintBody : "최신 기록 확인"}
+                   {treatAsPublicVisitor ? nfc.scanHintBody : "최신 기록 확인"}
                  </p>
               </div>
            </div>
@@ -271,7 +329,7 @@ export default function PetProfileClient({
         {/* Detailed info: 소유자 전체 / 공개 방문자는 민감 메모 비노출 (S3) */}
         <motion.section variants={itemVariants}>
            <Card className="rounded-[40px] border-none shadow-sm bg-white overflow-hidden">
-              {!isPublicViewer ? (
+              {!treatAsPublicVisitor ? (
                 <>
               <div className="flex gap-1 p-2 bg-slate-50 mx-6 mt-6 rounded-2xl">
                  <button type="button" className="flex-1 py-3 text-[10px] font-black bg-white rounded-xl shadow-sm text-teal-600 uppercase tracking-wider transition-all">Health</button>
@@ -311,10 +369,10 @@ export default function PetProfileClient({
         </motion.section>
 
         {/* Owner Exclusive Section */}
-        {isOwner && (
+        {isOwner && (!nfcOwnerGate || ownerUnlocked) && (
           <motion.section variants={itemVariants}>
              <div className="px-2">
-                <TagManageCard petId={pet.id} existingTags={petTags} />
+                <TagManageCard petId={pet.id} existingTags={petTagsLive} />
              </div>
           </motion.section>
         )}
@@ -329,7 +387,7 @@ export default function PetProfileClient({
       </motion.div>
 
       {/* Floating Bottom Nav: 소유자는 대시보드 연동 · 공개 방문자는 랜딩/연락 중심 (S3) */}
-      {isPublicViewer ? (
+      {treatAsPublicVisitor ? (
       <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm h-20 glass-dark rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] z-50 flex items-center justify-around px-6 border border-white/20">
          <Link href="/" className="flex flex-col items-center gap-1 group">
             <div className="p-2.5 rounded-2xl text-slate-400 group-hover:text-white transition-all active:scale-90">
