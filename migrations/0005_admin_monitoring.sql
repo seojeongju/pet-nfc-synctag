@@ -1,4 +1,4 @@
-﻿-- NFC unknown UID access log
+-- NFC unknown UID access log
 CREATE TABLE IF NOT EXISTS unknown_tag_accesses (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   tag_uid TEXT NOT NULL,
