@@ -75,6 +75,9 @@ CREATE TABLE IF NOT EXISTS tags (
 );
 -- Optional columns (see migrations): ble_mac, product_name, assigned_subject_kind, status, batch_id
 
+-- Mode announcements (see migrations/0007_mode_announcements.sql)
+-- CREATE TABLE mode_announcements (...)
+
 CREATE TABLE IF NOT EXISTS health_records (
     id TEXT PRIMARY KEY,
     pet_id TEXT NOT NULL REFERENCES pets(id) ON DELETE CASCADE,

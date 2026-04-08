@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "check:encoding": "node scripts/check-source-utf8.js",
+    "prebuild": "node scripts/check-source-utf8.js",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"

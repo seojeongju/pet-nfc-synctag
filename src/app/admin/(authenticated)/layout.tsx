@@ -3,7 +3,7 @@ import { getRequestContext } from "@cloudflare/next-on-pages";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { LayoutDashboard, Tag, Package, Home, LogOut, ChevronRight, Bell, Radio } from "lucide-react";
+import { LayoutDashboard, Tag, Package, Home, LogOut, ChevronRight, Bell, Radio, Megaphone } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { adminUi } from "@/styles/admin/ui";
@@ -36,6 +36,7 @@ export default async function AdminAuthenticatedLayout({
 
   const navItems = [
     { href: "/admin", label: "운영 대시보드", icon: LayoutDashboard, color: "text-teal-500" },
+    { href: "/admin/announcements", label: "모드·배치 공지", icon: Megaphone, color: "text-indigo-500" },
     { href: "/admin/monitoring", label: "NFC/BLE 모니터링", icon: Radio, color: "text-sky-500" },
     { href: "/admin/tags", label: "태그 재고 관리", icon: Tag, color: "text-amber-500" },
   ];

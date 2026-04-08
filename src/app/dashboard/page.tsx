@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import DashboardClient from "@/components/dashboard/DashboardClient";
 import { parseSubjectKind } from "@/lib/subject-kind";
+import { listVisibleAnnouncementsForGuardian } from "@/app/actions/mode-announcements";
 
 export const runtime = "edge";
 
@@ -29,12 +30,13 @@ export default async function DashboardPage({
 
   // 2. 데이터 조회 및 관리자 권한 확인 - 이 과정에서의 오류는 세션 문제와 분리하여 처리
   try {
-    const [pets, roleRow] = await Promise.all([
+    const [pets, roleRow, announcements] = await Promise.all([
       getPets(session.user.id, subjectKind),
       context.env.DB
         .prepare("SELECT role FROM user WHERE id = ?")
         .bind(session.user.id)
-        .first<{ role?: string | null }>()
+        .first<{ role?: string | null }>(),
+      listVisibleAnnouncementsForGuardian(session.user.id, subjectKind),
     ]);
 
     const isAdmin = roleRow?.role === "admin";
@@ -45,6 +47,7 @@ export default async function DashboardPage({
         pets={pets as any || []}
         isAdmin={isAdmin}
         subjectKind={subjectKind}
+        modeAnnouncements={announcements}
       />
     );
   } catch (error: unknown) {
@@ -63,6 +66,7 @@ export default async function DashboardPage({
         pets={[]}
         isAdmin={false}
         subjectKind={subjectKind}
+        modeAnnouncements={[]}
       />
     );
   }

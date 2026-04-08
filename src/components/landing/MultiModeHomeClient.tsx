@@ -46,11 +46,11 @@ export default function MultiModeHomeClient({
         <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative rounded-[40px] overflow-hidden border-4 border-white shadow-[0_25px_60px_rgba(0,0,0,0.12)] bg-slate-950 aspect-[5/4] flex flex-col items-center justify-center text-center px-6"
+          className="relative rounded-[40px] overflow-hidden border-4 border-white shadow-[0_25px_60px_rgba(0,0,0,0.12)] bg-slate-950 aspect-[5/4] flex flex-col items-center justify-center text-center px-6 pb-12 pt-4"
         >
           <motion.div
             initial={{ scale: 1.1, opacity: 0 }}
-            animate={{ scale: 1, opacity: 0.7 }}
+            animate={{ scale: 1, opacity: 0.9 }}
             transition={{ duration: 1.5, ease: "easeOut" }}
             className="absolute inset-0 z-0"
           >
@@ -63,13 +63,15 @@ export default function MultiModeHomeClient({
             />
           </motion.div>
 
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-900/60 via-slate-900/40 to-teal-950/80 z-1" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(45,212,191,0.2),transparent_60%)] z-1" />
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-900/50 via-slate-900/20 to-teal-900/60 z-1" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(45,212,191,0.15),transparent_60%)] z-1" />
 
-          <Sparkles className="w-10 h-10 text-teal-300 mb-4 relative z-10 drop-shadow-[0_0_15px_rgba(94,234,212,0.5)]" />
-          <h1 className="text-2xl font-black text-white tracking-tight relative z-10 drop-shadow-md">링크유</h1>
-          <p className="text-sm text-slate-100 mt-3 font-semibold leading-relaxed relative z-10 drop-shadow-sm">
-            NFC로 반려동물·어르신·아이·링크유 - 캐리까지
+          <Sparkles className="w-10 h-10 text-teal-300 mb-4 relative z-10 drop-shadow-[0_0_15px_rgba(94,234,212,0.6)]" />
+          <h1 className="text-2xl font-black text-white tracking-tight relative z-10 drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)]">
+            링크유
+          </h1>
+          <p className="text-sm text-slate-100 mt-3 font-semibold leading-relaxed relative z-10 drop-shadow-[0_1px_5px_rgba(0,0,0,0.4)]">
+            NFC로 반려동물·어르신·아이·링크유 - 태그까지
             <br />
             한 번에 연결하는 스마트 명함 · Link-U
           </p>

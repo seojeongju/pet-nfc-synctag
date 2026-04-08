@@ -17,6 +17,8 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
 import type { LucideIcon } from "lucide-react";
+import type { ModeAnnouncementRow } from "@/types/mode-announcement";
+import ModeAnnouncementsBanner from "@/components/dashboard/ModeAnnouncementsBanner";
 
 const subjectAvatars: Record<SubjectKind, LucideIcon> = {
   pet: PawPrint,
@@ -30,9 +32,10 @@ interface DashboardClientProps {
   pets: Array<{ id: string; name: string; breed?: string | null; photo_url?: string | null }>;
   isAdmin: boolean;
   subjectKind: SubjectKind;
+  modeAnnouncements: ModeAnnouncementRow[];
 }
 
-export default function DashboardClient({ session, pets, isAdmin, subjectKind }: DashboardClientProps) {
+export default function DashboardClient({ session, pets, isAdmin, subjectKind, modeAnnouncements }: DashboardClientProps) {
   const [isPending, startTransition] = useTransition();
   const [selectedPetId, setSelectedPetId] = useState("");
   const [tagId, setTagId] = useState("");
@@ -91,6 +94,8 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind }:
         className="max-w-md mx-auto px-5 pt-8 space-y-8"
       >
         {/* Admin Transition Banner */}
+        <ModeAnnouncementsBanner items={modeAnnouncements} />
+
         {isAdmin && (
           <motion.section variants={itemVariants}>
             <div className="glass-dark rounded-[32px] p-5 text-white flex items-center justify-between shadow-2xl">
