@@ -6,16 +6,18 @@ import { getRequestContext } from "@cloudflare/next-on-pages";
 import DashboardClient from "@/components/dashboard/DashboardClient";
 import { parseSubjectKind } from "@/lib/subject-kind";
 import { listVisibleAnnouncementsForGuardian } from "@/app/actions/mode-announcements";
+import { requireTenantMember } from "@/lib/tenant-membership";
 
 export const runtime = "edge";
 
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ kind?: string }>;
+  searchParams: Promise<{ kind?: string; tenant?: string }>;
 }) {
-  const { kind: kindParam } = await searchParams;
+  const { kind: kindParam, tenant: tenantParam } = await searchParams;
   const subjectKind = parseSubjectKind(kindParam);
+  const tenantId = typeof tenantParam === "string" && tenantParam.trim() ? tenantParam.trim() : null;
   const context = getRequestContext();
   const auth = getAuth(context.env);
 
@@ -30,8 +32,11 @@ export default async function DashboardPage({
 
   // 2. 데이터 조회 및 관리자 권한 확인 - 이 과정에서의 오류는 세션 문제와 분리하여 처리
   try {
+    if (tenantId) {
+      await requireTenantMember(context.env.DB, session.user.id, tenantId);
+    }
     const [pets, roleRow, announcements] = await Promise.all([
-      getPets(session.user.id, subjectKind),
+      getPets(session.user.id, subjectKind, tenantId ?? undefined),
       context.env.DB
         .prepare("SELECT role FROM user WHERE id = ?")
         .bind(session.user.id)
@@ -48,6 +53,7 @@ export default async function DashboardPage({
         isAdmin={isAdmin}
         subjectKind={subjectKind}
         modeAnnouncements={announcements}
+        tenantId={tenantId}
       />
     );
   } catch (error: unknown) {
@@ -67,6 +73,7 @@ export default async function DashboardPage({
         isAdmin={false}
         subjectKind={subjectKind}
         modeAnnouncements={[]}
+        tenantId={tenantId}
       />
     );
   }

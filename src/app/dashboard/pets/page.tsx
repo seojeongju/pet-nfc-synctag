@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { Plus, PawPrint, ChevronRight, UserRound, Baby, Briefcase, Gem } from "lucide-react";
 import { parseSubjectKind, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
 import type { LucideIcon } from "lucide-react";
+import { requireTenantMember } from "@/lib/tenant-membership";
 
 export const runtime = "edge";
 type PetListItem = {
@@ -30,12 +31,16 @@ const listIcons: Record<SubjectKind, LucideIcon> = {
 export default async function PetsPage({
     searchParams,
 }: {
-    searchParams: Promise<{ kind?: string }>;
+    searchParams: Promise<{ kind?: string; tenant?: string }>;
 }) {
-    const { kind: kindParam } = await searchParams;
+    const { kind: kindParam, tenant: tenantParam } = await searchParams;
     const subjectKind = parseSubjectKind(kindParam);
     const meta = subjectKindMeta[subjectKind];
-    const kindQs = `?kind=${encodeURIComponent(subjectKind)}`;
+    const tenantId =
+        typeof tenantParam === "string" && tenantParam.trim() ? tenantParam.trim() : null;
+    const qs = new URLSearchParams({ kind: subjectKind });
+    if (tenantId) qs.set("tenant", tenantId);
+    const kindQs = `?${qs.toString()}`;
     const ListIcon = listIcons[subjectKind];
 
     const context = getRequestContext();
@@ -48,7 +53,11 @@ export default async function PetsPage({
         redirect("/login");
     }
 
-    const pets = await getPets(session.user.id, subjectKind);
+    if (tenantId) {
+        await requireTenantMember(context.env.DB, session.user.id, tenantId);
+    }
+
+    const pets = await getPets(session.user.id, subjectKind, tenantId ?? undefined);
     const subLabel =
         subjectKind === "pet" ? `${pets.length}마리의 반려동물` : `${pets.length}건의 등록`;
 

@@ -9,6 +9,7 @@ import { Bell, MapPin, Clock, Smartphone, PawPrint, Bluetooth, Cpu, Tag, KeyRoun
 import { extractBleRawMeta } from "@/lib/ble-raw-payload";
 import { cn } from "@/lib/utils";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
+import { requireTenantMember } from "@/lib/tenant-membership";
 
 export const runtime = "edge";
 type ScanLog = {
@@ -25,11 +26,13 @@ type ScanLog = {
 export default async function ScansPage({
     searchParams,
 }: {
-    searchParams: Promise<{ kind?: string }>;
+    searchParams: Promise<{ kind?: string; tenant?: string }>;
 }) {
-    const { kind: kindParam } = await searchParams;
+    const { kind: kindParam, tenant: tenantParam } = await searchParams;
     const subjectKind = parseSubjectKind(kindParam);
     const meta = subjectKindMeta[subjectKind];
+    const tenantId =
+        typeof tenantParam === "string" && tenantParam.trim() ? tenantParam.trim() : null;
 
     const context = getRequestContext();
     const auth = getAuth(context.env);
@@ -41,8 +44,12 @@ export default async function ScansPage({
         redirect("/login");
     }
 
-    const logs = await getScanLogs(session.user.id, subjectKind);
-    const bleEvents = await getBleLocationEvents(subjectKind, 30);
+    if (tenantId) {
+        await requireTenantMember(context.env.DB, session.user.id, tenantId);
+    }
+
+    const logs = await getScanLogs(session.user.id, subjectKind, tenantId ?? undefined);
+    const bleEvents = await getBleLocationEvents(subjectKind, 30, tenantId ?? undefined);
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 font-outfit pb-20">

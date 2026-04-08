@@ -14,6 +14,7 @@ import {
   listGeofencesForOwnerKind,
   type GeofenceWithPetName,
 } from "@/lib/geofences-db";
+import { requireTenantMember } from "@/lib/tenant-membership";
 
 async function requireSessionUserId(): Promise<string> {
   const context = getRequestContext();
@@ -32,14 +33,24 @@ function parseNumber(name: string, formData: FormData, min: number, max: number)
   return n;
 }
 
-export async function getGeofences(subjectKind: SubjectKind): Promise<GeofenceWithPetName[]> {
+export async function getGeofences(
+  subjectKind: SubjectKind,
+  tenantId?: string
+): Promise<GeofenceWithPetName[]> {
   const ownerId = await requireSessionUserId();
   const kind = parseSubjectKind(subjectKind);
   try {
-    return await listGeofencesForOwnerKind(getDB(), ownerId, kind);
+    return await listGeofencesForOwnerKind(getDB(), ownerId, kind, tenantId);
   } catch {
     return [];
   }
+}
+
+function redirectQs(kind: SubjectKind, tenantId?: string | null, err?: string): string {
+  const qs = new URLSearchParams({ kind });
+  if (tenantId) qs.set("tenant", tenantId);
+  if (err) qs.set("err", err);
+  return qs.toString();
 }
 
 export async function createGeofenceForm(formData: FormData): Promise<void> {
@@ -50,17 +61,35 @@ export async function createGeofenceForm(formData: FormData): Promise<void> {
   const lon = parseNumber("longitude", formData, -180, 180);
   const radius = parseNumber("radius_meters", formData, 10, 100000);
   const kindParam = String(formData.get("kind") ?? "pet").trim();
+  const tenantParam = String(formData.get("tenant") ?? "").trim();
+  const tenantId = tenantParam || null;
 
   const kind = parseSubjectKind(kindParam);
 
   if (!pet_id || !name || lat === null || lon === null || radius === null) {
-    redirect(`/dashboard/geofences?kind=${encodeURIComponent(kind)}&err=invalid`);
+    redirect(`/dashboard/geofences?${redirectQs(kind, tenantId, "invalid")}`);
   }
 
   const db = getDB();
+  if (tenantId) {
+    await requireTenantMember(db, ownerId, tenantId);
+  }
   const owned = await isPetOwnedBy(db, pet_id, ownerId);
   if (!owned) {
-    redirect(`/dashboard/geofences?kind=${encodeURIComponent(kind)}&err=forbidden`);
+    redirect(`/dashboard/geofences?${redirectQs(kind, tenantId, "forbidden")}`);
+  }
+
+  const petRow = await db
+    .prepare("SELECT tenant_id FROM pets WHERE id = ? AND owner_id = ?")
+    .bind(pet_id, ownerId)
+    .first<{ tenant_id: string | null }>();
+  const petTenant = petRow?.tenant_id ?? null;
+  if (tenantId) {
+    if (petTenant !== tenantId) {
+      redirect(`/dashboard/geofences?${redirectQs(kind, tenantId, "forbidden")}`);
+    }
+  } else if (petTenant != null) {
+    redirect(`/dashboard/geofences?${redirectQs(kind, null, "forbidden")}`);
   }
 
   const id = nanoid();
@@ -73,19 +102,26 @@ export async function createGeofenceForm(formData: FormData): Promise<void> {
     .run();
 
   revalidatePath("/dashboard/geofences");
-  redirect(`/dashboard/geofences?kind=${encodeURIComponent(kind)}`);
+  redirect(`/dashboard/geofences?${redirectQs(kind, tenantId)}`);
 }
 
 export async function deleteGeofenceForm(formData: FormData): Promise<void> {
   const ownerId = await requireSessionUserId();
   const id = String(formData.get("id") ?? "").trim();
   const kindParam = String(formData.get("kind") ?? "pet").trim();
+  const tenantParam = String(formData.get("tenant") ?? "").trim();
+  const tenantId = tenantParam || null;
   const kind = parseSubjectKind(kindParam);
   if (!id) {
-    redirect(`/dashboard/geofences?kind=${encodeURIComponent(kind)}&err=invalid`);
+    redirect(`/dashboard/geofences?${redirectQs(kind, tenantId, "invalid")}`);
   }
 
-  await deleteGeofenceById(getDB(), id, ownerId);
+  const db = getDB();
+  if (tenantId) {
+    await requireTenantMember(db, ownerId, tenantId);
+  }
+
+  await deleteGeofenceById(db, id, ownerId);
   revalidatePath("/dashboard/geofences");
-  redirect(`/dashboard/geofences?kind=${encodeURIComponent(kind)}`);
+  redirect(`/dashboard/geofences?${redirectQs(kind, tenantId)}`);
 }

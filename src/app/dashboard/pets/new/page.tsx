@@ -7,6 +7,7 @@ import { getAuth } from "@/lib/auth";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { redirect } from "next/navigation";
 import { parseSubjectKind, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
+import { requireTenantMember } from "@/lib/tenant-membership";
 
 export const runtime = "edge";
 
@@ -21,12 +22,16 @@ const headerIcons: Record<SubjectKind, LucideIcon> = {
 export default async function NewPetPage({
   searchParams,
 }: {
-  searchParams: Promise<{ kind?: string }>;
+  searchParams: Promise<{ kind?: string; tenant?: string }>;
 }) {
-  const { kind: kindParam } = await searchParams;
+  const { kind: kindParam, tenant: tenantParam } = await searchParams;
   const subjectKind = parseSubjectKind(kindParam);
   const meta = subjectKindMeta[subjectKind];
-  const kindQs = `?kind=${encodeURIComponent(subjectKind)}`;
+  const tenantId =
+    typeof tenantParam === "string" && tenantParam.trim() ? tenantParam.trim() : null;
+  const qs = new URLSearchParams({ kind: subjectKind });
+  if (tenantId) qs.set("tenant", tenantId);
+  const kindQs = `?${qs.toString()}`;
   const HeaderIcon = headerIcons[subjectKind];
 
   const context = getRequestContext();
@@ -37,6 +42,10 @@ export default async function NewPetPage({
 
   if (!session) {
     redirect("/login");
+  }
+
+  if (tenantId) {
+    await requireTenantMember(context.env.DB, session.user.id, tenantId);
   }
 
   const ownerId = session.user.id;
@@ -65,7 +74,7 @@ export default async function NewPetPage({
 
       <div className="flex-1 container max-w-sm mx-auto mt-8 px-4">
         <div className="bg-white p-8 rounded-[40px] shadow-2xl shadow-slate-200/50">
-          <PetForm ownerId={ownerId} subjectKind={subjectKind} />
+          <PetForm ownerId={ownerId} subjectKind={subjectKind} tenantId={tenantId} />
         </div>
 
         <div className="mt-8 text-center px-6">

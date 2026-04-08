@@ -105,12 +105,18 @@ export default async function HubPage({
                       {t.role === "owner" ? "소유자" : t.role === "admin" ? "관리자" : "멤버"}
                     </p>
                   </div>
+                  <Link
+                    href={`/dashboard?kind=pet&tenant=${encodeURIComponent(t.id)}`}
+                    className="shrink-0 rounded-xl bg-slate-900 px-3 py-2 text-[10px] font-black text-white hover:bg-teal-600"
+                  >
+                    대시보드
+                  </Link>
                 </div>
               ))}
             </div>
             <p className="text-[10px] text-slate-400 font-medium leading-relaxed">
-              조직별 대시보드·한도는 추후 연결됩니다. 데이터는 <code className="text-[9px]">tenant_id</code>로
-              분리됩니다.
+              조직 대시보드에서는 등록 데이터가 <code className="text-[9px]">tenant_id</code>로 묶입니다.
+              (개인 대시보드와 목록이 분리됩니다.)
             </p>
           </section>
         )}

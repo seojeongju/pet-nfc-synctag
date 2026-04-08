@@ -60,20 +60,34 @@ export async function listBleLocationEventsForOwner(
   db: D1Database,
   ownerId: string,
   subjectKind: string,
-  limit: number
+  limit: number,
+  tenantId?: string
 ): Promise<BleLocationEventRow[]> {
   const safeLimit = Math.max(1, Math.min(limit, 100));
-  const { results } = await db
-    .prepare(
-      `SELECT e.id, e.pet_id, e.event_type, e.latitude, e.longitude, e.rssi, e.raw_payload, e.created_at,
+  const tenant = (tenantId ?? "").trim();
+  const query = tenant
+    ? `SELECT e.id, e.pet_id, e.event_type, e.latitude, e.longitude, e.rssi, e.raw_payload, e.created_at,
               p.name AS pet_name, p.photo_url AS pet_photo
        FROM ble_location_events e
        INNER JOIN pets p ON p.id = e.pet_id
-       WHERE e.owner_id = ? AND COALESCE(p.subject_kind, 'pet') = ?
+       WHERE e.owner_id = ?
+         AND p.tenant_id = ?
+         AND COALESCE(p.subject_kind, 'pet') = ?
        ORDER BY datetime(e.created_at) DESC
        LIMIT ?`
-    )
-    .bind(ownerId, subjectKind, safeLimit)
-    .all<BleLocationEventRow>();
+    : `SELECT e.id, e.pet_id, e.event_type, e.latitude, e.longitude, e.rssi, e.raw_payload, e.created_at,
+              p.name AS pet_name, p.photo_url AS pet_photo
+       FROM ble_location_events e
+       INNER JOIN pets p ON p.id = e.pet_id
+       WHERE e.owner_id = ?
+         AND p.tenant_id IS NULL
+         AND COALESCE(p.subject_kind, 'pet') = ?
+       ORDER BY datetime(e.created_at) DESC
+       LIMIT ?`;
+  const stmt = db.prepare(query);
+  const { results } = await (tenant
+    ? stmt.bind(ownerId, tenant, subjectKind, safeLimit)
+    : stmt.bind(ownerId, subjectKind, safeLimit)
+  ).all<BleLocationEventRow>();
   return results ?? [];
 }

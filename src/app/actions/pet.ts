@@ -3,6 +3,7 @@ import { getDB, getR2 } from "@/lib/db";
 import { nanoid } from "nanoid";
 import { parseSubjectKind, type SubjectKind } from "@/lib/subject-kind";
 import { assertPersonalPetQuota } from "@/lib/tenant-quota";
+import { requireTenantMember } from "@/lib/tenant-membership";
 
 interface PetData {
     name: string;
@@ -11,6 +12,7 @@ interface PetData {
     emergency_contact?: string;
     photo_url?: string;
     subject_kind?: SubjectKind;
+    tenant_id?: string | null;
 }
 
 export async function uploadToR2(formData: FormData) {
@@ -31,26 +33,35 @@ export async function uploadToR2(formData: FormData) {
 
 export async function createPet(ownerId: string, data: PetData) {
     const db = getDB();
-    await assertPersonalPetQuota(db, ownerId);
+    const tenantId = (data.tenant_id ?? "").trim() || null;
+    if (tenantId) {
+        await requireTenantMember(db, ownerId, tenantId);
+    } else {
+        await assertPersonalPetQuota(db, ownerId);
+    }
     const id = nanoid();
     const kind = parseSubjectKind(data.subject_kind);
 
     await db.prepare(
-        "INSERT INTO pets (id, owner_id, name, breed, medical_info, emergency_contact, photo_url, subject_kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        "INSERT INTO pets (id, owner_id, tenant_id, name, breed, medical_info, emergency_contact, photo_url, subject_kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
     )
-    .bind(id, ownerId, data.name, data.breed, data.medical_info, data.emergency_contact, data.photo_url, kind)
+    .bind(id, ownerId, tenantId, data.name, data.breed, data.medical_info, data.emergency_contact, data.photo_url, kind)
     .run();
 
     return id;
 }
 
-export async function getPets(ownerId: string, subjectKind: SubjectKind = "pet") {
+export async function getPets(ownerId: string, subjectKind: SubjectKind = "pet", tenantId?: string) {
     const db = getDB();
     const kind = parseSubjectKind(subjectKind);
-    const { results } = await db.prepare(
-        "SELECT * FROM pets WHERE owner_id = ? AND COALESCE(subject_kind, 'pet') = ? ORDER BY created_at DESC"
-    )
-        .bind(ownerId, kind)
+    const tenant = (tenantId ?? "").trim();
+    const query = tenant
+        ? "SELECT * FROM pets WHERE owner_id = ? AND tenant_id = ? AND COALESCE(subject_kind, 'pet') = ? ORDER BY created_at DESC"
+        : "SELECT * FROM pets WHERE owner_id = ? AND tenant_id IS NULL AND COALESCE(subject_kind, 'pet') = ? ORDER BY created_at DESC";
+    const stmt = db.prepare(query);
+    const { results } = await (tenant
+        ? stmt.bind(ownerId, tenant, kind)
+        : stmt.bind(ownerId, kind))
         .all();
     return results;
 }

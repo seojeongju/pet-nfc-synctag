@@ -24,6 +24,7 @@ const formIcons: Record<SubjectKind, LucideIcon> = {
 interface PetFormProps {
     ownerId: string;
     subjectKind?: SubjectKind;
+    tenantId?: string | null;
     initialData?: {
         id: string;
         name: string;
@@ -40,7 +41,7 @@ type PetFormValues = {
     emergency_contact?: string;
 };
 
-export function PetForm({ ownerId, subjectKind: kindProp, initialData }: PetFormProps) {
+export function PetForm({ ownerId, subjectKind: kindProp, tenantId, initialData }: PetFormProps) {
     const router = useRouter();
     const subjectKind = parseSubjectKind(kindProp);
     const meta = subjectKindMeta[subjectKind];
@@ -83,14 +84,21 @@ export function PetForm({ ownerId, subjectKind: kindProp, initialData }: PetForm
                 }
             }
 
-            const petData = { ...data, photo_url: photoUrl, subject_kind: subjectKind };
+            const petData = {
+                ...data,
+                photo_url: photoUrl,
+                subject_kind: subjectKind,
+                tenant_id: tenantId ?? undefined,
+            };
 
             if (initialData) {
                 await updatePet(initialData.id, petData);
             } else {
                 await createPet(ownerId, petData);
             }
-            router.push(`/dashboard?kind=${encodeURIComponent(subjectKind)}`);
+            const qs = new URLSearchParams({ kind: subjectKind });
+            if (tenantId) qs.set("tenant", tenantId);
+            router.push(`/dashboard?${qs.toString()}`);
             router.refresh();
         } catch (error) {
             console.error("Failed to save pet:", error);

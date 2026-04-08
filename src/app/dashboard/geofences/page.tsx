@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { MapPin, Trash2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { requireTenantMember } from "@/lib/tenant-membership";
 
 export const runtime = "edge";
 

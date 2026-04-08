@@ -34,16 +34,19 @@ interface DashboardClientProps {
   isAdmin: boolean;
   subjectKind: SubjectKind;
   modeAnnouncements: ModeAnnouncementRow[];
+  tenantId?: string | null;
 }
 
-export default function DashboardClient({ session, pets, isAdmin, subjectKind, modeAnnouncements }: DashboardClientProps) {
+export default function DashboardClient({ session, pets, isAdmin, subjectKind, modeAnnouncements, tenantId }: DashboardClientProps) {
   const [isPending, startTransition] = useTransition();
   const [selectedPetId, setSelectedPetId] = useState("");
   const [tagId, setTagId] = useState("");
   const [tagMessage, setTagMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const router = useRouter();
   const meta = subjectKindMeta[subjectKind];
-  const kindQs = `?kind=${encodeURIComponent(subjectKind)}`;
+  const qs = new URLSearchParams({ kind: subjectKind });
+  if (tenantId) qs.set("tenant", tenantId);
+  const kindQs = `?${qs.toString()}`;
   const AvatarIcon = subjectAvatars[subjectKind];
 
   useEffect(() => {

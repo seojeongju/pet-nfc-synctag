@@ -8,7 +8,11 @@ import { parseSubjectKind } from "@/lib/subject-kind";
 export function DashboardNavBar() {
   const searchParams = useSearchParams();
   const kind = parseSubjectKind(searchParams.get("kind"));
-  const q = `?kind=${encodeURIComponent(kind)}`;
+  const tenantRaw = searchParams.get("tenant");
+  const tenant = typeof tenantRaw === "string" && tenantRaw.trim() ? tenantRaw.trim() : null;
+  const qs = new URLSearchParams({ kind });
+  if (tenant) qs.set("tenant", tenant);
+  const q = `?${qs.toString()}`;
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-white/80 backdrop-blur-md">

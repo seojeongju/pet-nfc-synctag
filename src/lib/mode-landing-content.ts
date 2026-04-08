@@ -62,8 +62,8 @@ export const modeLandingVisual: Record<SubjectKind, ModeLandingVisual> = {
     titleGradientTo: "to-blue-600",
   },
   child: {
-    heroImageSrc: null,
-    heroAlt: "",
+    heroImageSrc: "/images/kids-hero.png",
+    heroAlt: "등교하는 아이와 부모님의 안심 가득한 모습",
     badge: "링크유 - 키즈",
     statLabel: "안심 가정 연결",
     statValue: "620+",

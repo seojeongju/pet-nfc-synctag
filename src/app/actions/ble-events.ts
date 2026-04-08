@@ -63,12 +63,13 @@ export async function recordBleLocationEventFromJson(
 
 export async function getBleLocationEvents(
   subjectKind: SubjectKind,
-  limit = 40
+  limit = 40,
+  tenantId?: string
 ): Promise<BleLocationEventRow[]> {
   const ownerId = await requireSessionUserId();
   const kind = parseSubjectKind(subjectKind);
   try {
-    return await listBleLocationEventsForOwner(getDB(), ownerId, kind, limit);
+    return await listBleLocationEventsForOwner(getDB(), ownerId, kind, limit, tenantId);
   } catch {
     return [];
   }
