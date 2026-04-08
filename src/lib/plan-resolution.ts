@@ -57,6 +57,7 @@ export async function resolvePersonalPlan(
     .prepare("SELECT subscriptionStatus FROM user WHERE id = ?")
     .bind(userId)
     .first<{ subscriptionStatus?: string | null }>();
+
   const code = (userRow?.subscriptionStatus ?? "free").trim() || "free";
   const plan = await getPlanByCode(db, code);
   if (!plan) return null;

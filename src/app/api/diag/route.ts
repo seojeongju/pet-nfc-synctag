@@ -1,8 +1,10 @@
-import { getRequestContext } from "@cloudflare/next-on-pages";
+﻿import { getRequestContext } from "@cloudflare/next-on-pages";
 import { NextResponse } from "next/server";
 import { getAuth } from "@/lib/auth";
+import { getMigration0008Status } from "@/lib/db-migration-0008";
 
 export const runtime = "edge";
+
 type DiagEnv = CloudflareEnv & {
   BETTER_AUTH_SECRET?: string;
   BETTER_AUTH_URL?: string;
@@ -27,20 +29,23 @@ export async function GET() {
     database: {
       isBound: !!env.DB,
       connectionTest: "Pending",
+      migration0008: "Pending" as string | object,
     },
     auth: {
       initialization: "Pending",
       error: null as string | null,
-    }
+    },
   };
 
   if (env.DB) {
     try {
       await env.DB.prepare("SELECT 1").run();
       diagnostics.database.connectionTest = "Success";
+      diagnostics.database.migration0008 = await getMigration0008Status(env.DB);
     } catch (e: unknown) {
       const err = e instanceof Error ? e : new Error(String(e));
       diagnostics.database.connectionTest = `Failed: ${err.message}`;
+      diagnostics.database.migration0008 = "Unavailable";
     }
   }
 

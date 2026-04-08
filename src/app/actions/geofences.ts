@@ -1,4 +1,4 @@
-"use server";
+﻿"use server";
 
 import { nanoid } from "nanoid";
 import { headers } from "next/headers";
@@ -14,7 +14,7 @@ import {
   listGeofencesForOwnerKind,
   type GeofenceWithPetName,
 } from "@/lib/geofences-db";
-import { requireTenantMember } from "@/lib/tenant-membership";
+import { assertTenantRole } from "@/lib/tenant-membership";
 
 async function requireSessionUserId(): Promise<string> {
   const context = getRequestContext();
@@ -72,7 +72,7 @@ export async function createGeofenceForm(formData: FormData): Promise<void> {
 
   const db = getDB();
   if (tenantId) {
-    await requireTenantMember(db, ownerId, tenantId);
+    await assertTenantRole(db, ownerId, tenantId, "admin");
   }
   const owned = await isPetOwnedBy(db, pet_id, ownerId);
   if (!owned) {
@@ -118,7 +118,7 @@ export async function deleteGeofenceForm(formData: FormData): Promise<void> {
 
   const db = getDB();
   if (tenantId) {
-    await requireTenantMember(db, ownerId, tenantId);
+    await assertTenantRole(db, ownerId, tenantId, "admin");
   }
 
   await deleteGeofenceById(db, id, ownerId);

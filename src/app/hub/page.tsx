@@ -1,4 +1,4 @@
-import { headers } from "next/headers";
+﻿import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { redirect } from "next/navigation";
@@ -9,6 +9,7 @@ import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-
 import { resolveDeviceAssignedKind } from "@/lib/device-mode";
 import { listTenantsForUser } from "@/lib/tenant-membership";
 import { resolvePersonalPlan } from "@/lib/plan-resolution";
+import { getTenantPlanUsageSummary } from "@/lib/tenant-quota";
 
 export const runtime = "edge";
 
@@ -19,6 +20,10 @@ const hubIcons: Record<SubjectKind, typeof PawPrint> = {
   luggage: Briefcase,
   gold: Gem,
 };
+
+function limitText(used: number, limit: number | null): string {
+  return `${used}/${limit == null ? "∞" : limit}`;
+}
 
 export default async function HubPage({
   searchParams,
@@ -54,6 +59,17 @@ export default async function HubPage({
 
   const tenants = await listTenantsForUser(db, session.user.id).catch(() => []);
   const personalPlan = await resolvePersonalPlan(db, session.user.id).catch(() => null);
+
+  const tenantUsageEntries = await Promise.all(
+    tenants.map(async (t) => {
+      const usage = await getTenantPlanUsageSummary(db, t.id).catch(() => null);
+      return [t.id, usage] as const;
+    })
+  );
+  const tenantUsageMap = Object.fromEntries(tenantUsageEntries) as Record<
+    string,
+    Awaited<ReturnType<typeof getTenantPlanUsageSummary>>
+  >;
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-outfit px-5 py-10 pb-24">
@@ -91,28 +107,38 @@ export default async function HubPage({
               소속 조직 (B2B)
             </p>
             <div className="space-y-2">
-              {tenants.map((t) => (
-                <div
-                  key={t.id}
-                  className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm"
-                >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
-                    <Building2 className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-black text-slate-900 truncate">{t.name}</p>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">
-                      {t.role === "owner" ? "소유자" : t.role === "admin" ? "관리자" : "멤버"}
-                    </p>
-                  </div>
-                  <Link
-                    href={`/dashboard?kind=pet&tenant=${encodeURIComponent(t.id)}`}
-                    className="shrink-0 rounded-xl bg-slate-900 px-3 py-2 text-[10px] font-black text-white hover:bg-teal-600"
+              {tenants.map((t) => {
+                const usage = tenantUsageMap[t.id] ?? null;
+                return (
+                  <div
+                    key={t.id}
+                    className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm"
                   >
-                    대시보드
-                  </Link>
-                </div>
-              ))}
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+                      <Building2 className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-black text-slate-900 truncate">{t.name}</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">
+                        {t.role === "owner" ? "소유자" : t.role === "admin" ? "관리자" : "멤버"}
+                      </p>
+                      {usage ? (
+                        <p className="text-[10px] font-bold text-teal-700 mt-0.5">
+                          {usage.planName} · 펫 {limitText(usage.petUsed, usage.petLimit)} · 태그 {limitText(usage.tagUsed, usage.tagLimit)}
+                        </p>
+                      ) : (
+                        <p className="text-[10px] font-bold text-amber-600 mt-0.5">활성 조직 플랜 없음</p>
+                      )}
+                    </div>
+                    <Link
+                      href={`/dashboard?kind=pet&tenant=${encodeURIComponent(t.id)}`}
+                      className="shrink-0 rounded-xl bg-slate-900 px-3 py-2 text-[10px] font-black text-white hover:bg-teal-600"
+                    >
+                      대시보드
+                    </Link>
+                  </div>
+                );
+              })}
             </div>
             <p className="text-[10px] text-slate-400 font-medium leading-relaxed">
               조직 대시보드에서는 등록 데이터가 <code className="text-[9px]">tenant_id</code>로 묶입니다.

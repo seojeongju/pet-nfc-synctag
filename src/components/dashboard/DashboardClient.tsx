@@ -1,10 +1,10 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useTransition } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { 
+import {
   Plus, MapPin, PawPrint, Search, Bell,
   LogOut, ShieldCheck, Heart, History, Activity, Home, Smartphone, CheckCircle, AlertCircle,
   UserRound, Baby, Briefcase, Gem,
@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
 import type { LucideIcon } from "lucide-react";
 import type { ModeAnnouncementRow } from "@/types/mode-announcement";
+import type { TenantPlanUsageSummary } from "@/lib/tenant-quota";
 import ModeAnnouncementsBanner from "@/components/dashboard/ModeAnnouncementsBanner";
 
 const subjectAvatars: Record<SubjectKind, LucideIcon> = {
@@ -35,9 +36,14 @@ interface DashboardClientProps {
   subjectKind: SubjectKind;
   modeAnnouncements: ModeAnnouncementRow[];
   tenantId?: string | null;
+  tenantUsage?: TenantPlanUsageSummary | null;
 }
 
-export default function DashboardClient({ session, pets, isAdmin, subjectKind, modeAnnouncements, tenantId }: DashboardClientProps) {
+function limitText(used: number, limit: number | null): string {
+  return `${used}/${limit == null ? "∞" : limit}`;
+}
+
+export default function DashboardClient({ session, pets, isAdmin, subjectKind, modeAnnouncements, tenantId, tenantUsage }: DashboardClientProps) {
   const [isPending, startTransition] = useTransition();
   const [selectedPetId, setSelectedPetId] = useState("");
   const [tagId, setTagId] = useState("");
@@ -88,16 +94,14 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind, m
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-outfit pb-32 overflow-x-hidden relative">
-      {/* Dynamic Background */}
       <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-b from-teal-500/10 to-transparent pointer-events-none" />
 
-      <motion.div 
+      <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="visible"
         className="max-w-md mx-auto px-5 pt-8 space-y-8"
       >
-        {/* Admin Transition Banner */}
         <ModeAnnouncementsBanner items={modeAnnouncements} />
 
         {isAdmin && (
@@ -125,7 +129,6 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind, m
           </motion.section>
         )}
 
-        {/* User Header Section */}
         <motion.section variants={itemVariants} className="flex items-center justify-between">
           <div className="space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
@@ -136,12 +139,24 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind, m
                 모드 변경
               </Link>
             </div>
+            {tenantId && (
+              <div className="inline-flex flex-col gap-1 rounded-xl border border-teal-100 bg-teal-50 px-3 py-2">
+                <p className="text-[10px] font-black text-teal-700">조직 플랜 배지</p>
+                {tenantUsage ? (
+                  <p className="text-[10px] font-bold text-teal-800">
+                    {tenantUsage.planName} · 펫 {limitText(tenantUsage.petUsed, tenantUsage.petLimit)} · 태그 {limitText(tenantUsage.tagUsed, tenantUsage.tagLimit)}
+                  </p>
+                ) : (
+                  <p className="text-[10px] font-bold text-amber-600">활성 조직 플랜 없음</p>
+                )}
+              </div>
+            )}
             <div className="flex items-center gap-1.5 text-teal-600 font-bold text-[11px] uppercase tracking-wider">
                <MapPin className="w-3.5 h-3.5" />
                SEOUL, KOREA
             </div>
             <h1 className="text-2xl font-black text-slate-900 leading-tight">
-               안녕하세요, <br /> 
+               안녕하세요, <br />
                <span className="text-teal-500">{session.user.name || "보호자"}</span>님! 👋
             </h1>
           </div>
@@ -157,19 +172,17 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind, m
           </div>
         </motion.section>
 
-        {/* Action Quick Search Bar */}
         <motion.section variants={itemVariants} className="relative group">
           <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors">
             <Search className="w-5 h-5" />
           </div>
-          <input 
-            type="text" 
+          <input
+            type="text"
             placeholder={`${meta.label} 이름을 찾아보세요...`}
             className="w-full h-16 glass rounded-[24px] pl-14 pr-5 text-sm font-bold shadow-app shadow-app-hover outline-none transition-all focus:ring-2 focus:ring-teal-500/20"
           />
         </motion.section>
 
-        {/* Pro Banner / Stat Widget */}
         <motion.section variants={itemVariants}>
           <Card className="border-none rounded-[40px] bg-slate-900 text-white overflow-hidden relative shadow-[0_32px_64px_-12px_rgba(0,0,0,0.2)]">
             <div className="p-8 space-y-5 relative z-10">
@@ -187,14 +200,11 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind, m
                 상세 리포트 보기
               </Button>
             </div>
-            
-            {/* Background design elements */}
             <div className="absolute top-0 right-0 w-40 h-40 bg-teal-500/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl block" />
             <div className="absolute bottom-4 right-6 w-16 h-16 opacity-50"><Heart className="w-full h-full text-white/5 rotate-12" /></div>
           </Card>
         </motion.section>
 
-        {/* Quick NFC Register */}
         <motion.section variants={itemVariants}>
           <Card className="rounded-[32px] border-none shadow-app bg-white">
             <CardContent className="p-6 space-y-4">
@@ -265,17 +275,16 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind, m
           </Card>
         </motion.section>
 
-        {/* Horizontal Pet Selector */}
         <motion.section variants={itemVariants} className="space-y-4">
            <div className="flex items-center justify-between px-2">
               <h3 className="text-lg font-black text-slate-900">{meta.listHeading}</h3>
               <Link href={`/dashboard/pets${kindQs}`} className="text-[10px] font-black text-teal-600 uppercase tracking-widest hover:underline transition-all">View All</Link>
            </div>
-           
+
            <div className="flex gap-4 overflow-x-auto pb-6 pt-2 scrollbar-hide -mx-5 px-5">
               {pets.map((pet) => (
-                <motion.div 
-                  key={pet.id} 
+                <motion.div
+                  key={pet.id}
                   whileTap={{ scale: 0.95 }}
                   className="min-w-[150px]"
                 >
@@ -310,13 +319,12 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind, m
            </div>
         </motion.section>
 
-        {/* Activity Widget */}
         <motion.section variants={itemVariants} className="space-y-4">
            <div className="flex items-center justify-between px-2">
               <h3 className="text-lg font-black text-slate-900">최근 보호 활동</h3>
               <Activity className="w-5 h-5 text-slate-300" />
            </div>
-           
+
            <Card className="rounded-[32px] border-none shadow-app p-6 bg-white relative overflow-hidden group hover:bg-slate-50 transition-colors">
               <div className="flex items-center gap-4 relative z-10">
                  <div className="w-14 h-14 rounded-[20px] bg-rose-50 flex items-center justify-center text-rose-500 shadow-sm shadow-rose-100">
@@ -332,7 +340,6 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind, m
         </motion.section>
       </motion.div>
 
-      {/* Floating Bottom Navigation Bar (True App Experience) */}
       <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm h-20 glass-dark rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] z-50 flex items-center justify-around px-4 border border-white/20">
          <Link href={`/dashboard${kindQs}`} className="flex flex-col items-center gap-1 group">
             <div className="p-2.5 rounded-2xl bg-teal-500 text-white shadow-xl shadow-teal-500/20 transition-all active:scale-90">
