@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
 import { getRequestContext } from "@cloudflare/next-on-pages";
-import { parseSubjectKind } from "@/lib/subject-kind";
+import { parseSubjectKind, type SubjectKind } from "@/lib/subject-kind";
 import { normalizeBleMac } from "@/lib/device-mode";
 
 function normalizeUid(uid: string): string {
@@ -36,12 +36,20 @@ async function getActorEmailSafe() {
     }
 }
 
+export type RegisterBulkTagsOptions = {
+    batchId?: string;
+    /** 등록 시점에 태그에 부여할 할당 모드 (허브 자동 진입 등에 사용) */
+    assignedSubjectKind?: SubjectKind | null;
+};
+
 /**
  * NFC 태그를 시스템에 대량으로 미리 등록합니다 (관리자 전용)
  */
-export async function registerBulkTags(uids: string[], batchId?: string) {
+export async function registerBulkTags(uids: string[], options?: RegisterBulkTagsOptions) {
     const db = getDB();
-    const currentBatch = batchId || `BATCH-${Date.now()}`;
+    const kind = options?.assignedSubjectKind ?? null;
+    const kindSlug = kind && ["pet", "elder", "child", "luggage"].includes(kind) ? kind : "generic";
+    const currentBatch = options?.batchId || `BATCH-${kindSlug}-${Date.now()}`;
     const normalized = uids.map(normalizeUid).filter((uid) => uid.length > 0);
     const uniqueNormalized = Array.from(new Set(normalized));
     const validUids = uniqueNormalized.filter(isValidUidFormat);
@@ -74,9 +82,12 @@ export async function registerBulkTags(uids: string[], batchId?: string) {
         const toInsert = validUids.filter((uid) => !existingSet.has(uid));
         
         // 중복 제거 및 트랜잭션 처리 (D1 배치는 순차 처리 권장)
-        const queries = toInsert.map(uid => 
-            db.prepare("INSERT OR IGNORE INTO tags (id, status, batch_id) VALUES (?, 'unsold', ?)")
-              .bind(uid, currentBatch)
+        const queries = toInsert.map((uid) =>
+            db
+                .prepare(
+                    "INSERT OR IGNORE INTO tags (id, status, batch_id, assigned_subject_kind) VALUES (?, 'unsold', ?, ?)"
+                )
+                .bind(uid, currentBatch, kind)
         );
         if (queries.length > 0) {
             await db.batch(queries);
@@ -85,6 +96,7 @@ export async function registerBulkTags(uids: string[], batchId?: string) {
         const result = {
             success: true,
             batchId: currentBatch,
+            assignedSubjectKind: kind,
             requestedCount: normalized.length,
             registeredCount: toInsert.length,
             invalidCount,
