@@ -43,6 +43,7 @@ interface PetProfileClientProps {
     emergency_contact?: string | null;
     medical_info?: string | null;
   };
+  tenantId?: string | null;
   isOwner: boolean;
   petTags: Array<{ id: string; is_active?: boolean }>;
   tagId: string | null;
@@ -55,6 +56,7 @@ interface PetProfileClientProps {
 
 export default function PetProfileClient({
   pet,
+  tenantId,
   isOwner,
   petTags,
   tagId,
@@ -95,7 +97,9 @@ export default function PetProfileClient({
 
   const meta = subjectKindMeta[subjectKind];
   const nfc = subjectKindNfcPublic[subjectKind];
-  const kindQs = `?kind=${encodeURIComponent(subjectKind)}`;
+  const qs = new URLSearchParams({ kind: subjectKind });
+  if (tenantId) qs.set("tenant", tenantId);
+  const kindQs = `?${qs.toString()}`;
   const HeroIcon = heroIcons[subjectKind];
   const displayName = maskNameForPublicViewer(pet.name, subjectKind, treatAsPublicVisitor);
   const profileLoginCallback = `/profile/${pet.id}${kindQs}${tagId ? `&tag=${encodeURIComponent(tagId)}` : ""}`;

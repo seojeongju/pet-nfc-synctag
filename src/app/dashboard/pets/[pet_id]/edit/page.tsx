@@ -8,6 +8,7 @@ import { getAuth } from "@/lib/auth";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { notFound, redirect } from "next/navigation";
 import { parseSubjectKind, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
+import { requireTenantMember } from "@/lib/tenant-membership";
 
 export const runtime = "edge";
 
@@ -22,6 +23,7 @@ const headerIcons: Record<SubjectKind, LucideIcon> = {
 type PetRow = {
   id: string;
   owner_id: string;
+  tenant_id?: string | null;
   name: string;
   breed?: string | null;
   medical_info?: string | null;
@@ -35,10 +37,10 @@ export default async function EditPetPage({
   searchParams,
 }: {
   params: Promise<{ pet_id: string }>;
-  searchParams: Promise<{ kind?: string }>;
+  searchParams: Promise<{ kind?: string; tenant?: string }>;
 }) {
   const { pet_id } = await params;
-  const { kind: kindParam } = await searchParams;
+  const { kind: kindParam, tenant: tenantParam } = await searchParams;
 
   const context = getRequestContext();
   const auth = getAuth(context.env);
@@ -61,7 +63,23 @@ export default async function EditPetPage({
 
   const subjectKind = parseSubjectKind(pet.subject_kind);
   const urlKind = parseSubjectKind(kindParam);
-  const kindQs = `?kind=${encodeURIComponent(subjectKind)}`;
+  const tenantFromPet =
+    typeof pet.tenant_id === "string" && pet.tenant_id.trim() ? pet.tenant_id.trim() : null;
+  const tenantFromUrl =
+    typeof tenantParam === "string" && tenantParam.trim() ? tenantParam.trim() : null;
+
+  if (tenantFromPet) {
+    await requireTenantMember(context.env.DB, session.user.id, tenantFromPet);
+    if (tenantFromUrl && tenantFromUrl !== tenantFromPet) {
+      redirect(`/dashboard/pets/${pet_id}/edit?kind=${encodeURIComponent(subjectKind)}&tenant=${encodeURIComponent(tenantFromPet)}`);
+    }
+  } else if (tenantFromUrl) {
+    redirect(`/dashboard/pets/${pet_id}/edit?kind=${encodeURIComponent(subjectKind)}`);
+  }
+
+  const qs = new URLSearchParams({ kind: subjectKind });
+  if (tenantFromPet) qs.set("tenant", tenantFromPet);
+  const kindQs = `?${qs.toString()}`;
 
   if (kindParam !== undefined && urlKind !== subjectKind) {
     redirect(`/dashboard/pets/${pet_id}/edit${kindQs}`);
@@ -97,6 +115,7 @@ export default async function EditPetPage({
           <PetForm
             ownerId={session.user.id}
             subjectKind={subjectKind}
+            tenantId={tenantFromPet}
             initialData={{
               id: pet.id,
               name: pet.name,

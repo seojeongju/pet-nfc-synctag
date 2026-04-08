@@ -19,12 +19,16 @@ export const runtime = "edge";
 export default async function GeofencesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ kind?: string; err?: string }>;
+  searchParams: Promise<{ kind?: string; err?: string; tenant?: string }>;
 }) {
-  const { kind: kindParam, err } = await searchParams;
+  const { kind: kindParam, err, tenant: tenantParam } = await searchParams;
   const subjectKind = parseSubjectKind(kindParam);
   const meta = subjectKindMeta[subjectKind];
-  const kindQs = `?kind=${encodeURIComponent(subjectKind)}`;
+  const tenantId =
+    typeof tenantParam === "string" && tenantParam.trim() ? tenantParam.trim() : null;
+  const qs = new URLSearchParams({ kind: subjectKind });
+  if (tenantId) qs.set("tenant", tenantId);
+  const kindQs = `?${qs.toString()}`;
 
   const context = getRequestContext();
   const auth = getAuth(context.env);
@@ -33,8 +37,12 @@ export default async function GeofencesPage({
     redirect("/login");
   }
 
-  const pets = await getPets(session.user.id, subjectKind);
-  const geofences = await getGeofences(subjectKind);
+  if (tenantId) {
+    await requireTenantMember(context.env.DB, session.user.id, tenantId);
+  }
+
+  const pets = await getPets(session.user.id, subjectKind, tenantId ?? undefined);
+  const geofences = await getGeofences(subjectKind, tenantId ?? undefined);
 
   const errMsg =
     err === "invalid"
@@ -58,6 +66,11 @@ export default async function GeofencesPage({
           </h1>
           <p className="text-sm text-slate-500">
             {meta.label} 모드 · 중심과 반경(m)으로 가족이 안심할 수 있는 범위를 정해요.
+            {tenantId ? (
+              <span className="block text-[11px] font-bold text-teal-600 mt-1">
+                조직 컨텍스트: tenant_id가 설정된 관리 대상만 표시됩니다.
+              </span>
+            ) : null}
           </p>
         </div>
       </div>
@@ -76,6 +89,7 @@ export default async function GeofencesPage({
           ) : (
             <form action={createGeofenceForm} className="grid gap-4 sm:grid-cols-2">
               <input type="hidden" name="kind" value={subjectKind} />
+              {tenantId ? <input type="hidden" name="tenant" value={tenantId} /> : null}
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="pet_id">관리 대상</Label>
                 <select
@@ -166,6 +180,7 @@ export default async function GeofencesPage({
                   <form action={deleteGeofenceForm} className="shrink-0">
                     <input type="hidden" name="id" value={g.id} />
                     <input type="hidden" name="kind" value={subjectKind} />
+                    {tenantId ? <input type="hidden" name="tenant" value={tenantId} /> : null}
                     <Button
                       type="submit"
                       variant="outline"

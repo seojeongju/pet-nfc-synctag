@@ -81,8 +81,8 @@ export const modeLandingVisual: Record<SubjectKind, ModeLandingVisual> = {
     titleGradientTo: "to-rose-600",
   },
   luggage: {
-    heroImageSrc: null,
-    heroAlt: "",
+    heroImageSrc: "/images/luggage-hero.png",
+    heroAlt: "스마트폰과 연결된 안심 수하물 태그",
     badge: "링크유 - 캐리",
     statLabel: "여행·분실 복구",
     statValue: "430+",

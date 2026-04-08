@@ -1,8 +1,8 @@
-"use server";
+﻿"use server";
 import { getDB, getR2 } from "@/lib/db";
 import { nanoid } from "nanoid";
 import { parseSubjectKind, type SubjectKind } from "@/lib/subject-kind";
-import { assertPersonalPetQuota } from "@/lib/tenant-quota";
+import { assertPersonalPetQuota, assertTenantPetQuota } from "@/lib/tenant-quota";
 import { requireTenantMember } from "@/lib/tenant-membership";
 
 interface PetData {
@@ -89,3 +89,4 @@ export async function updatePet(petId: string, data: Partial<PetData>) {
         .bind(...values, petId)
         .run();
 }
+

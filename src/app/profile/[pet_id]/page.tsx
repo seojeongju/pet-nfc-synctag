@@ -27,7 +27,7 @@ export async function generateMetadata({
     description: `${label} 연락 안내 페이지입니다. NFC 스캔 시 발견 위치를 남길 수 있습니다.`,
   };
 }
-type PetDetail = { id: string; owner_id: string; subject_kind?: string | null };
+type PetDetail = { id: string; owner_id: string; tenant_id?: string | null; subject_kind?: string | null };
 
 export default async function PublicProfilePage({ 
   params, 
@@ -57,10 +57,13 @@ export default async function PublicProfilePage({
   const nfcOwnerGate = Boolean(tagId && isOwner);
   const petTags = isOwner && !nfcOwnerGate ? await getPetTags(pet.id) : [];
   const subjectKind = parseSubjectKind(pet.subject_kind);
+  const tenantId =
+    typeof pet.tenant_id === "string" && pet.tenant_id.trim() ? pet.tenant_id.trim() : null;
 
   return (
     <PetProfileClient 
       pet={pet}
+      tenantId={tenantId}
       isOwner={isOwner}
       petTags={petTags || []}
       tagId={tagId}

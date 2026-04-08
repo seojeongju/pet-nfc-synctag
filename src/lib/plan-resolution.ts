@@ -1,9 +1,5 @@
-import type { D1Database } from "@cloudflare/workers-types";
-import type {
-  PlanRow,
-  SubscriptionRow,
-  TenantStatus,
-} from "@/types/tenant-subscription";
+﻿import type { D1Database } from "@cloudflare/workers-types";
+import type { PlanRow, SubscriptionRow, TenantStatus } from "@/types/tenant-subscription";
 
 export type PersonalPlanResolution = {
   plan: PlanRow;
@@ -11,29 +7,14 @@ export type PersonalPlanResolution = {
   subscription: SubscriptionRow | null;
 };
 
-export async function getPlanById(
-  db: D1Database,
-  planId: string
-): Promise<PlanRow | null> {
-  return await db
-    .prepare(`SELECT * FROM plans WHERE id = ?`)
-    .bind(planId)
-    .first<PlanRow>();
+export async function getPlanById(db: D1Database, planId: string): Promise<PlanRow | null> {
+  return await db.prepare("SELECT * FROM plans WHERE id = ?").bind(planId).first<PlanRow>();
 }
 
-export async function getPlanByCode(
-  db: D1Database,
-  code: string
-): Promise<PlanRow | null> {
-  return await db
-    .prepare(`SELECT * FROM plans WHERE code = ?`)
-    .bind(code)
-    .first<PlanRow>();
+export async function getPlanByCode(db: D1Database, code: string): Promise<PlanRow | null> {
+  return await db.prepare("SELECT * FROM plans WHERE code = ?").bind(code).first<PlanRow>();
 }
 
-/**
- * Active org subscription → plan row.
- */
 export async function resolveTenantPlan(
   db: D1Database,
   tenantId: string
@@ -47,14 +28,13 @@ export async function resolveTenantPlan(
     .bind(tenantId)
     .first<SubscriptionRow>();
   if (!sub) return null;
+
   const plan = await getPlanById(db, sub.plan_id);
   if (!plan) return null;
+
   return { plan, subscription: sub };
 }
 
-/**
- * Personal plan: subscription row wins; else `user.subscriptionStatus` → `plans.code`.
- */
 export async function resolvePersonalPlan(
   db: D1Database,
   userId: string
@@ -70,48 +50,35 @@ export async function resolvePersonalPlan(
 
   if (sub) {
     const plan = await getPlanById(db, sub.plan_id);
-    if (plan) {
-      return { plan, source: "subscription", subscription: sub };
-    }
+    if (plan) return { plan, source: "subscription", subscription: sub };
   }
 
   const userRow = await db
-    .prepare(`SELECT subscriptionStatus FROM user WHERE id = ?`)
+    .prepare("SELECT subscriptionStatus FROM user WHERE id = ?")
     .bind(userId)
     .first<{ subscriptionStatus?: string | null }>();
   const code = (userRow?.subscriptionStatus ?? "free").trim() || "free";
   const plan = await getPlanByCode(db, code);
-  if (!plan) {
-    return null;
-  }
+  if (!plan) return null;
+
   return { plan, source: "account_setting", subscription: null };
 }
 
 export type TenantPlanBundle = {
-  tenant: {
-    id: string;
-    name: string;
-    slug: string;
-    status: TenantStatus;
-  };
+  tenant: { id: string; name: string; slug: string; status: TenantStatus };
   plan: PlanRow | null;
 };
 
-/** Optional helper for future org dashboards. */
 export async function resolveTenantWithPlan(
   db: D1Database,
   tenantId: string
 ): Promise<TenantPlanBundle | null> {
   const tenant = await db
-    .prepare(`SELECT id, name, slug, status FROM tenants WHERE id = ?`)
+    .prepare("SELECT id, name, slug, status FROM tenants WHERE id = ?")
     .bind(tenantId)
-    .first<{
-      id: string;
-      name: string;
-      slug: string;
-      status: TenantStatus;
-    }>();
+    .first<{ id: string; name: string; slug: string; status: TenantStatus }>();
   if (!tenant) return null;
+
   const resolved = await resolveTenantPlan(db, tenantId);
   return { tenant, plan: resolved?.plan ?? null };
 }
