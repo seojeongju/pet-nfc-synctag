@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { LayoutDashboard, ShieldCheck, ArrowRight, Sparkles, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SUBJECT_KINDS, subjectKindMeta } from "@/lib/subject-kind";
 
 interface HomeClientProps {
   session: { user: { name?: string | null } } | null;
@@ -142,6 +143,14 @@ export default function HomeClient({ session, isAdmin, guardianEntryLink, guardi
         </section>
 
         <footer className="px-8 pb-12 pt-4 bg-white/40 flex flex-col items-center gap-4">
+           <nav className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-[10px] font-black text-slate-400 tracking-wide">
+             <span className="text-slate-300">모드별 안내</span>
+             {SUBJECT_KINDS.map((k) => (
+               <Link key={k} href={`/${k}`} className="hover:text-teal-500 transition-colors">
+                 {subjectKindMeta[k].label}
+               </Link>
+             ))}
+           </nav>
            <div className="flex items-center justify-center gap-3 opacity-30 grayscale contrast-125">
               <ShieldCheck className="w-4 h-4" />
               <Sparkles className="w-4 h-4" />
