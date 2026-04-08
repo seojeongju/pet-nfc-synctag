@@ -73,6 +73,7 @@ CREATE TABLE IF NOT EXISTS tags (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+-- Optional columns (see migrations): ble_mac, product_name, assigned_subject_kind, status, batch_id
 
 CREATE TABLE IF NOT EXISTS health_records (
     id TEXT PRIMARY KEY,

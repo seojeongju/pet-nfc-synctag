@@ -1,6 +1,7 @@
 "use client";
 import { useState, useTransition, useEffect } from "react";
-import { registerBulkTags } from "@/app/actions/admin";
+import { registerBulkTags, updateTagProductProfile } from "@/app/actions/admin";
+import { SUBJECT_KINDS, subjectKindMeta } from "@/lib/subject-kind";
 import { Button } from "@/components/ui/button";
 import { AdminCard } from "@/components/admin/ui/AdminCard";
 import { AdminTableHeadCell, AdminTableHeadRow, AdminTableRow } from "@/components/admin/ui/AdminTable";
@@ -18,7 +19,121 @@ type AdminTag = {
   batch_id?: string | null;
   status: string;
   created_at: string;
+  product_name?: string | null;
+  assigned_subject_kind?: string | null;
+  ble_mac?: string | null;
 };
+
+function TagProductRow({ tag, router }: { tag: AdminTag; router: { refresh: () => void } }) {
+  const [productName, setProductName] = useState(tag.product_name ?? "");
+  const [mode, setMode] = useState(tag.assigned_subject_kind ?? "");
+  const [ble, setBle] = useState(tag.ble_mac ?? "");
+  const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setProductName(tag.product_name ?? "");
+    setMode(tag.assigned_subject_kind ?? "");
+    setBle(tag.ble_mac ?? "");
+  }, [tag.product_name, tag.assigned_subject_kind, tag.ble_mac, tag.id]);
+
+  const save = () => {
+    startTransition(async () => {
+      try {
+        await updateTagProductProfile(tag.id, {
+          product_name: productName.trim() || null,
+          assigned_subject_kind: mode.trim() || null,
+          ble_mac: ble.trim() || null,
+        });
+        router.refresh();
+      } catch {
+        /* toast optional */
+      }
+    });
+  };
+
+  return (
+    <AdminTableRow className="group transition-all duration-300 align-top">
+      <td className="py-4 px-4">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-slate-700 shrink-0 group-hover:bg-teal-500 transition-colors" />
+          <span className="font-mono text-[10px] font-bold text-slate-700 break-all">{tag.id}</span>
+        </div>
+        {tag.batch_id && (
+          <p className="text-[9px] text-slate-600 font-black mt-1 uppercase tracking-tighter">배치: {tag.batch_id}</p>
+        )}
+      </td>
+      <td className="py-4 px-2">
+        <input
+          value={productName}
+          onChange={(e) => setProductName(e.target.value)}
+          className="w-full min-w-[88px] rounded-lg border border-slate-200 px-2 py-1.5 text-[10px] font-medium"
+          placeholder="제품명"
+        />
+      </td>
+      <td className="py-4 px-2">
+        <select
+          value={mode}
+          onChange={(e) => setMode(e.target.value)}
+          className="w-full max-w-[160px] rounded-lg border border-slate-200 px-2 py-1.5 text-[10px] font-bold bg-white"
+        >
+          <option value="">미지정 (허브 선택)</option>
+          {SUBJECT_KINDS.map((k) => (
+            <option key={k} value={k}>
+              {subjectKindMeta[k].label}
+            </option>
+          ))}
+        </select>
+      </td>
+      <td className="py-4 px-2">
+        <input
+          value={ble}
+          onChange={(e) => setBle(e.target.value)}
+          className="w-full min-w-[100px] font-mono rounded-lg border border-slate-200 px-2 py-1.5 text-[9px]"
+          placeholder="AA:BB:…"
+        />
+      </td>
+      <td className="py-4 px-2">
+        <span
+          className={cn(
+            "inline-flex px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border",
+            tag.status === "active"
+              ? adminUi.successBadge
+              : tag.status === "unsold"
+                ? adminUi.warningBadge
+                : adminUi.neutralBadge
+          )}
+        >
+          {tag.status}
+        </span>
+      </td>
+      <td className="py-4 px-2">
+        {tag.pet_name ? (
+          <div className="space-y-0.5 max-w-[120px]">
+            <p className={cn(adminUi.tableBodyCellStrong, "p-0 text-[11px] truncate")}>{tag.pet_name}</p>
+            <p className="text-[9px] text-slate-500 font-bold truncate">{tag.owner_email}</p>
+          </div>
+        ) : (
+          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">미할당</span>
+        )}
+      </td>
+      <td className={cn(adminUi.tableBodyCell, "py-4 px-2 text-[10px] font-black uppercase tabular-nums whitespace-nowrap")}>
+        {new Date(tag.created_at).toLocaleDateString()}
+      </td>
+      <td className="py-4 px-2">
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          className="h-8 text-[9px] font-black uppercase px-2"
+          disabled={pending}
+          onClick={save}
+        >
+          저장
+        </Button>
+      </td>
+    </AdminTableRow>
+  );
+}
 
 export default function AdminTagsPageClient({
   tags,
@@ -107,7 +222,8 @@ export default function AdminTagsPageClient({
 
   const filteredTags = tags.filter(tag => 
     tag.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (tag.pet_name && tag.pet_name.toLowerCase().includes(searchTerm.toLowerCase()))
+    (tag.pet_name && tag.pet_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (tag.product_name && tag.product_name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const normalizeUid = (uid: string) => uid.trim().toUpperCase();
@@ -365,7 +481,7 @@ export default function AdminTagsPageClient({
                         type="text" 
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="UID 또는 펫 이름 검색..." 
+                        placeholder="UID · 제품명 · 펫 이름 검색..." 
                         className={adminUi.searchInput}
                     />
                 </div>
@@ -375,52 +491,24 @@ export default function AdminTagsPageClient({
                 <table className="w-full text-left">
                   <thead>
                     <AdminTableHeadRow>
-                      <AdminTableHeadCell className="py-5 px-6 w-[40%]">태그 UID</AdminTableHeadCell>
-                      <AdminTableHeadCell className="py-5 px-6">상태</AdminTableHeadCell>
-                      <AdminTableHeadCell className="py-5 px-6">연결 정보</AdminTableHeadCell>
-                      <AdminTableHeadCell className="py-5 px-6">등록일</AdminTableHeadCell>
+                      <AdminTableHeadCell className="py-5 px-4 min-w-[140px]">태그 UID</AdminTableHeadCell>
+                      <AdminTableHeadCell className="py-5 px-4 min-w-[100px]">제품명</AdminTableHeadCell>
+                      <AdminTableHeadCell className="py-5 px-4 min-w-[120px]">할당 모드</AdminTableHeadCell>
+                      <AdminTableHeadCell className="py-5 px-4 min-w-[120px]">BLE MAC</AdminTableHeadCell>
+                      <AdminTableHeadCell className="py-5 px-4">상태</AdminTableHeadCell>
+                      <AdminTableHeadCell className="py-5 px-4">연결</AdminTableHeadCell>
+                      <AdminTableHeadCell className="py-5 px-4">등록일</AdminTableHeadCell>
+                      <AdminTableHeadCell className="py-5 px-4 w-[72px]">저장</AdminTableHeadCell>
                     </AdminTableHeadRow>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {filteredTags.length > 0 ? (
                       filteredTags.map((tag) => (
-                        <AdminTableRow key={tag.id} className="group transition-all duration-300">
-                          <td className="py-5 px-6">
-                            <div className="flex items-center gap-3">
-                               <div className="w-2 h-2 rounded-full bg-slate-700 group-hover:bg-teal-500 transition-colors shadow-[0_0_8px_rgba(20,184,166,0)] group-hover:shadow-[0_0_8px_rgba(20,184,166,0.5)]" />
-                               <span className="font-mono text-[11px] font-bold text-slate-700 group-hover:text-slate-900 transition-colors">{tag.id}</span>
-                            </div>
-                            {tag.batch_id && (
-                                <p className="text-[9px] text-slate-600 font-black mt-1 uppercase tracking-tighter ml-5">배치: {tag.batch_id}</p>
-                            )}
-                          </td>
-                          <td className="py-5 px-6">
-                            <span className={cn(
-                              "px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border",
-                              tag.status === 'active' ? adminUi.successBadge : 
-                              tag.status === 'unsold' ? adminUi.warningBadge : adminUi.neutralBadge
-                            )}>
-                              {tag.status}
-                            </span>
-                          </td>
-                          <td className="py-5 px-6">
-                            {tag.pet_name ? (
-                                <div className="space-y-0.5">
-                                    <p className={cn(adminUi.tableBodyCellStrong, "p-0 text-xs")}>{tag.pet_name}</p>
-                                    <p className="text-[10px] text-slate-500 font-bold truncate max-w-[150px]">{tag.owner_email}</p>
-                                </div>
-                            ) : (
-                                <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest">미할당</span>
-                            )}
-                          </td>
-                          <td className={cn(adminUi.tableBodyCell, "py-5 px-6 text-[10px] font-black uppercase tabular-nums")}>
-                            {new Date(tag.created_at).toLocaleDateString()}
-                          </td>
-                        </AdminTableRow>
+                        <TagProductRow key={tag.id} tag={tag} router={router} />
                       ))
                     ) : (
                         <tr>
-                            <td colSpan={4} className="py-24 text-center">
+                            <td colSpan={8} className="py-24 text-center">
                                <div className="flex flex-col items-center gap-3 opacity-20">
                                   <Database className="w-12 h-12 text-slate-400" />
                                   <p className="text-xs font-black text-slate-400 uppercase tracking-widest">등록된 인벤토리가 없습니다</p>

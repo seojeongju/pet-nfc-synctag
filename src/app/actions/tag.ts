@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
 import { getRequestContext } from "@cloudflare/next-on-pages";
+import { parseSubjectKind } from "@/lib/subject-kind";
 
 function normalizeUid(uid: string): string {
     return uid.trim().toUpperCase();
@@ -55,6 +56,20 @@ export async function linkTag(petId: string, tagId: string) {
     `)
     .bind(petId, normalizedTagId)
     .run();
+
+    const modeRow = await db
+      .prepare("SELECT assigned_subject_kind FROM tags WHERE id = ?")
+      .bind(normalizedTagId)
+      .first<{ assigned_subject_kind: string | null }>()
+      .catch(() => null);
+    if (modeRow?.assigned_subject_kind) {
+      const k = parseSubjectKind(modeRow.assigned_subject_kind);
+      await db
+        .prepare("UPDATE pets SET subject_kind = ? WHERE id = ?")
+        .bind(k, petId)
+        .run()
+        .catch(() => {});
+    }
 
     // 3. 연결 이력 감사 로그 (추적/분석용)
     await db.prepare(`

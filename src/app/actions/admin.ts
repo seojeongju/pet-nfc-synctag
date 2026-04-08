@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
 import { getRequestContext } from "@cloudflare/next-on-pages";
+import { parseSubjectKind } from "@/lib/subject-kind";
+import { normalizeBleMac } from "@/lib/device-mode";
 
 function normalizeUid(uid: string): string {
     return uid.trim().toUpperCase();
@@ -373,4 +375,56 @@ export async function getAdminFailureTopActions(days = 7, limit = 5) {
     .all<{ action: string; failure_count: number }>()
     .catch(() => ({ results: [] as Array<{ action: string; failure_count: number }> }));
     return result.results;
+}
+
+async function assertAdminRole() {
+    const context = getRequestContext();
+    const auth = getAuth(context.env);
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session?.user?.id) throw new Error("인증이 필요합니다.");
+    const row = await getDB()
+        .prepare("SELECT role FROM user WHERE id = ?")
+        .bind(session.user.id)
+        .first<{ role?: string | null }>();
+    if (row?.role !== "admin") throw new Error("관리자만 수정할 수 있습니다.");
+}
+
+/**
+ * 제품명·할당 모드(반려/어르신/아이/캐리어)·BLE MAC 관리 (출고 전·운영 중)
+ */
+export async function updateTagProductProfile(
+    tagId: string,
+    payload: {
+        product_name: string | null;
+        assigned_subject_kind: string | null;
+        ble_mac: string | null;
+    }
+) {
+    await assertAdminRole();
+    const db = getDB();
+    const id = normalizeUid(tagId);
+    const productName = payload.product_name?.trim() || null;
+    const modeRaw = payload.assigned_subject_kind;
+    const mode: string | null =
+        !modeRaw || !String(modeRaw).trim()
+            ? null
+            : parseSubjectKind(String(modeRaw));
+    const mac = payload.ble_mac?.trim() ? normalizeBleMac(payload.ble_mac) : null;
+
+    await db
+        .prepare(
+            `UPDATE tags SET product_name = ?, assigned_subject_kind = ?, ble_mac = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+        )
+        .bind(productName, mode, mac, id)
+        .run()
+        .catch((e: Error) => {
+            throw new Error(
+                e.message?.includes("no such column")
+                    ? "DB 마이그레이션(product_name, assigned_subject_kind)을 적용해 주세요."
+                    : e.message
+            );
+        });
+
+    revalidatePath("/admin/tags");
+    revalidatePath("/admin/monitoring");
 }

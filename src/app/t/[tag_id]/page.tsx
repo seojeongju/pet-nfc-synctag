@@ -2,6 +2,8 @@ import { getDB } from "@/lib/db";
 import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { parseSubjectKind } from "@/lib/subject-kind";
+import { getAuth } from "@/lib/auth";
+import { getRequestContext } from "@cloudflare/next-on-pages";
 
 export const runtime = "edge";
 
@@ -9,16 +11,37 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
   const db = getDB();
   const { tag_id } = await params;
 
-  // 1. Find the pet linked to this tag (+ subject_kind for public profile / kind query)
-  const tag = await db
-    .prepare(
-      `SELECT t.pet_id, t.is_active, COALESCE(p.subject_kind, 'pet') AS subject_kind
-       FROM tags t
-       INNER JOIN pets p ON p.id = t.pet_id
-       WHERE t.id = ?`
-    )
-    .bind(tag_id)
-    .first<{ pet_id: string; is_active: boolean; subject_kind: string }>();
+  type TagRow = {
+    pet_id: string;
+    is_active: boolean;
+    assigned_subject_kind: string | null;
+    pet_subject_kind: string;
+  };
+
+  let tag: TagRow | null = null;
+  try {
+    tag = await db
+      .prepare(
+        `SELECT t.pet_id, t.is_active, t.assigned_subject_kind,
+                COALESCE(p.subject_kind, 'pet') AS pet_subject_kind
+         FROM tags t
+         INNER JOIN pets p ON p.id = t.pet_id
+         WHERE t.id = ?`
+      )
+      .bind(tag_id)
+      .first<TagRow>();
+  } catch {
+    tag = await db
+      .prepare(
+        `SELECT t.pet_id, t.is_active, NULL AS assigned_subject_kind,
+                COALESCE(p.subject_kind, 'pet') AS pet_subject_kind
+         FROM tags t
+         INNER JOIN pets p ON p.id = t.pet_id
+         WHERE t.id = ?`
+      )
+      .bind(tag_id)
+      .first<TagRow>();
+  }
 
   if (!tag) {
     const headerList = await headers();
@@ -38,9 +61,8 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
     notFound();
   }
 
-  // 2. Initial Scan Log (Server Side Info)
   const headerList = await headers();
-  const ip = headerList.get("x-real-ip") || "unknown";
+  const ip = headerList.get("x-real-ip") || headerList.get("cf-connecting-ip") || "unknown";
   const userAgent = headerList.get("user-agent") || "unknown";
 
   await db
@@ -50,10 +72,24 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
     .bind(tag_id, ip, userAgent)
     .run();
 
-  const kind = parseSubjectKind(tag.subject_kind);
-  // 발견자 경로: 로그인·허브 없이 공개 프로필만 (보호자 구분은 세션+소유권)
-  // 3. Redirect to the public profile (tag + kind for S3 NFC branching / deep links)
+  const effectiveKind = parseSubjectKind(
+    tag.assigned_subject_kind ?? tag.pet_subject_kind
+  );
+
+  const context = getRequestContext();
+  const auth = getAuth(context.env);
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (session?.user?.id) {
+    const owner = await db
+      .prepare("SELECT owner_id FROM pets WHERE id = ?")
+      .bind(tag.pet_id)
+      .first<{ owner_id: string }>();
+    if (owner?.owner_id === session.user.id) {
+      redirect(`/dashboard?kind=${encodeURIComponent(effectiveKind)}`);
+    }
+  }
+
   redirect(
-    `/profile/${tag.pet_id}?tag=${encodeURIComponent(tag_id)}&kind=${encodeURIComponent(kind)}`
+    `/profile/${tag.pet_id}?tag=${encodeURIComponent(tag_id)}&kind=${encodeURIComponent(effectiveKind)}`
   );
 }

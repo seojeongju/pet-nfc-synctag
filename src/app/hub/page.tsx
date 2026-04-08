@@ -6,6 +6,7 @@ import Link from "next/link";
 import { PawPrint, UserRound, Baby, Briefcase, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
+import { resolveDeviceAssignedKind } from "@/lib/device-mode";
 
 export const runtime = "edge";
 
@@ -16,13 +17,29 @@ const hubIcons: Record<SubjectKind, typeof PawPrint> = {
   luggage: Briefcase,
 };
 
-export default async function HubPage() {
+export default async function HubPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ device?: string; uid?: string }>;
+}) {
   const context = getRequestContext();
   const auth = getAuth(context.env);
   const session = await auth.api.getSession({ headers: await headers() });
 
   if (!session) {
     redirect("/login");
+  }
+
+  const sp = await searchParams;
+  const deviceHint =
+    (typeof sp.device === "string" && sp.device.trim()) ||
+    (typeof sp.uid === "string" && sp.uid.trim()) ||
+    "";
+  if (deviceHint) {
+    const kind = await resolveDeviceAssignedKind(context.env.DB, deviceHint);
+    if (kind) {
+      redirect(`/dashboard?kind=${encodeURIComponent(kind)}`);
+    }
   }
 
   const roleRow = await context.env.DB
