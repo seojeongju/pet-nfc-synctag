@@ -3,7 +3,18 @@ import { getRequestContext } from "@cloudflare/next-on-pages";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { LayoutDashboard, Tag, Package, Home, LogOut, ChevronRight, Bell, Radio, Megaphone } from "lucide-react";
+import {
+  LayoutDashboard,
+  Tag,
+  Package,
+  Home,
+  LogOut,
+  ChevronRight,
+  Bell,
+  Radio,
+  Megaphone,
+  Building2,
+} from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { adminUi } from "@/styles/admin/ui";
@@ -29,7 +40,6 @@ export default async function AdminAuthenticatedLayout({
         .first<{ role?: string | null }>()
     : null;
 
-  // 보안 체크: 관리자 권한(role === 'admin')이 없는 경우 전용 로그인 페이지로 안내
   if (!session || roleRow?.role !== "admin") {
     redirect("/admin/login");
   }
@@ -39,6 +49,7 @@ export default async function AdminAuthenticatedLayout({
     { href: "/admin/announcements", label: "모드·배치 공지", icon: Megaphone, color: "text-indigo-500" },
     { href: "/admin/monitoring", label: "NFC/BLE 모니터링", icon: Radio, color: "text-sky-500" },
     { href: "/admin/tags", label: "태그 재고 관리", icon: Tag, color: "text-amber-500" },
+    { href: "/admin/tenants", label: "조직·멤버 관리", icon: Building2, color: "text-emerald-500" },
   ];
 
   return (
@@ -62,13 +73,21 @@ export default async function AdminAuthenticatedLayout({
               {navItems.map((item) => {
                 const NavIcon = item.icon;
                 return (
-                <Link key={item.href} href={item.href} prefetch={false} className={cn("flex items-center justify-between px-3 lg:px-4 py-3 lg:py-4 hover:bg-teal-50 transition-all group", adminUi.subtleCard)}>
-                  <div className="flex items-center gap-3 lg:gap-4 relative z-10 min-w-0">
-                    <NavIcon className={`w-4 h-4 lg:w-5 lg:h-5 ${item.color} group-hover:scale-110 transition-transform`} />
-                    <span className="font-black text-[10px] lg:text-xs text-slate-800 uppercase tracking-wide truncate">{item.label}</span>
-                </div>
-                  <ChevronRight className="hidden lg:block w-3 h-3 text-slate-300 group-hover:text-teal-500 transition-colors" />
-                </Link>
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    prefetch={false}
+                    className={cn(
+                      "flex items-center justify-between px-3 lg:px-4 py-3 lg:py-4 hover:bg-teal-50 transition-all group",
+                      adminUi.subtleCard
+                    )}
+                  >
+                    <div className="flex items-center gap-3 lg:gap-4 relative z-10 min-w-0">
+                      <NavIcon className={`w-4 h-4 lg:w-5 lg:h-5 ${item.color} group-hover:scale-110 transition-transform`} />
+                      <span className="font-black text-[10px] lg:text-xs text-slate-800 uppercase tracking-wide truncate">{item.label}</span>
+                    </div>
+                    <ChevronRight className="hidden lg:block w-3 h-3 text-slate-300 group-hover:text-teal-500 transition-colors" />
+                  </Link>
                 );
               })}
             </div>

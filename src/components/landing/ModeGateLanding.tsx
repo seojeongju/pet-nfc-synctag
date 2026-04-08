@@ -85,7 +85,7 @@ export default function ModeGateLanding({ kind, session, isAdmin }: ModeGateLand
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.5, duration: 0.6 }}
-              className="absolute top-6 right-6 glass px-5 py-2.5 rounded-2xl flex items-center gap-2"
+              className="absolute top-6 right-6 bg-white shadow-lg px-5 py-2.5 rounded-2xl flex items-center gap-2 border border-slate-100"
             >
               <span className="text-xs font-black text-slate-800 uppercase tracking-tight">{visual.badge}</span>
             </motion.div>
@@ -94,7 +94,7 @@ export default function ModeGateLanding({ kind, session, isAdmin }: ModeGateLand
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.7, type: "spring" }}
-              className="absolute bottom-10 left-6 bg-white/90 backdrop-blur-md p-3 rounded-[24px] shadow-xl flex items-center gap-3 border border-white"
+              className="absolute bottom-10 left-6 bg-white/95 backdrop-blur-md p-3 rounded-[24px] shadow-2xl flex items-center gap-3 border border-white"
             >
               <div
                 className={cn(
@@ -124,20 +124,25 @@ export default function ModeGateLanding({ kind, session, isAdmin }: ModeGateLand
             className="space-y-3"
           >
             <div className={cn("flex items-center gap-2 font-bold text-xs uppercase tracking-widest", visual.sheetAccent)}>
-              <Sparkles className="w-4 h-4" />
+              <Sparkles className="w-4 h-4 shrink-0" />
               {copy.kicker}
             </div>
             <h1 className="text-3xl font-black text-slate-900 leading-[1.1] tracking-tight">
-              {copy.titleLine1} <br />
-              <span
-                className={cn(
-                  "text-transparent bg-clip-text bg-gradient-to-r",
-                  visual.titleGradientFrom,
-                  visual.titleGradientTo
-                )}
-              >
-                {copy.titleGradient}
-              </span>
+              {copy.titleLine1} 
+              {copy.titleGradient && (
+                <>
+                  <br />
+                  <span
+                    className={cn(
+                      "text-transparent bg-clip-text bg-gradient-to-r",
+                      visual.titleGradientFrom,
+                      visual.titleGradientTo
+                    )}
+                  >
+                    {copy.titleGradient}
+                  </span>
+                </>
+              )}
             </h1>
             <p className="text-slate-500 text-sm font-medium leading-relaxed">{copy.subline}</p>
             {!session && (
