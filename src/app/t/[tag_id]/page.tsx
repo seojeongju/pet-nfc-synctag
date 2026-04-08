@@ -90,6 +90,6 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
   }
 
   redirect(
-    `/profile/${tag.pet_id}?tag=${encodeURIComponent(tag_id)}&kind=${encodeURIComponent(effectiveKind)}`
+    `/profile/${tag.pet_id}?tag=${encodeURIComponent(tag_id)}&kind=${encodeURIComponent(effectiveKind)}&from=scan`
   );
 }

@@ -52,6 +52,7 @@ interface PetProfileClientProps {
   subjectKind: SubjectKind;
   isPublicViewer: boolean;
   nfcEntry: boolean;
+  scanEntrySource?: "scan" | null;
   /** NFC(?tag=) 진입 + 세션이 소유자일 때 보호자 패널을 숨김 */
   nfcOwnerGate?: boolean;
 }
@@ -66,6 +67,7 @@ export default function PetProfileClient({
   subjectKind,
   isPublicViewer,
   nfcEntry,
+  scanEntrySource = null,
   nfcOwnerGate = false,
 }: PetProfileClientProps) {
   const containerRef = useRef(null);
@@ -193,7 +195,9 @@ export default function PetProfileClient({
         <div className="max-w-md mx-auto px-6 -mt-2 mb-2 relative z-20">
           <div className="rounded-2xl bg-teal-600/10 border border-teal-200 px-4 py-2 text-center">
             <p className="text-[11px] font-bold text-teal-800">
-              NFC 태그로 이 페이지를 열었습니다. 발견을 도와주셔서 감사합니다.
+              {scanEntrySource === "scan"
+                ? "태그 스캔으로 접속되었습니다. 아래 1) 연락 2) 위치 공유 순서로 도와주세요."
+                : "NFC 태그로 이 페이지를 열었습니다. 발견을 도와주셔서 감사합니다."}
             </p>
           </div>
         </div>
@@ -283,6 +287,14 @@ export default function PetProfileClient({
               <p className="text-[13px] text-slate-500 font-bold leading-relaxed">
                  {finderParagraph}
               </p>
+              {treatAsPublicVisitor ? (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="text-[11px] font-black text-slate-700">발견자 가이드</p>
+                  <p className="text-[11px] font-semibold text-slate-500 mt-1">
+                    1) 먼저 보호자에게 전화하고, 2) 현재 위치를 공유해 주세요.
+                  </p>
+                </div>
+              ) : null}
 
               {/* Action Buttons */}
               <div className="grid gap-4 mt-2 focus-within:ring-0">
@@ -303,7 +315,7 @@ export default function PetProfileClient({
                      NFC 태그로 스캔한 경우에만 발견 위치를 보호자에게 전달할 수 있어요.
                    </p>
                  )}
-                 <LocationShare tagId={tagId} />
+                 <LocationShare tagId={tagId} enabled={treatAsPublicVisitor} />
               </div>
             </CardContent>
           </Card>

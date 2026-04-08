@@ -35,10 +35,10 @@ export default async function PublicProfilePage({
   searchParams 
 }: { 
   params: Promise<{ pet_id: string }>,
-  searchParams: Promise<{ tag?: string }>
+  searchParams: Promise<{ tag?: string; from?: string }>
 }) {
   const { pet_id } = await params;
-  const { tag } = await searchParams;
+  const { tag, from } = await searchParams;
 
   const context = getRequestContext();
   const auth = getAuth(context.env);
@@ -75,6 +75,7 @@ export default async function PublicProfilePage({
       subjectKind={subjectKind}
       isPublicViewer={!isOwner}
       nfcEntry={!!tagId}
+      scanEntrySource={from === "scan" ? "scan" : null}
       nfcOwnerGate={nfcOwnerGate}
     />
   );

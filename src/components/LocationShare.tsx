@@ -1,20 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MapPin, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { updateScanLocation } from "@/app/actions/scan";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 
-export function LocationShare({ tagId }: { tagId: string | null }) {
+export function LocationShare({
+  tagId,
+  enabled = true,
+}: {
+  tagId: string | null;
+  enabled?: boolean;
+}) {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const searchParams = useSearchParams();
   const activeTag = tagId || searchParams.get("tag");
+  const canSend = enabled && Boolean(activeTag);
+  const helperText = useMemo(() => {
+    if (!enabled) return "공개 방문자 화면에서만 위치 공유를 보낼 수 있습니다.";
+    if (!activeTag) return "태그 스캔 진입에서만 보호자에게 위치가 전달됩니다.";
+    return "현재 위치를 공유하면 보호자에게 마지막 발견 위치가 전달됩니다.";
+  }, [enabled, activeTag]);
 
   const handleShare = async () => {
+    if (!canSend) return;
     if (!navigator.geolocation) {
-      alert("이 브라우저에서는 위치 정보를 지원하지 않습니다.");
+      setStatus("error");
       return;
     }
 
@@ -24,16 +37,12 @@ export function LocationShare({ tagId }: { tagId: string | null }) {
       async (position) => {
         const { latitude, longitude } = position.coords;
         
-        if (activeTag) {
-          try {
-            await updateScanLocation(activeTag, latitude, longitude);
-            setStatus("success");
-          } catch (e) {
-            console.error(e);
-            setStatus("error");
-          }
-        } else {
+        try {
+          await updateScanLocation(activeTag as string, latitude, longitude);
           setStatus("success");
+        } catch (e) {
+          console.error(e);
+          setStatus("error");
         }
       },
       (error) => {
@@ -75,10 +84,13 @@ export function LocationShare({ tagId }: { tagId: string | null }) {
           >
             <Button 
               onClick={handleShare}
-              disabled={status === "loading"}
+              disabled={!canSend || status === "loading"}
               variant="outline" 
               className={cn(
                 "w-full h-20 rounded-[28px] text-lg font-black border-2 transition-all active:scale-95 gap-4 group overflow-hidden relative",
+                !canSend
+                  ? "border-slate-200 text-slate-400 bg-slate-50"
+                  : "",
                 status === "error" 
                   ? "border-rose-100 text-rose-500 hover:bg-rose-50" 
                   : "border-teal-100 text-teal-600 hover:bg-teal-50"
@@ -91,11 +103,18 @@ export function LocationShare({ tagId }: { tagId: string | null }) {
               ) : (
                 <MapPin className="w-7 h-7 group-hover:bounce transition-transform" />
               )}
-              {status === "loading" ? "위치 정보 전송 중..." : status === "error" ? "다시 시도해 주세요" : "현재 위치 공유하기"}
+              {status === "loading"
+                ? "위치 정보 전송 중..."
+                : status === "error"
+                  ? "위치 권한을 확인하고 다시 시도해 주세요"
+                  : canSend
+                    ? "현재 위치 공유하기"
+                    : "위치 공유 사용 불가"}
               
               {/* Subtle hover effect light */}
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
             </Button>
+            <p className="mt-2 text-[11px] text-slate-400 text-center font-semibold">{helperText}</p>
           </motion.div>
         )}
       </AnimatePresence>
