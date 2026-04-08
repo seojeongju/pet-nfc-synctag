@@ -5,7 +5,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Plus, PawPrint, ChevronRight } from "lucide-react";
 
 export const runtime = "edge";
@@ -36,11 +37,15 @@ export default async function PetsPage() {
                     <h1 className="text-2xl font-black text-slate-900">우리 아이들</h1>
                     <p className="text-sm text-slate-500">등록된 {pets.length}마리의 반려동물</p>
                 </div>
-                <Link href="/dashboard/pets/new">
-                    <Button className="rounded-full bg-teal-500 hover:bg-teal-600 shadow-lg shadow-teal-100 gap-2 h-11 px-5">
-                        <Plus className="w-5 h-5" />
-                        <span className="font-bold">추가하기</span>
-                    </Button>
+                <Link
+                    href="/dashboard/pets/new"
+                    className={cn(
+                        buttonVariants({}),
+                        "rounded-full bg-teal-500 hover:bg-teal-600 shadow-lg shadow-teal-100 gap-2 h-11 px-5"
+                    )}
+                >
+                    <Plus className="w-5 h-5" />
+                    <span className="font-bold">추가하기</span>
                 </Link>
             </div>
 
@@ -88,10 +93,14 @@ export default async function PetsPage() {
                             <h3 className="text-xl font-bold text-slate-800">등록된 아이가 없어요</h3>
                             <p className="text-sm text-slate-400">NFC 인식표를 등록하고 우리 아이를 보호하세요.</p>
                         </div>
-                        <Link href="/dashboard/pets/new">
-                            <Button variant="outline" className="rounded-full border-teal-200 text-teal-600 hover:bg-teal-50 font-bold px-8 h-12">
-                                첫 아이 등록하기
-                            </Button>
+                        <Link
+                            href="/dashboard/pets/new"
+                            className={cn(
+                                buttonVariants({ variant: "outline" }),
+                                "rounded-full border-teal-200 text-teal-600 hover:bg-teal-50 font-bold px-8 h-12"
+                            )}
+                        >
+                            첫 아이 등록하기
                         </Link>
                     </div>
                 )}

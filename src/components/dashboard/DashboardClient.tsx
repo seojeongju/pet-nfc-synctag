@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { 
   Plus, MapPin, PawPrint, Search, Bell, Settings, 
   LogOut, ShieldCheck, Heart, History, Activity, Home, Smartphone, CheckCircle, AlertCircle
@@ -88,10 +88,14 @@ export default function DashboardClient({ session, pets, isAdmin }: DashboardCli
                   <p className="text-[9px] text-white/50 font-bold uppercase tracking-widest leading-none">Access Console</p>
                 </div>
               </div>
-              <Link href="/admin">
-                <Button size="sm" className="bg-teal-500 hover:bg-teal-600 text-white font-black rounded-xl text-[10px] h-8 px-4 transition-all active:scale-90">
-                  관리센터 이동
-                </Button>
+              <Link
+                href="/admin"
+                className={cn(
+                  buttonVariants({ size: "sm" }),
+                  "inline-flex items-center justify-center bg-teal-500 hover:bg-teal-600 text-white font-black rounded-xl text-[10px] h-8 px-4 transition-all active:scale-90"
+                )}
+              >
+                관리센터 이동
               </Link>
             </div>
           </motion.section>
