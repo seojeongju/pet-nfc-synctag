@@ -26,7 +26,7 @@ export default function HomeClient({ session, isAdmin, guardianEntryLink, guardi
       <main className="flex-1 flex flex-col max-w-md mx-auto w-full relative z-10">
         
         {/* Top Visual Section */}
-        <section className="relative px-4 pt-6 pb-2">
+        <section className="relative px-4 pt-6 pb-4">
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -69,7 +69,7 @@ export default function HomeClient({ session, isAdmin, guardianEntryLink, guardi
         </section>
 
         {/* Content & Call to Action (Action Sheet Style) */}
-        <section className="flex-1 flex flex-col px-8 pt-8 pb-12 space-y-8 bg-white/40 backdrop-blur-sm rounded-t-[56px] border-t border-white/50 -mt-20 shadow-[0_-20px_40px_rgba(0,0,0,0.02)]">
+        <section className="flex-1 flex flex-col px-8 pt-8 pb-12 space-y-8 bg-white/80 backdrop-blur-sm rounded-[40px] border border-slate-100/80 shadow-[0_8px_32px_rgba(15,23,42,0.06)]">
           <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto" />
           
           <motion.div 
