@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion, useMotionValueEvent, useScroll, useTransform } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
@@ -75,6 +75,15 @@ export default function PetProfileClient({
   const [petTagsLive, setPetTagsLive] = useState(petTags);
   const [unlockPending, startUnlock] = useTransition();
   const [unlockError, setUnlockError] = useState<string | null>(null);
+  const [locationShareStatus, setLocationShareStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [isPublicNavCondensed, setIsPublicNavCondensed] = useState(false);
+  const [navTuning, setNavTuning] = useState({
+    thresholdY: 56,
+    delta: 1.6,
+    scale: 0.95,
+    opacity: 0.92,
+    y: 3,
+  });
 
   useEffect(() => {
     setPetTagsLive(petTags);
@@ -85,6 +94,8 @@ export default function PetProfileClient({
   const writeLocked = Boolean(tenantId && tenantSuspended);
 
   const { scrollY } = useScroll();
+  const publicNavScale = useTransform(scrollY, [0, 1], [1, 1]);
+  const publicNavOpacity = useTransform(scrollY, [0, 1], [1, 1]);
   
   // Parallax effects for the hero image
   const imageY = useTransform(scrollY, [0, 400], [0, 100]);
@@ -130,6 +141,45 @@ export default function PetProfileClient({
           ? maskBreedFieldForPublic(pet.breed, subjectKind, true, "")
           : null
         : pet.breed?.trim() || null;
+
+  useEffect(() => {
+    if (locationShareStatus !== "success") return;
+    const timer = setTimeout(() => setLocationShareStatus("idle"), 5000);
+    return () => clearTimeout(timer);
+  }, [locationShareStatus]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const updateTuning = () => {
+      const w = window.innerWidth;
+      if (w <= 360) {
+        setNavTuning({ thresholdY: 50, delta: 1.4, scale: 0.965, opacity: 0.94, y: 2 });
+      } else if (w <= 390) {
+        setNavTuning({ thresholdY: 56, delta: 1.6, scale: 0.955, opacity: 0.93, y: 3 });
+      } else if (w <= 430) {
+        setNavTuning({ thresholdY: 62, delta: 1.8, scale: 0.95, opacity: 0.92, y: 3 });
+      } else {
+        setNavTuning({ thresholdY: 64, delta: 2, scale: 0.945, opacity: 0.9, y: 4 });
+      }
+    };
+    updateTuning();
+    window.addEventListener("resize", updateTuning);
+    return () => window.removeEventListener("resize", updateTuning);
+  }, []);
+
+  useMotionValueEvent(scrollY, "change", (latest) => {
+    const prev = scrollY.getPrevious() ?? latest;
+    const delta = latest - prev;
+    if (latest < navTuning.thresholdY) {
+      setIsPublicNavCondensed(false);
+      return;
+    }
+    if (delta > navTuning.delta) {
+      setIsPublicNavCondensed(true);
+    } else if (delta < -navTuning.delta) {
+      setIsPublicNavCondensed(false);
+    }
+  });
 
   return (
     <div ref={containerRef} className="min-h-screen bg-[#FDFCFB] font-outfit pb-32 overflow-x-hidden relative">
@@ -315,7 +365,13 @@ export default function PetProfileClient({
                      NFC 태그로 스캔한 경우에만 발견 위치를 보호자에게 전달할 수 있어요.
                    </p>
                  )}
-                 <LocationShare tagId={tagId} enabled={treatAsPublicVisitor} />
+                 <div id="finder-location-share">
+                   <LocationShare
+                     tagId={tagId}
+                     enabled={treatAsPublicVisitor}
+                     onStatusChange={setLocationShareStatus}
+                   />
+                 </div>
               </div>
             </CardContent>
           </Card>
@@ -414,7 +470,15 @@ export default function PetProfileClient({
 
       {/* Floating Bottom Nav: 소유자는 대시보드 연동 · 공개 방문자는 랜딩/연락 중심 (S3) */}
       {treatAsPublicVisitor ? (
-      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm h-20 glass-dark rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] z-50 flex items-center justify-around px-6 border border-white/20">
+      <motion.nav
+         animate={{
+           scale: isPublicNavCondensed ? navTuning.scale : publicNavScale.get(),
+           opacity: isPublicNavCondensed ? navTuning.opacity : publicNavOpacity.get(),
+           y: isPublicNavCondensed ? navTuning.y : 0,
+         }}
+         transition={{ duration: 0.2, ease: "easeOut" }}
+         className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm h-20 glass-dark rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] z-50 flex items-center justify-around px-6 border border-white/20"
+      >
          <Link href="/" className="flex flex-col items-center gap-1 group">
             <div className="p-2.5 rounded-2xl text-slate-400 group-hover:text-white transition-all active:scale-90">
                <Home className="w-6 h-6" />
@@ -437,18 +501,37 @@ export default function PetProfileClient({
          </div>
          )}
          <Link
-            href={loginHref}
-            title="보호자 로그인"
-            className="flex flex-col items-center gap-1 group"
+            href={tagId ? "#finder-location-share" : "#"}
+            title={tagId ? "위치 공유로 이동" : "태그 스캔 진입에서만 위치 공유 가능"}
+            aria-disabled={!tagId}
+            className={cn("flex flex-col items-center gap-1 group", !tagId ? "opacity-40 pointer-events-none" : "")}
          >
-            <div className="p-2.5 rounded-2xl text-slate-400 group-hover:text-white transition-all active:scale-90">
-               <LogIn className="w-6 h-6" />
+            <div
+              className={cn(
+                "p-2.5 rounded-2xl transition-all active:scale-90",
+                locationShareStatus === "success"
+                  ? "text-teal-400"
+                  : "text-slate-400 group-hover:text-white"
+              )}
+            >
+               <MapPin className="w-6 h-6" />
             </div>
-            <span className="text-[8px] font-black text-slate-400 group-hover:text-white text-center leading-tight max-w-[4.5rem]">
-              보호자 로그인
+            <span
+              className={cn(
+                "text-[8px] font-black text-center leading-tight max-w-[4.5rem]",
+                locationShareStatus === "success"
+                  ? "text-teal-300"
+                  : "text-slate-400 group-hover:text-white"
+              )}
+            >
+              {locationShareStatus === "loading"
+                ? "전송 중"
+                : locationShareStatus === "success"
+                  ? "전달 완료"
+                  : "위치 공유"}
             </span>
          </Link>
-      </nav>
+      </motion.nav>
       ) : (
       <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm h-20 glass-dark rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] z-50 flex items-center justify-around px-4 border border-white/20">
          <Link href={`/dashboard${kindQs}`} className="flex flex-col items-center gap-1 group">

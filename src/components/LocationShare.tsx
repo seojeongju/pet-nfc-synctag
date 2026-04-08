@@ -10,9 +10,11 @@ import { motion, AnimatePresence } from "framer-motion";
 export function LocationShare({
   tagId,
   enabled = true,
+  onStatusChange,
 }: {
   tagId: string | null;
   enabled?: boolean;
+  onStatusChange?: (status: "idle" | "loading" | "success" | "error") => void;
 }) {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const searchParams = useSearchParams();
@@ -24,14 +26,26 @@ export function LocationShare({
     return "현재 위치를 공유하면 보호자에게 마지막 발견 위치가 전달됩니다.";
   }, [enabled, activeTag]);
 
+  const getHapticPattern = () => {
+    if (typeof navigator === "undefined") return [35, 25, 35] as number[];
+    const ua = navigator.userAgent.toLowerCase();
+    const isIOS = /iphone|ipad|ipod/.test(ua);
+    const isAndroid = /android/.test(ua);
+    if (isIOS) return [20];
+    if (isAndroid) return [40, 20, 40];
+    return [35, 25, 35];
+  };
+
   const handleShare = async () => {
     if (!canSend) return;
     if (!navigator.geolocation) {
       setStatus("error");
+      onStatusChange?.("error");
       return;
     }
 
     setStatus("loading");
+    onStatusChange?.("loading");
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -40,14 +54,20 @@ export function LocationShare({
         try {
           await updateScanLocation(activeTag as string, latitude, longitude);
           setStatus("success");
+          onStatusChange?.("success");
+          if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+            navigator.vibrate(getHapticPattern());
+          }
         } catch (e) {
           console.error(e);
           setStatus("error");
+          onStatusChange?.("error");
         }
       },
       (error) => {
         console.error(error);
         setStatus("error");
+        onStatusChange?.("error");
       }
     );
   };
