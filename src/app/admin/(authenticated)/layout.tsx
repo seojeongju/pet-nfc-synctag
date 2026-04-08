@@ -98,10 +98,15 @@ export default async function AdminAuthenticatedLayout({
               <Home className="w-5 h-5" />
               <span className="font-black text-[10px] uppercase tracking-widest">사용자 화면</span>
             </Link>
-            <Link href="/logout" className="flex items-center gap-4 px-4 py-4 rounded-2xl hover:bg-rose-500/10 transition-all text-rose-500 border border-rose-100/0 hover:border-rose-500/20 bg-white shadow-md">
-              <LogOut className="w-5 h-5" />
-              <span className="font-black text-[10px] uppercase tracking-widest">안전 로그아웃</span>
-            </Link>
+            <form action="/logout" method="post">
+              <button
+                type="submit"
+                className="w-full flex items-center gap-4 px-4 py-4 rounded-2xl hover:bg-rose-500/10 transition-all text-rose-500 border border-rose-100/0 hover:border-rose-500/20 bg-white shadow-md"
+              >
+                <LogOut className="w-5 h-5" />
+                <span className="font-black text-[10px] uppercase tracking-widest">안전 로그아웃</span>
+              </button>
+            </form>
           </div>
         </aside>
 

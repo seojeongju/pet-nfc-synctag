@@ -7,6 +7,7 @@ import {
   Baby,
   Briefcase,
   Gem,
+  HeartHandshake,
   type LucideIcon,
   PawPrint,
   ShieldCheck,
@@ -25,6 +26,14 @@ const modeIcons: Record<SubjectKind, LucideIcon> = {
   gold: Gem,
 };
 
+const modeDescriptions: Record<SubjectKind, string> = {
+  pet: "반려동물 실종 대응 · 보호자 정보 확인",
+  elder: "어르신 케어 · 긴급 연락 지원",
+  child: "아이 안전 · 보호자 연결 안내",
+  luggage: "수하물 분실 대응 · 소유자 연결",
+  gold: "주얼리 인증 · 분실 방지 안내",
+};
+
 interface MultiModeHomeClientProps {
   session: { user: { name?: string | null } } | null;
   isAdmin: boolean;
@@ -39,137 +48,138 @@ export default function MultiModeHomeClient({
   adminEntryLink,
   adminButtonLabel,
 }: MultiModeHomeClientProps) {
-  return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-outfit overflow-hidden relative">
-      <div className="absolute top-[-10%] right-[-10%] w-[80%] h-[40%] bg-teal-500/5 blur-[120px] rounded-full" />
-      <div className="absolute bottom-[-10%] left-[-10%] w-[80%] h-[40%] bg-indigo-500/5 blur-[120px] rounded-full" />
+  const heroTitle = "제품에 맞는 NFC 경험을\n정확하게 시작하세요";
+  const heroBody =
+    "반려동물·어르신·아이·수하물·주얼리까지.\n링크유는 태그 스캔 이후의 안내와 연결 경험을 깔끔하게 완성합니다.";
 
-      <main className="flex-1 flex flex-col max-w-md mx-auto w-full relative z-10 px-4 pt-8 pb-6">
+  return (
+    <div className="min-h-screen bg-slate-50 font-outfit overflow-hidden relative">
+      <div className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-teal-400/20 blur-3xl" />
+      <div className="pointer-events-none absolute top-[35%] -left-20 h-64 w-64 rounded-full bg-indigo-300/20 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-16 right-[15%] h-64 w-64 rounded-full bg-cyan-300/20 blur-3xl" />
+
+      <main className="relative z-10 mx-auto flex w-full max-w-md flex-col gap-6 px-4 pb-10 pt-8">
+        <motion.section
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45 }}
+          className="relative overflow-hidden rounded-[36px] border border-white/40 bg-slate-950 shadow-[0_28px_80px_rgba(15,23,42,0.3)]"
+        >
+          <Image
+            src="/images/hero-bg.png"
+            alt="Link-U 메인 히어로 배경"
+            fill
+            priority
+            className="object-cover opacity-70"
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(145deg,rgba(2,6,23,0.9),rgba(15,23,42,0.55),rgba(8,47,73,0.65))]" />
+
+          <div className="relative z-10 px-6 pb-7 pt-7">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-teal-200/35 bg-white/10 px-3 py-1.5">
+              <Sparkles className="h-3.5 w-3.5 text-teal-200" />
+              <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-teal-100">SMART NFC PLATFORM</span>
+            </div>
+            <h1 className="whitespace-pre-line text-[28px] font-black leading-[1.15] tracking-tight text-white">
+              {heroTitle}
+            </h1>
+            <p className="mt-3 whitespace-pre-line text-[13px] font-semibold leading-relaxed text-slate-200/95">
+              {heroBody}
+            </p>
+          </div>
+        </motion.section>
+
         <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative rounded-[40px] overflow-hidden border-4 border-white shadow-[0_25px_60px_rgba(0,0,0,0.12)] bg-slate-950 aspect-[4/4.2] flex flex-col items-center justify-center text-center px-6 pb-10 pt-8"
+          transition={{ delay: 0.05, duration: 0.5 }}
+          className="rounded-[32px] border border-slate-200/80 bg-white/90 p-4 shadow-[0_14px_40px_rgba(15,23,42,0.08)] backdrop-blur"
         >
-          <motion.div
-            initial={{ scale: 1.1, opacity: 0 }}
-            animate={{ scale: 1, opacity: 0.7 }}
-            transition={{ duration: 1.5, ease: "easeOut" }}
-            className="absolute inset-0 z-0"
-          >
-            <Image
-              src="/images/hero-bg.png"
-              alt="Link-U Premium Background"
-              fill
-              className="object-cover"
-              priority
-            />
-          </motion.div>
-
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-900/60 via-slate-900/40 to-teal-950/80 z-1" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(45,212,191,0.2),transparent_60%)] z-1" />
-
-          <Sparkles className="w-10 h-10 text-teal-300 mb-4 relative z-10 drop-shadow-[0_0_15px_rgba(94,234,212,0.5)]" />
-          <h1 className="text-2xl font-black text-white tracking-tight relative z-10 drop-shadow-md">링크유</h1>
-          <p className="text-sm text-slate-100 mt-3 font-semibold leading-relaxed relative z-10 drop-shadow-sm">
-            NFC로 반려동물·어르신·아이·캐리어·골드(주얼리)까지
-            <br />
-            한 번에 연결하는 스마트한 관리 플랫폼 - Link-U
-          </p>
-          <div className="mt-6 grid grid-cols-2 gap-2.5 w-full max-w-[320px] relative z-10">
-            {SUBJECT_KINDS.map((k, i) => {
+          <div className="mb-3 flex items-center justify-between px-1">
+            <p className="text-[11px] font-black uppercase tracking-wider text-teal-600">Mode Select</p>
+            <p className="text-[11px] font-bold text-slate-400">5가지 전용 흐름</p>
+          </div>
+          <div className="grid grid-cols-1 gap-2.5">
+            {SUBJECT_KINDS.map((k) => {
               const Icon = modeIcons[k];
               const meta = subjectKindMeta[k];
-              const oddLast = i === SUBJECT_KINDS.length - 1 && SUBJECT_KINDS.length % 2 === 1;
               return (
                 <Link
                   key={k}
                   href={`/${k}`}
-                  className={cn(
-                    "flex items-center justify-center gap-2.5 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 px-3 py-3.5 hover:bg-white/25 transition-all hover:scale-[1.02] active:scale-[0.98]",
-                    oddLast && "col-span-2 w-full max-w-[200px] justify-self-center"
-                  )}
+                  className="group flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 transition hover:-translate-y-0.5 hover:border-teal-200 hover:shadow-md"
                 >
-                  <Icon className="w-5 h-5 text-teal-300 shrink-0" />
-                  <span className="text-center text-[11px] font-black text-white leading-tight">{meta.label}</span>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
+                      <Icon className="h-4.5 w-4.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-black text-slate-900">{meta.label}</p>
+                      <p className="truncate text-[11px] font-semibold text-slate-500">{modeDescriptions[k]}</p>
+                    </div>
+                  </div>
+                  <ArrowRight className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-teal-500" />
                 </Link>
               );
             })}
           </div>
         </motion.section>
 
-        <section className="flex-1 flex flex-col mt-8 space-y-6 bg-white/50 backdrop-blur-sm rounded-t-[40px] border border-white/60 px-6 pt-8 pb-10 shadow-[0_-12px_40px_rgba(0,0,0,0.04)]">
-          <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto" />
+        <section className="space-y-4 rounded-[28px] border border-slate-200/80 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
           <div className="space-y-2 text-center">
-            <p className="text-xs font-bold text-teal-600 uppercase tracking-widest">Smart NFC</p>
-            <h2 className="text-xl font-black text-slate-900 leading-snug">
-              제품에 맞는 모드 안내 페이지로
-              <br />
-              들어가 보세요
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">FOR FINDER & OWNER</p>
+            <h2 className="whitespace-pre-line text-[22px] font-black leading-tight text-slate-900">
+              {"태그를 스캔했다면\n이렇게 진행하세요"}
             </h2>
-            <p className="text-sm text-slate-500 font-medium leading-relaxed">
-              반려동물은 <span className="text-slate-800 font-bold">링크유 - 펫</span>, 수하물은{" "}
-              <span className="text-slate-800 font-bold">링크유 - 캐리</span>, 주얼리·인증 가치는{" "}
-              <span className="text-slate-800 font-bold">링크유 - 골드</span> 전용 화면에서 보호자로 시작할 수 있어요.
-            </p>
           </div>
 
           {!session && (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 text-left">
-              <p className="text-[11px] font-black text-slate-800">인식표만 스캔하셨나요?</p>
-              <p className="text-[10px] font-bold text-slate-600 mt-1.5 leading-relaxed">
-                발견자는 로그인 없이 <code className="text-[9px] bg-white px-1 rounded">/t/태그번호</code> 주소를
-                그대로 열어 주세요.
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="mb-1.5 flex items-center gap-2 text-slate-800">
+                <HeartHandshake className="h-4 w-4 text-teal-600" />
+                <p className="text-[12px] font-black">발견자 안내</p>
+              </div>
+              <p className="whitespace-pre-line text-[12px] font-semibold leading-relaxed text-slate-600">
+                {"로그인 없이 태그 URL을 그대로 열어 주세요.\n예: /t/태그번호"}
               </p>
             </div>
           )}
 
-          <div className="flex flex-col items-center gap-4">
-            <Link href={adminEntryLink} className="group inline-flex">
+          <div className="flex flex-col items-center gap-3">
+            <Link href={adminEntryLink} className="group inline-flex w-full">
               <button
                 type="button"
                 className={cn(
-                  "inline-flex h-10 items-center justify-center gap-2 rounded-full px-5 text-xs font-black shadow-md transition-all active:scale-[0.98] group-hover:-translate-y-0.5",
+                  "inline-flex h-11 w-full items-center justify-center gap-2 rounded-full px-5 text-sm font-black shadow-sm transition active:scale-[0.98]",
                   isAdmin
-                    ? "bg-slate-900 text-white shadow-slate-300/40 hover:bg-slate-800"
-                    : "border border-slate-200 bg-white text-slate-700 shadow-slate-200/80 hover:border-slate-300 hover:bg-slate-50"
+                    ? "bg-slate-900 text-white hover:bg-slate-800"
+                    : "border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
                 )}
               >
-                <ShieldCheck className={cn("h-4 w-4", isAdmin ? "text-teal-400" : "text-slate-500")} />
+                <ShieldCheck className={cn("h-4 w-4", isAdmin ? "text-teal-300" : "text-slate-500")} />
                 {adminButtonLabel}
-                <ArrowRight className="h-3.5 w-3.5 opacity-40 transition group-hover:translate-x-0.5 group-hover:opacity-80" />
               </button>
             </Link>
-            <p className="text-center text-[11px] font-bold leading-relaxed text-slate-400">
-              판매·재고·시스템 관리는 위 관리자 메뉴를 이용해 주세요.
-            </p>
-            {session && !isAdmin && (
-              <Link
-                href="/hub"
-                className="text-xs font-black text-teal-600 underline-offset-4 hover:text-teal-700 hover:underline"
-              >
+            {session && !isAdmin ? (
+              <Link href="/hub" className="text-xs font-black text-teal-600 underline-offset-4 hover:text-teal-700 hover:underline">
                 로그인한 보호자 · 대시보드로 이동
               </Link>
-            )}
+            ) : null}
             {session ? (
-              <div className="flex items-center justify-center gap-2 rounded-full border border-white bg-slate-100 px-5 py-2 text-xs font-black text-slate-500 shadow-sm">
-                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-teal-500" />
-                {session.user.name}님으로 로그인됨
+              <div className="inline-flex items-center gap-2 rounded-full border border-teal-100 bg-teal-50 px-4 py-1.5 text-[11px] font-black text-teal-700">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-teal-500" />
+                {session.user.name}님 로그인 상태
               </div>
             ) : (
-              <p className="text-center text-sm font-bold text-slate-400">
-                위 카드에서 제품에 맞는 모드를 누르면 해당 안내와 보호자 로그인으로 이어져요.
+              <p className="text-center text-[12px] font-semibold text-slate-500">
+                각 모드 페이지에서 보호자 등록 및 로그인을 진행할 수 있습니다.
               </p>
             )}
           </div>
         </section>
 
-        <footer className="px-4 pb-10 pt-4 flex flex-col items-center gap-4">
-          <div className="flex items-center justify-center gap-3 opacity-30 grayscale">
-            <ShieldCheck className="w-4 h-4" />
-            <Sparkles className="w-4 h-4" />
-          </div>
-          <p className="text-[10px] text-slate-300 font-bold tracking-widest uppercase text-center leading-loose">
-            링크유 Link-U © 2024 <br /> All Rights Reserved.
+        <footer className="pt-1 text-center">
+          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-300">
+            Link-U © 2024
           </p>
         </footer>
       </main>
