@@ -263,7 +263,7 @@ function AdminTagsPageContent() {
              <p className="text-slate-500 text-sm font-bold">시스템 전체 NFC 마스터 데이터 관리 및 인벤토리 추적</p>
           </div>
           
-          <Link href="/admin" className="flex items-center gap-2 text-xs font-black text-slate-500 hover:text-slate-900 transition-colors group">
+          <Link href="/admin" prefetch={false} className="flex items-center gap-2 text-xs font-black text-slate-500 hover:text-slate-900 transition-colors group">
              <div className="w-10 h-10 rounded-2xl bg-white border border-slate-100 flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
                 <Layers className="w-4 h-4" />
              </div>

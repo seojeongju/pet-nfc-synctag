@@ -60,7 +60,7 @@ export default async function AdminAuthenticatedLayout({
               {navItems.map((item) => {
                 const NavIcon = item.icon;
                 return (
-                <Link key={item.href} href={item.href} className={cn("flex items-center justify-between px-3 lg:px-4 py-3 lg:py-4 hover:bg-teal-50 transition-all group", adminUi.subtleCard)}>
+                <Link key={item.href} href={item.href} prefetch={false} className={cn("flex items-center justify-between px-3 lg:px-4 py-3 lg:py-4 hover:bg-teal-50 transition-all group", adminUi.subtleCard)}>
                   <div className="flex items-center gap-3 lg:gap-4 relative z-10 min-w-0">
                     <NavIcon className={`w-4 h-4 lg:w-5 lg:h-5 ${item.color} group-hover:scale-110 transition-transform`} />
                     <span className="font-black text-[10px] lg:text-xs text-slate-800 uppercase tracking-wide truncate">{item.label}</span>
