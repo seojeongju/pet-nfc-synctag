@@ -48,7 +48,7 @@ export default function MultiModeHomeClient({
         <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative rounded-[40px] overflow-hidden border-4 border-white shadow-[0_25px_60px_rgba(0,0,0,0.12)] bg-slate-950 aspect-[5/4] flex flex-col items-center justify-center text-center px-6 pb-12 pt-4"
+          className="relative rounded-[40px] overflow-hidden border-4 border-white shadow-[0_25px_60px_rgba(0,0,0,0.12)] bg-slate-950 aspect-[4/4.2] flex flex-col items-center justify-center text-center px-6 pb-10 pt-8"
         >
           <motion.div
             initial={{ scale: 1.1, opacity: 0 }}
@@ -75,7 +75,7 @@ export default function MultiModeHomeClient({
             <br />
             한 번에 연결하는 스마트한 관리 플랫폼 - Link-U
           </p>
-          <div className="mt-8 grid grid-cols-2 gap-3 w-full max-w-[320px] relative z-10">
+          <div className="mt-6 grid grid-cols-2 gap-2.5 w-full max-w-[320px] relative z-10">
             {SUBJECT_KINDS.map((k, i) => {
               const Icon = modeIcons[k];
               const meta = subjectKindMeta[k];
@@ -86,7 +86,7 @@ export default function MultiModeHomeClient({
                   href={`/${k}`}
                   className={cn(
                     "flex items-center justify-center gap-2.5 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 px-3 py-3.5 hover:bg-white/25 transition-all hover:scale-[1.02] active:scale-[0.98]",
-                    oddLast && "col-span-2 max-w-[min(100%,calc(50%-6px))] justify-self-center"
+                    oddLast && "col-span-2 w-full max-w-[200px] justify-self-center"
                   )}
                 >
                   <Icon className="w-5 h-5 text-teal-300 shrink-0" />

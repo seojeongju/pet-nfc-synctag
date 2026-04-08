@@ -59,13 +59,16 @@ export default function ModeGateLanding({ kind, session, isAdmin }: ModeGateLand
             className="relative aspect-[4/5] w-full rounded-[48px] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-4 border-white"
           >
             {visual.heroImageSrc ? (
-              <Image
-                src={visual.heroImageSrc}
-                alt={visual.heroAlt}
-                fill
-                className="object-cover scale-110"
-                priority
-              />
+              <>
+                <Image
+                  src={visual.heroImageSrc}
+                  alt={visual.heroAlt}
+                  fill
+                  className="object-cover scale-105"
+                  priority
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-transparent to-slate-900/10 z-0" />
+              </>
             ) : (
               <div
                 className={cn(
@@ -159,7 +162,7 @@ export default function ModeGateLanding({ kind, session, isAdmin }: ModeGateLand
               <button
                 type="button"
                 className={cn(
-                  "w-full h-18 flex items-center justify-center gap-3 rounded-[28px] text-lg font-black shadow-2xl transition-all active:scale-95 group-hover:-translate-y-1 duration-300",
+                  "w-full h-18 flex items-center justify-center gap-3 rounded-[28px] text-lg font-black shadow-2xl transition-all active:scale-95 group-hover:-translate-y-1 group-hover:shadow-[0_25px_60px_rgba(0,0,0,0.2)] duration-300 relative overflow-hidden border-2 border-white/20 ring-4 ring-black/5",
                   isAdmin ? "bg-slate-900 text-white shadow-slate-200" : visual.buttonClass
                 )}
               >

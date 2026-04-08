@@ -142,3 +142,6 @@ CREATE TABLE IF NOT EXISTS geofences (
 
 CREATE INDEX IF NOT EXISTS idx_geofences_pet ON geofences(pet_id);
 CREATE INDEX IF NOT EXISTS idx_geofences_owner ON geofences(owner_id);
+
+-- Multi-tenancy & subscriptions (see migrations/0008_tenants_subscriptions.sql)
+-- tenants, tenant_members, plans, subscriptions; pets.tenant_id, tags.tenant_id (nullable)

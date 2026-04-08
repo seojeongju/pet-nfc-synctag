@@ -2,6 +2,7 @@
 import { getDB, getR2 } from "@/lib/db";
 import { nanoid } from "nanoid";
 import { parseSubjectKind, type SubjectKind } from "@/lib/subject-kind";
+import { assertPersonalPetQuota } from "@/lib/tenant-quota";
 
 interface PetData {
     name: string;
@@ -30,6 +31,7 @@ export async function uploadToR2(formData: FormData) {
 
 export async function createPet(ownerId: string, data: PetData) {
     const db = getDB();
+    await assertPersonalPetQuota(db, ownerId);
     const id = nanoid();
     const kind = parseSubjectKind(data.subject_kind);
 

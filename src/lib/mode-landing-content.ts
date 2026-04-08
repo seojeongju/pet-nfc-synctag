@@ -43,8 +43,8 @@ export const modeLandingVisual: Record<SubjectKind, ModeLandingVisual> = {
     titleGradientTo: "to-indigo-600",
   },
   elder: {
-    heroImageSrc: null,
-    heroAlt: "",
+    heroImageSrc: "/images/memory-hero.png",
+    heroAlt: "어르신과 가족의 따뜻한 모습",
     badge: "링크유 - 메모리",
     statLabel: "가족 연결 케어",
     statValue: "890+",
