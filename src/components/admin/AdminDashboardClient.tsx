@@ -132,13 +132,15 @@ export default function AdminDashboardClient({ stats, ops, failureTop }: AdminDa
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-          {statCards.map((card, idx) => (
+          {statCards.map((card, idx) => {
+            const StatIcon = card.icon;
+            return (
             <motion.div key={idx} variants={itemVariants}>
               <AdminCard variant="kpi" className="shadow-xl rounded-[32px] overflow-hidden group hover:bg-slate-50 transition-all duration-500 hover:-translate-y-1">
                 <CardContent className="p-7">
                   <div className="flex items-center justify-between mb-6">
                     <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-500 group-hover:scale-110", card.glowColor, card.color)}>
-                       <card.icon className="w-7 h-7" />
+                       <StatIcon className="w-7 h-7" />
                     </div>
                     <div className="h-8 w-8 rounded-full border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-teal-500 transition-colors">
                        <ArrowUpRight className="w-4 h-4" />
@@ -154,7 +156,8 @@ export default function AdminDashboardClient({ stats, ops, failureTop }: AdminDa
                 </CardContent>
               </AdminCard>
             </motion.div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

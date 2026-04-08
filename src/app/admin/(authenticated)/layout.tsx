@@ -57,15 +57,18 @@ export default async function AdminAuthenticatedLayout({
           <nav className="px-4 pb-4 lg:pb-0 lg:space-y-2 lg:mt-4">
             <p className="hidden lg:block px-4 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">메인 메뉴</p>
             <div className="grid grid-cols-2 gap-2 lg:grid-cols-1 lg:gap-2">
-              {navItems.map((item) => (
+              {navItems.map((item) => {
+                const NavIcon = item.icon;
+                return (
                 <Link key={item.href} href={item.href} className={cn("flex items-center justify-between px-3 lg:px-4 py-3 lg:py-4 hover:bg-teal-50 transition-all group", adminUi.subtleCard)}>
                   <div className="flex items-center gap-3 lg:gap-4 relative z-10 min-w-0">
-                    <item.icon className={`w-4 h-4 lg:w-5 lg:h-5 ${item.color} group-hover:scale-110 transition-transform`} />
+                    <NavIcon className={`w-4 h-4 lg:w-5 lg:h-5 ${item.color} group-hover:scale-110 transition-transform`} />
                     <span className="font-black text-[10px] lg:text-xs text-slate-800 uppercase tracking-wide truncate">{item.label}</span>
                 </div>
                   <ChevronRight className="hidden lg:block w-3 h-3 text-slate-300 group-hover:text-teal-500 transition-colors" />
                 </Link>
-              ))}
+                );
+              })}
             </div>
           </nav>
 
