@@ -1,5 +1,7 @@
 "use server";
 import { getDB } from "@/lib/db";
+import type { SubjectKind } from "@/lib/subject-kind";
+import { parseSubjectKind } from "@/lib/subject-kind";
 
 export async function updateScanLocation(tagId: string, lat: number, lng: number) {
   const db = getDB();
@@ -18,8 +20,9 @@ export async function updateScanLocation(tagId: string, lat: number, lng: number
   return { success: true };
 }
 
-export async function getScanLogs(ownerId: string) {
+export async function getScanLogs(ownerId: string, subjectKind: SubjectKind = "pet") {
   const db = getDB();
+  const kind = parseSubjectKind(subjectKind);
   const { results } = await db.prepare(`
     SELECT 
       sl.*, 
@@ -30,11 +33,12 @@ export async function getScanLogs(ownerId: string) {
     JOIN tags t ON sl.tag_id = t.id
     JOIN pets p ON t.pet_id = p.id
     WHERE p.owner_id = ?
+      AND COALESCE(p.subject_kind, 'pet') = ?
     ORDER BY sl.scanned_at DESC
     LIMIT 50
   `)
-  .bind(ownerId)
+  .bind(ownerId, kind)
   .all();
-  
+
   return results;
 }

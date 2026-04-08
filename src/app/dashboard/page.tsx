@@ -4,11 +4,19 @@ import { getAuth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import DashboardClient from "@/components/dashboard/DashboardClient";
+import { parseSubjectKind } from "@/lib/subject-kind";
 
 export const runtime = "edge";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ kind?: string }>;
+}) {
   try {
+    const { kind: kindParam } = await searchParams;
+    const subjectKind = parseSubjectKind(kindParam);
+
     const context = getRequestContext();
     const auth = getAuth(context.env);
     const session = await auth.api.getSession({
@@ -19,11 +27,11 @@ export default async function DashboardPage() {
       redirect("/login");
     }
 
-    const pets = await getPets(session.user.id);
+    const pets = await getPets(session.user.id, subjectKind);
     const roleRow = await context.env.DB
-      .prepare("SELECT role FROM user WHERE id = ?")
-      .bind(session.user.id)
-      .first<{ role?: string | null }>();
+        .prepare("SELECT role FROM user WHERE id = ?")
+        .bind(session.user.id)
+        .first<{ role?: string | null }>();
     const isAdmin = roleRow?.role === "admin";
 
     return (
@@ -31,6 +39,7 @@ export default async function DashboardPage() {
         session={session}
         pets={pets || []}
         isAdmin={isAdmin}
+        subjectKind={subjectKind}
       />
     );
   } catch (error: unknown) {

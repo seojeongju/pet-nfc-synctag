@@ -10,7 +10,7 @@ export default function LoginPage() {
   const handleLogin = async (provider: "google" | "kakao") => {
     await signIn.social({
       provider,
-      callbackURL: "/dashboard",
+      callbackURL: "/hub",
     });
   };
 

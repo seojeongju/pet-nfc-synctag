@@ -1,6 +1,7 @@
 "use server";
 import { getDB, getR2 } from "@/lib/db";
 import { nanoid } from "nanoid";
+import { parseSubjectKind, type SubjectKind } from "@/lib/subject-kind";
 
 interface PetData {
     name: string;
@@ -8,6 +9,7 @@ interface PetData {
     medical_info?: string;
     emergency_contact?: string;
     photo_url?: string;
+    subject_kind?: SubjectKind;
 }
 
 export async function uploadToR2(formData: FormData) {
@@ -29,20 +31,24 @@ export async function uploadToR2(formData: FormData) {
 export async function createPet(ownerId: string, data: PetData) {
     const db = getDB();
     const id = nanoid();
-    
+    const kind = parseSubjectKind(data.subject_kind);
+
     await db.prepare(
-        "INSERT INTO pets (id, owner_id, name, breed, medical_info, emergency_contact, photo_url) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        "INSERT INTO pets (id, owner_id, name, breed, medical_info, emergency_contact, photo_url, subject_kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
     )
-    .bind(id, ownerId, data.name, data.breed, data.medical_info, data.emergency_contact, data.photo_url)
+    .bind(id, ownerId, data.name, data.breed, data.medical_info, data.emergency_contact, data.photo_url, kind)
     .run();
-    
+
     return id;
 }
 
-export async function getPets(ownerId: string) {
+export async function getPets(ownerId: string, subjectKind: SubjectKind = "pet") {
     const db = getDB();
-    const { results } = await db.prepare("SELECT * FROM pets WHERE owner_id = ? ORDER BY created_at DESC")
-        .bind(ownerId)
+    const kind = parseSubjectKind(subjectKind);
+    const { results } = await db.prepare(
+        "SELECT * FROM pets WHERE owner_id = ? AND COALESCE(subject_kind, 'pet') = ? ORDER BY created_at DESC"
+    )
+        .bind(ownerId, kind)
         .all();
     return results;
 }

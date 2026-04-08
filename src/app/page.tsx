@@ -19,9 +19,9 @@ export default async function Home() {
         .first<{ role?: string | null }>()
     : null;
   const isAdmin = roleRow?.role === "admin";
-  const dashboardLink = isAdmin ? "/admin" : "/dashboard";
+  const dashboardLink = isAdmin ? "/admin" : "/hub";
   const buttonLabel = session 
-    ? (isAdmin ? "관리자 센터 바로가기" : "내 대시보드로 이동") 
+    ? (isAdmin ? "관리자 센터 바로가기" : "모드 선택 · 대시보드") 
     : "지금 시작하기";
 
   return (

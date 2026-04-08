@@ -1,6 +1,6 @@
 "use client";
 import { useState, useTransition, useEffect } from "react";
-import { registerBulkTags, getAllTags, getTagOpsStats, getTagLinkLogs, getAdminAuditLogs } from "@/app/actions/admin";
+import { registerBulkTags } from "@/app/actions/admin";
 import { Button } from "@/components/ui/button";
 import { AdminCard } from "@/components/admin/ui/AdminCard";
 import { AdminTableHeadCell, AdminTableHeadRow, AdminTableRow } from "@/components/admin/ui/AdminTable";
@@ -11,18 +11,24 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-export default function AdminTagsPageClient() {
-  type AdminTag = {
-    id: string;
-    pet_name?: string | null;
-    owner_email?: string | null;
-    batch_id?: string | null;
-    status: string;
-    created_at: string;
-  };
-  const [uids, setUids] = useState("");
-  const [tags, setTags] = useState<AdminTag[]>([]);
-  const [opsStats, setOpsStats] = useState<{
+type AdminTag = {
+  id: string;
+  pet_name?: string | null;
+  owner_email?: string | null;
+  batch_id?: string | null;
+  status: string;
+  created_at: string;
+};
+
+export default function AdminTagsPageClient({
+  tags,
+  opsStats,
+  linkLogs,
+  auditLogs,
+  auditTotalCount
+}: {
+  tags: AdminTag[];
+  opsStats: {
     totalCount: number;
     activeCount: number;
     unsoldCount: number;
@@ -36,9 +42,8 @@ export default function AdminTagsPageClient() {
       unsold_count: number;
       latest_created_at: string;
     }>;
-  } | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [linkLogs, setLinkLogs] = useState<Array<{
+  };
+  linkLogs: Array<{
     id: number;
     tag_id: string;
     pet_id: string;
@@ -46,15 +51,19 @@ export default function AdminTagsPageClient() {
     created_at: string;
     pet_name?: string | null;
     owner_email?: string | null;
-  }>>([]);
-  const [auditLogs, setAuditLogs] = useState<Array<{
+  }>;
+  auditLogs: Array<{
     id: number;
     action: string;
     actor_email?: string | null;
     success: number;
     payload?: string | null;
     created_at: string;
-  }>>([]);
+  }>;
+  auditTotalCount: number;
+}) {
+  const [uids, setUids] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [auditSuccessFilter, setAuditSuccessFilter] = useState<"all" | "success" | "failed">("all");
   const [auditDaysFilter, setAuditDaysFilter] = useState<7 | 30 | 90>(30);
   const [auditActorFilter, setAuditActorFilter] = useState("");
@@ -63,7 +72,6 @@ export default function AdminTagsPageClient() {
   const [auditSortOrder, setAuditSortOrder] = useState<"asc" | "desc">("desc");
   const [auditPage, setAuditPage] = useState(1);
   const auditPageSize = 10;
-  const [auditTotalCount, setAuditTotalCount] = useState(0);
   const [selectedAudit, setSelectedAudit] = useState<{
     id: number;
     action: string;
@@ -95,28 +103,7 @@ export default function AdminTagsPageClient() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchTags = async () => {
-    const [results, stats, logs, audits] = await Promise.all([
-      getAllTags(),
-      getTagOpsStats(),
-      getTagLinkLogs(30),
-      getAdminAuditLogs({
-        limit: auditPageSize,
-        page: auditPage,
-        success: auditSuccessFilter,
-        days: auditDaysFilter,
-        actorEmail: auditActorFilter,
-        action: auditActionFilter,
-        sortBy: auditSortBy,
-        sortOrder: auditSortOrder,
-      }),
-    ]);
-    setTags(results);
-    setOpsStats(stats);
-    setLinkLogs(logs);
-    setAuditLogs(audits.rows);
-    setAuditTotalCount(audits.total);
-  };
+  // fetchTags is handled by Server Component in page.tsx
 
   const filteredTags = tags.filter(tag => 
     tag.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -148,7 +135,7 @@ export default function AdminTagsPageClient() {
           text: `등록 ${result.registeredCount}개 / 실패 ${result.failedCount}개 (중복입력 ${result.duplicateInRequest}, 기존중복 ${result.duplicateExisting}, 형식오류 ${result.invalidCount})`,
         });
         setUids("");
-        fetchTags();
+        router.refresh();
       } catch {
         setMessage({ type: "error", text: "태그 등록 중 오류가 발생했습니다." });
       }
@@ -191,10 +178,7 @@ export default function AdminTagsPageClient() {
     URL.revokeObjectURL(url);
   };
 
-  useEffect(() => {
-    fetchTags();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auditSuccessFilter, auditDaysFilter, auditActorFilter, auditActionFilter, auditSortBy, auditSortOrder, auditPage]);
+  // Data is automatically refetched by Next.js Server Components on URL change.
 
   useEffect(() => {
     setAuditPage(1);

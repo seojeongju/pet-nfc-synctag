@@ -5,27 +5,42 @@ import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { 
-  Plus, MapPin, PawPrint, Search, Bell, Settings, 
-  LogOut, ShieldCheck, Heart, History, Activity, Home, Smartphone, CheckCircle, AlertCircle
+  Plus, MapPin, PawPrint, Search, Bell,
+  LogOut, ShieldCheck, Heart, History, Activity, Home, Smartphone, CheckCircle, AlertCircle,
+  UserRound, Baby, Briefcase,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
 import { linkTag } from "@/app/actions/tag";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
+import type { LucideIcon } from "lucide-react";
+
+const subjectAvatars: Record<SubjectKind, LucideIcon> = {
+  pet: PawPrint,
+  elder: UserRound,
+  child: Baby,
+  luggage: Briefcase,
+};
 
 interface DashboardClientProps {
   session: { user: { name?: string | null; image?: string | null } };
   pets: Array<{ id: string; name: string; breed?: string | null; photo_url?: string | null }>;
   isAdmin: boolean;
+  subjectKind: SubjectKind;
 }
 
-export default function DashboardClient({ session, pets, isAdmin }: DashboardClientProps) {
+export default function DashboardClient({ session, pets, isAdmin, subjectKind }: DashboardClientProps) {
   const [isPending, startTransition] = useTransition();
   const [selectedPetId, setSelectedPetId] = useState("");
   const [tagId, setTagId] = useState("");
   const [tagMessage, setTagMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const router = useRouter();
+  const meta = subjectKindMeta[subjectKind];
+  const kindQs = `?kind=${encodeURIComponent(subjectKind)}`;
+  const AvatarIcon = subjectAvatars[subjectKind];
 
   useEffect(() => {
     if (pets.length > 0 && !selectedPetId) {
@@ -39,7 +54,7 @@ export default function DashboardClient({ session, pets, isAdmin }: DashboardCli
     startTransition(async () => {
       try {
         await linkTag(selectedPetId, tagId.trim());
-        setTagMessage({ type: "success", text: "NFC 태그가 반려동물에 연결되었습니다." });
+        setTagMessage({ type: "success", text: "NFC 태그가 관리 대상에 연결되었습니다." });
         setTagId("");
         router.refresh();
       } catch (e: unknown) {
@@ -104,6 +119,14 @@ export default function DashboardClient({ session, pets, isAdmin }: DashboardCli
         {/* User Header Section */}
         <motion.section variants={itemVariants} className="flex items-center justify-between">
           <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center rounded-full bg-teal-50 px-2.5 py-0.5 text-[10px] font-black text-teal-700">
+                {meta.label}
+              </span>
+              <Link href="/hub" className="text-[10px] font-black text-slate-400 hover:text-teal-600 uppercase tracking-widest">
+                모드 변경
+              </Link>
+            </div>
             <div className="flex items-center gap-1.5 text-teal-600 font-bold text-[11px] uppercase tracking-wider">
                <MapPin className="w-3.5 h-3.5" />
                SEOUL, KOREA
@@ -119,7 +142,7 @@ export default function DashboardClient({ session, pets, isAdmin }: DashboardCli
                {session.user.image ? (
                  <Image src={session.user.image} alt="" width={56} height={56} className="w-full h-full object-cover" />
                ) : (
-                 <div className="w-full h-full flex items-center justify-center bg-teal-50 text-teal-500"><PawPrint className="w-6 h-6" /></div>
+                 <div className="w-full h-full flex items-center justify-center bg-teal-50 text-teal-500"><AvatarIcon className="w-6 h-6" /></div>
                )}
             </div>
           </div>
@@ -132,7 +155,7 @@ export default function DashboardClient({ session, pets, isAdmin }: DashboardCli
           </div>
           <input 
             type="text" 
-            placeholder="반려동물 이름을 찾아보세요..." 
+            placeholder={`${meta.label} 이름을 찾아보세요...`}
             className="w-full h-16 glass rounded-[24px] pl-14 pr-5 text-sm font-bold shadow-app shadow-app-hover outline-none transition-all focus:ring-2 focus:ring-teal-500/20"
           />
         </motion.section>
@@ -146,10 +169,10 @@ export default function DashboardClient({ session, pets, isAdmin }: DashboardCli
                    <div className="w-2 h-2 rounded-full bg-teal-400 animate-ping" />
                    <span className="text-[10px] font-black tracking-widest text-teal-400 uppercase">Live Security</span>
                 </div>
-                <h2 className="text-xl font-black leading-[1.2]">우리 아이들을 위한 <br /> 실시간 안심 케어 🐾</h2>
+                <h2 className="text-xl font-black leading-[1.2]">{meta.label} 안심 케어</h2>
               </div>
               <p className="text-slate-400 text-[11px] font-bold leading-relaxed max-w-[70%]">
-                 NFC 태그가 스캔되는 즉시 사장님의 폰으로 위치 알림이 전송됩니다.
+                 NFC 스캔 시 연락 흐름을 돕고, BLE·지오펜스는 순차적으로 연동됩니다.
               </p>
               <Button className="rounded-2xl font-black bg-teal-500 text-white hover:bg-teal-600 px-6 h-11 text-xs shadow-lg shadow-teal-500/20">
                 상세 리포트 보기
@@ -172,7 +195,7 @@ export default function DashboardClient({ session, pets, isAdmin }: DashboardCli
                 </div>
                 <div>
                   <h3 className="text-base font-black text-slate-900">NFC 빠른 등록</h3>
-                  <p className="text-[11px] text-slate-400 font-bold">대시보드에서 바로 태그를 연결하세요.</p>
+                  <p className="text-[11px] text-slate-400 font-bold">{meta.nfcHelper}</p>
                 </div>
               </div>
 
@@ -208,9 +231,9 @@ export default function DashboardClient({ session, pets, isAdmin }: DashboardCli
                 </>
               ) : (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center space-y-2">
-                  <p className="text-xs font-bold text-slate-500">먼저 반려동물을 등록해야 NFC 태그를 연결할 수 있어요.</p>
-                  <Link href="/dashboard/pets/new" className="text-xs font-black text-teal-600 underline underline-offset-4">
-                    반려동물 등록하러 가기
+                  <p className="text-xs font-bold text-slate-500">{meta.emptyRegisterHint}</p>
+                  <Link href={`/dashboard/pets/new${kindQs}`} className="text-xs font-black text-teal-600 underline underline-offset-4">
+                    등록하러 가기
                   </Link>
                 </div>
               )}
@@ -236,8 +259,8 @@ export default function DashboardClient({ session, pets, isAdmin }: DashboardCli
         {/* Horizontal Pet Selector */}
         <motion.section variants={itemVariants} className="space-y-4">
            <div className="flex items-center justify-between px-2">
-              <h3 className="text-lg font-black text-slate-900">함께하는 아이들</h3>
-              <Link href="/dashboard/pets" className="text-[10px] font-black text-teal-600 uppercase tracking-widest hover:underline transition-all">View All</Link>
+              <h3 className="text-lg font-black text-slate-900">{meta.listHeading}</h3>
+              <Link href={`/dashboard/pets${kindQs}`} className="text-[10px] font-black text-teal-600 uppercase tracking-widest hover:underline transition-all">View All</Link>
            </div>
            
            <div className="flex gap-4 overflow-x-auto pb-6 pt-2 scrollbar-hide -mx-5 px-5">
@@ -253,7 +276,7 @@ export default function DashboardClient({ session, pets, isAdmin }: DashboardCli
                           {pet.photo_url ? (
                             <Image src={pet.photo_url} alt={pet.name} width={150} height={112} className="w-full h-full object-cover transition-transform duration-700 hover:scale-110" />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-slate-300"><PawPrint className="w-12 h-12" /></div>
+                            <div className="w-full h-full flex items-center justify-center text-slate-300"><AvatarIcon className="w-12 h-12" /></div>
                           )}
                        </div>
                        <CardContent className="p-4 space-y-0.5">
@@ -266,12 +289,12 @@ export default function DashboardClient({ session, pets, isAdmin }: DashboardCli
               ))}
 
               <motion.div whileTap={{ scale: 0.95 }}>
-                <Link href="/dashboard/pets/new">
+                <Link href={`/dashboard/pets/new${kindQs}`}>
                    <div className="min-w-[150px] h-full min-h-[176px] rounded-[32px] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center gap-2 hover:bg-teal-50/50 hover:border-teal-500 transition-all group">
                       <div className="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-teal-500 group-hover:text-white transition-all shadow-sm">
                          <Plus className="w-5 h-5" />
                       </div>
-                      <span className="text-[10px] font-black text-slate-400 group-hover:text-teal-500 uppercase tracking-wider">Add Pet</span>
+                      <span className="text-[10px] font-black text-slate-400 group-hover:text-teal-500 uppercase tracking-wider">추가</span>
                    </div>
                 </Link>
               </motion.div>
@@ -302,19 +325,19 @@ export default function DashboardClient({ session, pets, isAdmin }: DashboardCli
 
       {/* Floating Bottom Navigation Bar (True App Experience) */}
       <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm h-20 glass-dark rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] z-50 flex items-center justify-around px-4 border border-white/20">
-         <Link href="/dashboard" className="flex flex-col items-center gap-1 group">
+         <Link href={`/dashboard${kindQs}`} className="flex flex-col items-center gap-1 group">
             <div className="p-2.5 rounded-2xl bg-teal-500 text-white shadow-xl shadow-teal-500/20 transition-all active:scale-90">
                <Home className="w-6 h-6" />
             </div>
             <span className="text-[9px] font-black text-teal-400 uppercase tracking-widest">Home</span>
          </Link>
-         <Link href="/dashboard/pets" className="flex flex-col items-center gap-1 group">
+         <Link href={`/dashboard/pets${kindQs}`} className="flex flex-col items-center gap-1 group">
             <div className="p-2.5 rounded-2xl text-slate-400 group-hover:text-white transition-colors transition-all active:scale-90">
-               <PawPrint className="w-6 h-6" />
+               <AvatarIcon className="w-6 h-6" />
             </div>
-            <span className="text-[9px] font-black text-slate-400 group-hover:text-white uppercase tracking-widest">Pets</span>
+            <span className="text-[9px] font-black text-slate-400 group-hover:text-white uppercase tracking-widest">목록</span>
          </Link>
-         <Link href="/dashboard/scans" className="flex flex-col items-center gap-1 group">
+         <Link href={`/dashboard/scans${kindQs}`} className="flex flex-col items-center gap-1 group">
             <div className="p-2.5 rounded-2xl text-slate-400 group-hover:text-white transition-colors transition-all active:scale-90">
                <History className="w-6 h-6" />
             </div>

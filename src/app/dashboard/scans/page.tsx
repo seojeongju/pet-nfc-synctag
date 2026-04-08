@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Bell, MapPin, Clock, Smartphone, PawPrint } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
 
 export const runtime = "edge";
 type ScanLog = {
@@ -19,7 +20,15 @@ type ScanLog = {
     ip_address?: string | null;
 };
 
-export default async function ScansPage() {
+export default async function ScansPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ kind?: string }>;
+}) {
+    const { kind: kindParam } = await searchParams;
+    const subjectKind = parseSubjectKind(kindParam);
+    const meta = subjectKindMeta[subjectKind];
+
     const context = getRequestContext();
     const auth = getAuth(context.env);
     const session = await auth.api.getSession({
@@ -30,13 +39,15 @@ export default async function ScansPage() {
         redirect("/login");
     }
 
-    const logs = await getScanLogs(session.user.id);
+    const logs = await getScanLogs(session.user.id, subjectKind);
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 font-outfit pb-20">
             <div className="px-2 space-y-1">
                 <h1 className="text-2xl font-black text-slate-900">스캔 히스토리</h1>
-                <p className="text-sm text-slate-500">반려동물 인식표의 실시간 알림 이력입니다.</p>
+                <p className="text-sm text-slate-500">
+                    {meta.label} 모드에 연결된 태그의 스캔 이력입니다.
+                </p>
             </div>
 
             <div className="space-y-6 px-2">
