@@ -9,11 +9,12 @@ import { cn } from "@/lib/utils";
 interface HomeClientProps {
   session: { user: { name?: string | null } } | null;
   isAdmin: boolean;
-  dashboardLink: string;
-  buttonLabel: string;
+  /** 보호자 진입: 비로그인 시 `/login`, 로그인 후 `/hub` 또는 관리자 */
+  guardianEntryLink: string;
+  guardianButtonLabel: string;
 }
 
-export default function HomeClient({ session, isAdmin, dashboardLink, buttonLabel }: HomeClientProps) {
+export default function HomeClient({ session, isAdmin, guardianEntryLink, guardianButtonLabel }: HomeClientProps) {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-outfit overflow-hidden relative">
       {/* Background Decorative Blobs */}
@@ -88,6 +89,16 @@ export default function HomeClient({ session, isAdmin, dashboardLink, buttonLabe
               NFC 스마트 인식표와 실시간 위치 알림으로 <br />
               우리 아이의 안전을 가장 스마트하게 지키세요.
             </p>
+            {!session && (
+              <div className="rounded-2xl border border-teal-100 bg-teal-50/70 px-4 py-3 text-left">
+                <p className="text-[11px] font-black text-teal-900">인식표를 스캔하셨나요?</p>
+                <p className="text-[10px] font-bold text-teal-800/85 mt-1.5 leading-relaxed">
+                  발견자분은 <span className="underline decoration-teal-400">로그인 없이</span> 연락 안내 페이지로 이동합니다.
+                  제품에 적힌 주소(예: <code className="text-[9px] bg-white/80 px-1 rounded">/t/태그번호</code>)를 그대로
+                  열어 주세요. 이 화면은 보호자 등록·관리용이에요.
+                </p>
+              </div>
+            )}
           </motion.div>
 
           <motion.div 
@@ -96,7 +107,7 @@ export default function HomeClient({ session, isAdmin, dashboardLink, buttonLabe
             transition={{ delay: 0.6 }}
             className="w-full space-y-6 pt-2"
           >
-            <Link href={dashboardLink} className="block w-full group">
+            <Link href={guardianEntryLink} className="block w-full group">
               <button className={cn(
                 "w-full h-18 flex items-center justify-center gap-3 rounded-[28px] text-lg font-black shadow-2xl transition-all active:scale-95 group-hover:-translate-y-1 duration-300",
                 isAdmin 
@@ -110,18 +121,15 @@ export default function HomeClient({ session, isAdmin, dashboardLink, buttonLabe
                     <motion.div key="user" initial={{ scale: 0.8 }} animate={{ scale: 1 }}><LayoutDashboard className="w-6 h-6" /></motion.div>
                   )}
                 </AnimatePresence>
-                {buttonLabel}
+                {guardianButtonLabel}
                 <ArrowRight className="w-5 h-5 opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
               </button>
             </Link>
             
             <div className="flex flex-col items-center gap-4">
               {!session ? (
-                <div className="text-sm text-slate-400 font-bold">
-                  이미 계정이 있으신가요?{" "}
-                  <Link href="/login" className="text-indigo-600 hover:text-indigo-700 underline underline-offset-4 decoration-2">
-                    로그인
-                  </Link>
+                <div className="text-sm text-slate-400 font-bold text-center">
+                  처음이시면 위 버튼으로 로그인 후 모드를 선택할 수 있어요.
                 </div>
               ) : (
                 <div className="flex items-center gap-2 px-6 py-2.5 bg-slate-100 rounded-full text-xs font-black text-slate-500 border border-white shadow-sm">

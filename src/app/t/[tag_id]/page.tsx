@@ -20,7 +20,21 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
     .bind(tag_id)
     .first<{ pet_id: string; is_active: boolean; subject_kind: string }>();
 
-  if (!tag || !tag.pet_id || !tag.is_active) {
+  if (!tag) {
+    const headerList = await headers();
+    const ip = headerList.get("x-real-ip") || headerList.get("cf-connecting-ip") || "unknown";
+    const userAgent = headerList.get("user-agent") || "unknown";
+    await db
+      .prepare(
+        "INSERT INTO unknown_tag_accesses (tag_uid, ip_address, user_agent) VALUES (?, ?, ?)"
+      )
+      .bind(tag_id, ip, userAgent)
+      .run()
+      .catch(() => {});
+    notFound();
+  }
+
+  if (!tag.pet_id || !tag.is_active) {
     notFound();
   }
 
@@ -37,6 +51,7 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
     .run();
 
   const kind = parseSubjectKind(tag.subject_kind);
+  // 발견자 경로: 로그인·허브 없이 공개 프로필만 (보호자 구분은 세션+소유권)
   // 3. Redirect to the public profile (tag + kind for S3 NFC branching / deep links)
   redirect(
     `/profile/${tag.pet_id}?tag=${encodeURIComponent(tag_id)}&kind=${encodeURIComponent(kind)}`

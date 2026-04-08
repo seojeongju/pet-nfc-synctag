@@ -112,6 +112,17 @@ CREATE TABLE IF NOT EXISTS ble_location_events (
 CREATE INDEX IF NOT EXISTS idx_ble_events_pet ON ble_location_events(pet_id);
 CREATE INDEX IF NOT EXISTS idx_ble_events_created ON ble_location_events(created_at);
 
+-- Admin monitoring (see migrations/0005_admin_monitoring.sql)
+CREATE TABLE IF NOT EXISTS unknown_tag_accesses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tag_uid TEXT NOT NULL,
+    ip_address TEXT,
+    user_agent TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_unknown_tag_created ON unknown_tag_accesses(created_at);
+-- tags.ble_mac: added via migration ALTER TABLE tags ADD COLUMN ble_mac TEXT;
+
 CREATE TABLE IF NOT EXISTS geofences (
     id TEXT PRIMARY KEY,
     owner_id TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,

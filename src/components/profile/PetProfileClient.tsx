@@ -352,11 +352,17 @@ export default function PetProfileClient({
             <span className="text-[9px] font-black text-slate-500 tracking-widest mt-1">—</span>
          </div>
          )}
-         <Link href={loginHref} className="flex flex-col items-center gap-1 group">
+         <Link
+            href={loginHref}
+            title="보호자 로그인"
+            className="flex flex-col items-center gap-1 group"
+         >
             <div className="p-2.5 rounded-2xl text-slate-400 group-hover:text-white transition-all active:scale-90">
                <LogIn className="w-6 h-6" />
             </div>
-            <span className="text-[9px] font-black text-slate-400 group-hover:text-white tracking-widest">로그인</span>
+            <span className="text-[8px] font-black text-slate-400 group-hover:text-white text-center leading-tight max-w-[4.5rem]">
+              보호자 로그인
+            </span>
          </Link>
       </nav>
       ) : (
