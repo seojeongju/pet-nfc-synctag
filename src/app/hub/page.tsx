@@ -39,12 +39,12 @@ export default async function HubPage() {
             Pet-ID Connect
           </p>
           <h1 className="text-2xl font-black text-slate-900 leading-tight">
-            어떤 모드로
+            어떤 동행으로
             <br />
             <span className="text-teal-500">시작할까요?</span>
           </h1>
           <p className="text-sm text-slate-500 font-medium">
-            모드별로 등록·대시보드가 구분됩니다. 나중에 언제든 바꿀 수 있어요.
+            돌봄과 연결을 위해 맞춤 화면이 달라요. 나중에 언제든 바꿀 수 있어요.
           </p>
         </header>
 

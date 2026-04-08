@@ -20,7 +20,7 @@ export const nfcPublicEmergencyBadge: Record<SubjectKind, string> = {
 };
 
 /**
- * 노인·어린이 모드: 공개 열람 시 이름 일부만 표시
+ * 기억 동행·어린이 모드: 공개 열람 시 이름 일부만 표시
  */
 export function maskNameForPublicViewer(
   name: string,
@@ -36,7 +36,7 @@ export function maskNameForPublicViewer(
 }
 
 /**
- * 노인·어린이: 공개 시 비고(breed 필드) 마스킹. 반려·수화물은 식별에 필요해 그대로 둠.
+ * 기억 동행·어린이: 공개 시 비고(breed 필드) 마스킹. 반려·수화물은 식별에 필요해 그대로 둠.
  */
 export function maskBreedFieldForPublic(
   breed: string | null | undefined,

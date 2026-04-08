@@ -53,10 +53,10 @@ export default async function GeofencesPage({
         <div>
           <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2">
             <MapPin className="w-7 h-7 text-teal-500" />
-            가상 울타리
+            안심 구역
           </h1>
           <p className="text-sm text-slate-500">
-            {meta.label} 모드 · 중심 좌표와 반경(m)으로 안전 구역을 설정합니다.
+            {meta.label} 모드 · 중심과 반경(m)으로 가족이 안심할 수 있는 범위를 정해요.
           </p>
         </div>
       </div>
@@ -148,7 +148,7 @@ export default async function GeofencesPage({
         <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest px-1">등록된 구역</h2>
         {geofences.length === 0 ? (
           <p className="text-sm text-slate-500 py-8 text-center rounded-2xl bg-slate-50 border border-dashed border-slate-200">
-            아직 등록된 지오펜스가 없습니다.
+            아직 등록된 안심 구역이 없어요.
           </p>
         ) : (
           <div className="space-y-3">

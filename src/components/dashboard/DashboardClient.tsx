@@ -167,12 +167,12 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind }:
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                    <div className="w-2 h-2 rounded-full bg-teal-400 animate-ping" />
-                   <span className="text-[10px] font-black tracking-widest text-teal-400 uppercase">Live Security</span>
+                   <span className="text-[10px] font-black tracking-widest text-teal-400 uppercase">실시간 안심</span>
                 </div>
-                <h2 className="text-xl font-black leading-[1.2]">{meta.label} 안심 케어</h2>
+                <h2 className="text-xl font-black leading-[1.2]">{meta.label}</h2>
               </div>
               <p className="text-slate-400 text-[11px] font-bold leading-relaxed max-w-[70%]">
-                 NFC 스캔 시 연락 흐름을 돕고, BLE·지오펜스는 순차적으로 연동됩니다.
+                 NFC로 빠르게 연결하고, BLE·안심 구역은 단계적으로 더해집니다.
               </p>
               <Button className="rounded-2xl font-black bg-teal-500 text-white hover:bg-teal-600 px-6 h-11 text-xs shadow-lg shadow-teal-500/20">
                 상세 리포트 보기

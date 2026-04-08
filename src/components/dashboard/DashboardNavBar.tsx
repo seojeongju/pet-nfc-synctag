@@ -33,7 +33,7 @@ export function DashboardNavBar() {
           </Link>
           <Link href={`/dashboard/geofences${q}`} className="text-sm font-medium hover:text-primary inline-flex items-center gap-1">
             <MapPin className="w-4 h-4" />
-            지오펜스
+            안심 구역
           </Link>
         </nav>
         <div className="flex items-center gap-4">
