@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import AdminTagsPageClient from "./AdminTagsPageClient";
 import { getAllTags, getTagOpsStats, getTagLinkLogs, getAdminAuditLogs } from "@/app/actions/admin";
+import type { AdminTag } from "@/types/admin-tags";
 
 export const runtime = "edge";
 
@@ -38,12 +39,12 @@ export default async function AdminTagsPage({
 
   return (
     <Suspense fallback={<div className="min-h-screen bg-[#F8FAFC]" />}>
-      <AdminTagsPageClient 
-         tags={tags as any}
-         opsStats={opsStats}
-         linkLogs={linkLogs}
-         auditLogs={audits.rows}
-         auditTotalCount={audits.total}
+      <AdminTagsPageClient
+        tags={tags as AdminTag[]}
+        opsStats={opsStats}
+        linkLogs={linkLogs}
+        auditLogs={audits.rows}
+        auditTotalCount={audits.total}
       />
     </Suspense>
   );

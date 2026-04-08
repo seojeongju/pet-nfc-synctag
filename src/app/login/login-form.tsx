@@ -51,7 +51,7 @@ export function LoginForm() {
           </div>
           <div className="space-y-1">
             <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">반려동물과 다시 연결하기</h1>
-            <p className="text-slate-400 text-sm font-medium">Pet-ID Connect에 오신 것을 환영합니다.</p>
+            <p className="text-slate-400 text-sm font-medium">링크유(Link-U)에 오신 것을 환영합니다.</p>
           </div>
         </div>
 
@@ -98,7 +98,7 @@ export function LoginForm() {
         </Card>
 
         <footer className="text-center">
-          <p className="text-xs text-slate-400 font-semibold">Pet-ID Connect © 2024. All Rights Reserved.</p>
+          <p className="text-xs text-slate-400 font-semibold">링크유 Link-U © 2024. All Rights Reserved.</p>
         </footer>
       </div>
     </div>

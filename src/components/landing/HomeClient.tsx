@@ -48,7 +48,7 @@ export default function HomeClient({ session, isAdmin, guardianEntryLink, guardi
               transition={{ delay: 0.5, duration: 0.6 }}
               className="absolute top-6 right-6 glass px-5 py-2.5 rounded-2xl flex items-center gap-2"
             >
-              <span className="text-xs font-black text-slate-800">PET CARE 🦴</span>
+              <span className="text-xs font-black text-slate-800">링크유 - 펫</span>
             </motion.div>
 
             <motion.div 
@@ -80,7 +80,7 @@ export default function HomeClient({ session, isAdmin, guardianEntryLink, guardi
           >
             <div className="flex items-center gap-2 text-teal-600 font-bold text-xs uppercase tracking-widest">
                <Sparkles className="w-4 h-4" />
-               Smart NFC Connect
+               링크유 - 펫 · Smart NFC
             </div>
             <h1 className="text-3xl font-black text-slate-900 leading-[1.1] tracking-tight">
               반려동물을 위한 <br />
@@ -130,7 +130,7 @@ export default function HomeClient({ session, isAdmin, guardianEntryLink, guardi
             <div className="flex flex-col items-center gap-4">
               {!session ? (
                 <div className="text-sm text-slate-400 font-bold text-center">
-                  처음이시면 위 버튼으로 로그인 후 모드를 선택할 수 있어요.
+                  처음이시면 위 버튼으로 로그인 후 반려동물 모드 대시보드로 바로 이동해요.
                 </div>
               ) : (
                 <div className="flex items-center gap-2 px-6 py-2.5 bg-slate-100 rounded-full text-xs font-black text-slate-500 border border-white shadow-sm">
@@ -162,7 +162,7 @@ export default function HomeClient({ session, isAdmin, guardianEntryLink, guardi
              </Link>
            )}
            <p className="text-[10px] text-slate-300 font-bold tracking-widest uppercase text-center leading-loose">
-             Pet-ID Connect System © 2024 <br /> All Rights Reserved.
+             링크유 Link-U © 2024 <br /> All Rights Reserved.
            </p>
         </footer>
       </main>

@@ -16,7 +16,7 @@ export default function DashboardLayout({
       </main>
       <footer className="border-t bg-white py-6">
         <div className="container px-4 text-center text-sm text-slate-500">
-          © 2024 Pet-ID Connect. All rights reserved.
+          © 2024 링크유 Link-U. All rights reserved.
         </div>
       </footer>
     </div>

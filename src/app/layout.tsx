@@ -10,8 +10,8 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "Pet-ID Connect | 스마트 반려동물 인식표",
-  description: "3D 프린팅 NFC 기술로 사랑하는 반려동물을 지켜주세요.",
+  title: "링크유 Link-U | NFC로 연결하는 안심 플랫폼",
+  description: "반려동물·가족·아이·수하물까지 NFC 태그로 보호자와 연결하는 링크유(Link-U)입니다.",
 };
 
 export default function RootLayout({

@@ -299,7 +299,7 @@ export default function AdminDashboardClient({
                  <div className="flex items-center justify-between mb-8">
                     <div className="space-y-1">
                        <h3 className="text-lg lg:text-xl font-black text-slate-900 px-1">최근 비즈니스 통찰</h3>
-                       <p className="text-xs font-bold text-slate-500 px-1 italic">Pet-ID Core 시스템 분석 결과</p>
+                       <p className="text-xs font-bold text-slate-500 px-1 italic">링크유 운영 시스템 분석 결과</p>
                     </div>
                     <TrendingUp className="w-6 h-6 text-slate-400" />
                  </div>
@@ -381,7 +381,7 @@ export default function AdminDashboardClient({
               <Shield className="w-4 h-4 text-slate-500" />
            </div>
            <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em]">
-              Pet-ID Core Engine v2.0 © 2024
+              Link-U Admin © 2024
            </p>
         </motion.div>
       </motion.div>

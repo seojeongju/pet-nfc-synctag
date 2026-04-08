@@ -50,7 +50,7 @@ export default async function AdminAuthenticatedLayout({
               <Package className="w-5 h-5 text-white" />
             </div>
             <div className="flex flex-col">
-              <span className="font-black tracking-tighter text-slate-900 text-lg leading-none italic uppercase">Pet-ID</span>
+              <span className="font-black tracking-tighter text-slate-900 text-lg leading-none italic uppercase">Link-U</span>
               <span className="text-[10px] font-black text-teal-500 tracking-[0.3em] uppercase mt-1">관리자 콘솔</span>
             </div>
           </div>

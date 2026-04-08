@@ -15,7 +15,7 @@ export function DashboardNavBar() {
       <div className="container flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-2 font-bold text-xl text-primary">
           <PawPrint className="w-6 h-6" />
-          <span>Pet-ID Connect</span>
+          <span>링크유 Link-U</span>
         </div>
         <nav className="hidden md:flex items-center gap-6">
           <Link href={`/hub`} className="text-sm font-medium text-slate-500 hover:text-primary inline-flex items-center gap-1">

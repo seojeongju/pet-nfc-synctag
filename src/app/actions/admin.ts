@@ -390,7 +390,7 @@ async function assertAdminRole() {
 }
 
 /**
- * 제품명·할당 모드(반려/어르신/아이/캐리어)·BLE MAC 관리 (출고 전·운영 중)
+ * 제품명·할당 모드(링크유 - 펫/메모리/키즈/캐리)·BLE MAC 관리 (출고 전·운영 중)
  */
 export async function updateTagProductProfile(
     tagId: string,

@@ -53,7 +53,7 @@ export default async function HubPage({
       <div className="max-w-md mx-auto space-y-8">
         <header className="space-y-2">
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-600">
-            Pet-ID Connect
+            링크유 Link-U
           </p>
           <h1 className="text-2xl font-black text-slate-900 leading-tight">
             어떤 동행으로

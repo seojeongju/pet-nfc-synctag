@@ -361,7 +361,7 @@ export default function PetProfileClient({
                   상세 메모 비공개
                 </h4>
                 <p className="text-xs font-bold text-slate-400 leading-relaxed">
-                  의료·메모 등 상세 정보는 Pet-ID 앱에 로그인한 소유자만 볼 수 있습니다. 발견 도움은 위 연락처와 위치 공유로 전달됩니다.
+                  의료·메모 등 상세 정보는 링크유에 로그인한 소유자만 볼 수 있습니다. 발견 도움은 위 연락처와 위치 공유로 전달됩니다.
                 </p>
               </CardContent>
               )}
@@ -381,7 +381,7 @@ export default function PetProfileClient({
         <motion.section variants={itemVariants} className="text-center space-y-4 pt-4 pb-12">
            <div className="h-px w-20 bg-slate-200 mx-auto opacity-50" />
            <p className="text-[10px] text-slate-300 font-black uppercase tracking-[0.4em] leading-relaxed max-w-[200px] mx-auto">
-             Pet-ID Connect <br /> Safe Secure Technology
+             링크유 Link-U <br /> Safe Secure Technology
            </p>
         </motion.section>
       </motion.div>

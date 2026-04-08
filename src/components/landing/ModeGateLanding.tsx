@@ -213,7 +213,7 @@ export default function ModeGateLanding({ kind, session, isAdmin }: ModeGateLand
             </Link>
           )}
           <p className="text-[10px] text-slate-300 font-bold tracking-widest uppercase text-center leading-loose">
-            Pet-ID Connect · {meta.label} 모드
+            링크유 Link-U · {meta.label}
           </p>
         </footer>
       </main>
