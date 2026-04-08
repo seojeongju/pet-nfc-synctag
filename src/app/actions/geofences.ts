@@ -15,6 +15,7 @@ import {
   type GeofenceWithPetName,
 } from "@/lib/geofences-db";
 import { assertTenantRole } from "@/lib/tenant-membership";
+import { assertTenantActive } from "@/lib/tenant-status";
 
 async function requireSessionUserId(): Promise<string> {
   const context = getRequestContext();
@@ -72,6 +73,9 @@ export async function createGeofenceForm(formData: FormData): Promise<void> {
 
   const db = getDB();
   if (tenantId) {
+    await assertTenantActive(db, tenantId).catch(() => {
+      redirect(`/dashboard/geofences?${redirectQs(kind, tenantId, "tenant_suspended")}`);
+    });
     await assertTenantRole(db, ownerId, tenantId, "admin");
   }
   const owned = await isPetOwnedBy(db, pet_id, ownerId);
@@ -118,6 +122,9 @@ export async function deleteGeofenceForm(formData: FormData): Promise<void> {
 
   const db = getDB();
   if (tenantId) {
+    await assertTenantActive(db, tenantId).catch(() => {
+      redirect(`/dashboard/geofences?${redirectQs(kind, tenantId, "tenant_suspended")}`);
+    });
     await assertTenantRole(db, ownerId, tenantId, "admin");
   }
 

@@ -25,6 +25,7 @@ interface PetFormProps {
     ownerId: string;
     subjectKind?: SubjectKind;
     tenantId?: string | null;
+    writeLocked?: boolean;
     initialData?: {
         id: string;
         name: string;
@@ -41,7 +42,7 @@ type PetFormValues = {
     emergency_contact?: string;
 };
 
-export function PetForm({ ownerId, subjectKind: kindProp, tenantId, initialData }: PetFormProps) {
+export function PetForm({ ownerId, subjectKind: kindProp, tenantId, initialData, writeLocked = false }: PetFormProps) {
     const router = useRouter();
     const subjectKind = parseSubjectKind(kindProp);
     const meta = subjectKindMeta[subjectKind];
@@ -70,6 +71,7 @@ export function PetForm({ ownerId, subjectKind: kindProp, tenantId, initialData 
     };
 
     const onSubmit = async (data: PetFormValues) => {
+        if (writeLocked) return;
         setIsLoading(true);
         try {
             let photoUrl = initialData?.photo_url;
@@ -109,6 +111,12 @@ export function PetForm({ ownerId, subjectKind: kindProp, tenantId, initialData 
 
     return (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {writeLocked ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-700">
+                    조직이 중지 상태라 저장이 잠겨 있습니다. 조회만 가능합니다.
+                </div>
+            ) : null}
+            <fieldset disabled={writeLocked} className="space-y-8">
             <div className="flex flex-col items-center gap-6">
                 <input 
                     type="file" 
@@ -210,12 +218,13 @@ export function PetForm({ ownerId, subjectKind: kindProp, tenantId, initialData 
 
             <button 
                 type="submit" 
-                disabled={isLoading}
+                disabled={writeLocked || isLoading}
                 className="w-full h-16 rounded-[28px] bg-teal-600 hover:bg-teal-700 text-lg font-extrabold shadow-xl shadow-teal-100 transition-all active:scale-95 gap-3 text-white flex items-center justify-center"
             >
                 {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : <FormIcon className="w-6 h-6" />}
                 {initialData ? "정보 수정하기" : `${meta.label} 등록 완료`}
             </button>
+            </fieldset>
         </form>
     );
 }

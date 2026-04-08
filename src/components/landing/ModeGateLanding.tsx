@@ -31,7 +31,7 @@ export default function ModeGateLanding({ kind, session, isAdmin, fromHome = fal
   const Icon = visual.Icon;
 
   const dashboardUrl = `/dashboard?kind=${encodeURIComponent(kind)}`;
-  const loginUrl = `/login?callbackUrl=${encodeURIComponent(dashboardUrl)}`;
+  const loginUrl = `/login?kind=${encodeURIComponent(kind)}&callbackUrl=${encodeURIComponent(dashboardUrl)}`;
 
   const guardianEntryLink = session ? (isAdmin ? "/admin" : dashboardUrl) : loginUrl;
   const guardianButtonLabel = session
@@ -168,23 +168,25 @@ export default function ModeGateLanding({ kind, session, isAdmin, fromHome = fal
               <button
                 type="button"
                 className={cn(
-                  "w-full h-16 min-[390px]:h-18 flex items-center justify-center gap-3 rounded-[26px] min-[390px]:rounded-[28px] text-base min-[390px]:text-lg font-black shadow-2xl transition-all active:scale-95 group-hover:-translate-y-1 group-hover:shadow-[0_25px_60px_rgba(0,0,0,0.2)] duration-300 relative overflow-hidden border-2 border-white/20 ring-4 ring-black/5",
+                  "w-full h-16 min-[390px]:h-18 flex items-center justify-center gap-2.5 rounded-[26px] min-[390px]:rounded-[28px] text-base min-[390px]:text-lg font-black shadow-2xl transition-all active:scale-95 group-hover:-translate-y-1 group-hover:shadow-3xl duration-300 relative overflow-hidden border-2 border-white/20 ring-4 ring-black/5",
                   isAdmin ? "bg-slate-900 text-white shadow-slate-200" : visual.buttonClass
                 )}
               >
-                <AnimatePresence mode="wait">
-                  {isAdmin ? (
-                    <motion.div key="admin" initial={{ scale: 0.8 }} animate={{ scale: 1 }}>
-                      <ShieldCheck className="w-6 h-6 text-teal-400" />
-                    </motion.div>
-                  ) : (
-                    <motion.div key="user" initial={{ scale: 0.8 }} animate={{ scale: 1 }}>
-                      <LayoutDashboard className="w-6 h-6" />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-                {guardianButtonLabel}
-                <ArrowRight className="w-5 h-5 opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                <div className="flex items-center justify-center gap-2.5 relative z-10">
+                  <AnimatePresence mode="wait">
+                    {isAdmin ? (
+                      <motion.div key="admin" initial={{ scale: 0.8 }} animate={{ scale: 1 }}>
+                        <ShieldCheck className="w-6 h-6 text-teal-400" />
+                      </motion.div>
+                    ) : (
+                      <motion.div key="user" initial={{ scale: 0.8 }} animate={{ scale: 1 }}>
+                        <LayoutDashboard className="w-5.5 h-5.5" />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                  <span className="shrink-0">{guardianButtonLabel}</span>
+                  <ArrowRight className="w-5 h-5 opacity-60 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                </div>
               </button>
             </Link>
 

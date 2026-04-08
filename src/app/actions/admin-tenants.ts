@@ -6,6 +6,7 @@ import { nanoid } from "nanoid";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { getAuth } from "@/lib/auth";
 import { getDB } from "@/lib/db";
+import { assertTenantRole } from "@/lib/tenant-membership";
 
 type TenantRole = "owner" | "admin" | "member";
 
@@ -38,6 +39,24 @@ type TenantAdminView = {
   invites: TenantInviteInfo[];
 };
 
+export type TenantAuditLogRow = {
+  id: number;
+  action: string;
+  actor_email: string | null;
+  payload: string | null;
+  created_at: string;
+};
+
+const TENANT_AUDIT_ACTIONS = [
+  "tenant_create_by_admin",
+  "tenant_rename_by_admin",
+  "tenant_member_upsert_by_admin",
+  "tenant_member_role_change_by_admin",
+  "tenant_member_remove_by_admin",
+  "tenant_status_change_by_admin",
+  "tenant_invite_create_by_admin",
+] as const;
+
 async function requireAdminUser() {
   const context = getRequestContext();
   const auth = getAuth(context.env);
@@ -57,6 +76,24 @@ async function requireAdminUser() {
   }
 
   return { userId, actorEmail: roleRow.email ?? "system" };
+}
+
+async function assertOwnerScopedActionAllowed(tenantId: string) {
+  const context = getRequestContext();
+  const auth = getAuth(context.env);
+  const session = await auth.api.getSession({ headers: await headers() });
+  const userId = session?.user?.id;
+  if (!userId) {
+    throw new Error("로그인이 필요합니다.");
+  }
+  const globalRole = await context.env.DB
+    .prepare("SELECT role FROM user WHERE id = ?")
+    .bind(userId)
+    .first<{ role?: string | null }>();
+  if (globalRole?.role === "admin") {
+    return;
+  }
+  await assertTenantRole(context.env.DB, userId, tenantId, "owner");
 }
 
 function safeRole(raw: string | null | undefined): TenantRole {
@@ -114,6 +151,15 @@ async function ensureTenantInvitesTable() {
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_tenant_invites_tenant_id ON tenant_invites(tenant_id)").run();
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_tenant_invites_email ON tenant_invites(email)").run();
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_tenant_invites_status ON tenant_invites(status)").run();
+}
+
+function revalidateTenantSurfaces() {
+  revalidatePath("/admin/tenants");
+  revalidatePath("/hub");
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/pets");
+  revalidatePath("/dashboard/scans");
+  revalidatePath("/dashboard/geofences");
 }
 
 export async function getTenantsAdminView(filters?: {
@@ -283,7 +329,7 @@ export async function adminCreateTenantWithOwner(formData: FormData) {
   ).bind(tenantId, owner.id).run();
 
   await writeAdminAudit("tenant_create_by_admin", { tenantId, name, slug, ownerEmail: owner.email });
-  revalidatePath("/admin/tenants");
+  revalidateTenantSurfaces();
 }
 
 export async function adminAddTenantMember(formData: FormData) {
@@ -313,7 +359,7 @@ export async function adminAddTenantMember(formData: FormData) {
     .run();
 
   await writeAdminAudit("tenant_member_upsert_by_admin", { tenantId, email: user.email, role });
-  revalidatePath("/admin/tenants");
+  revalidateTenantSurfaces();
 }
 
 export async function adminChangeTenantMemberRole(formData: FormData) {
@@ -326,6 +372,7 @@ export async function adminChangeTenantMemberRole(formData: FormData) {
   if (!tenantId || !userId) {
     throw new Error("변경 대상이 올바르지 않습니다.");
   }
+  await assertOwnerScopedActionAllowed(tenantId);
 
   const current = await db
     .prepare("SELECT role FROM tenant_members WHERE tenant_id = ? AND user_id = ?")
@@ -351,7 +398,7 @@ export async function adminChangeTenantMemberRole(formData: FormData) {
     .run();
 
   await writeAdminAudit("tenant_member_role_change_by_admin", { tenantId, userId, role });
-  revalidatePath("/admin/tenants");
+  revalidateTenantSurfaces();
 }
 
 export async function adminRemoveTenantMember(formData: FormData) {
@@ -363,6 +410,7 @@ export async function adminRemoveTenantMember(formData: FormData) {
   if (!tenantId || !userId) {
     throw new Error("삭제 대상이 올바르지 않습니다.");
   }
+  await assertOwnerScopedActionAllowed(tenantId);
 
   const current = await db
     .prepare("SELECT role FROM tenant_members WHERE tenant_id = ? AND user_id = ?")
@@ -389,7 +437,7 @@ export async function adminRemoveTenantMember(formData: FormData) {
     .run();
 
   await writeAdminAudit("tenant_member_remove_by_admin", { tenantId, userId });
-  revalidatePath("/admin/tenants");
+  revalidateTenantSurfaces();
 }
 
 export async function adminUpdateTenantStatus(formData: FormData) {
@@ -399,13 +447,31 @@ export async function adminUpdateTenantStatus(formData: FormData) {
   const statusRaw = String(formData.get("status") ?? "").trim();
   const status = statusRaw === "suspended" ? "suspended" : "active";
   if (!tenantId) throw new Error("조직 정보가 올바르지 않습니다.");
+  await assertOwnerScopedActionAllowed(tenantId);
 
   await db
     .prepare("UPDATE tenants SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
     .bind(status, tenantId)
     .run();
   await writeAdminAudit("tenant_status_change_by_admin", { tenantId, status });
-  revalidatePath("/admin/tenants");
+  revalidateTenantSurfaces();
+}
+
+export async function adminRenameTenant(formData: FormData) {
+  await requireAdminUser();
+  const db = getDB();
+  const tenantId = String(formData.get("tenant_id") ?? "").trim();
+  const name = String(formData.get("name") ?? "").trim();
+  if (!tenantId || !name) {
+    throw new Error("조직 정보가 올바르지 않습니다.");
+  }
+  await assertOwnerScopedActionAllowed(tenantId);
+  await db
+    .prepare("UPDATE tenants SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+    .bind(name, tenantId)
+    .run();
+  await writeAdminAudit("tenant_rename_by_admin", { tenantId, name });
+  revalidateTenantSurfaces();
 }
 
 export async function adminCreateTenantInvite(formData: FormData): Promise<{ token: string; expiresAt: string }> {
@@ -435,6 +501,25 @@ export async function adminCreateTenantInvite(formData: FormData): Promise<{ tok
     .run();
 
   await writeAdminAudit("tenant_invite_create_by_admin", { tenantId, email, role, inviteId: id });
-  revalidatePath("/admin/tenants");
+  revalidateTenantSurfaces();
   return { token, expiresAt };
+}
+
+export async function getTenantAdminAuditLogs(limit = 80): Promise<TenantAuditLogRow[]> {
+  await requireAdminUser();
+  const db = getDB();
+  const safeLimit = Math.max(1, Math.min(limit, 200));
+  const placeholders = TENANT_AUDIT_ACTIONS.map(() => "?").join(",");
+  const rows = await db
+    .prepare(
+      `SELECT id, action, actor_email, payload, created_at
+       FROM admin_action_logs
+       WHERE action IN (${placeholders})
+       ORDER BY datetime(created_at) DESC, id DESC
+       LIMIT ?`
+    )
+    .bind(...TENANT_AUDIT_ACTIONS, safeLimit)
+    .all<TenantAuditLogRow>()
+    .catch(() => ({ results: [] as TenantAuditLogRow[] }));
+  return rows.results ?? [];
 }

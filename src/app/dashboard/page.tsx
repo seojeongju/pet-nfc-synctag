@@ -8,6 +8,7 @@ import { parseSubjectKind } from "@/lib/subject-kind";
 import { listVisibleAnnouncementsForGuardian } from "@/app/actions/mode-announcements";
 import { requireTenantMember } from "@/lib/tenant-membership";
 import { getTenantPlanUsageSummary, type TenantPlanUsageSummary } from "@/lib/tenant-quota";
+import { getTenantStatus } from "@/lib/tenant-status";
 
 export const runtime = "edge";
 
@@ -35,7 +36,7 @@ export default async function DashboardPage({
       await requireTenantMember(context.env.DB, session.user.id, tenantId);
     }
 
-    const [pets, roleRow, announcements, tenantUsage] = await Promise.all([
+    const [pets, roleRow, announcements, tenantUsage, tenantStatus] = await Promise.all([
       getPets(session.user.id, subjectKind, tenantId ?? undefined),
       context.env.DB
         .prepare("SELECT role FROM user WHERE id = ?")
@@ -43,6 +44,7 @@ export default async function DashboardPage({
         .first<{ role?: string | null }>(),
       listVisibleAnnouncementsForGuardian(session.user.id, subjectKind),
       tenantId ? getTenantPlanUsageSummary(context.env.DB, tenantId) : Promise.resolve<TenantPlanUsageSummary | null>(null),
+      tenantId ? getTenantStatus(context.env.DB, tenantId) : Promise.resolve<"active" | "suspended" | null>(null),
     ]);
 
     const isAdmin = roleRow?.role === "admin";
@@ -56,6 +58,7 @@ export default async function DashboardPage({
         modeAnnouncements={announcements}
         tenantId={tenantId}
         tenantUsage={tenantUsage}
+        tenantSuspended={tenantStatus === "suspended"}
       />
     );
   } catch (error: unknown) {
@@ -75,6 +78,7 @@ export default async function DashboardPage({
         modeAnnouncements={[]}
         tenantId={tenantId}
         tenantUsage={null}
+        tenantSuspended={false}
       />
     );
   }

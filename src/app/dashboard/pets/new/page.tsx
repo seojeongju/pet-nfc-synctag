@@ -8,6 +8,7 @@ import { getRequestContext } from "@cloudflare/next-on-pages";
 import { redirect } from "next/navigation";
 import { parseSubjectKind, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
 import { requireTenantMember } from "@/lib/tenant-membership";
+import { getTenantStatus } from "@/lib/tenant-status";
 
 export const runtime = "edge";
 
@@ -47,6 +48,9 @@ export default async function NewPetPage({
   if (tenantId) {
     await requireTenantMember(context.env.DB, session.user.id, tenantId);
   }
+  const tenantSuspended = tenantId
+    ? (await getTenantStatus(context.env.DB, tenantId)) === "suspended"
+    : false;
 
   const ownerId = session.user.id;
 
@@ -74,7 +78,12 @@ export default async function NewPetPage({
 
       <div className="flex-1 container max-w-sm mx-auto mt-8 px-4">
         <div className="bg-white p-8 rounded-[40px] shadow-2xl shadow-slate-200/50">
-          <PetForm ownerId={ownerId} subjectKind={subjectKind} tenantId={tenantId} />
+          <PetForm
+            ownerId={ownerId}
+            subjectKind={subjectKind}
+            tenantId={tenantId}
+            writeLocked={tenantSuspended}
+          />
         </div>
 
         <div className="mt-8 text-center px-6">

@@ -13,14 +13,16 @@ import { cn } from "@/lib/utils";
 interface TagManageCardProps {
     petId: string;
     existingTags: Array<{ id: string; is_active?: boolean }>;
+    writeLocked?: boolean;
 }
 
-export function TagManageCard({ petId, existingTags }: TagManageCardProps) {
+export function TagManageCard({ petId, existingTags, writeLocked = false }: TagManageCardProps) {
     const [isPending, startTransition] = useTransition();
     const [newTagId, setNewTagId] = useState("");
     const router = useRouter();
 
     const handleLink = async () => {
+        if (writeLocked) return;
         if (!newTagId) return;
         startTransition(async () => {
             await linkTag(petId, newTagId);
@@ -30,6 +32,7 @@ export function TagManageCard({ petId, existingTags }: TagManageCardProps) {
     };
 
     const handleUnlink = (tagId: string) => {
+        if (writeLocked) return;
         startTransition(async () => {
             await unlinkTag(tagId);
             router.refresh();
@@ -55,6 +58,11 @@ export function TagManageCard({ petId, existingTags }: TagManageCardProps) {
                 </div>
 
                 <div className="space-y-3">
+                    {writeLocked ? (
+                        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold text-amber-700">
+                            조직이 중지 상태라 태그 연결/해제는 잠겨 있습니다.
+                        </div>
+                    ) : null}
                     <AnimatePresence mode="popLayout">
                         {existingTags.length > 0 ? (
                             existingTags.map((tag, index) => (
@@ -94,7 +102,7 @@ export function TagManageCard({ petId, existingTags }: TagManageCardProps) {
                                         size="icon" 
                                         className="w-10 h-10 text-slate-200 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-all focus:ring-0"
                                         onClick={() => handleUnlink(tag.id)}
-                                        disabled={isPending}
+                                        disabled={writeLocked || isPending}
                                     >
                                         <Trash2 className="w-4 h-4" />
                                     </Button>
@@ -123,13 +131,14 @@ export function TagManageCard({ petId, existingTags }: TagManageCardProps) {
                         placeholder="새 태그 ID 입력 (뒷면 참조)" 
                         value={newTagId}
                         onChange={(e) => setNewTagId(e.target.value)}
+                        disabled={writeLocked}
                         className="h-16 pl-14 pr-16 rounded-[24px] border-none shadow-inner bg-slate-50 focus:bg-white focus:ring-4 focus:ring-teal-500/10 transition-all font-bold text-sm placeholder:text-slate-300"
                     />
                     <motion.button 
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={handleLink}
-                        disabled={isPending || !newTagId}
+                        disabled={writeLocked || isPending || !newTagId}
                         className="absolute right-3 top-3 bottom-3 w-10 bg-slate-900 hover:bg-teal-500 text-white rounded-2xl shadow-lg flex items-center justify-center transition-all disabled:opacity-30 z-10"
                     >
                         {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-5 h-5" />}

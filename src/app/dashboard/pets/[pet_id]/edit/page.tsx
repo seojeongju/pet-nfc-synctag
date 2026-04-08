@@ -9,6 +9,7 @@ import { getRequestContext } from "@cloudflare/next-on-pages";
 import { notFound, redirect } from "next/navigation";
 import { parseSubjectKind, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
 import { requireTenantMember } from "@/lib/tenant-membership";
+import { getTenantStatus } from "@/lib/tenant-status";
 
 export const runtime = "edge";
 
@@ -87,6 +88,9 @@ export default async function EditPetPage({
 
   const meta = subjectKindMeta[subjectKind];
   const HeaderIcon = headerIcons[subjectKind];
+  const tenantSuspended = tenantFromPet
+    ? (await getTenantStatus(context.env.DB, tenantFromPet)) === "suspended"
+    : false;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-outfit pb-12">
@@ -116,6 +120,7 @@ export default async function EditPetPage({
             ownerId={session.user.id}
             subjectKind={subjectKind}
             tenantId={tenantFromPet}
+            writeLocked={tenantSuspended}
             initialData={{
               id: pet.id,
               name: pet.name,

@@ -8,6 +8,7 @@ import { parseSubjectKind } from "@/lib/subject-kind";
 import { assertTenantRole } from "@/lib/tenant-membership";
 import { assertTenantTagQuota } from "@/lib/tenant-quota";
 import { assertMigration0008Applied } from "@/lib/db-migration-0008";
+import { assertTenantActive } from "@/lib/tenant-status";
 
 function normalizeUid(uid: string): string {
     return uid.trim().toUpperCase();
@@ -71,6 +72,7 @@ export async function linkTag(petId: string, tagId: string) {
     }
 
     if (petScope.tenant_id) {
+        await assertTenantActive(db, petScope.tenant_id);
         await assertTenantRole(db, userId, petScope.tenant_id, "admin");
         await assertTenantTagQuota(db, petScope.tenant_id);
     } else if (petScope.owner_id !== userId) {
@@ -148,6 +150,7 @@ export async function unlinkTag(tagId: string) {
 
     if (existing?.pet_id) {
         if (existing.tenant_id) {
+            await assertTenantActive(db, existing.tenant_id);
             await assertTenantRole(db, userId, existing.tenant_id, "admin");
         } else if (!existing.owner_id || existing.owner_id !== userId) {
             throw new Error("해당 태그를 해제할 권한이 없습니다.");

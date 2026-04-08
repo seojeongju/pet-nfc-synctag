@@ -1,8 +1,10 @@
 import {
   adminAddTenantMember,
   adminChangeTenantMemberRole,
+  getTenantAdminAuditLogs,
   adminCreateTenantInvite,
   adminCreateTenantWithOwner,
+  adminRenameTenant,
   adminRemoveTenantMember,
   adminUpdateTenantStatus,
   getTenantsAdminView,
@@ -51,6 +53,7 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
   const email = String(qs.email ?? "").trim();
   const status = qs.status === "active" || qs.status === "suspended" ? qs.status : "all";
   const tenants = await getTenantsAdminView({ q, email, status });
+  const auditLogs = await getTenantAdminAuditLogs(60);
   const backQs = buildBackQuery({ q, email, status });
 
   return (
@@ -196,6 +199,34 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
                   </button>
                 </form>
               </div>
+
+              <form
+                action={async (formData) => {
+                  "use server";
+                  const { redirect } = await import("next/navigation");
+                  try {
+                    await adminRenameTenant(formData);
+                  } catch (e) {
+                    const msg = e instanceof Error ? e.message : "조직명 변경 실패";
+                    redirect(withMessage(String(formData.get("return_qs") ?? ""), "err", encodeURIComponent(msg)));
+                  }
+                  redirect(withMessage(String(formData.get("return_qs") ?? ""), "ok", encodeURIComponent("조직명 변경 완료")));
+                }}
+                className="grid grid-cols-1 lg:grid-cols-4 gap-2"
+              >
+                <input type="hidden" name="tenant_id" value={tenant.id} />
+                <input type="hidden" name="return_qs" value={backQs} />
+                <input
+                  name="name"
+                  required
+                  defaultValue={tenant.name}
+                  placeholder="조직명"
+                  className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-semibold lg:col-span-3"
+                />
+                <button type="submit" className="h-10 rounded-xl bg-slate-900 text-white text-sm font-black hover:bg-teal-600">
+                  조직명 저장
+                </button>
+              </form>
 
               <form
                 action={async (formData) => {
@@ -363,6 +394,27 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
               </div>
             </article>
           ))
+        )}
+      </section>
+
+      <section className="rounded-3xl border border-slate-100 bg-white p-5 lg:p-6 shadow-sm space-y-3">
+        <h2 className="text-lg font-black text-slate-900">조직 관리 감사 로그</h2>
+        {auditLogs.length === 0 ? (
+          <p className="text-sm font-semibold text-slate-400">아직 기록이 없습니다.</p>
+        ) : (
+          <div className="space-y-2 max-h-[380px] overflow-auto pr-1">
+            {auditLogs.map((row) => (
+              <div key={row.id} className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2">
+                <p className="text-[11px] font-black text-slate-800">{row.action}</p>
+                <p className="text-[11px] text-slate-500 font-semibold">
+                  {row.actor_email ?? "system"} · {new Date(row.created_at).toLocaleString("ko-KR")}
+                </p>
+                {row.payload ? (
+                  <pre className="mt-1 text-[10px] font-semibold text-slate-500 whitespace-pre-wrap break-all">{row.payload}</pre>
+                ) : null}
+              </div>
+            ))}
+          </div>
         )}
       </section>
 

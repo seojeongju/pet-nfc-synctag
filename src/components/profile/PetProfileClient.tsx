@@ -25,6 +25,7 @@ import {
   nfcPublicEmergencyBadge,
 } from "@/lib/nfc-public-display";
 import { verifyOwnerAndLoadPetTags } from "@/app/actions/tag";
+import { cn } from "@/lib/utils";
 
 const heroIcons: Record<SubjectKind, LucideIcon> = {
   pet: PawPrint,
@@ -44,6 +45,7 @@ interface PetProfileClientProps {
     medical_info?: string | null;
   };
   tenantId?: string | null;
+  tenantSuspended?: boolean;
   isOwner: boolean;
   petTags: Array<{ id: string; is_active?: boolean }>;
   tagId: string | null;
@@ -57,6 +59,7 @@ interface PetProfileClientProps {
 export default function PetProfileClient({
   pet,
   tenantId,
+  tenantSuspended = false,
   isOwner,
   petTags,
   tagId,
@@ -77,6 +80,7 @@ export default function PetProfileClient({
 
   /** 발견자 UI와 동일하게 취급: 비소유자이거나, NFC 게이트에서 아직 잠금 해제 전 */
   const treatAsPublicVisitor = isPublicViewer || (nfcOwnerGate && !ownerUnlocked);
+  const writeLocked = Boolean(tenantId && tenantSuspended);
 
   const { scrollY } = useScroll();
   
@@ -377,7 +381,12 @@ export default function PetProfileClient({
         {isOwner && (!nfcOwnerGate || ownerUnlocked) && (
           <motion.section variants={itemVariants}>
              <div className="px-2">
-                <TagManageCard petId={pet.id} existingTags={petTagsLive} />
+                {writeLocked ? (
+                  <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold text-amber-700">
+                    조직이 중지 상태라 수정/태그 관리 기능은 잠겨 있습니다. 조회만 가능합니다.
+                  </div>
+                ) : null}
+                <TagManageCard petId={pet.id} existingTags={petTagsLive} writeLocked={writeLocked} />
              </div>
           </motion.section>
         )}
@@ -454,7 +463,12 @@ export default function PetProfileClient({
             </div>
             <span className="text-[9px] font-black text-slate-400 group-hover:text-white uppercase tracking-widest">Activity</span>
          </Link>
-         <Link href={isOwner ? `/dashboard/pets/${pet.id}/edit${kindQs}` : `/dashboard${kindQs}`} className="flex flex-col items-center gap-1 group">
+         <Link
+            href={isOwner && !writeLocked ? `/dashboard/pets/${pet.id}/edit${kindQs}` : `/dashboard${kindQs}`}
+            className={cn("flex flex-col items-center gap-1 group", isOwner && writeLocked ? "opacity-50" : "")}
+            aria-disabled={isOwner && writeLocked}
+            title={isOwner && writeLocked ? "중지된 조직에서는 수정이 잠겨 있습니다." : undefined}
+         >
             <div className="p-2.5 rounded-2xl text-slate-400 group-hover:text-white transition-all active:scale-90">
                <Settings className="w-6 h-6" />
             </div>

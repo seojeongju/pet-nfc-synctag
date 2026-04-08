@@ -11,6 +11,7 @@ import { Plus, PawPrint, ChevronRight, UserRound, Baby, Briefcase, Gem } from "l
 import { parseSubjectKind, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
 import type { LucideIcon } from "lucide-react";
 import { requireTenantMember } from "@/lib/tenant-membership";
+import { getTenantStatus } from "@/lib/tenant-status";
 
 export const runtime = "edge";
 type PetListItem = {
@@ -56,6 +57,9 @@ export default async function PetsPage({
     if (tenantId) {
         await requireTenantMember(context.env.DB, session.user.id, tenantId);
     }
+    const tenantSuspended = tenantId
+        ? (await getTenantStatus(context.env.DB, tenantId)) === "suspended"
+        : false;
 
     const pets = await getPets(session.user.id, subjectKind, tenantId ?? undefined);
     const subLabel =
@@ -67,12 +71,19 @@ export default async function PetsPage({
                 <div className="space-y-1">
                     <h1 className="text-2xl font-black text-slate-900">{meta.listHeading}</h1>
                     <p className="text-sm text-slate-500">등록된 {subLabel}</p>
+                    {tenantSuspended ? (
+                        <p className="text-xs font-bold text-amber-700">
+                            조직이 중지 상태라 신규 등록이 잠겨 있습니다.
+                        </p>
+                    ) : null}
                 </div>
                 <Link
-                    href={`/dashboard/pets/new${kindQs}`}
+                    href={tenantSuspended ? "#" : `/dashboard/pets/new${kindQs}`}
+                    aria-disabled={tenantSuspended}
                     className={cn(
                         buttonVariants({}),
-                        "rounded-full bg-teal-500 hover:bg-teal-600 shadow-lg shadow-teal-100 gap-2 h-11 px-5"
+                        "rounded-full bg-teal-500 hover:bg-teal-600 shadow-lg shadow-teal-100 gap-2 h-11 px-5",
+                        tenantSuspended ? "pointer-events-none opacity-50" : ""
                     )}
                 >
                     <Plus className="w-5 h-5" />
@@ -126,10 +137,12 @@ export default async function PetsPage({
                             <p className="text-sm text-slate-400">{meta.description}</p>
                         </div>
                         <Link
-                            href={`/dashboard/pets/new${kindQs}`}
+                            href={tenantSuspended ? "#" : `/dashboard/pets/new${kindQs}`}
+                            aria-disabled={tenantSuspended}
                             className={cn(
                                 buttonVariants({ variant: "outline" }),
-                                "rounded-full border-teal-200 text-teal-600 hover:bg-teal-50 font-bold px-8 h-12"
+                                "rounded-full border-teal-200 text-teal-600 hover:bg-teal-50 font-bold px-8 h-12",
+                                tenantSuspended ? "pointer-events-none opacity-50" : ""
                             )}
                         >
                             첫 아이 등록하기

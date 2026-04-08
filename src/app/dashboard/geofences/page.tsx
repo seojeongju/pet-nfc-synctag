@@ -13,6 +13,7 @@ import { MapPin, Trash2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { requireTenantMember } from "@/lib/tenant-membership";
+import { getTenantStatus } from "@/lib/tenant-status";
 
 export const runtime = "edge";
 
@@ -40,6 +41,9 @@ export default async function GeofencesPage({
   if (tenantId) {
     await requireTenantMember(context.env.DB, session.user.id, tenantId);
   }
+  const tenantSuspended = tenantId
+    ? (await getTenantStatus(context.env.DB, tenantId)) === "suspended"
+    : false;
 
   const pets = await getPets(session.user.id, subjectKind, tenantId ?? undefined);
   const geofences = await getGeofences(subjectKind, tenantId ?? undefined);
@@ -49,6 +53,8 @@ export default async function GeofencesPage({
       ? "입력값을 확인해 주세요."
       : err === "forbidden"
         ? "권한이 없습니다."
+        : err === "tenant_suspended"
+          ? "중지(suspended)된 조직에서는 변경 작업을 수행할 수 없습니다."
         : null;
 
   return (
@@ -80,6 +86,11 @@ export default async function GeofencesPage({
           {errMsg}
         </div>
       )}
+      {tenantSuspended ? (
+        <div className="rounded-2xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm font-bold text-amber-700">
+          조직이 중지 상태라 안심 구역 생성/삭제는 잠겨 있습니다. 조회만 가능합니다.
+        </div>
+      ) : null}
 
       <Card className="rounded-[28px] border-slate-100 shadow-lg">
         <CardContent className="p-6 space-y-4">
@@ -90,6 +101,7 @@ export default async function GeofencesPage({
             <form action={createGeofenceForm} className="grid gap-4 sm:grid-cols-2">
               <input type="hidden" name="kind" value={subjectKind} />
               {tenantId ? <input type="hidden" name="tenant" value={tenantId} /> : null}
+              <fieldset disabled={tenantSuspended} className="contents">
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="pet_id">관리 대상</Label>
                 <select
@@ -154,6 +166,7 @@ export default async function GeofencesPage({
                   저장
                 </Button>
               </div>
+              </fieldset>
             </form>
           )}
         </CardContent>
@@ -184,6 +197,7 @@ export default async function GeofencesPage({
                     <Button
                       type="submit"
                       variant="outline"
+                      disabled={tenantSuspended}
                       className="rounded-2xl border-rose-200 text-rose-600 hover:bg-rose-50 gap-2"
                     >
                       <Trash2 className="w-4 h-4" />

@@ -7,6 +7,7 @@ import { headers } from "next/headers";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import PetProfileClient from "@/components/profile/PetProfileClient";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
+import { getTenantStatus } from "@/lib/tenant-status";
 
 export const runtime = "edge";
 
@@ -59,11 +60,15 @@ export default async function PublicProfilePage({
   const subjectKind = parseSubjectKind(pet.subject_kind);
   const tenantId =
     typeof pet.tenant_id === "string" && pet.tenant_id.trim() ? pet.tenant_id.trim() : null;
+  const tenantSuspended = tenantId
+    ? (await getTenantStatus(context.env.DB, tenantId)) === "suspended"
+    : false;
 
   return (
     <PetProfileClient 
       pet={pet}
       tenantId={tenantId}
+      tenantSuspended={tenantSuspended}
       isOwner={isOwner}
       petTags={petTags || []}
       tagId={tagId}

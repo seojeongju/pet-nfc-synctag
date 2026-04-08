@@ -37,13 +37,14 @@ interface DashboardClientProps {
   modeAnnouncements: ModeAnnouncementRow[];
   tenantId?: string | null;
   tenantUsage?: TenantPlanUsageSummary | null;
+  tenantSuspended?: boolean;
 }
 
 function limitText(used: number, limit: number | null): string {
   return `${used}/${limit == null ? "∞" : limit}`;
 }
 
-export default function DashboardClient({ session, pets, isAdmin, subjectKind, modeAnnouncements, tenantId, tenantUsage }: DashboardClientProps) {
+export default function DashboardClient({ session, pets, isAdmin, subjectKind, modeAnnouncements, tenantId, tenantUsage, tenantSuspended = false }: DashboardClientProps) {
   const [isPending, startTransition] = useTransition();
   const [selectedPetId, setSelectedPetId] = useState("");
   const [tagId, setTagId] = useState("");
@@ -62,6 +63,7 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind, m
   }, [pets, selectedPetId]);
 
   const handleQuickNfcRegister = () => {
+    if (tenantSuspended) return;
     if (!selectedPetId || !tagId.trim()) return;
     setTagMessage(null);
     startTransition(async () => {
@@ -151,6 +153,11 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind, m
                 )}
               </div>
             )}
+            {tenantSuspended ? (
+              <div className="mt-2 inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[10px] font-black text-amber-700">
+                조직이 중지 상태라 쓰기 기능이 잠겨 있습니다.
+              </div>
+            ) : null}
             <div className="flex items-center gap-1.5 text-teal-600 font-bold text-[11px] uppercase tracking-wider">
                <MapPin className="w-3.5 h-3.5" />
                SEOUL, KOREA
@@ -223,6 +230,7 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind, m
                   <select
                     value={selectedPetId}
                     onChange={(e) => setSelectedPetId(e.target.value)}
+                    disabled={tenantSuspended}
                     className="w-full h-12 rounded-2xl border border-slate-100 bg-slate-50 px-4 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/20"
                   >
                     {pets.map((pet) => (
@@ -236,12 +244,13 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind, m
                     <Input
                       value={tagId}
                       onChange={(e) => setTagId(e.target.value)}
+                      disabled={tenantSuspended}
                       placeholder="NFC 태그 UID 입력"
                       className="h-12 rounded-2xl border-slate-100 bg-slate-50 font-bold"
                     />
                     <Button
                       onClick={handleQuickNfcRegister}
-                      disabled={isPending || !selectedPetId || !tagId.trim()}
+                      disabled={tenantSuspended || isPending || !selectedPetId || !tagId.trim()}
                       className="h-12 rounded-2xl bg-slate-900 hover:bg-teal-500 text-white px-5 font-black"
                     >
                       등록
@@ -251,7 +260,14 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind, m
               ) : (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center space-y-2">
                   <p className="text-xs font-bold text-slate-500">{meta.emptyRegisterHint}</p>
-                  <Link href={`/dashboard/pets/new${kindQs}`} className="text-xs font-black text-teal-600 underline underline-offset-4">
+                  <Link
+                    href={tenantSuspended ? "#" : `/dashboard/pets/new${kindQs}`}
+                    aria-disabled={tenantSuspended}
+                    className={cn(
+                      "text-xs font-black underline underline-offset-4",
+                      tenantSuspended ? "pointer-events-none text-slate-400" : "text-teal-600"
+                    )}
+                  >
                     등록하러 가기
                   </Link>
                 </div>
@@ -306,8 +322,12 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind, m
                 </motion.div>
               ))}
 
-              <motion.div whileTap={{ scale: 0.95 }}>
-                <Link href={`/dashboard/pets/new${kindQs}`}>
+              <motion.div whileTap={{ scale: tenantSuspended ? 1 : 0.95 }}>
+                <Link
+                  href={tenantSuspended ? "#" : `/dashboard/pets/new${kindQs}`}
+                  aria-disabled={tenantSuspended}
+                  className={tenantSuspended ? "pointer-events-none opacity-50" : ""}
+                >
                    <div className="min-w-[150px] h-full min-h-[176px] rounded-[32px] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center gap-2 hover:bg-teal-50/50 hover:border-teal-500 transition-all group">
                       <div className="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-teal-500 group-hover:text-white transition-all shadow-sm">
                          <Plus className="w-5 h-5" />

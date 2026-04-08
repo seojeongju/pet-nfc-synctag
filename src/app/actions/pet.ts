@@ -8,6 +8,7 @@ import { parseSubjectKind, type SubjectKind } from "@/lib/subject-kind";
 import { assertPersonalPetQuota, assertTenantPetQuota } from "@/lib/tenant-quota";
 import { assertMigration0008Applied } from "@/lib/db-migration-0008";
 import { assertTenantRole } from "@/lib/tenant-membership";
+import { assertTenantActive } from "@/lib/tenant-status";
 
 interface PetData {
     name: string;
@@ -53,6 +54,7 @@ export async function createPet(ownerId: string, data: PetData) {
     await assertMigration0008Applied(db);
     const tenantId = (data.tenant_id ?? "").trim() || null;
     if (tenantId) {
+        await assertTenantActive(db, tenantId);
         await assertTenantRole(db, actorId, tenantId, "admin");
         await assertTenantPetQuota(db, tenantId);
     } else {
@@ -107,6 +109,7 @@ export async function updatePet(petId: string, data: Partial<PetData>) {
     }
 
     if (target.tenant_id) {
+        await assertTenantActive(db, target.tenant_id);
         await assertTenantRole(db, actorId, target.tenant_id, "admin");
     } else if (target.owner_id !== actorId) {
         throw new Error("수정 권한이 없습니다.");
