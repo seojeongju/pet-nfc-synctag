@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
 import { getRequestContext } from "@cloudflare/next-on-pages";
-import { parseSubjectKind, type SubjectKind } from "@/lib/subject-kind";
+import { parseSubjectKind, SUBJECT_KINDS, type SubjectKind } from "@/lib/subject-kind";
 import { normalizeBleMac } from "@/lib/device-mode";
 
 function normalizeUid(uid: string): string {
@@ -48,7 +48,8 @@ export type RegisterBulkTagsOptions = {
 export async function registerBulkTags(uids: string[], options?: RegisterBulkTagsOptions) {
     const db = getDB();
     const kind = options?.assignedSubjectKind ?? null;
-    const kindSlug = kind && ["pet", "elder", "child", "luggage"].includes(kind) ? kind : "generic";
+    const kindSlug =
+        kind && (SUBJECT_KINDS as readonly string[]).includes(kind) ? kind : "generic";
     const currentBatch = options?.batchId || `BATCH-${kindSlug}-${Date.now()}`;
     const normalized = uids.map(normalizeUid).filter((uid) => uid.length > 0);
     const uniqueNormalized = Array.from(new Set(normalized));
@@ -188,15 +189,11 @@ export async function getPetsSubjectKindCounts() {
         .all<{ k: string; c: number }>()
         .catch(() => ({ results: [] as { k: string; c: number }[] }));
 
-    const counts: Record<"pet" | "elder" | "child" | "luggage", number> = {
-        pet: 0,
-        elder: 0,
-        child: 0,
-        luggage: 0,
-    };
+    const counts = Object.fromEntries(SUBJECT_KINDS.map((k) => [k, 0])) as Record<SubjectKind, number>;
+    const kinds = SUBJECT_KINDS as readonly string[];
     for (const row of results) {
-        const key = row.k as keyof typeof counts;
-        if (key in counts) counts[key] = row.c;
+        const raw = row.k ?? "pet";
+        if (kinds.includes(raw)) counts[raw as SubjectKind] = row.c;
     }
     return counts;
 }

@@ -3,7 +3,7 @@ import { getAuth } from "@/lib/auth";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { PawPrint, UserRound, Baby, Briefcase, ChevronRight } from "lucide-react";
+import { PawPrint, UserRound, Baby, Briefcase, Gem, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
 import { resolveDeviceAssignedKind } from "@/lib/device-mode";
@@ -15,6 +15,7 @@ const hubIcons: Record<SubjectKind, typeof PawPrint> = {
   elder: UserRound,
   child: Baby,
   luggage: Briefcase,
+  gold: Gem,
 };
 
 export default async function HubPage({

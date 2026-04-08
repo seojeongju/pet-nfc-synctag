@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { createPet, updatePet, uploadToR2 } from "@/app/actions/pet";
 import { useRouter } from "next/navigation";
 import { useState, useRef } from "react";
-import { PawPrint, Camera, Loader2, X, UserRound, Baby, Briefcase } from "lucide-react";
+import { PawPrint, Camera, Loader2, X, UserRound, Baby, Briefcase, Gem } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { parseSubjectKind, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
 
@@ -18,6 +18,7 @@ const formIcons: Record<SubjectKind, LucideIcon> = {
     elder: UserRound,
     child: Baby,
     luggage: Briefcase,
+    gold: Gem,
 };
 
 interface PetFormProps {

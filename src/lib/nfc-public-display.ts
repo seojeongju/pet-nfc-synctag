@@ -10,6 +10,8 @@ export const nfcPublicFinderIntro: Record<SubjectKind, string> = {
     "보호자 연락을 우선해 주세요. 아래 버튼으로 연락하시거나 위치를 공유해 주시면 감사하겠습니다.",
   luggage:
     "분실물을 발견하셨나요? 등록자에게 연락해 주시면 감사하겠습니다. 위치 공유로 단서를 남길 수 있어요.",
+  gold:
+    "주얼리 태그를 발견하셨나요? 소유자에게 연락해 주시면 감사합니다. 인증 가치와 안전한 보호(분실 방지) 안내가 함께 제공됩니다.",
 };
 
 export const nfcPublicEmergencyBadge: Record<SubjectKind, string> = {
@@ -17,6 +19,7 @@ export const nfcPublicEmergencyBadge: Record<SubjectKind, string> = {
   elder: "도움",
   child: "연락",
   luggage: "분실",
+  gold: "안심",
 };
 
 /**

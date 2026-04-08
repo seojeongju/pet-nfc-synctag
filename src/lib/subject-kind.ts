@@ -1,4 +1,4 @@
-export const SUBJECT_KINDS = ["pet", "elder", "child", "luggage"] as const;
+export const SUBJECT_KINDS = ["pet", "elder", "child", "luggage", "gold"] as const;
 export type SubjectKind = (typeof SUBJECT_KINDS)[number];
 
 export function parseSubjectKind(value: string | undefined | null): SubjectKind {
@@ -56,6 +56,16 @@ export const subjectKindMeta: Record<
     nfcHelper: "여행용 태그를 연결해 분실 시 단서를 남길 수 있어요.",
     emptyRegisterHint: "먼저 소지품을 등록해야 태그를 연결할 수 있어요.",
   },
+  gold: {
+    label: "링크유 - 골드 (고귀한 가치·인증서)",
+    description:
+      "주얼리 · 고귀한 가치(인증서)와 안전한 보호(분실 방지)를 함께 — NFC로 가치 증명과 주인 연결",
+    listHeading: "등록한 골드·주얼리",
+    registerTitle: "제품·소유 등록",
+    registerSubtitle: "제품명과 연락처를 남겨 인증 가치와 분실 시 복구에 활용하세요.",
+    nfcHelper: "NFC 태그를 연결하면 인증 안내와 안심 찾기 정보를 한 번에 전달할 수 있어요.",
+    emptyRegisterHint: "먼저 제품을 등록해야 태그를 연결할 수 있어요.",
+  },
 };
 
 /** NFC/QR (S3) */
@@ -67,4 +77,12 @@ export const subjectKindNfcPublic: Record<
   elder: { roleLine: "NFC 공개 프로필 · 링크유 - 메모리 (기억 동행)", callCta: "보호자·가족에게 연락하기", hideMedicalBlock: true, idCardLabel: "참고 메모", scanHintLabel: "안내", scanHintBody: "필요할 때 가족에게 연락해 주세요." },
   child: { roleLine: "NFC 공개 프로필 · 링크유 - 키즈 (우리 아이 안심)", callCta: "보호자에게 연락하기", hideMedicalBlock: true, idCardLabel: "식별", scanHintLabel: "안내", scanHintBody: "보호자 연락을 우선해 주세요." },
   luggage: { roleLine: "NFC 공개 프로필 · 링크유 - 태그 (수화물·가방)", callCta: "등록자에게 연락하기", hideMedicalBlock: true, idCardLabel: "소지품", scanHintLabel: "분실 안내", scanHintBody: "주인에게 연락해 주시면 감사하겠습니다." },
+  gold: {
+    roleLine: "NFC 공개 프로필 · 링크유 - 골드 (고귀한 가치·인증서)",
+    callCta: "소유자에게 연락하기",
+    hideMedicalBlock: true,
+    idCardLabel: "인증·제품",
+    scanHintLabel: "안내",
+    scanHintBody: "고귀한 가치(인증)와 안전한 보호(분실 방지) 안내를 함께 제공합니다.",
+  },
 };

@@ -14,6 +14,7 @@ import {
   UserRound,
   Baby,
   Briefcase,
+  Gem,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,7 @@ const kindIcon: Record<SubjectKind, typeof PawPrint> = {
   elder: UserRound,
   child: Baby,
   luggage: Briefcase,
+  gold: Gem,
 };
 
 const kindTabStyles: Record<
@@ -51,6 +53,11 @@ const kindTabStyles: Record<
     inactive: "border-slate-100 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50",
     iconBg: "bg-slate-500/15 text-slate-700",
   },
+  gold: {
+    active: "border-amber-600 bg-amber-50 text-amber-950 shadow-sm",
+    inactive: "border-slate-100 bg-white text-slate-500 hover:border-amber-200 hover:bg-amber-50/40",
+    iconBg: "bg-amber-500/15 text-amber-700",
+  },
 };
 
 function normalizeUid(uid: string): string {
@@ -71,6 +78,7 @@ export function TagBulkRegisterCard() {
     elder: "",
     child: "",
     luggage: "",
+    gold: "",
   });
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -111,6 +119,7 @@ export function TagBulkRegisterCard() {
     elder: "focus:ring-violet-500/10 focus:border-violet-500/50",
     child: "focus:ring-amber-500/10 focus:border-amber-500/50",
     luggage: "focus:ring-slate-500/10 focus:border-slate-500/50",
+    gold: "focus:ring-amber-600/10 focus:border-amber-600/50",
   };
 
   const statsPanelByKind: Record<SubjectKind, string> = {
@@ -118,6 +127,7 @@ export function TagBulkRegisterCard() {
     elder: "bg-violet-50/50 border-violet-100",
     child: "bg-amber-50/50 border-amber-100",
     luggage: "bg-slate-50 border-slate-200",
+    gold: "bg-amber-50/80 border-amber-200",
   };
 
   return (
@@ -128,7 +138,7 @@ export function TagBulkRegisterCard() {
           NFC 태그 대량 등록
         </h3>
         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-relaxed">
-          모드(펫·메모리·키즈·캐리)별로 탭을 선택한 뒤 UID를 입력하세요. 해당 모드가 태그에 미리 할당됩니다.
+          모드(펫·메모리·키즈·캐리·골드)별로 탭을 선택한 뒤 UID를 입력하세요. 해당 모드가 태그에 미리 할당됩니다.
         </p>
       </div>
 

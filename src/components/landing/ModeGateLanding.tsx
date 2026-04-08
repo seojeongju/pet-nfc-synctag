@@ -14,6 +14,7 @@ const modePath: Record<SubjectKind, string> = {
   elder: "/elder",
   child: "/child",
   luggage: "/luggage",
+  gold: "/gold",
 };
 
 interface ModeGateLandingProps {

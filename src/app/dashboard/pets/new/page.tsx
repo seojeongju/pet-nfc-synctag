@@ -1,5 +1,5 @@
 import { PetForm } from "@/components/PetForm";
-import { ArrowLeft, PawPrint, UserRound, Baby, Briefcase } from "lucide-react";
+import { ArrowLeft, PawPrint, UserRound, Baby, Briefcase, Gem } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { headers } from "next/headers";
@@ -15,6 +15,7 @@ const headerIcons: Record<SubjectKind, LucideIcon> = {
   elder: UserRound,
   child: Baby,
   luggage: Briefcase,
+  gold: Gem,
 };
 
 export default async function NewPetPage({

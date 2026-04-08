@@ -145,7 +145,7 @@ export default function ModeAnnouncementsAdminClient({ initialRows }: { initialR
         </div>
         <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">모드·배치별 공지</h1>
         <p className="text-slate-500 text-sm font-bold max-w-xl">
-          모드(펫·메모리·키즈·캐리)와 선택적 배치(batch_id)를 지정해 보호자 대시보드에 안내를 표시합니다. 링크·이미지·PDF를
+          모드(펫·메모리·키즈·캐리·골드)와 선택적 배치(batch_id)를 지정해 보호자 대시보드에 안내를 표시합니다. 링크·이미지·PDF를
           함께 넣을 수 있습니다.
         </p>
       </motion.div>

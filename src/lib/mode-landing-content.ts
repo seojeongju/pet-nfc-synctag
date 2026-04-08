@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { PawPrint, UserRound, Baby, Briefcase } from "lucide-react";
+import { PawPrint, UserRound, Baby, Briefcase, Gem } from "lucide-react";
 import type { SubjectKind } from "@/lib/subject-kind";
 
 export type ModeLandingVisual = {
@@ -99,6 +99,25 @@ export const modeLandingVisual: Record<SubjectKind, ModeLandingVisual> = {
     titleGradientFrom: "from-slate-700",
     titleGradientTo: "to-teal-700",
   },
+  gold: {
+    heroImageSrc: null,
+    heroAlt: "",
+    badge: "링크유 - 골드",
+    statLabel: "가치·안심 연결",
+    statValue: "310+",
+    Icon: Gem,
+    gradient: "from-amber-500 via-yellow-600 to-amber-800",
+    blobA: "bg-amber-400/15",
+    blobB: "bg-rose-500/10",
+    buttonClass: "bg-gradient-to-r from-amber-600 to-amber-800 text-white shadow-amber-900/25 hover:from-amber-700 hover:to-amber-900",
+    sheetAccent: "text-amber-700",
+    finderBoxBorder: "border-amber-100",
+    finderBoxBg: "bg-amber-50/90",
+    finderTitleClass: "text-amber-950",
+    finderBodyClass: "text-amber-900/85",
+    titleGradientFrom: "from-amber-600",
+    titleGradientTo: "to-rose-700",
+  },
 };
 
 export type ModeLandingCopy = {
@@ -161,6 +180,19 @@ export const modeLandingCopy: Record<SubjectKind, ModeLandingCopy> = {
       "발견자는 로그인 없이 연락 안내 페이지로 이동합니다.",
       "제품에 표기된 /t/태그 주소를 열어 주세요.",
       "이 화면은 링크유 - 캐리 소유자 등록·관리용입니다.",
+    ],
+  },
+  gold: {
+    kicker: "링크유 - 골드 · Smart NFC",
+    titleLine1: "주얼리를 위한",
+    titleGradient: "가치 인증과 안심 보호",
+    subline:
+      "고귀한 가치(인증서)로 품격을 증명하고, 안전한 보호(분실 방지)로 소유자와 빠르게 연결합니다. NFC 한 번에 두 가지 핵심을 함께 전달합니다.",
+    finderTitle: "인증 태그·인식표를 보셨나요?",
+    finderLines: [
+      "발견자는 로그인 없이 연락·안내 페이지로 이동합니다.",
+      "제품에 표기된 /t/태그 주소를 열어 주세요.",
+      "이 화면은 링크유 - 골드 소유자 등록·관리용입니다.",
     ],
   },
 };

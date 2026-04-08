@@ -8,7 +8,7 @@ import {
   ArrowLeft, ShieldCheck, PawPrint, Home, 
   Settings, Activity,
   Calendar, Fingerprint, MapPin,
-  UserRound, Baby, Briefcase,   LogIn,
+  UserRound, Baby, Briefcase, Gem, LogIn,
   Loader2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -31,6 +31,7 @@ const heroIcons: Record<SubjectKind, LucideIcon> = {
   elder: UserRound,
   child: Baby,
   luggage: Briefcase,
+  gold: Gem,
 };
 
 interface PetProfileClientProps {

@@ -7,7 +7,7 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Plus, PawPrint, ChevronRight, UserRound, Baby, Briefcase } from "lucide-react";
+import { Plus, PawPrint, ChevronRight, UserRound, Baby, Briefcase, Gem } from "lucide-react";
 import { parseSubjectKind, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
 import type { LucideIcon } from "lucide-react";
 
@@ -24,6 +24,7 @@ const listIcons: Record<SubjectKind, LucideIcon> = {
     elder: UserRound,
     child: Baby,
     luggage: Briefcase,
+    gold: Gem,
 };
 
 export default async function PetsPage({

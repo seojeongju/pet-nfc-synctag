@@ -7,7 +7,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { 
   Plus, MapPin, PawPrint, Search, Bell,
   LogOut, ShieldCheck, Heart, History, Activity, Home, Smartphone, CheckCircle, AlertCircle,
-  UserRound, Baby, Briefcase,
+  UserRound, Baby, Briefcase, Gem,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -25,6 +25,7 @@ const subjectAvatars: Record<SubjectKind, LucideIcon> = {
   elder: UserRound,
   child: Baby,
   luggage: Briefcase,
+  gold: Gem,
 };
 
 interface DashboardClientProps {

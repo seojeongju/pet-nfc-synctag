@@ -6,6 +6,7 @@ import {
   ArrowRight,
   Baby,
   Briefcase,
+  Gem,
   type LucideIcon,
   PawPrint,
   ShieldCheck,
@@ -21,6 +22,7 @@ const modeIcons: Record<SubjectKind, LucideIcon> = {
   elder: UserRound,
   child: Baby,
   luggage: Briefcase,
+  gold: Gem,
 };
 
 interface MultiModeHomeClientProps {
@@ -50,7 +52,7 @@ export default function MultiModeHomeClient({
         >
           <motion.div
             initial={{ scale: 1.1, opacity: 0 }}
-            animate={{ scale: 1, opacity: 0.9 }}
+            animate={{ scale: 1, opacity: 0.7 }}
             transition={{ duration: 1.5, ease: "easeOut" }}
             className="absolute inset-0 z-0"
           >
@@ -63,27 +65,29 @@ export default function MultiModeHomeClient({
             />
           </motion.div>
 
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-900/50 via-slate-900/20 to-teal-900/60 z-1" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(45,212,191,0.15),transparent_60%)] z-1" />
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-900/60 via-slate-900/40 to-teal-950/80 z-1" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(45,212,191,0.2),transparent_60%)] z-1" />
 
-          <Sparkles className="w-10 h-10 text-teal-300 mb-4 relative z-10 drop-shadow-[0_0_15px_rgba(94,234,212,0.6)]" />
-          <h1 className="text-2xl font-black text-white tracking-tight relative z-10 drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)]">
-            링크유
-          </h1>
-          <p className="text-sm text-slate-100 mt-3 font-semibold leading-relaxed relative z-10 drop-shadow-[0_1px_5px_rgba(0,0,0,0.4)]">
-            NFC로 반려동물·어르신·아이·링크유 - 태그까지
+          <Sparkles className="w-10 h-10 text-teal-300 mb-4 relative z-10 drop-shadow-[0_0_15px_rgba(94,234,212,0.5)]" />
+          <h1 className="text-2xl font-black text-white tracking-tight relative z-10 drop-shadow-md">링크유</h1>
+          <p className="text-sm text-slate-100 mt-3 font-semibold leading-relaxed relative z-10 drop-shadow-sm">
+            NFC로 반려동물·어르신·아이·캐리어·골드(주얼리)까지
             <br />
-            한 번에 연결하는 스마트 명함 · Link-U
+            한 번에 연결하는 스마트한 관리 플랫폼 - Link-U
           </p>
           <div className="mt-8 grid grid-cols-2 gap-3 w-full max-w-[320px] relative z-10">
-            {SUBJECT_KINDS.map((k) => {
+            {SUBJECT_KINDS.map((k, i) => {
               const Icon = modeIcons[k];
               const meta = subjectKindMeta[k];
+              const oddLast = i === SUBJECT_KINDS.length - 1 && SUBJECT_KINDS.length % 2 === 1;
               return (
                 <Link
                   key={k}
                   href={`/${k}`}
-                  className="flex items-center justify-center gap-2.5 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 px-3 py-3.5 hover:bg-white/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  className={cn(
+                    "flex items-center justify-center gap-2.5 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 px-3 py-3.5 hover:bg-white/25 transition-all hover:scale-[1.02] active:scale-[0.98]",
+                    oddLast && "col-span-2 max-w-[min(100%,calc(50%-6px))] justify-self-center"
+                  )}
                 >
                   <Icon className="w-5 h-5 text-teal-300 shrink-0" />
                   <span className="text-center text-[11px] font-black text-white leading-tight">{meta.label}</span>
@@ -103,9 +107,9 @@ export default function MultiModeHomeClient({
               들어가 보세요
             </h2>
             <p className="text-sm text-slate-500 font-medium leading-relaxed">
-              반려동물용 인식표는 <span className="text-slate-800 font-bold">반려동물</span>, 수하물·캐리어는{" "}
-              <span className="text-slate-800 font-bold">링크유 - 캐리</span> 전용 화면에서 보호자로 시작할 수
-              있어요.
+              반려동물은 <span className="text-slate-800 font-bold">링크유 - 펫</span>, 수하물은{" "}
+              <span className="text-slate-800 font-bold">링크유 - 캐리</span>, 주얼리·인증 가치는{" "}
+              <span className="text-slate-800 font-bold">링크유 - 골드</span> 전용 화면에서 보호자로 시작할 수 있어요.
             </p>
           </div>
 
