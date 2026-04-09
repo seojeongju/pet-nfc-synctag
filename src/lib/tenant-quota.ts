@@ -1,7 +1,8 @@
-﻿import type { D1Database } from "@cloudflare/workers-types";
+import type { D1Database } from "@cloudflare/workers-types";
 import { resolvePersonalPlan, resolveTenantPlan } from "@/lib/plan-resolution";
 
 export type TenantPlanUsageSummary = {
+  tenantName: string;
   planName: string;
   petUsed: number;
   petLimit: number | null;
@@ -47,8 +48,12 @@ export async function getTenantPlanUsageSummary(
   db: D1Database,
   tenantId: string
 ): Promise<TenantPlanUsageSummary | null> {
-  const resolved = await resolveTenantPlan(db, tenantId);
-  if (!resolved) return null;
+  const [resolved, tenantRow] = await Promise.all([
+    resolveTenantPlan(db, tenantId),
+    db.prepare("SELECT name FROM tenants WHERE id = ?").bind(tenantId).first<{ name: string }>()
+  ]);
+
+  if (!resolved || !tenantRow) return null;
 
   const [petUsed, tagUsed] = await Promise.all([
     countTenantPets(db, tenantId),
@@ -56,6 +61,7 @@ export async function getTenantPlanUsageSummary(
   ]);
 
   return {
+    tenantName: tenantRow.name,
     planName: resolved.plan.name,
     petUsed,
     petLimit: resolved.plan.pet_limit,

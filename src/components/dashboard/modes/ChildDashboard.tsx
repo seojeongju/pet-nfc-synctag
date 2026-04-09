@@ -175,7 +175,7 @@ export default function ChildDashboard({
             </div>
             {tenantId && (
               <div className="inline-flex flex-col gap-1 rounded-xl border border-sky-100 bg-sky-50 px-3 py-2">
-                <p className="text-[10px] font-black text-sky-700">조직 플랜 배지</p>
+                <p className="text-[10px] font-black text-sky-700">{tenantUsage?.tenantName}</p>
                 {tenantUsage ? (
                   <p className="text-[10px] font-bold text-sky-800">
                     {tenantUsage.planName} · 관리 {limitText(tenantUsage.petUsed, tenantUsage.petLimit)} · 태그 {limitText(tenantUsage.tagUsed, tenantUsage.tagLimit)}

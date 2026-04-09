@@ -175,7 +175,7 @@ export default function GoldDashboard({
             </div>
             {tenantId && (
               <div className="inline-flex flex-col gap-1 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2">
-                <p className="text-[10px] font-black text-amber-700">조직 플랜 배지</p>
+                <p className="text-[10px] font-black text-amber-700">{tenantUsage?.tenantName}</p>
                 {tenantUsage ? (
                   <p className="text-[10px] font-bold text-amber-800">
                     {tenantUsage.planName} · 관리 {limitText(tenantUsage.petUsed, tenantUsage.petLimit)} · 태그 {limitText(tenantUsage.tagUsed, tenantUsage.tagLimit)}
