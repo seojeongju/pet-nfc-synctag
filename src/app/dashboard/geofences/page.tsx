@@ -15,6 +15,7 @@ import { requireTenantMember } from "@/lib/tenant-membership";
 import { getTenantStatus } from "@/lib/tenant-status";
 
 export const runtime = "edge";
+export const dynamic = "force-dynamic";
 
 export default async function GeofencesPage({
   searchParams,
@@ -37,29 +38,30 @@ export default async function GeofencesPage({
     redirect("/login");
   }
 
-  if (tenantId) {
-    await requireTenantMember(context.env.DB, session.user.id, tenantId);
-  }
-  const tenantSuspended = tenantId
-    ? (await getTenantStatus(context.env.DB, tenantId)) === "suspended"
-    : false;
+  try {
+    if (tenantId) {
+      await requireTenantMember(context.env.DB, session.user.id, tenantId);
+    }
+    const tenantSuspended = tenantId
+      ? (await getTenantStatus(context.env.DB, tenantId)) === "suspended"
+      : false;
 
-  const pets = (await getPets(session.user.id, subjectKind, tenantId ?? undefined)) as Array<{
-    id: string;
-    name: string;
-  }>;
-  const geofences = await getGeofences(subjectKind, tenantId ?? undefined);
+    const pets = (await getPets(session.user.id, subjectKind, tenantId ?? undefined)) as Array<{
+      id: string;
+      name: string;
+    }>;
+    const geofences = await getGeofences(subjectKind, tenantId ?? undefined);
 
-  const errMsg =
-    err === "invalid"
-      ? "입력값을 확인해 주세요."
-      : err === "forbidden"
-        ? "권한이 없습니다."
-        : err === "tenant_suspended"
-          ? "중지(suspended)된 조직에서는 변경 작업을 수행할 수 없습니다."
-        : null;
+    const errMsg =
+      err === "invalid"
+        ? "입력값을 확인해 주세요."
+        : err === "forbidden"
+          ? "권한이 없습니다."
+          : err === "tenant_suspended"
+            ? "중지(suspended)된 조직에서는 변경 작업을 수행할 수 없습니다."
+          : null;
 
-  return (
+    return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 font-outfit pb-24 px-2">
       <div className="flex items-center gap-3">
         <a href={`/dashboard${kindQs}`}>
@@ -246,5 +248,45 @@ export default async function GeofencesPage({
         </p>
       </div>
     </div>
-  );
+    );
+  } catch (error: unknown) {
+    const redirectError = error as { digest?: string };
+    if (redirectError.digest?.includes("NEXT_REDIRECT")) {
+      throw error;
+    }
+    console.error("Geofences page data fetch error:", error);
+    return (
+      <div className="mx-auto max-w-lg space-y-6 px-2 py-16 text-center font-outfit">
+        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-rose-50 text-rose-400">
+          <MapPin className="h-10 w-10" />
+        </div>
+        <div className="space-y-2">
+          <h1 className="text-xl font-black text-slate-900">안심 구역을 불러오지 못했어요</h1>
+          <p className="text-sm leading-relaxed text-slate-600">
+            잠시 후 다시 시도해 주세요. 문제가 계속되면 D1 마이그레이션과 Worker 로그를 확인해 주세요.
+          </p>
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+          <a
+            href={`/dashboard${kindQs}`}
+            className={cn(
+              buttonVariants({}),
+              "rounded-full bg-teal-500 font-bold shadow-lg shadow-teal-100 hover:bg-teal-600"
+            )}
+          >
+            대시보드로 돌아가기
+          </a>
+          <a
+            href={`/dashboard/geofences${kindQs}`}
+            className={cn(
+              buttonVariants({ variant: "outline" }),
+              "rounded-full border-slate-200 font-bold text-slate-700 hover:bg-slate-50"
+            )}
+          >
+            다시 시도
+          </a>
+        </div>
+      </div>
+    );
+  }
 }
