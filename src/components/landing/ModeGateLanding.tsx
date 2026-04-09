@@ -177,18 +177,18 @@ export default function ModeGateLanding({ kind, session, isAdmin, fromHome = fal
               <span className="flex items-center justify-center gap-2 min-w-0 max-w-full relative z-10">
                 <AnimatePresence mode="wait">
                   {isAdmin ? (
-                    <motion.span key="admin" initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="inline-flex">
+                    <motion.span key="admin" initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="inline-flex drop-shadow-[0_2px_2px_rgba(0,0,0,0.3)]">
                       <ShieldCheck className="w-6 h-6 text-teal-400" aria-hidden />
                     </motion.span>
                   ) : (
-                    <motion.span key="user" initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="inline-flex text-white">
+                    <motion.span key="user" initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="inline-flex text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.3)]">
                       <LayoutDashboard className="w-6 h-6" strokeWidth={2.25} aria-hidden />
                     </motion.span>
                   )}
                 </AnimatePresence>
-                <span className="min-w-0 text-center leading-snug [text-wrap:balance]">{guardianButtonLabel}</span>
+                <span className="min-w-0 text-center leading-snug [text-wrap:balance] drop-shadow-[0_2px_2px_rgba(0,0,0,0.3)]">{guardianButtonLabel}</span>
                 <ArrowRight
-                  className="w-5 h-5 shrink-0 opacity-80 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all"
+                  className="w-5 h-5 shrink-0 opacity-80 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all drop-shadow-[0_2px_2px_rgba(0,0,0,0.3)]"
                   aria-hidden
                 />
               </span>
@@ -209,16 +209,16 @@ export default function ModeGateLanding({ kind, session, isAdmin, fromHome = fal
           </motion.div>
         </section>
 
-        <footer className="px-4 min-[390px]:px-8 pb-10 pt-2 bg-white/50 flex flex-col items-center gap-4 w-full max-w-md mx-auto">
-          <nav className="flex flex-wrap justify-center gap-x-2 gap-y-2 text-[10px] min-[390px]:text-[11px] font-black text-slate-500 uppercase tracking-wide max-w-full px-1">
-            <Link href="/" className="hover:text-slate-800 transition-colors whitespace-nowrap">
+        <footer className="px-4 min-[390px]:px-8 pb-10 pt-2 bg-white/50 flex flex-col items-center gap-4 w-full max-w-md mx-auto relative z-10">
+          <nav className="flex flex-wrap justify-center gap-x-3 gap-y-2 text-[10px] min-[390px]:text-[11px] font-black text-slate-600 uppercase tracking-wide max-w-full px-1">
+            <Link href="/" className="hover:text-slate-900 transition-colors whitespace-nowrap">
               전체 홈
             </Link>
             {otherModes.map((k) => (
               <Link
                 key={k}
                 href={modePath[k]}
-                className="hover:text-slate-800 transition-colors text-center max-w-[9.5rem] min-[390px]:max-w-none leading-tight"
+                className="hover:text-slate-900 transition-colors text-center max-w-[9.5rem] min-[390px]:max-w-none leading-tight"
               >
                 {subjectKindMeta[k].label}
               </Link>
@@ -227,7 +227,7 @@ export default function ModeGateLanding({ kind, session, isAdmin, fromHome = fal
           {!isAdmin && (
             <Link
               href="/admin/login"
-              className="text-[10px] font-black text-slate-400 hover:text-teal-500 tracking-widest uppercase transition-colors"
+              className="text-[10px] font-black text-slate-500 hover:text-teal-600 tracking-widest uppercase transition-colors"
             >
               Seller Access Center
             </Link>

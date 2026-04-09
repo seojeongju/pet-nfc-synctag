@@ -95,7 +95,11 @@ export default async function AdminAuthenticatedLayout({
           </nav>
 
           <div className="hidden lg:block p-6 space-y-4 border-t border-slate-100 mb-6 mt-4">
-            <Link href="/dashboard" className={cn("flex items-center gap-4 px-4 py-4 bg-slate-50 text-slate-500 hover:text-slate-900 transition-all group", adminUi.subtleCard)}>
+            <Link
+              href="/"
+              prefetch={false}
+              className={cn("flex items-center gap-4 px-4 py-4 bg-slate-50 text-slate-500 hover:text-slate-900 transition-all group", adminUi.subtleCard)}
+            >
               <Home className="w-5 h-5" />
               <span className="font-black text-[10px] uppercase tracking-widest">사용자 화면</span>
             </Link>
