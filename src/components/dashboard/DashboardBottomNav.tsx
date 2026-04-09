@@ -1,11 +1,17 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import { Baby, Briefcase, Gem, History, Home, LogOut, MapPin, PawPrint, UserRound } from "lucide-react";
 import { parseSubjectKind, type SubjectKind } from "@/lib/subject-kind";
 import { cn } from "@/lib/utils";
+import { dashboardBottomIconWrap, dashboardBottomLabelClass } from "@/lib/dashboard-nav-styles";
+import {
+  isDashboardGeofences,
+  isDashboardHome,
+  isDashboardPets,
+  isDashboardScans,
+} from "@/lib/dashboard-nav-active";
 
 const subjectAvatars: Record<SubjectKind, LucideIcon> = {
   pet: PawPrint,
@@ -16,7 +22,8 @@ const subjectAvatars: Record<SubjectKind, LucideIcon> = {
 };
 
 /**
- * 대시보드 공통 하단 고정 메뉴 (모든 /dashboard/* 에서 kind·tenant 유지).
+ * 대시보드 하단 메뉴. Cloudflare 등 환경에서 RSC 클라이언트 네비 시 세션 쿠키가 누락되는 경우를 피하려고
+ * 보호자 구간 링크는 전체 문서 이동(<a>)으로 처리합니다.
  */
 export function DashboardBottomNav() {
   const pathname = usePathname();
@@ -28,94 +35,68 @@ export function DashboardBottomNav() {
   const q = `?${qs.toString()}`;
   const AvatarIcon = subjectAvatars[kind];
 
-  const isHome = pathname === "/dashboard";
-  const isPets = pathname.startsWith("/dashboard/pets");
-  const isScans = pathname.startsWith("/dashboard/scans");
-  const isGeofences = pathname.startsWith("/dashboard/geofences");
-
-  const activeWrap = (on: boolean) =>
-    on ? "rounded-2xl bg-teal-500 text-white shadow-xl shadow-teal-500/20" : "rounded-2xl text-slate-400 group-hover:text-white";
+  const home = isDashboardHome(pathname);
+  const pets = isDashboardPets(pathname);
+  const scans = isDashboardScans(pathname);
+  const geofences = isDashboardGeofences(pathname);
 
   return (
     <nav
       className="pointer-events-auto fixed bottom-4 left-1/2 z-50 flex h-[4.25rem] w-[min(100%,24rem)] max-w-[96vw] -translate-x-1/2 items-center justify-around rounded-[28px] border border-white/20 bg-slate-900/85 px-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.35)] backdrop-blur-md supports-[backdrop-filter]:bg-slate-900/75 min-[400px]:px-3"
       aria-label="대시보드 하단 메뉴"
     >
-      <Link
+      <a
         href={`/dashboard${q}`}
         className="group flex min-w-0 flex-1 flex-col items-center gap-0.5 py-1"
-        aria-current={isHome ? "page" : undefined}
+        aria-current={home ? "page" : undefined}
       >
-        <div className={cn("p-2 transition-all active:scale-90", activeWrap(isHome))}>
+        <div className={cn(dashboardBottomIconWrap(home))}>
           <Home className="h-5 w-5 min-[400px]:h-6 min-[400px]:w-6" aria-hidden />
         </div>
-        <span className={cn("text-[8px] font-black uppercase tracking-wider min-[400px]:text-[9px]", isHome ? "text-teal-300" : "text-slate-500 group-hover:text-slate-300")}>
-          홈
-        </span>
-      </Link>
+        <span className={dashboardBottomLabelClass(home)}>홈</span>
+      </a>
 
-      <Link
+      <a
         href={`/dashboard/pets${q}`}
         className="group flex min-w-0 flex-1 flex-col items-center gap-0.5 py-1"
-        aria-current={isPets ? "page" : undefined}
+        aria-current={pets ? "page" : undefined}
       >
-        <div className={cn("p-2 transition-all active:scale-90", activeWrap(isPets))}>
+        <div className={cn(dashboardBottomIconWrap(pets))}>
           <AvatarIcon className="h-5 w-5 min-[400px]:h-6 min-[400px]:w-6" aria-hidden />
         </div>
-        <span
-          className={cn(
-            "text-[8px] font-black uppercase tracking-wider min-[400px]:text-[9px]",
-            isPets ? "text-teal-300" : "text-slate-500 group-hover:text-slate-300"
-          )}
-        >
-          관리
-        </span>
-      </Link>
+        <span className={dashboardBottomLabelClass(pets)}>관리</span>
+      </a>
 
-      <Link
+      <a
         href={`/dashboard/scans${q}`}
         className="group flex min-w-0 flex-1 flex-col items-center gap-0.5 py-1"
-        aria-current={isScans ? "page" : undefined}
+        aria-current={scans ? "page" : undefined}
       >
-        <div className={cn("p-2 transition-all active:scale-90", activeWrap(isScans))}>
+        <div className={cn(dashboardBottomIconWrap(scans))}>
           <History className="h-5 w-5 min-[400px]:h-6 min-[400px]:w-6" aria-hidden />
         </div>
-        <span
-          className={cn(
-            "text-[8px] font-black uppercase tracking-wider min-[400px]:text-[9px]",
-            isScans ? "text-teal-300" : "text-slate-500 group-hover:text-slate-300"
-          )}
-        >
-          스캔
-        </span>
-      </Link>
+        <span className={dashboardBottomLabelClass(scans)}>스캔</span>
+      </a>
 
-      <Link
+      <a
         href={`/dashboard/geofences${q}`}
         className="group flex min-w-0 flex-1 flex-col items-center gap-0.5 py-1"
-        aria-current={isGeofences ? "page" : undefined}
+        aria-current={geofences ? "page" : undefined}
       >
-        <div className={cn("p-2 transition-all active:scale-90", activeWrap(isGeofences))}>
+        <div className={cn(dashboardBottomIconWrap(geofences))}>
           <MapPin className="h-5 w-5 min-[400px]:h-6 min-[400px]:w-6" aria-hidden />
         </div>
-        <span
-          className={cn(
-            "text-[8px] font-black uppercase tracking-wider min-[400px]:text-[9px]",
-            isGeofences ? "text-teal-300" : "text-slate-500 group-hover:text-slate-300"
-          )}
-        >
-          안심
-        </span>
-      </Link>
+        <span className={dashboardBottomLabelClass(geofences)}>안심</span>
+      </a>
 
-      <Link href="/logout" className="group flex min-w-0 flex-1 flex-col items-center gap-0.5 py-1">
+      <a href="/logout" className="group flex min-w-0 flex-1 flex-col items-center gap-0.5 py-1">
         <div className="p-2 transition-all active:scale-90 rounded-2xl text-slate-400 group-hover:text-rose-400">
           <LogOut className="h-5 w-5 min-[400px]:h-6 min-[400px]:w-6" aria-hidden />
         </div>
-        <span className="text-[8px] font-black uppercase tracking-wider text-slate-500 group-hover:text-rose-300 min-[400px]:text-[9px]">
+        <span className="text-[8px] font-black tracking-wide text-slate-500 group-hover:text-rose-300 min-[400px]:text-[9px]">
           나가기
         </span>
-      </Link>
+      </a>
     </nav>
   );
 }

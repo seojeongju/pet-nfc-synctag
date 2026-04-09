@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
 import { Bell, MapPin, Clock, Smartphone, PawPrint, Bluetooth, Cpu, Tag, KeyRound } from "lucide-react";
 import { extractBleRawMeta } from "@/lib/ble-raw-payload";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,9 @@ export default async function ScansPage({
     const meta = subjectKindMeta[subjectKind];
     const tenantId =
         typeof tenantParam === "string" && tenantParam.trim() ? tenantParam.trim() : null;
+    const qs = new URLSearchParams({ kind: subjectKind });
+    if (tenantId) qs.set("tenant", tenantId);
+    const kindQs = `?${qs.toString()}`;
 
     const context = getRequestContext();
     const auth = getAuth(context.env);
@@ -133,13 +137,30 @@ export default async function ScansPage({
                         </div>
                     ))
                 ) : (
-                    <div className="py-20 flex flex-col items-center justify-center text-center space-y-6">
+                    <div className="py-16 flex flex-col items-center justify-center text-center space-y-5 max-w-md mx-auto">
                         <div className="w-24 h-24 rounded-full bg-slate-50 flex items-center justify-center text-slate-200">
                             <Bell className="w-12 h-12" />
                         </div>
-                        <div className="space-y-2">
-                            <h3 className="text-xl font-bold text-slate-800">최근 알림이 없습니다</h3>
-                            <p className="text-sm text-slate-400">인식표가 안전하게 관리되고 있습니다.</p>
+                        <div className="space-y-2 px-2">
+                            <h3 className="text-xl font-black text-slate-800">{meta.emptyScansTitle}</h3>
+                            <p className="text-sm text-slate-500 font-medium leading-relaxed">{meta.emptyScansBody}</p>
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-3 justify-center w-full">
+                            <a
+                                href={`/dashboard/pets${kindQs}`}
+                                className={cn(buttonVariants({}), "rounded-full bg-teal-500 hover:bg-teal-600 font-black h-11 px-6")}
+                            >
+                                관리 대상·태그 연결
+                            </a>
+                            <a
+                                href="/hub"
+                                className={cn(
+                                    buttonVariants({ variant: "outline" }),
+                                    "rounded-full border-slate-200 font-bold h-11 px-6"
+                                )}
+                            >
+                                모드 허브
+                            </a>
                         </div>
                     </div>
                 )}
@@ -233,9 +254,13 @@ export default async function ScansPage({
                         })}
                     </div>
                 ) : (
-                    <p className="text-sm text-slate-400 py-6 text-center rounded-2xl bg-slate-50 border border-dashed border-slate-200">
-                        아직 기록된 BLE 이벤트가 없습니다.
-                    </p>
+                    <div className="py-6 px-4 text-center rounded-2xl bg-slate-50 border border-dashed border-slate-200 space-y-2">
+                        <p className="text-sm font-bold text-slate-600">아직 기록된 BLE 이벤트가 없습니다.</p>
+                        <p className="text-xs text-slate-500 leading-relaxed">{meta.emptyBleHint}</p>
+                        <a href="/hub" className="text-[11px] font-bold text-teal-600 hover:underline inline-block">
+                            모드·기기 허브로 이동 →
+                        </a>
+                    </div>
                 )}
             </div>
         </div>

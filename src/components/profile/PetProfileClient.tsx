@@ -241,11 +241,14 @@ export default function PetProfileClient({
 
       {nfcEntry && treatAsPublicVisitor && (
         <div className="max-w-md mx-auto px-6 -mt-2 mb-2 relative z-20">
-          <div className="rounded-2xl bg-teal-600/10 border border-teal-200 px-4 py-2 text-center">
-            <p className="text-[11px] font-bold text-teal-800">
+          <div className="rounded-2xl bg-teal-600/10 border border-teal-200 px-4 py-3 text-center space-y-1.5">
+            <p className="text-[11px] font-bold text-teal-800 leading-snug">
               {scanEntrySource === "scan"
-                ? "태그 스캔으로 접속되었습니다. 아래 1) 연락 2) 위치 공유 순서로 도와주세요."
+                ? "태그 스캔(/t/…)으로 접속되었습니다. 아래 1) 연락 2) 위치 공유 순서로 도와주세요."
                 : "NFC 태그로 이 페이지를 열었습니다. 발견을 도와주셔서 감사합니다."}
+            </p>
+            <p className="text-[10px] font-semibold text-teal-700/90">
+              보호자는 로그인 후 <span className="font-black">대시보드 → 관리 대상</span>에서 같은 태그 ID를 연결할 수 있어요.
             </p>
           </div>
         </div>

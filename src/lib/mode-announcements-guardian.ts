@@ -2,7 +2,7 @@ import { getDB } from "@/lib/db";
 import { parseSubjectKind, type SubjectKind } from "@/lib/subject-kind";
 import type { ModeAnnouncementRow } from "@/types/mode-announcement";
 
-/** Guardian dashboard + bell API: published mode announcements, optional batch targeting */
+/** Guardian dashboard + bell API: published mode announcements, optional batch + optional tenant targeting */
 export async function fetchVisibleAnnouncementsForGuardian(
   ownerId: string,
   subjectKind: SubjectKind,
@@ -23,6 +23,10 @@ export async function fetchVisibleAnnouncementsForGuardian(
         AND (m.published_at IS NULL OR datetime(m.published_at) <= datetime('now'))
         AND (m.expires_at IS NULL OR datetime(m.expires_at) > datetime('now'))
         AND (
+          m.target_tenant_id IS NULL
+          OR (? != '' AND m.target_tenant_id = ?)
+        )
+        AND (
           m.target_batch_id IS NULL
           OR EXISTS (
             SELECT 1
@@ -42,7 +46,7 @@ export async function fetchVisibleAnnouncementsForGuardian(
       LIMIT 20
     `
       )
-      .bind(kind, ownerId, tenant, tenant, tenant)
+      .bind(kind, tenant, tenant, ownerId, tenant, tenant, tenant)
       .all<ModeAnnouncementRow>();
 
     return results ?? [];

@@ -6,11 +6,10 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MapPin, Trash2, ArrowLeft } from "lucide-react";
-import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { requireTenantMember } from "@/lib/tenant-membership";
 import { getTenantStatus } from "@/lib/tenant-status";
@@ -63,11 +62,11 @@ export default async function GeofencesPage({
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 font-outfit pb-24 px-2">
       <div className="flex items-center gap-3">
-        <Link href={`/dashboard${kindQs}`}>
+        <a href={`/dashboard${kindQs}`}>
           <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-700 hover:bg-teal-50 hover:text-teal-600 transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </div>
-        </Link>
+        </a>
         <div>
           <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2">
             <MapPin className="w-7 h-7 text-teal-500" />
@@ -99,7 +98,25 @@ export default async function GeofencesPage({
         <CardContent className="p-6 space-y-4">
           <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest">새 구역 추가</h2>
           {pets.length === 0 ? (
-            <p className="text-sm text-slate-500">먼저 이 모드에서 관리 대상을 등록해 주세요.</p>
+            <div className="space-y-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-5">
+              <p className="text-sm font-medium text-slate-600 leading-relaxed">{meta.emptyGeofencesNoPets}</p>
+              <a
+                href={tenantSuspended ? "#" : `/dashboard/pets/new${kindQs}`}
+                className={cn(
+                  buttonVariants({}),
+                  "inline-flex h-11 rounded-full bg-teal-500 hover:bg-teal-600 font-black px-6",
+                  tenantSuspended ? "pointer-events-none opacity-50" : ""
+                )}
+              >
+                관리 대상 등록하기
+              </a>
+              <p className="text-xs text-slate-400">
+                <a href="/hub" className="font-bold text-teal-600 hover:underline">
+                  모드 허브
+                </a>
+                에서 용량·모드를 확인할 수 있어요.
+              </p>
+            </div>
           ) : (
             <form action={createGeofenceForm} className="grid gap-4 sm:grid-cols-2">
               <input type="hidden" name="kind" value={subjectKind} />
@@ -178,9 +195,16 @@ export default async function GeofencesPage({
       <div className="space-y-4">
         <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest px-1">등록된 구역</h2>
         {geofences.length === 0 ? (
-          <p className="text-sm text-slate-500 py-8 text-center rounded-2xl bg-slate-50 border border-dashed border-slate-200">
-            아직 등록된 안심 구역이 없어요.
-          </p>
+          <div className="py-8 px-4 text-center rounded-2xl bg-slate-50 border border-dashed border-slate-200 space-y-3 max-w-lg mx-auto">
+            <p className="text-sm font-black text-slate-700">아직 등록된 안심 구역이 없어요</p>
+            <p className="text-sm text-slate-500 leading-relaxed">{meta.emptyGeofencesNoZones}</p>
+            <a
+              href={`/dashboard/scans${kindQs}`}
+              className="text-xs font-bold text-teal-600 hover:underline inline-block"
+            >
+              스캔·BLE 기록 보기 →
+            </a>
+          </div>
         ) : (
           <div className="space-y-3">
             {geofences.map((g) => (

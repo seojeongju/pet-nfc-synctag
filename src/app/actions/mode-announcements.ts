@@ -74,6 +74,8 @@ export type SaveModeAnnouncementInput = {
   subject_kind: SubjectKind;
   /** 비우면 해당 모드 전체 */
   target_batch_id: string | null;
+  /** 비우면 개인·모든 조직 공통; 지정 시 `?tenant=` 대시보드에서만 노출 */
+  target_tenant_id: string | null;
   title: string;
   body: string | null;
   link_url: string | null;
@@ -94,6 +96,14 @@ export async function saveModeAnnouncement(input: SaveModeAnnouncementInput) {
   if (!title) throw new Error("제목을 입력해 주세요.");
 
   const batch = input.target_batch_id?.trim() || null;
+  const targetTenant = input.target_tenant_id?.trim() || null;
+  if (targetTenant) {
+    const trow = await db
+      .prepare("SELECT id FROM tenants WHERE id = ? LIMIT 1")
+      .bind(targetTenant)
+      .first<{ id: string }>();
+    if (!trow) throw new Error("존재하지 않는 조직 ID입니다.");
+  }
   const body = input.body?.trim() || null;
   const link = input.link_url?.trim() || null;
   const pri = Number.isFinite(input.priority) ? Math.round(input.priority) : 0;
@@ -122,26 +132,27 @@ export async function saveModeAnnouncement(input: SaveModeAnnouncementInput) {
     await db
       .prepare(
         `UPDATE mode_announcements SET
-          subject_kind = ?, target_batch_id = ?, title = ?, body = ?, link_url = ?,
+          subject_kind = ?, target_batch_id = ?, target_tenant_id = ?, title = ?, body = ?, link_url = ?,
           attachment_r2_key = ?, attachment_mime = ?, attachment_kind = ?,
           status = ?, priority = ?, published_at = ?, expires_at = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?`
       )
-      .bind(kind, batch, title, body, link, attKey, attMime, attKind, status, pri, effectivePubAt, expAt, id)
+      .bind(kind, batch, targetTenant, title, body, link, attKey, attMime, attKind, status, pri, effectivePubAt, expAt, id)
       .run();
   } else {
     await db
       .prepare(
         `INSERT INTO mode_announcements (
-          id, subject_kind, target_batch_id, title, body, link_url,
+          id, subject_kind, target_batch_id, target_tenant_id, title, body, link_url,
           attachment_r2_key, attachment_mime, attachment_kind,
           status, priority, published_at, expires_at, created_by_email
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .bind(
         id,
         kind,
         batch,
+        targetTenant,
         title,
         body,
         link,
@@ -193,7 +204,7 @@ export async function listModeAnnouncementsForAdmin(): Promise<ModeAnnouncementR
 }
 
 /**
- * 보호자 대시보드: 모드 일치 + 발행 중 + 배치 타겟(있으면 사용자 태그에 해당 배치가 있을 때만)
+ * 보호자 대시보드: 모드 일치 + 발행 중 + 조직 타겟(있으면 `?tenant=` 일치 시만) + 배치 타겟(있으면 해당 배치 태그가 있을 때만)
  */
 export async function listVisibleAnnouncementsForGuardian(
   ownerId: string,

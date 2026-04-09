@@ -2,7 +2,6 @@ import { PetForm } from "@/components/PetForm";
 import { getPet } from "@/app/actions/pet";
 import { ArrowLeft, PawPrint, UserRound, Baby, Briefcase, Gem } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import Link from "next/link";
 import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
 import { getRequestContext } from "@cloudflare/next-on-pages";
@@ -98,11 +97,11 @@ export default async function EditPetPage({
         <div className="absolute top-0 right-0 w-64 h-64 bg-teal-50 rounded-full translate-x-1/2 -translate-y-1/2 opacity-50 blur-3xl" />
 
         <div className="relative z-10 flex items-center justify-between mb-8">
-          <Link href={`/dashboard/pets${kindQs}`}>
+          <a href={`/dashboard/pets${kindQs}`}>
             <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-800 hover:bg-teal-50 hover:text-teal-600 transition-colors">
               <ArrowLeft className="w-6 h-6" />
             </div>
-          </Link>
+          </a>
           <div className="w-12 h-12 bg-teal-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-teal-200">
             <HeaderIcon className="w-6 h-6" />
           </div>

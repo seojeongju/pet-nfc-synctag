@@ -35,6 +35,7 @@ export default function ModeAnnouncementsAdminClient({ initialRows }: { initialR
     () => ({
       subject_kind: "pet",
       target_batch_id: null,
+      target_tenant_id: null,
       title: "",
       body: null,
       link_url: null,
@@ -105,6 +106,7 @@ export default function ModeAnnouncementsAdminClient({ initialRows }: { initialR
     setForm({
       subject_kind: r.subject_kind,
       target_batch_id: r.target_batch_id,
+      target_tenant_id: r.target_tenant_id ?? null,
       title: r.title,
       body: r.body,
       link_url: r.link_url,
@@ -145,8 +147,9 @@ export default function ModeAnnouncementsAdminClient({ initialRows }: { initialR
         </div>
         <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">모드·배치별 공지</h1>
         <p className="text-slate-500 text-sm font-bold max-w-xl">
-          모드(펫·메모리·키즈·캐리·골드)와 선택적 배치(batch_id)를 지정해 보호자 대시보드에 안내를 표시합니다. 링크·이미지·PDF를
-          함께 넣을 수 있습니다.
+          모드(펫·메모리·키즈·캐리·골드)와 선택적 배치(batch_id), 선택적 조직 ID(B2B)를 지정해 보호자 대시보드에 안내를 표시합니다.
+          조직 ID가 있으면 해당 조직의 <code className="text-teal-700">?tenant=</code> 컨텍스트에서만 보입니다. 링크·이미지·PDF를 함께
+          넣을 수 있습니다.
         </p>
       </motion.div>
 
@@ -203,6 +206,22 @@ export default function ModeAnnouncementsAdminClient({ initialRows }: { initialR
               />
             </label>
           </div>
+
+          <label className="space-y-1.5 block max-w-2xl">
+            <span className="text-[10px] font-black text-slate-400 uppercase">조직 ID (선택, B2B)</span>
+            <input
+              className={cn(adminUi.input, "w-full h-11 font-mono text-sm")}
+              placeholder="비우면 개인 대시보드·모든 조직에 공통"
+              value={form.target_tenant_id ?? ""}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, target_tenant_id: e.target.value.trim() || null }))
+              }
+            />
+            <p className="text-[10px] font-bold text-slate-400 leading-relaxed">
+              관리자 → 테넌트 목록의 조직 ID를 입력합니다. 비우면 전역 공지이며, 값이 있으면 해당 조직 대시보드(<span className="font-mono">?tenant=</span>)에서만
+              노출됩니다.
+            </p>
+          </label>
 
           <label className="space-y-1.5 block">
             <span className="text-[10px] font-black text-slate-400 uppercase">제목</span>
@@ -349,6 +368,7 @@ export default function ModeAnnouncementsAdminClient({ initialRows }: { initialR
                   <p className="text-xs font-black text-teal-600 uppercase tracking-tight">
                     {subjectKindMeta[r.subject_kind].label}
                     {r.target_batch_id ? ` · 배치 ${r.target_batch_id}` : " · 모드 전체"}
+                    {r.target_tenant_id ? ` · 조직 ${r.target_tenant_id}` : ""}
                   </p>
                   <p className="font-black text-slate-900 truncate">{r.title}</p>
                   <p className="text-[10px] font-bold text-slate-400">

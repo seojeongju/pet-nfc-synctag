@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { Megaphone, ExternalLink, FileText } from "lucide-react";
 import { motion } from "framer-motion";
 import type { ModeAnnouncementRow } from "@/types/mode-announcement";
@@ -45,7 +44,7 @@ export default function ModeAnnouncementsBanner({ items }: { items: ModeAnnounce
                   </p>
                 )}
                 {a.link_url && (
-                  <Link
+                  <a
                     href={a.link_url}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -53,7 +52,7 @@ export default function ModeAnnouncementsBanner({ items }: { items: ModeAnnounce
                   >
                     <ExternalLink className="h-4 w-4" />
                     관련 링크 열기
-                  </Link>
+                  </a>
                 )}
                 {attUrl && a.attachment_kind === "image" && (
                   <div className="relative mt-2 w-full max-h-64 overflow-hidden rounded-2xl border border-slate-100 bg-slate-50">

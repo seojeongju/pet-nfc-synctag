@@ -8,6 +8,8 @@ export type ModeAnnouncementRow = {
   id: string;
   subject_kind: SubjectKind;
   target_batch_id: string | null;
+  /** 비우면 전역(개인 대시보드 포함); 지정 시 해당 조직 컨텍스트에서만 노출 */
+  target_tenant_id: string | null;
   title: string;
   body: string | null;
   link_url: string | null;

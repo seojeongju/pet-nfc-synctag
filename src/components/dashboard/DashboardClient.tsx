@@ -9,7 +9,6 @@ import {
   ShieldCheck, Activity, Smartphone, CheckCircle, AlertCircle,
   UserRound, Baby, Briefcase, Gem,
 } from "lucide-react";
-import Link from "next/link";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
 import { linkTag } from "@/app/actions/tag";
@@ -120,7 +119,7 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind, m
                   <p className="text-[9px] text-white/50 font-bold uppercase tracking-widest leading-none">Access Console</p>
                 </div>
               </div>
-              <Link
+              <a
                 href="/admin"
                 className={cn(
                   buttonVariants({ size: "sm" }),
@@ -128,7 +127,7 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind, m
                 )}
               >
                 관리센터 이동
-              </Link>
+              </a>
             </div>
           </motion.section>
         )}
@@ -139,9 +138,9 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind, m
               <span className="inline-flex items-center rounded-full bg-teal-50 px-2.5 py-0.5 text-[10px] font-black text-teal-700">
                 {meta.label}
               </span>
-              <Link href="/hub" className="text-[10px] font-black text-slate-400 hover:text-teal-600 uppercase tracking-widest">
+              <a href="/hub" className="text-[10px] font-black text-slate-400 hover:text-teal-600 uppercase tracking-widest">
                 모드 변경
-              </Link>
+              </a>
             </div>
             {tenantId && (
               <div className="inline-flex flex-col gap-1 rounded-xl border border-teal-100 bg-teal-50 px-3 py-2">
@@ -272,7 +271,7 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind, m
               ) : (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center space-y-2">
                   <p className="text-xs font-bold text-slate-500">{meta.emptyRegisterHint}</p>
-                  <Link
+                  <a
                     href={tenantSuspended ? "#" : `/dashboard/pets/new${kindQs}`}
                     aria-disabled={tenantSuspended}
                     className={cn(
@@ -281,12 +280,12 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind, m
                     )}
                   >
                     등록하러 가기
-                  </Link>
+                  </a>
                   <p className="text-[11px] font-semibold text-slate-400 pt-1">
                     다른 모드나 조직이 필요하면{" "}
-                    <Link href="/hub" className="font-black text-teal-600 hover:underline">
+                    <a href="/hub" className="font-black text-teal-600 hover:underline">
                       허브
-                    </Link>
+                    </a>
                     에서 바꿀 수 있어요.
                   </p>
                 </div>
@@ -313,7 +312,7 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind, m
         <motion.section variants={itemVariants} className="space-y-4">
            <div className="flex items-center justify-between px-2">
               <h3 className="text-lg font-black text-slate-900">{meta.listHeading}</h3>
-              <Link href={`/dashboard/pets${kindQs}`} className="text-[10px] font-black text-teal-600 uppercase tracking-widest hover:underline transition-all">View All</Link>
+              <a href={`/dashboard/pets${kindQs}`} className="text-[10px] font-black text-teal-600 uppercase tracking-widest hover:underline transition-all">View All</a>
            </div>
 
            <div className="flex gap-4 overflow-x-auto pb-6 pt-2 scrollbar-hide -mx-5 px-5">
@@ -323,7 +322,7 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind, m
                   whileTap={{ scale: 0.95 }}
                   className="min-w-[150px]"
                 >
-                  <Link href={`/profile/${pet.id}${kindQs}`}>
+                  <a href={`/profile/${pet.id}${kindQs}`}>
                     <Card className="rounded-[32px] border-none shadow-app shadow-app-hover overflow-hidden bg-white text-center p-0">
                        <div className="h-28 bg-slate-100 relative overflow-hidden">
                           {pet.photo_url ? (
@@ -337,12 +336,12 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind, m
                           <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{pet.breed || "UNKNOWN"}</p>
                        </CardContent>
                     </Card>
-                  </Link>
+                  </a>
                 </motion.div>
               ))}
 
               <motion.div whileTap={{ scale: tenantSuspended ? 1 : 0.95 }}>
-                <Link
+                <a
                   href={tenantSuspended ? "#" : `/dashboard/pets/new${kindQs}`}
                   aria-disabled={tenantSuspended}
                   className={tenantSuspended ? "pointer-events-none opacity-50" : ""}
@@ -353,7 +352,7 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind, m
                       </div>
                       <span className="text-[10px] font-black text-slate-400 group-hover:text-teal-500 uppercase tracking-wider">추가</span>
                    </div>
-                </Link>
+                </a>
               </motion.div>
            </div>
         </motion.section>

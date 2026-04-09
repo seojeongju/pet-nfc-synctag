@@ -3,7 +3,6 @@ import { getPets } from "@/app/actions/pet";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
@@ -78,7 +77,7 @@ export default async function PetsPage({
                         </p>
                     ) : null}
                 </div>
-                <Link
+                <a
                     href={tenantSuspended ? "#" : `/dashboard/pets/new${kindQs}`}
                     aria-disabled={tenantSuspended}
                     className={cn(
@@ -89,13 +88,13 @@ export default async function PetsPage({
                 >
                     <Plus className="w-5 h-5" />
                     <span className="font-bold">추가하기</span>
-                </Link>
+                </a>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 px-2">
                 {pets.length > 0 ? (
                     pets.map((pet: PetListItem) => (
-                        <Link href={`/profile/${pet.id}${kindQs}`} key={pet.id} className="group">
+                        <a href={`/profile/${pet.id}${kindQs}`} key={pet.id} className="group">
                             <Card className="rounded-[32px] border-none shadow-xl shadow-slate-100/50 overflow-hidden hover:scale-[1.02] transition-all duration-300">
                                 <div className="h-40 bg-teal-50 relative">
                                     {pet.photo_url ? (
@@ -128,28 +127,46 @@ export default async function PetsPage({
                                     </div>
                                 </CardContent>
                             </Card>
-                        </Link>
+                        </a>
                     ))
                 ) : (
-                    <div className="col-span-full py-20 flex flex-col items-center justify-center text-center space-y-6">
+                    <div className="col-span-full py-16 flex flex-col items-center justify-center text-center space-y-6 max-w-md mx-auto px-2">
                         <div className="w-24 h-24 rounded-full bg-slate-100 flex items-center justify-center text-slate-300">
                             <ListIcon className="w-12 h-12" />
                         </div>
                         <div className="space-y-2">
-                            <h3 className="text-xl font-bold text-slate-800">등록된 항목이 없어요</h3>
-                            <p className="text-sm text-slate-400">{meta.description}</p>
+                            <h3 className="text-xl font-black text-slate-800">{meta.emptyPetsTitle}</h3>
+                            <p className="text-sm text-slate-500 font-medium leading-relaxed">{meta.emptyPetsBody}</p>
+                            <p className="text-xs text-slate-400 leading-relaxed">{meta.nfcHelper}</p>
                         </div>
-                        <Link
-                            href={tenantSuspended ? "#" : `/dashboard/pets/new${kindQs}`}
-                            aria-disabled={tenantSuspended}
-                            className={cn(
-                                buttonVariants({ variant: "outline" }),
-                                "rounded-full border-teal-200 text-teal-600 hover:bg-teal-50 font-bold px-8 h-12",
-                                tenantSuspended ? "pointer-events-none opacity-50" : ""
-                            )}
+                        <div className="flex flex-col sm:flex-row gap-3 w-full justify-center">
+                            <a
+                                href={tenantSuspended ? "#" : `/dashboard/pets/new${kindQs}`}
+                                aria-disabled={tenantSuspended}
+                                className={cn(
+                                    buttonVariants({}),
+                                    "rounded-full bg-teal-500 hover:bg-teal-600 shadow-lg shadow-teal-100 font-black px-8 h-12",
+                                    tenantSuspended ? "pointer-events-none opacity-50" : ""
+                                )}
+                            >
+                                {meta.emptyPetsCta}
+                            </a>
+                            <a
+                                href="/hub"
+                                className={cn(
+                                    buttonVariants({ variant: "outline" }),
+                                    "rounded-full border-slate-200 text-slate-700 hover:bg-slate-50 font-bold px-8 h-12"
+                                )}
+                            >
+                                모드·용량 허브
+                            </a>
+                        </div>
+                        <a
+                            href={`/dashboard${kindQs}`}
+                            className="text-xs font-bold text-teal-600 hover:text-teal-700 underline-offset-4 hover:underline"
                         >
-                            첫 아이 등록하기
-                        </Link>
+                            대시보드에서 NFC 태그 ID 연결하기 →
+                        </a>
                     </div>
                 )}
             </div>

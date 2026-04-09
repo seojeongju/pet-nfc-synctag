@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import Link from "next/link";
 import { Bell } from "lucide-react";
 
 export function DashboardAnnouncementBell() {
@@ -15,7 +14,7 @@ export function DashboardAnnouncementBell() {
     const q = new URLSearchParams({ kind });
     if (tenant) q.set("tenant", tenant);
     let cancelled = false;
-    fetch(`/api/dashboard/announcements?${q.toString()}`)
+    fetch(`/api/dashboard/announcements?${q.toString()}`, { credentials: "same-origin" })
       .then((r) => (r.ok ? r.json() : { items: [] }))
       .then((d: unknown) => {
         const items =
@@ -37,7 +36,7 @@ export function DashboardAnnouncementBell() {
   const href = `/dashboard?${hrefParams.toString()}#mode-announcements`;
 
   return (
-    <Link
+    <a
       href={href}
       className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 transition hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700"
       title="운영 공지 · 모드 알림"
@@ -49,6 +48,6 @@ export function DashboardAnnouncementBell() {
           {count > 9 ? "9+" : count}
         </span>
       ) : null}
-    </Link>
+    </a>
   );
 }

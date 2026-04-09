@@ -16,6 +16,7 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
     is_active: boolean;
     assigned_subject_kind: string | null;
     pet_subject_kind: string;
+    pet_tenant_id: string | null;
   };
 
   let tag: TagRow | null = null;
@@ -23,7 +24,8 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
     tag = await db
       .prepare(
         `SELECT t.pet_id, t.is_active, t.assigned_subject_kind,
-                COALESCE(p.subject_kind, 'pet') AS pet_subject_kind
+                COALESCE(p.subject_kind, 'pet') AS pet_subject_kind,
+                p.tenant_id AS pet_tenant_id
          FROM tags t
          INNER JOIN pets p ON p.id = t.pet_id
          WHERE t.id = ?`
@@ -34,7 +36,8 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
     tag = await db
       .prepare(
         `SELECT t.pet_id, t.is_active, NULL AS assigned_subject_kind,
-                COALESCE(p.subject_kind, 'pet') AS pet_subject_kind
+                COALESCE(p.subject_kind, 'pet') AS pet_subject_kind,
+                p.tenant_id AS pet_tenant_id
          FROM tags t
          INNER JOIN pets p ON p.id = t.pet_id
          WHERE t.id = ?`
@@ -75,6 +78,8 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
   const effectiveKind = parseSubjectKind(
     tag.assigned_subject_kind ?? tag.pet_subject_kind
   );
+  const tenantForLinks =
+    typeof tag.pet_tenant_id === "string" && tag.pet_tenant_id.trim() ? tag.pet_tenant_id.trim() : null;
 
   const context = getRequestContext();
   const auth = getAuth(context.env);
@@ -85,11 +90,16 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
       .bind(tag.pet_id)
       .first<{ owner_id: string }>();
     if (owner?.owner_id === session.user.id) {
-      redirect(`/dashboard?kind=${encodeURIComponent(effectiveKind)}`);
+      const dashQs = new URLSearchParams({ kind: effectiveKind });
+      if (tenantForLinks) dashQs.set("tenant", tenantForLinks);
+      redirect(`/dashboard?${dashQs.toString()}`);
     }
   }
 
-  redirect(
-    `/profile/${tag.pet_id}?tag=${encodeURIComponent(tag_id)}&kind=${encodeURIComponent(effectiveKind)}&from=scan`
-  );
+  const profileQs = new URLSearchParams();
+  profileQs.set("tag", tag_id);
+  profileQs.set("kind", effectiveKind);
+  profileQs.set("from", "scan");
+  if (tenantForLinks) profileQs.set("tenant", tenantForLinks);
+  redirect(`/profile/${tag.pet_id}?${profileQs.toString()}`);
 }

@@ -2,7 +2,6 @@
 import { getAuth } from "@/lib/auth";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { FlowTopNav } from "@/components/layout/FlowTopNav";
 import { PawPrint, UserRound, Baby, Briefcase, Gem, ChevronRight, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -96,13 +95,13 @@ export default async function HubPage({
               {personalPlan.source === "subscription" ? " · 구독" : " · 계정 설정"}
             </p>
           )}
-          <Link
+          <a
             href="/hub/org/new"
             className="inline-flex items-center gap-1 text-xs font-black text-teal-600 hover:text-teal-700"
           >
             조직 만들기 (B2B)
             <ChevronRight className="h-3.5 w-3.5" />
-          </Link>
+          </a>
         </header>
 
         <section className="rounded-2xl border border-teal-100 bg-teal-50/50 p-4 space-y-2">
@@ -147,19 +146,19 @@ export default async function HubPage({
                     </div>
                     <div className="flex flex-col items-end gap-1 shrink-0">
                       {(t.role === "owner" || t.role === "admin") && (
-                        <Link
+                        <a
                           href={`/hub/org/${encodeURIComponent(t.id)}/manage`}
                           className="rounded-xl border border-teal-200 bg-teal-50 px-3 py-1.5 text-[10px] font-black text-teal-700 hover:bg-teal-100"
                         >
                           조직 관리
-                        </Link>
+                        </a>
                       )}
-                      <Link
+                      <a
                         href={`/dashboard?kind=pet&tenant=${encodeURIComponent(t.id)}`}
                         className="rounded-xl bg-slate-900 px-3 py-2 text-[10px] font-black text-white hover:bg-teal-600"
                       >
                         대시보드
-                      </Link>
+                      </a>
                     </div>
                   </div>
                 );
@@ -177,7 +176,7 @@ export default async function HubPage({
             const meta = subjectKindMeta[kind];
             const Icon = hubIcons[kind];
             return (
-              <Link
+              <a
                 key={kind}
                 href={`/dashboard?kind=${kind}`}
                 className={cn(
@@ -193,18 +192,18 @@ export default async function HubPage({
                   <p className="text-xs text-slate-500 font-medium mt-0.5">{meta.description}</p>
                 </div>
                 <ChevronRight className="h-5 w-5 text-slate-300 shrink-0" />
-              </Link>
+              </a>
             );
           })}
         </nav>
 
         {isPlatformAdmin && (
-          <Link
+          <a
             href="/admin"
             className="block rounded-2xl border border-slate-900 bg-slate-900 px-5 py-4 text-center text-sm font-black text-white"
           >
             플랫폼 관리자 콘솔
-          </Link>
+          </a>
         )}
 
         <p className="text-center text-[10px] text-slate-400 font-bold">
