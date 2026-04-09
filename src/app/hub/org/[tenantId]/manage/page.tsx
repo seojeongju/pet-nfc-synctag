@@ -4,10 +4,13 @@ import {
   adminCreateTenantInvite,
   adminRemoveTenantMember,
   adminRenameTenant,
+  getTenantOrgAuditLogs,
   getTenantOrgManageContext,
+  type TenantAuditLogRow,
 } from "@/app/actions/admin-tenants";
-import { Building2, ChevronLeft, ShieldCheck, UserPlus2 } from "lucide-react";
+import { Building2, ChevronLeft, ScrollText, ShieldCheck, UserPlus2 } from "lucide-react";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 
 export const runtime = "edge";
@@ -22,6 +25,80 @@ function roleLabel(role: "owner" | "admin" | "member") {
 
 function withMessage(tenantId: string, key: "ok" | "err", value: string) {
   return `/hub/org/${tenantId}/manage?${key}=${encodeURIComponent(value)}`;
+}
+
+async function getPublicOrigin(): Promise<string> {
+  const fromEnv = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "").trim();
+  if (fromEnv) return fromEnv;
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  if (!host) return "";
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  return `${proto}://${host}`;
+}
+
+function auditActionLabel(action: string): string {
+  switch (action) {
+    case "tenant_create_by_admin":
+      return "조직 생성";
+    case "tenant_rename_by_admin":
+      return "조직명 변경";
+    case "tenant_member_upsert_by_admin":
+      return "멤버 추가·갱신";
+    case "tenant_member_role_change_by_admin":
+      return "멤버 역할 변경";
+    case "tenant_member_remove_by_admin":
+      return "멤버 제거";
+    case "tenant_status_change_by_admin":
+      return "조직 상태 변경";
+    case "tenant_invite_create_by_admin":
+      return "초대 발급";
+    default:
+      return action;
+  }
+}
+
+function auditPayloadSummary(action: string, raw: string | null): string {
+  if (!raw) return "";
+  try {
+    const p = JSON.parse(raw) as Record<string, unknown>;
+    switch (action) {
+      case "tenant_create_by_admin": {
+        const parts = [p.name, p.slug, p.ownerEmail].filter((x) => typeof x === "string" && x);
+        return parts.join(" · ");
+      }
+      case "tenant_rename_by_admin":
+        return typeof p.name === "string" ? `→ ${p.name}` : "";
+      case "tenant_member_upsert_by_admin": {
+        const email = typeof p.email === "string" ? p.email : "";
+        const r = typeof p.role === "string" ? roleLabel(p.role as "owner" | "admin" | "member") : "";
+        return [email, r].filter(Boolean).join(" · ");
+      }
+      case "tenant_member_role_change_by_admin":
+        return typeof p.role === "string" ? roleLabel(p.role as "owner" | "admin" | "member") : "";
+      case "tenant_member_remove_by_admin":
+        return typeof p.userId === "string" ? `user: ${p.userId.slice(0, 8)}…` : "";
+      case "tenant_status_change_by_admin":
+        return p.status === "suspended" ? "중지됨" : "활성";
+      case "tenant_invite_create_by_admin": {
+        const email = typeof p.email === "string" ? p.email : "";
+        const r = typeof p.role === "string" ? roleLabel(p.role as "owner" | "admin" | "member") : "";
+        return [email, r].filter(Boolean).join(" · ");
+      }
+      default:
+        return "";
+    }
+  } catch {
+    return "";
+  }
+}
+
+function formatAuditRow(row: TenantAuditLogRow) {
+  const summary = auditPayloadSummary(row.action, row.payload);
+  const label = auditActionLabel(row.action);
+  const when = new Date(row.created_at).toLocaleString("ko-KR");
+  const who = row.actor_email ?? "—";
+  return { label, summary, when, who };
 }
 
 export default async function TenantOrgManagePage({
@@ -42,6 +119,8 @@ export default async function TenantOrgManagePage({
   if (!data) notFound();
 
   const { view: tenant, isPlatformAdmin } = data;
+  const auditLogs = await getTenantOrgAuditLogs(tenantId).catch(() => [] as TenantAuditLogRow[]);
+  const publicOrigin = await getPublicOrigin();
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-outfit p-5 lg:p-8 space-y-6">
@@ -79,9 +158,26 @@ export default async function TenantOrgManagePage({
         </div>
       ) : null}
       {qs.invite_token ? (
-        <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-bold text-indigo-700 break-all">
-          초대 토큰: <span className="font-black">{decodeURIComponent(qs.invite_token)}</span>
-          {qs.invite_exp ? ` (만료: ${decodeURIComponent(qs.invite_exp)})` : ""}
+        <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-bold text-indigo-800 space-y-2">
+          <p>
+            초대 링크는 발급 시점부터 <span className="text-indigo-900">7일간</span> 유효합니다. 받는 분께 아래 주소를 전달하세요.
+          </p>
+          {(() => {
+            const tok = decodeURIComponent(qs.invite_token);
+            const href = `/invite/${encodeURIComponent(tok)}`;
+            const absolute = publicOrigin ? `${publicOrigin}${href}` : href;
+            return (
+              <p className="break-all">
+                <Link href={href} className="underline font-black text-indigo-700 hover:text-indigo-900">
+                  {absolute}
+                </Link>
+              </p>
+            );
+          })()}
+          <p className="text-xs font-semibold text-indigo-600">
+            토큰: <span className="font-mono font-black">{decodeURIComponent(qs.invite_token)}</span>
+            {qs.invite_exp ? ` · 만료(UTC 기준): ${decodeURIComponent(qs.invite_exp)}` : ""}
+          </p>
         </div>
       ) : null}
 
@@ -190,18 +286,35 @@ export default async function TenantOrgManagePage({
             초대 토큰 발급
           </button>
         </form>
+        <p className="text-[11px] font-semibold text-slate-500 -mt-2">
+          미가입 사용자에게만 사용하세요. 초대 링크는 <span className="text-slate-700 font-bold">7일간</span> 유효하며, 형식은{" "}
+          <code className="rounded bg-slate-100 px-1 text-[10px]">/invite/토큰</code> 입니다.
+        </p>
 
         {tenant.invites.length > 0 ? (
           <div className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-3 space-y-2">
             <p className="text-[11px] font-black uppercase text-indigo-600">대기 중인 초대</p>
-            {tenant.invites.map((iv) => (
-              <div key={iv.id} className="rounded-xl bg-white border border-indigo-100 px-3 py-2">
-                <p className="text-xs font-black text-slate-700">
-                  {iv.email} · {roleLabel(iv.role)}
-                </p>
-                <p className="text-[11px] font-semibold text-indigo-700 break-all">token: {iv.token}</p>
-              </div>
-            ))}
+            {tenant.invites.map((iv) => {
+              const invitePath = `/invite/${encodeURIComponent(iv.token)}`;
+              const inviteUrl = publicOrigin ? `${publicOrigin}${invitePath}` : invitePath;
+              const exp = new Date(iv.expires_at);
+              const expStr = Number.isNaN(exp.getTime()) ? iv.expires_at : exp.toLocaleString("ko-KR");
+              return (
+                <div key={iv.id} className="rounded-xl bg-white border border-indigo-100 px-3 py-2 space-y-1.5">
+                  <p className="text-xs font-black text-slate-700">
+                    {iv.email} · {roleLabel(iv.role)}
+                  </p>
+                  <p className="text-[11px] font-semibold text-slate-500">
+                    만료: <span className="text-slate-700">{expStr}</span>
+                  </p>
+                  <p className="text-[11px] font-semibold break-all">
+                    <Link href={invitePath} className="text-indigo-700 font-bold hover:underline">
+                      {inviteUrl}
+                    </Link>
+                  </p>
+                </div>
+              );
+            })}
           </div>
         ) : null}
 
@@ -295,6 +408,34 @@ export default async function TenantOrgManagePage({
             </tbody>
           </table>
         </div>
+      </article>
+
+      <article className="rounded-3xl border border-slate-100 bg-white p-5 lg:p-6 shadow-sm space-y-3">
+        <div className="flex items-center gap-2 text-slate-900">
+          <ScrollText className="w-5 h-5 text-teal-600" />
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-600">조직 활동 기록</p>
+            <p className="text-sm font-bold text-slate-500">이 조직에 대한 최근 관리 작업(감사 로그)</p>
+          </div>
+        </div>
+        {auditLogs.length === 0 ? (
+          <p className="text-sm font-semibold text-slate-400">아직 기록이 없습니다.</p>
+        ) : (
+          <ul className="max-h-64 overflow-y-auto divide-y divide-slate-100 rounded-2xl border border-slate-100 bg-slate-50/50">
+            {auditLogs.map((row) => {
+              const { label, summary, when, who } = formatAuditRow(row);
+              return (
+                <li key={row.id} className="px-3 py-2.5 text-sm">
+                  <p className="font-black text-slate-800">{label}</p>
+                  {summary ? <p className="text-xs font-semibold text-slate-600 mt-0.5">{summary}</p> : null}
+                  <p className="text-[11px] font-semibold text-slate-400 mt-1">
+                    {when} · {who}
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </article>
 
       <p className="text-xs text-slate-400 font-bold">마지막 소유자는 강등·삭제할 수 없습니다. 조직 상태(active/suspended) 변경은 플랫폼 관리자만 할 수 있습니다.</p>

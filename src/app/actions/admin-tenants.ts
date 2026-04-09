@@ -673,3 +673,24 @@ export async function getTenantAdminAuditLogs(limit = 80): Promise<TenantAuditLo
     .catch(() => ({ results: [] as TenantAuditLogRow[] }));
   return rows.results ?? [];
 }
+
+/** 이 조직에 한정된 감사 로그(플랫폼 관리자 또는 조직 owner/admin). */
+export async function getTenantOrgAuditLogs(tenantId: string, limit = 50): Promise<TenantAuditLogRow[]> {
+  await requirePlatformOrTenantOrgAdmin(tenantId);
+  const db = getDB();
+  const safeLimit = Math.max(1, Math.min(limit, 100));
+  const placeholders = TENANT_AUDIT_ACTIONS.map(() => "?").join(",");
+  const rows = await db
+    .prepare(
+      `SELECT id, action, actor_email, payload, created_at
+       FROM admin_action_logs
+       WHERE action IN (${placeholders})
+         AND json_extract(payload, '$.tenantId') = ?
+       ORDER BY datetime(created_at) DESC, id DESC
+       LIMIT ?`
+    )
+    .bind(...TENANT_AUDIT_ACTIONS, tenantId, safeLimit)
+    .all<TenantAuditLogRow>()
+    .catch(() => ({ results: [] as TenantAuditLogRow[] }));
+  return rows.results ?? [];
+}
