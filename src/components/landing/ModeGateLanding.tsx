@@ -43,7 +43,7 @@ export default function ModeGateLanding({ kind, session, isAdmin, fromHome = fal
   const otherModes = SUBJECT_KINDS.filter((k) => k !== kind);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-outfit overflow-hidden relative">
+    <div className="min-h-screen bg-slate-50 flex flex-col font-outfit overflow-x-hidden relative">
       <div
         className={cn("absolute top-[-10%] right-[-10%] w-[80%] h-[40%] blur-[120px] rounded-full", visual.blobA)}
       />
@@ -128,8 +128,8 @@ export default function ModeGateLanding({ kind, session, isAdmin, fromHome = fal
               <Sparkles className="w-4 h-4 shrink-0" />
               {copy.kicker}
             </div>
-            <h1 className="text-[28px] min-[390px]:text-3xl font-black text-slate-900 leading-[1.15] tracking-tight">
-              {copy.titleLine1} 
+            <h1 className="text-[22px] min-[360px]:text-[26px] min-[390px]:text-3xl font-black text-slate-900 leading-[1.2] tracking-tight break-words">
+              {copy.titleLine1}{" "}
               {copy.titleGradient && (
                 <>
                   <br />
@@ -145,7 +145,9 @@ export default function ModeGateLanding({ kind, session, isAdmin, fromHome = fal
                 </>
               )}
             </h1>
-            <p className="text-slate-600 text-[13px] min-[390px]:text-sm font-semibold leading-relaxed">{copy.subline}</p>
+            <p className="text-slate-600 text-[12px] min-[390px]:text-sm font-semibold leading-relaxed break-words">
+              {copy.subline}
+            </p>
             {!session && (
               <div className={cn("rounded-2xl border px-4 py-3 text-left", visual.finderBoxBorder, visual.finderBoxBg)}>
                 <p className={cn("text-[11px] font-black", visual.finderTitleClass)}>{copy.finderTitle}</p>
@@ -164,35 +166,37 @@ export default function ModeGateLanding({ kind, session, isAdmin, fromHome = fal
             transition={{ delay: fromHome ? 0.18 : 0.6 }}
             className="w-full space-y-6 pt-2"
           >
-            <Link href={guardianEntryLink} className="block w-full group">
-              <button
-                type="button"
-                className={cn(
-                  "w-full h-16 min-[390px]:h-18 flex items-center justify-center gap-2.5 rounded-[26px] min-[390px]:rounded-[28px] text-base min-[390px]:text-lg font-black shadow-2xl transition-all active:scale-95 group-hover:-translate-y-1 group-hover:shadow-3xl duration-300 relative overflow-hidden border-2 border-white/20 ring-4 ring-black/5",
-                  isAdmin ? "bg-slate-900 text-white shadow-slate-200" : visual.buttonClass
-                )}
-              >
-                <div className="flex items-center justify-center gap-2.5 relative z-10">
-                  <AnimatePresence mode="wait">
-                    {isAdmin ? (
-                      <motion.div key="admin" initial={{ scale: 0.8 }} animate={{ scale: 1 }}>
-                        <ShieldCheck className="w-6 h-6 text-teal-400" />
-                      </motion.div>
-                    ) : (
-                      <motion.div key="user" initial={{ scale: 0.8 }} animate={{ scale: 1 }}>
-                        <LayoutDashboard className="w-5.5 h-5.5" />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                  <span className="shrink-0">{guardianButtonLabel}</span>
-                  <ArrowRight className="w-5 h-5 opacity-60 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-                </div>
-              </button>
+            <Link
+              href={guardianEntryLink}
+              className={cn(
+                "group flex w-full min-h-[3.5rem] min-[390px]:min-h-[4.25rem] items-center justify-center gap-2 rounded-[26px] min-[390px]:rounded-[28px] px-3 py-3 text-sm min-[390px]:text-base font-black shadow-2xl transition-all active:scale-[0.98] group-hover:-translate-y-0.5 group-hover:shadow-xl duration-300 relative overflow-hidden border-2 border-white/25 ring-4 ring-black/5",
+                "text-white",
+                isAdmin ? "bg-slate-900 shadow-slate-300/40 hover:bg-slate-800" : visual.buttonClass
+              )}
+            >
+              <span className="flex items-center justify-center gap-2 min-w-0 max-w-full relative z-10">
+                <AnimatePresence mode="wait">
+                  {isAdmin ? (
+                    <motion.span key="admin" initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="inline-flex">
+                      <ShieldCheck className="w-6 h-6 text-teal-400" aria-hidden />
+                    </motion.span>
+                  ) : (
+                    <motion.span key="user" initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="inline-flex text-white">
+                      <LayoutDashboard className="w-6 h-6" strokeWidth={2.25} aria-hidden />
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+                <span className="min-w-0 text-center leading-snug [text-wrap:balance]">{guardianButtonLabel}</span>
+                <ArrowRight
+                  className="w-5 h-5 shrink-0 opacity-80 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all"
+                  aria-hidden
+                />
+              </span>
             </Link>
 
             <div className="flex flex-col items-center gap-4">
               {!session ? (
-                <p className="text-sm text-slate-500 font-bold text-center">
+                <p className="text-xs min-[390px]:text-sm text-slate-500 font-bold text-center px-1 leading-relaxed max-w-[min(100%,22rem)] mx-auto">
                   처음이시면 위 버튼으로 로그인 후 이 모드 대시보드로 이동해요.
                 </p>
               ) : (
@@ -205,13 +209,17 @@ export default function ModeGateLanding({ kind, session, isAdmin, fromHome = fal
           </motion.div>
         </section>
 
-        <footer className="px-6 min-[390px]:px-8 pb-10 pt-2 bg-white/50 flex flex-col items-center gap-4">
-          <nav className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-[11px] font-black text-slate-500 uppercase tracking-wider">
-            <Link href="/" className="hover:text-slate-800 transition-colors">
+        <footer className="px-4 min-[390px]:px-8 pb-10 pt-2 bg-white/50 flex flex-col items-center gap-4 w-full max-w-md mx-auto">
+          <nav className="flex flex-wrap justify-center gap-x-2 gap-y-2 text-[10px] min-[390px]:text-[11px] font-black text-slate-500 uppercase tracking-wide max-w-full px-1">
+            <Link href="/" className="hover:text-slate-800 transition-colors whitespace-nowrap">
               전체 홈
             </Link>
             {otherModes.map((k) => (
-              <Link key={k} href={modePath[k]} className="hover:text-slate-800 transition-colors">
+              <Link
+                key={k}
+                href={modePath[k]}
+                className="hover:text-slate-800 transition-colors text-center max-w-[9.5rem] min-[390px]:max-w-none leading-tight"
+              >
                 {subjectKindMeta[k].label}
               </Link>
             ))}

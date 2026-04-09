@@ -109,7 +109,8 @@ export const modeLandingVisual: Record<SubjectKind, ModeLandingVisual> = {
     gradient: "from-amber-400 via-amber-500 to-amber-700",
     blobA: "bg-amber-400/15",
     blobB: "bg-rose-500/10",
-    buttonClass: "bg-gradient-to-r from-amber-600 to-amber-800 text-white shadow-amber-900/25 hover:from-amber-700 hover:to-amber-900",
+    buttonClass:
+      "bg-amber-700 bg-gradient-to-r from-amber-600 to-amber-800 text-white shadow-amber-900/25 hover:from-amber-700 hover:to-amber-900",
     sheetAccent: "text-amber-700",
     finderBoxBorder: "border-amber-100",
     finderBoxBg: "bg-amber-50/90",
