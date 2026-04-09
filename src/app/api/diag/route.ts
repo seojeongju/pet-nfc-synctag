@@ -30,6 +30,8 @@ export async function GET() {
       isBound: !!env.DB,
       connectionTest: "Pending",
       migration0008: "Pending" as string | object,
+      /** mode_announcements.target_tenant_id (0010) — 없으면 공지 쿼리가 실패할 수 있음 */
+      modeAnnouncementsTargetTenant: "Pending" as string | { ok: true } | { ok: false; message: string },
     },
     auth: {
       initialization: "Pending",
@@ -42,10 +44,18 @@ export async function GET() {
       await env.DB.prepare("SELECT 1").run();
       diagnostics.database.connectionTest = "Success";
       diagnostics.database.migration0008 = await getMigration0008Status(env.DB);
+      try {
+        await env.DB.prepare("SELECT target_tenant_id FROM mode_announcements LIMIT 1").first();
+        diagnostics.database.modeAnnouncementsTargetTenant = { ok: true };
+      } catch (colErr: unknown) {
+        const msg = colErr instanceof Error ? colErr.message : String(colErr);
+        diagnostics.database.modeAnnouncementsTargetTenant = { ok: false, message: msg };
+      }
     } catch (e: unknown) {
       const err = e instanceof Error ? e : new Error(String(e));
       diagnostics.database.connectionTest = `Failed: ${err.message}`;
       diagnostics.database.migration0008 = "Unavailable";
+      diagnostics.database.modeAnnouncementsTargetTenant = "Unavailable";
     }
   }
 
