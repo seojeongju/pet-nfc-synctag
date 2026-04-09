@@ -14,6 +14,8 @@
     --font-sans: var(--font-sans);
   }
   :root {
+    /* next/font 대신 링크 로드 시에도 동일하게 쓰기 위한 스택 (Tailwind font-sans / font-outfit) */
+    --font-outfit: "Outfit", ui-sans-serif, system-ui, sans-serif;
     --background: oklch(0.99 0 0);
     --foreground: oklch(0.15 0 0);
     --card: oklch(1 0 0);
