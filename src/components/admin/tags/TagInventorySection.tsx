@@ -6,7 +6,6 @@ import { AdminCard } from "@/components/admin/ui/AdminCard";
 import { AdminTableHeadCell, AdminTableHeadRow } from "@/components/admin/ui/AdminTable";
 import { Database, BarChart3, Search } from "lucide-react";
 import { adminUi } from "@/styles/admin/ui";
-import { cn } from "@/lib/utils";
 import type { AdminTag, TagOpsStats } from "@/types/admin-tags";
 import { TagProductRow } from "./TagProductRow";
 

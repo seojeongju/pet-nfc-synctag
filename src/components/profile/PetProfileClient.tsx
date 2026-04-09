@@ -8,7 +8,7 @@ import {
   ArrowLeft, ShieldCheck, PawPrint, Home, 
   Settings, Activity,
   Calendar, Fingerprint, MapPin,
-  UserRound, Baby, Briefcase, Gem, LogIn,
+  UserRound, Baby, Briefcase, Gem,
   Loader2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -119,8 +119,6 @@ export default function PetProfileClient({
   const kindQs = `?${qs.toString()}`;
   const HeroIcon = heroIcons[subjectKind];
   const displayName = maskNameForPublicViewer(pet.name, subjectKind, treatAsPublicVisitor);
-  const profileLoginCallback = `/profile/${pet.id}${kindQs}${tagId ? `&tag=${encodeURIComponent(tagId)}` : ""}`;
-  const loginHref = `/login?callbackUrl=${encodeURIComponent(profileLoginCallback)}`;
   const finderCopy =
     subjectKind === "pet"
       ? "아이를 발견하셨나요? 당황하지 마세요! 아래 연락처로 연락 주시면 보호자님께 즉시 전달됩니다."
