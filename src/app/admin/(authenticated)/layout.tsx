@@ -94,7 +94,7 @@ export default async function AdminAuthenticatedLayout({
             </div>
           </nav>
 
-          <div className="hidden lg:block p-6 space-y-4 border-t border-slate-100 mb-6 mt-4">
+          <div className="p-4 lg:p-6 space-y-3 lg:space-y-4 border-t border-slate-100 mb-4 lg:mb-6 mt-2 lg:mt-4">
             <Link
               href="/"
               prefetch={false}

@@ -8,14 +8,23 @@ import {
   getTenantOrgManageContext,
   type TenantAuditLogRow,
 } from "@/app/actions/admin-tenants";
-import { Building2, ChevronLeft, ScrollText, ShieldCheck, UserPlus2 } from "lucide-react";
+import { TENANT_AUDIT_ACTIONS } from "@/lib/tenant-audit-constants";
+import { auditActionLabelKo, formatTenantAuditRow } from "@/lib/tenant-audit-format";
+import { Building2, ChevronLeft, FileDown, ScrollText, ShieldCheck, UserPlus2 } from "lucide-react";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 
 export const runtime = "edge";
 
-type SearchParams = Promise<{ err?: string; ok?: string; invite_token?: string; invite_exp?: string }>;
+type SearchParams = Promise<{
+  err?: string;
+  ok?: string;
+  invite_token?: string;
+  invite_exp?: string;
+  audit_action?: string;
+  audit_q?: string;
+}>;
 
 function roleLabel(role: "owner" | "admin" | "member") {
   if (role === "owner") return "소유자";
@@ -37,70 +46,6 @@ async function getPublicOrigin(): Promise<string> {
   return `${proto}://${host}`;
 }
 
-function auditActionLabel(action: string): string {
-  switch (action) {
-    case "tenant_create_by_admin":
-      return "조직 생성";
-    case "tenant_rename_by_admin":
-      return "조직명 변경";
-    case "tenant_member_upsert_by_admin":
-      return "멤버 추가·갱신";
-    case "tenant_member_role_change_by_admin":
-      return "멤버 역할 변경";
-    case "tenant_member_remove_by_admin":
-      return "멤버 제거";
-    case "tenant_status_change_by_admin":
-      return "조직 상태 변경";
-    case "tenant_invite_create_by_admin":
-      return "초대 발급";
-    default:
-      return action;
-  }
-}
-
-function auditPayloadSummary(action: string, raw: string | null): string {
-  if (!raw) return "";
-  try {
-    const p = JSON.parse(raw) as Record<string, unknown>;
-    switch (action) {
-      case "tenant_create_by_admin": {
-        const parts = [p.name, p.slug, p.ownerEmail].filter((x) => typeof x === "string" && x);
-        return parts.join(" · ");
-      }
-      case "tenant_rename_by_admin":
-        return typeof p.name === "string" ? `→ ${p.name}` : "";
-      case "tenant_member_upsert_by_admin": {
-        const email = typeof p.email === "string" ? p.email : "";
-        const r = typeof p.role === "string" ? roleLabel(p.role as "owner" | "admin" | "member") : "";
-        return [email, r].filter(Boolean).join(" · ");
-      }
-      case "tenant_member_role_change_by_admin":
-        return typeof p.role === "string" ? roleLabel(p.role as "owner" | "admin" | "member") : "";
-      case "tenant_member_remove_by_admin":
-        return typeof p.userId === "string" ? `user: ${p.userId.slice(0, 8)}…` : "";
-      case "tenant_status_change_by_admin":
-        return p.status === "suspended" ? "중지됨" : "활성";
-      case "tenant_invite_create_by_admin": {
-        const email = typeof p.email === "string" ? p.email : "";
-        const r = typeof p.role === "string" ? roleLabel(p.role as "owner" | "admin" | "member") : "";
-        return [email, r].filter(Boolean).join(" · ");
-      }
-      default:
-        return "";
-    }
-  } catch {
-    return "";
-  }
-}
-
-function formatAuditRow(row: TenantAuditLogRow) {
-  const summary = auditPayloadSummary(row.action, row.payload);
-  const label = auditActionLabel(row.action);
-  const when = new Date(row.created_at).toLocaleString("ko-KR");
-  const who = row.actor_email ?? "—";
-  return { label, summary, when, who };
-}
-
 export default async function TenantOrgManagePage({
   params,
   searchParams,
@@ -119,19 +64,38 @@ export default async function TenantOrgManagePage({
   if (!data) notFound();
 
   const { view: tenant, isPlatformAdmin } = data;
-  const auditLogs = await getTenantOrgAuditLogs(tenantId).catch(() => [] as TenantAuditLogRow[]);
+
+  const auditActionRaw = typeof qs.audit_action === "string" ? qs.audit_action.trim() : "";
+  const auditQRaw = typeof qs.audit_q === "string" ? qs.audit_q.trim() : "";
+
+  const auditLogs = await getTenantOrgAuditLogs(tenantId, {
+    action: auditActionRaw || undefined,
+    actorContains: auditQRaw || undefined,
+    limit: 200,
+  }).catch(() => [] as TenantAuditLogRow[]);
+
   const publicOrigin = await getPublicOrigin();
+
+  const exportParams = new URLSearchParams();
+  if (auditActionRaw) exportParams.set("audit_action", auditActionRaw);
+  if (auditQRaw) exportParams.set("audit_q", auditQRaw);
+  const auditExportHref = `/hub/org/${tenantId}/manage/audit-export${exportParams.toString() ? `?${exportParams.toString()}` : ""}`;
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-outfit p-5 lg:p-8 space-y-6">
       <header className="space-y-3">
-        <Link
-          href="/hub"
-          className="inline-flex items-center gap-1 text-xs font-black text-teal-600 hover:text-teal-700"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          허브로
-        </Link>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <Link
+            href="/hub"
+            className="inline-flex items-center gap-1 text-xs font-black text-teal-600 hover:text-teal-700"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            허브로
+          </Link>
+          <Link href="/" className="inline-flex items-center gap-1 text-xs font-black text-slate-500 hover:text-teal-600">
+            모드 선택(랜딩)
+          </Link>
+        </div>
         <div className="flex items-center gap-2 text-slate-900">
           <Building2 className="w-6 h-6 text-teal-500" />
           <div>
@@ -411,19 +375,64 @@ export default async function TenantOrgManagePage({
       </article>
 
       <article className="rounded-3xl border border-slate-100 bg-white p-5 lg:p-6 shadow-sm space-y-3">
-        <div className="flex items-center gap-2 text-slate-900">
-          <ScrollText className="w-5 h-5 text-teal-600" />
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-600">조직 활동 기록</p>
-            <p className="text-sm font-bold text-slate-500">이 조직에 대한 최근 관리 작업(감사 로그)</p>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <div className="flex items-center gap-2 text-slate-900">
+            <ScrollText className="w-5 h-5 text-teal-600 shrink-0" />
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-600">조직 활동 기록</p>
+              <p className="text-sm font-bold text-slate-500">이 조직에 대한 최근 관리 작업(감사 로그)</p>
+            </div>
           </div>
+          <a
+            href={auditExportHref}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-black text-slate-700 hover:bg-slate-50 hover:border-teal-200"
+          >
+            <FileDown className="w-4 h-4 text-teal-600" />
+            CSV 내보내기
+          </a>
         </div>
+
+        <form method="get" className="flex flex-col sm:flex-row flex-wrap gap-2 items-stretch sm:items-end">
+          <label className="flex flex-col gap-1 text-[11px] font-bold text-slate-500 min-w-[140px] flex-1">
+            유형
+            <select
+              name="audit_action"
+              defaultValue={auditActionRaw}
+              className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-semibold bg-white"
+            >
+              <option value="">전체</option>
+              {TENANT_AUDIT_ACTIONS.map((a) => (
+                <option key={a} value={a}>
+                  {auditActionLabelKo(a)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-[11px] font-bold text-slate-500 min-w-[160px] flex-[1.2]">
+            실행자 이메일
+            <input
+              name="audit_q"
+              type="search"
+              defaultValue={auditQRaw}
+              placeholder="부분 검색"
+              autoComplete="off"
+              className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-semibold"
+            />
+          </label>
+          <button
+            type="submit"
+            className="h-10 rounded-xl bg-slate-800 px-4 text-sm font-black text-white hover:bg-teal-600 sm:self-end"
+          >
+            필터 적용
+          </button>
+        </form>
+
         {auditLogs.length === 0 ? (
-          <p className="text-sm font-semibold text-slate-400">아직 기록이 없습니다.</p>
+          <p className="text-sm font-semibold text-slate-400">조건에 맞는 기록이 없습니다.</p>
         ) : (
-          <ul className="max-h-64 overflow-y-auto divide-y divide-slate-100 rounded-2xl border border-slate-100 bg-slate-50/50">
+          <ul className="max-h-72 overflow-y-auto divide-y divide-slate-100 rounded-2xl border border-slate-100 bg-slate-50/50">
             {auditLogs.map((row) => {
-              const { label, summary, when, who } = formatAuditRow(row);
+              const { label, summary, when, who } = formatTenantAuditRow(row);
               return (
                 <li key={row.id} className="px-3 py-2.5 text-sm">
                   <p className="font-black text-slate-800">{label}</p>

@@ -9,6 +9,7 @@ import { getDB } from "@/lib/db";
 import { assertTenantRole, getMembership } from "@/lib/tenant-membership";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
 import type { D1Database } from "@cloudflare/workers-types";
+import { TENANT_AUDIT_ACTIONS, type TenantOrgAuditFilter } from "@/lib/tenant-audit-constants";
 
 type TenantRole = "owner" | "admin" | "member";
 
@@ -51,15 +52,10 @@ export type TenantAuditLogRow = {
   created_at: string;
 };
 
-const TENANT_AUDIT_ACTIONS = [
-  "tenant_create_by_admin",
-  "tenant_rename_by_admin",
-  "tenant_member_upsert_by_admin",
-  "tenant_member_role_change_by_admin",
-  "tenant_member_remove_by_admin",
-  "tenant_status_change_by_admin",
-  "tenant_invite_create_by_admin",
-] as const;
+function normalizeActorSearch(raw: string | undefined): string {
+  const t = raw?.trim() ?? "";
+  return t.length > 120 ? t.slice(0, 120) : t;
+}
 
 async function requirePlatformAdmin() {
   const context = getRequestContext();
@@ -675,21 +671,42 @@ export async function getTenantAdminAuditLogs(limit = 80): Promise<TenantAuditLo
 }
 
 /** 이 조직에 한정된 감사 로그(플랫폼 관리자 또는 조직 owner/admin). */
-export async function getTenantOrgAuditLogs(tenantId: string, limit = 50): Promise<TenantAuditLogRow[]> {
+export async function getTenantOrgAuditLogs(
+  tenantId: string,
+  filter?: TenantOrgAuditFilter
+): Promise<TenantAuditLogRow[]> {
   await requirePlatformOrTenantOrgAdmin(tenantId);
   const db = getDB();
-  const safeLimit = Math.max(1, Math.min(limit, 100));
+  const requested = filter?.limit ?? 50;
+  const safeLimit = Math.max(1, Math.min(requested, 2000));
+
+  const actionTrim = filter?.action?.trim() ?? "";
+  const narrowAction =
+    actionTrim && (TENANT_AUDIT_ACTIONS as readonly string[]).includes(actionTrim) ? actionTrim : "";
+
+  const actorQ = normalizeActorSearch(filter?.actorContains);
   const placeholders = TENANT_AUDIT_ACTIONS.map(() => "?").join(",");
-  const rows = await db
-    .prepare(
-      `SELECT id, action, actor_email, payload, created_at
+
+  let sql = `SELECT id, action, actor_email, payload, created_at
        FROM admin_action_logs
        WHERE action IN (${placeholders})
-         AND json_extract(payload, '$.tenantId') = ?
-       ORDER BY datetime(created_at) DESC, id DESC
-       LIMIT ?`
-    )
-    .bind(...TENANT_AUDIT_ACTIONS, tenantId, safeLimit)
+         AND json_extract(payload, '$.tenantId') = ?`;
+  const bindList: unknown[] = [...TENANT_AUDIT_ACTIONS, tenantId];
+
+  if (narrowAction) {
+    sql += ` AND action = ?`;
+    bindList.push(narrowAction);
+  }
+  if (actorQ) {
+    sql += ` AND instr(lower(coalesce(actor_email, '')), lower(?)) > 0`;
+    bindList.push(actorQ);
+  }
+  sql += ` ORDER BY datetime(created_at) DESC, id DESC LIMIT ?`;
+  bindList.push(safeLimit);
+
+  const rows = await db
+    .prepare(sql)
+    .bind(...bindList)
     .all<TenantAuditLogRow>()
     .catch(() => ({ results: [] as TenantAuditLogRow[] }));
   return rows.results ?? [];
