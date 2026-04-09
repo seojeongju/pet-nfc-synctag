@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import type {
+  LandingAutoRouteRow,
   LowBatteryRow,
   RecentBleRow,
   RecentNfcScanRow,
@@ -38,6 +39,7 @@ type Summary = {
   nfcScans7d: number;
   nfcWithLocation24h: number;
   unknownUidAccess7d: number;
+  landingAutoRoutes7d: number;
   bleEvents24h: number;
   bleEvents7d: number;
   bleLostEvents7d: number;
@@ -51,12 +53,14 @@ export default function AdminMonitoringClient({
   summary,
   recentNfc,
   unknownAccess,
+  autoRouteEvents,
   recentBle,
   lowBattery,
 }: {
   summary: Summary;
   recentNfc: RecentNfcScanRow[];
   unknownAccess: UnknownAccessRow[];
+  autoRouteEvents: LandingAutoRouteRow[];
   recentBle: RecentBleRow[];
   lowBattery: LowBatteryRow[];
 }) {
@@ -142,6 +146,13 @@ export default function AdminMonitoringClient({
           value={String(summary.unknownUidAccess7d)}
           sub="DB에 없는 NFC 시도"
           tone="rose"
+        />
+        <Kpi
+          icon={Search}
+          label="랜딩 자동 진입 (7d)"
+          value={String(summary.landingAutoRoutes7d)}
+          sub="UID/BLE 기반 모드 자동 라우팅"
+          tone="teal"
         />
       </div>
 
@@ -244,7 +255,7 @@ export default function AdminMonitoringClient({
         )}
       </AdminCard>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-3 gap-6">
         <Section title="최근 NFC 스캔" subtitle="등록 태그 기준 (위치는 동의 시)" icon={Activity}>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-[10px] lg:text-xs">
@@ -299,6 +310,39 @@ export default function AdminMonitoringClient({
                       <td className="p-2 font-mono truncate max-w-[160px]">{r.tag_uid}</td>
                       <td className="p-2 whitespace-nowrap">{r.created_at}</td>
                       <td className="p-2 font-mono truncate max-w-[120px]">{r.ip_address ?? "—"}</td>
+                    </AdminTableRow>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Section>
+
+        <Section title="랜딩 자동 진입 로그" subtitle="source · mode · 로그인 여부" icon={Search}>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-[10px] lg:text-xs">
+              <thead>
+                <AdminTableHeadRow>
+                  <AdminTableHeadCell>소스</AdminTableHeadCell>
+                  <AdminTableHeadCell>모드</AdminTableHeadCell>
+                  <AdminTableHeadCell>인증</AdminTableHeadCell>
+                  <AdminTableHeadCell>시각</AdminTableHeadCell>
+                </AdminTableHeadRow>
+              </thead>
+              <tbody>
+                {autoRouteEvents.length === 0 ? (
+                  <AdminTableRow>
+                    <td colSpan={4} className="p-4 text-slate-400 text-center">
+                      기록 없음
+                    </td>
+                  </AdminTableRow>
+                ) : (
+                  autoRouteEvents.map((r) => (
+                    <AdminTableRow key={r.id}>
+                      <td className="p-2 font-mono">{r.source}</td>
+                      <td className="p-2 font-mono">{r.resolved_kind}</td>
+                      <td className="p-2">{r.authenticated ? "Y" : "N"}</td>
+                      <td className="p-2 whitespace-nowrap">{r.created_at}</td>
                     </AdminTableRow>
                   ))
                 )}

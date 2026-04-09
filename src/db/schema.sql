@@ -127,6 +127,17 @@ CREATE TABLE IF NOT EXISTS unknown_tag_accesses (
 CREATE INDEX IF NOT EXISTS idx_unknown_tag_created ON unknown_tag_accesses(created_at);
 -- tags.ble_mac: added via migration ALTER TABLE tags ADD COLUMN ble_mac TEXT;
 
+CREATE TABLE IF NOT EXISTS landing_auto_route_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source TEXT NOT NULL,
+    resolved_kind TEXT NOT NULL,
+    authenticated INTEGER NOT NULL DEFAULT 0,
+    ip_address TEXT,
+    user_agent TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_landing_auto_route_created ON landing_auto_route_events(created_at);
+
 CREATE TABLE IF NOT EXISTS geofences (
     id TEXT PRIMARY KEY,
     owner_id TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,

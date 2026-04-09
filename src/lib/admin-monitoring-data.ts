@@ -9,6 +9,7 @@ export async function getMonitoringSummary() {
     nfc7d,
     nfcWithLoc24h,
     unknown7d,
+    autoRoute7d,
     ble24h,
     ble7d,
     bleLost7d,
@@ -33,6 +34,12 @@ export async function getMonitoringSummary() {
     db
       .prepare(
         "SELECT COUNT(*) AS c FROM unknown_tag_accesses WHERE created_at >= datetime('now', '-7 days')"
+      )
+      .first<{ c: number }>()
+      .catch(() => ({ c: 0 })),
+    db
+      .prepare(
+        "SELECT COUNT(*) AS c FROM landing_auto_route_events WHERE created_at >= datetime('now', '-7 days')"
       )
       .first<{ c: number }>()
       .catch(() => ({ c: 0 })),
@@ -76,6 +83,7 @@ export async function getMonitoringSummary() {
     nfcScans7d: nfc7d?.c ?? 0,
     nfcWithLocation24h: nfcWithLoc24h?.c ?? 0,
     unknownUidAccess7d: unknown7d?.c ?? 0,
+    landingAutoRoutes7d: autoRoute7d?.c ?? 0,
     bleEvents24h: ble24h?.c ?? 0,
     bleEvents7d: ble7d?.c ?? 0,
     bleLostEvents7d: bleLost7d?.c ?? 0,
@@ -116,6 +124,15 @@ export type UnknownAccessRow = {
   created_at: string;
 };
 
+export type LandingAutoRouteRow = {
+  id: number;
+  source: string;
+  resolved_kind: string;
+  authenticated: number;
+  ip_address: string | null;
+  created_at: string;
+};
+
 export async function getUnknownTagAccesses(limit = 30) {
   const db = getDB();
   const safe = Math.max(1, Math.min(limit, 100));
@@ -127,6 +144,20 @@ export async function getUnknownTagAccesses(limit = 30) {
     .bind(safe)
     .all<UnknownAccessRow>()
     .catch(() => ({ results: [] as UnknownAccessRow[] }));
+  return results ?? [];
+}
+
+export async function getLandingAutoRouteEvents(limit = 30) {
+  const db = getDB();
+  const safe = Math.max(1, Math.min(limit, 100));
+  const { results } = await db
+    .prepare(
+      "SELECT id, source, resolved_kind, authenticated, ip_address, created_at FROM landing_auto_route_events " +
+        "ORDER BY datetime(created_at) DESC LIMIT ?"
+    )
+    .bind(safe)
+    .all<LandingAutoRouteRow>()
+    .catch(() => ({ results: [] as LandingAutoRouteRow[] }));
   return results ?? [];
 }
 
