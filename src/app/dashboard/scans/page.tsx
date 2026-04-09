@@ -6,7 +6,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
-import { Bell, MapPin, Clock, Smartphone, PawPrint, Bluetooth, Cpu, Tag, KeyRound } from "lucide-react";
+import { Bell, MapPin, Clock, Smartphone, PawPrint, Bluetooth, Cpu, Tag, KeyRound, ChevronRight } from "lucide-react";
 import { extractBleRawMeta } from "@/lib/ble-raw-payload";
 import { cn } from "@/lib/utils";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
@@ -228,29 +228,35 @@ export default async function ScansPage({
                         </div>
                     ))
                 ) : (
-                    <div className="py-16 flex flex-col items-center justify-center text-center space-y-5 max-w-md mx-auto">
-                        <div className="w-24 h-24 rounded-full bg-slate-50 flex items-center justify-center text-slate-200">
-                            <Bell className="w-12 h-12" />
+                    <div className="relative overflow-hidden bg-white/70 backdrop-blur-xl border border-white/50 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.08)] rounded-[40px] px-6 py-16 flex flex-col items-center justify-center text-center max-w-md mx-auto group hover:shadow-[0_40px_80px_-12px_rgba(20,184,166,0.12)] transition-all duration-500">
+                        {/* Decorative background blobs */}
+                        <div className="absolute top-0 right-0 -m-16 w-32 h-32 bg-teal-400/10 rounded-full blur-2xl group-hover:bg-teal-400/20 transition-all duration-700" />
+                        <div className="absolute bottom-0 left-0 -m-16 w-32 h-32 bg-sky-400/10 rounded-full blur-2xl group-hover:bg-sky-400/20 transition-all duration-700" />
+
+                        <div className="relative w-24 h-24 mb-6">
+                            <div className="absolute inset-0 bg-gradient-to-br from-slate-100 to-slate-50 rounded-[28px] rotate-3 group-hover:rotate-6 transition-transform duration-500 shadow-sm" />
+                            <div className="absolute inset-0 bg-white rounded-[28px] -rotate-3 group-hover:-rotate-0 transition-transform duration-500 border border-slate-100/80 shadow-md flex items-center justify-center text-slate-300 group-hover:text-teal-500">
+                                <Bell className="w-10 h-10 transition-transform duration-700 group-hover:scale-110" />
+                            </div>
                         </div>
-                        <div className="space-y-2 px-2">
-                            <h3 className="text-xl font-black text-slate-800">{meta.emptyScansTitle}</h3>
-                            <p className="text-sm text-slate-500 font-medium leading-relaxed">{meta.emptyScansBody}</p>
+
+                        <div className="space-y-3 px-2 relative z-10 mb-8">
+                            <h3 className="text-[22px] font-black text-slate-800 tracking-tight">{meta.emptyScansTitle}</h3>
+                            <p className="text-sm text-slate-500 font-medium leading-relaxed max-w-[280px] mx-auto">{meta.emptyScansBody}</p>
                         </div>
-                        <div className="flex flex-col sm:flex-row gap-3 justify-center w-full">
+
+                        <div className="flex flex-col w-full gap-3 relative z-10 sm:max-w-[85%]">
                             <a
                                 href={`/dashboard/pets${kindQs}`}
-                                className={cn(buttonVariants({}), "rounded-full bg-teal-500 hover:bg-teal-600 font-black h-11 px-6")}
+                                className="group/btn relative flex items-center justify-center h-14 w-full rounded-2xl bg-slate-900 font-black text-white hover:bg-teal-500 transition-colors shadow-lg overflow-hidden"
                             >
-                                관리 대상·태그 연결
+                                <span className="relative z-10">관리 대상·태그 연결</span>
                             </a>
                             <a
                                 href="/hub"
-                                className={cn(
-                                    buttonVariants({ variant: "outline" }),
-                                    "rounded-full border-slate-200 font-bold h-11 px-6"
-                                )}
+                                className="group/btn relative flex items-center justify-center h-14 w-full rounded-2xl border-2 border-slate-100 bg-white/50 backdrop-blur-sm font-bold text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 transition-all"
                             >
-                                모드 허브
+                                <span className="relative z-10">모드·플랜 허브</span>
                             </a>
                         </div>
                     </div>
@@ -345,11 +351,19 @@ export default async function ScansPage({
                         })}
                     </div>
                 ) : (
-                    <div className="py-6 px-4 text-center rounded-2xl bg-slate-50 border border-dashed border-slate-200 space-y-2">
-                        <p className="text-sm font-bold text-slate-600">아직 기록된 BLE 이벤트가 없습니다.</p>
-                        <p className="text-xs text-slate-500 leading-relaxed">{meta.emptyBleHint}</p>
-                        <a href="/hub" className="text-[11px] font-bold text-teal-600 hover:underline inline-block">
-                            모드·기기 허브로 이동 →
+                    <div className="relative group overflow-hidden bg-gradient-to-br from-indigo-50/50 to-white/50 border-2 border-dashed border-indigo-100/60 rounded-[32px] p-8 text-center transition-all duration-500 hover:border-indigo-300 gap-4 flex flex-col items-center">
+                        <div className="w-16 h-16 rounded-[20px] bg-indigo-50/80 flex items-center justify-center text-indigo-300 group-hover:scale-110 group-hover:text-indigo-500 transition-all duration-500 shadow-sm">
+                            <Bluetooth className="w-8 h-8" />
+                        </div>
+                        <div className="space-y-1.5 px-2">
+                            <p className="font-black text-slate-700 text-base">아직 기록된 BLE 이벤트가 없습니다</p>
+                            <p className="text-[11px] text-slate-500 font-medium leading-relaxed max-w-[240px] mx-auto">{meta.emptyBleHint}</p>
+                        </div>
+                        <a 
+                            href="/hub" 
+                            className="mt-2 inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-xs font-black text-indigo-600 shadow-sm border border-indigo-50 hover:bg-indigo-500 hover:text-white transition-all active:scale-95"
+                        >
+                            모드·기기 허브로 이동 <ChevronRight className="w-3.5 h-3.5" />
                         </a>
                     </div>
                 )}
