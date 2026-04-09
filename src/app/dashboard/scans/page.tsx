@@ -11,6 +11,7 @@ import { extractBleRawMeta } from "@/lib/ble-raw-payload";
 import { cn } from "@/lib/utils";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
 import { requireTenantMember } from "@/lib/tenant-membership";
+import { rethrowNextControlFlowErrors } from "@/lib/next-redirect-guard";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -34,115 +35,122 @@ function formatScanCoords(lat: unknown, lng: unknown): string {
     return `${la.toFixed(4)}, ${ln.toFixed(4)}`;
 }
 
+function scansLoadFailed(kindQs: string) {
+    return (
+        <div className="mx-auto max-w-lg space-y-6 px-2 py-16 text-center font-outfit">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-rose-50 text-rose-400">
+                <Bell className="h-10 w-10" />
+            </div>
+            <div className="space-y-2">
+                <h1 className="text-xl font-black text-slate-900">스캔 기록을 불러오지 못했어요</h1>
+                <p className="text-sm leading-relaxed text-slate-600">
+                    잠시 후 다시 시도해 주세요. 문제가 계속되면 D1 마이그레이션과 Worker 로그를 확인해 주세요.
+                </p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+                <a
+                    href={`/dashboard${kindQs}`}
+                    className={cn(
+                        buttonVariants({}),
+                        "rounded-full bg-teal-500 font-bold shadow-lg shadow-teal-100 hover:bg-teal-600"
+                    )}
+                >
+                    대시보드로 돌아가기
+                </a>
+                <a
+                    href={`/dashboard/scans${kindQs}`}
+                    className={cn(
+                        buttonVariants({ variant: "outline" }),
+                        "rounded-full border-slate-200 font-bold text-slate-700 hover:bg-slate-50"
+                    )}
+                >
+                    다시 시도
+                </a>
+            </div>
+        </div>
+    );
+}
+
 export default async function ScansPage({
     searchParams,
 }: {
     searchParams: Promise<{ kind?: string; tenant?: string }>;
 }) {
-    const { kind: kindParam, tenant: tenantParam } = await searchParams;
-    const subjectKind = parseSubjectKind(kindParam);
-    const meta = subjectKindMeta[subjectKind];
-    const tenantId =
-        typeof tenantParam === "string" && tenantParam.trim() ? tenantParam.trim() : null;
-    const qs = new URLSearchParams({ kind: subjectKind });
-    if (tenantId) qs.set("tenant", tenantId);
-    const kindQs = `?${qs.toString()}`;
+    let kindQs = "?kind=pet";
 
-    const context = getCfRequestContext();
-    const auth = getAuth(context.env);
-    const session = await auth.api.getSession({
-        headers: await headers(),
-    });
-
-    if (!session) {
-        redirect("/login");
-    }
-
-    if (tenantId) {
-        try {
-            await requireTenantMember(context.env.DB, session.user.id, tenantId);
-        } catch {
-            return (
-                <div className="mx-auto max-w-lg space-y-6 px-2 py-16 text-center font-outfit">
-                    <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-amber-50 text-amber-500">
-                        <Bell className="h-10 w-10" />
-                    </div>
-                    <div className="space-y-2">
-                        <h1 className="text-xl font-black text-slate-900">이 조직에 접근할 수 없어요</h1>
-                        <p className="text-sm leading-relaxed text-slate-600">
-                            초대·멤버십을 확인하거나 다른 모드로 이동해 주세요.
-                        </p>
-                    </div>
-                    <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-                        <a
-                            href={`/dashboard${kindQs}`}
-                            className={cn(
-                                buttonVariants({}),
-                                "rounded-full bg-teal-500 font-bold shadow-lg shadow-teal-100 hover:bg-teal-600"
-                            )}
-                        >
-                            대시보드로
-                        </a>
-                    </div>
-                </div>
-            );
-        }
-    }
-
-    let logs: ScanLog[];
-    let bleEvents: Awaited<ReturnType<typeof listBleLocationEventsForOwner>>;
     try {
-        logs = (await getScanLogsWithDb(
-            context.env.DB,
-            session.user.id,
-            subjectKind,
-            tenantId ?? undefined
-        )) as ScanLog[];
-        bleEvents = await listBleLocationEventsForOwner(
-            context.env.DB,
-            session.user.id,
-            subjectKind,
-            30,
-            tenantId ?? undefined
-        ).catch(() => []);
-    } catch (error: unknown) {
-        console.error("Scans page data fetch error:", error);
-        return (
-            <div className="mx-auto max-w-lg space-y-6 px-2 py-16 text-center font-outfit">
-                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-rose-50 text-rose-400">
-                    <Bell className="h-10 w-10" />
-                </div>
-                <div className="space-y-2">
-                    <h1 className="text-xl font-black text-slate-900">스캔 기록을 불러오지 못했어요</h1>
-                    <p className="text-sm leading-relaxed text-slate-600">
-                        잠시 후 다시 시도해 주세요. 문제가 계속되면 D1 마이그레이션과 Worker 로그를 확인해 주세요.
-                    </p>
-                </div>
-                <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-                    <a
-                        href={`/dashboard${kindQs}`}
-                        className={cn(
-                            buttonVariants({}),
-                            "rounded-full bg-teal-500 font-bold shadow-lg shadow-teal-100 hover:bg-teal-600"
-                        )}
-                    >
-                        대시보드로 돌아가기
-                    </a>
-                    <a
-                        href={`/dashboard/scans${kindQs}`}
-                        className={cn(
-                            buttonVariants({ variant: "outline" }),
-                            "rounded-full border-slate-200 font-bold text-slate-700 hover:bg-slate-50"
-                        )}
-                    >
-                        다시 시도
-                    </a>
-                </div>
-            </div>
-        );
-    }
+        const { kind: kindParam, tenant: tenantParam } = await searchParams;
+        const subjectKind = parseSubjectKind(kindParam);
+        const meta = subjectKindMeta[subjectKind];
+        const tenantId =
+            typeof tenantParam === "string" && tenantParam.trim() ? tenantParam.trim() : null;
+        const qs = new URLSearchParams({ kind: subjectKind });
+        if (tenantId) qs.set("tenant", tenantId);
+        kindQs = `?${qs.toString()}`;
 
-    return (
+        const context = getCfRequestContext();
+        const auth = getAuth(context.env);
+        const session = await auth.api.getSession({
+            headers: await headers(),
+        });
+
+        if (!session) {
+            redirect("/login");
+        }
+
+        if (tenantId) {
+            try {
+                await requireTenantMember(context.env.DB, session.user.id, tenantId);
+            } catch {
+                return (
+                    <div className="mx-auto max-w-lg space-y-6 px-2 py-16 text-center font-outfit">
+                        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-amber-50 text-amber-500">
+                            <Bell className="h-10 w-10" />
+                        </div>
+                        <div className="space-y-2">
+                            <h1 className="text-xl font-black text-slate-900">이 조직에 접근할 수 없어요</h1>
+                            <p className="text-sm leading-relaxed text-slate-600">
+                                초대·멤버십을 확인하거나 다른 모드로 이동해 주세요.
+                            </p>
+                        </div>
+                        <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+                            <a
+                                href={`/dashboard${kindQs}`}
+                                className={cn(
+                                    buttonVariants({}),
+                                    "rounded-full bg-teal-500 font-bold shadow-lg shadow-teal-100 hover:bg-teal-600"
+                                )}
+                            >
+                                대시보드로
+                            </a>
+                        </div>
+                    </div>
+                );
+            }
+        }
+
+        let logs: ScanLog[];
+        let bleEvents: Awaited<ReturnType<typeof listBleLocationEventsForOwner>>;
+        try {
+            logs = (await getScanLogsWithDb(
+                context.env.DB,
+                session.user.id,
+                subjectKind,
+                tenantId ?? undefined
+            )) as ScanLog[];
+            bleEvents = await listBleLocationEventsForOwner(
+                context.env.DB,
+                session.user.id,
+                subjectKind,
+                30,
+                tenantId ?? undefined
+            ).catch(() => []);
+        } catch (error: unknown) {
+            console.error("Scans page data fetch error:", error);
+            return scansLoadFailed(kindQs);
+        }
+
+        return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 font-outfit pb-20">
             <div className="px-2 space-y-1">
                 <h1 className="text-2xl font-black text-slate-900">스캔 히스토리</h1>
@@ -348,4 +356,9 @@ export default async function ScansPage({
             </div>
         </div>
         );
+    } catch (error: unknown) {
+        rethrowNextControlFlowErrors(error);
+        console.error("[dashboard/scans] unexpected:", error);
+        return scansLoadFailed(kindQs);
+    }
 }
