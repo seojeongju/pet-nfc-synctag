@@ -1,5 +1,5 @@
 import { getAuth } from "@/lib/auth";
-import { getScanLogsWithDb } from "@/app/actions/scan";
+import { getScanLogsWithDb } from "@/lib/scan-logs-db";
 import { listBleLocationEventsForOwner } from "@/lib/ble-location-events-db";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { headers } from "next/headers";
@@ -26,6 +26,14 @@ type ScanLog = {
     user_agent?: string | null;
     ip_address?: string | null;
 };
+
+/** D1/SQLite가 좌표를 문자열로 줄 수 있어 .toFixed 직접 호출 방지 */
+function formatScanCoords(lat: unknown, lng: unknown): string {
+    const la = lat != null && lat !== "" ? Number(lat) : NaN;
+    const ln = lng != null && lng !== "" ? Number(lng) : NaN;
+    if (!Number.isFinite(la) || !Number.isFinite(ln)) return "위치 정보 없음";
+    return `${la.toFixed(4)}, ${ln.toFixed(4)}`;
+}
 
 export default async function ScansPage({
     searchParams,
@@ -129,9 +137,7 @@ export default async function ScansPage({
                                         <div className="flex items-center gap-2 p-2 rounded-xl bg-slate-50 text-slate-600">
                                             <MapPin className="w-4 h-4 text-rose-400" />
                                             <span className="truncate">
-                                                {log.latitude && log.longitude 
-                                                    ? `${log.latitude.toFixed(4)}, ${log.longitude.toFixed(4)}` 
-                                                    : "위치 정보 없음"}
+                                                {formatScanCoords(log.latitude, log.longitude)}
                                             </span>
                                         </div>
                                         <div className="flex items-center gap-2 p-2 rounded-xl bg-slate-50 text-slate-600">
