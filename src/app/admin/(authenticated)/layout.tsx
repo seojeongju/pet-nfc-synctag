@@ -1,4 +1,4 @@
-﻿import { getAuth } from "@/lib/auth";
+import { getAuth } from "@/lib/auth";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -143,7 +143,7 @@ export default async function AdminAuthenticatedLayout({
               <div className="flex items-center gap-2 lg:gap-4 group cursor-pointer p-1 lg:pr-4 rounded-full hover:bg-slate-50 transition-all">
                 <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full border-2 border-teal-500/20 overflow-hidden shadow-lg group-hover:border-teal-500 transition-colors">
                   {user?.image ? (
-                    <Image src={user.image} alt={user.name || ""} width={40} height={40} className="w-full h-full object-cover" />
+                    <Image src={user.image.replace("http://", "https://")} alt={user.name || ""} width={40} height={40} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full bg-slate-800 flex items-center justify-center uppercase font-black text-teal-400 text-xs">
                       {(user?.name || "A").charAt(0)}

@@ -172,7 +172,7 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind, m
             <div className="absolute inset-0 bg-teal-200 rounded-full blur-md opacity-0 group-hover:opacity-40 transition-opacity" />
             <div className="w-14 h-14 rounded-full border-4 border-white shadow-xl overflow-hidden relative z-10 bg-white">
                {session.user.image ? (
-                 <Image src={session.user.image} alt="" width={56} height={56} className="w-full h-full object-cover" />
+                 <Image src={session.user.image.replace("http://", "https://")} alt="" width={56} height={56} className="w-full h-full object-cover" />
                ) : (
                  <div className="w-full h-full flex items-center justify-center bg-teal-50 text-teal-500"><AvatarIcon className="w-6 h-6" /></div>
                )}
