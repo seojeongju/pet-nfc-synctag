@@ -10,7 +10,7 @@ import { Plus, PawPrint, ChevronRight, UserRound, Baby, Briefcase, Gem } from "l
 import { parseSubjectKind, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
 import type { LucideIcon } from "lucide-react";
 import { requireTenantMember } from "@/lib/tenant-membership";
-import { getTenantStatus } from "@/lib/tenant-status";
+import { isTenantSuspendedSafe } from "@/lib/tenant-status";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -86,9 +86,7 @@ export default async function PetsPage({
         }
     }
 
-    const tenantSuspended = tenantId
-        ? (await getTenantStatus(context.env.DB, tenantId)) === "suspended"
-        : false;
+    const tenantSuspended = await isTenantSuspendedSafe(context.env.DB, tenantId);
 
     let pets: PetListItem[];
     try {

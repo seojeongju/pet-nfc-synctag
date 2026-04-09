@@ -1,7 +1,7 @@
 import { getAuth } from "@/lib/auth";
 import { getPetsWithDb } from "@/lib/pets-db";
 import { createGeofenceForm, deleteGeofenceForm } from "@/app/actions/geofences";
-import { listGeofencesForOwnerKind } from "@/lib/geofences-db";
+import { listGeofencesForOwnerKind, type GeofenceWithPetName } from "@/lib/geofences-db";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -13,8 +13,7 @@ import { Label } from "@/components/ui/label";
 import { MapPin, Trash2, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { requireTenantMember } from "@/lib/tenant-membership";
-import { getTenantStatus } from "@/lib/tenant-status";
-import { rethrowNextControlFlowErrors } from "@/lib/next-redirect-guard";
+import { isTenantSuspendedSafe } from "@/lib/tenant-status";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -33,33 +32,97 @@ export default async function GeofencesPage({
   if (tenantId) qs.set("tenant", tenantId);
   const kindQs = `?${qs.toString()}`;
 
-  try {
-    const context = getCfRequestContext();
-    const auth = getAuth(context.env);
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session) {
-      redirect("/login");
-    }
+  const context = getCfRequestContext();
+  const auth = getAuth(context.env);
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) {
+    redirect("/login");
+  }
 
-    if (tenantId) {
+  if (tenantId) {
+    try {
       await requireTenantMember(context.env.DB, session.user.id, tenantId);
+    } catch {
+      return (
+        <div className="mx-auto max-w-lg space-y-6 px-2 py-16 text-center font-outfit">
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-amber-50 text-amber-500">
+            <MapPin className="h-10 w-10" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-xl font-black text-slate-900">이 조직에 접근할 수 없어요</h1>
+            <p className="text-sm leading-relaxed text-slate-600">
+              초대·멤버십을 확인하거나 다른 모드로 이동해 주세요.
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+            <a
+              href={`/dashboard${kindQs}`}
+              className={cn(
+                buttonVariants({}),
+                "rounded-full bg-teal-500 font-bold shadow-lg shadow-teal-100 hover:bg-teal-600"
+              )}
+            >
+              대시보드로
+            </a>
+          </div>
+        </div>
+      );
     }
-    const tenantSuspended = tenantId
-      ? (await getTenantStatus(context.env.DB, tenantId)) === "suspended"
-      : false;
+  }
 
-    const pets = (await getPetsWithDb(context.env.DB, session.user.id, subjectKind, tenantId ?? undefined)) as Array<{
+  const tenantSuspended = await isTenantSuspendedSafe(context.env.DB, tenantId);
+
+  let pets: Array<{ id: string; name: string }>;
+  let geofences: GeofenceWithPetName[];
+  try {
+    pets = (await getPetsWithDb(context.env.DB, session.user.id, subjectKind, tenantId ?? undefined)) as Array<{
       id: string;
       name: string;
     }>;
-    const geofences = await listGeofencesForOwnerKind(
+    geofences = await listGeofencesForOwnerKind(
       context.env.DB,
       session.user.id,
       subjectKind,
       tenantId ?? undefined
     ).catch(() => []);
+  } catch (error: unknown) {
+    console.error("Geofences page data fetch error:", error);
+    return (
+      <div className="mx-auto max-w-lg space-y-6 px-2 py-16 text-center font-outfit">
+        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-rose-50 text-rose-400">
+          <MapPin className="h-10 w-10" />
+        </div>
+        <div className="space-y-2">
+          <h1 className="text-xl font-black text-slate-900">안심 구역을 불러오지 못했어요</h1>
+          <p className="text-sm leading-relaxed text-slate-600">
+            잠시 후 다시 시도해 주세요. 문제가 계속되면 D1 마이그레이션과 Worker 로그를 확인해 주세요.
+          </p>
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+          <a
+            href={`/dashboard${kindQs}`}
+            className={cn(
+              buttonVariants({}),
+              "rounded-full bg-teal-500 font-bold shadow-lg shadow-teal-100 hover:bg-teal-600"
+            )}
+          >
+            대시보드로 돌아가기
+          </a>
+          <a
+            href={`/dashboard/geofences${kindQs}`}
+            className={cn(
+              buttonVariants({ variant: "outline" }),
+              "rounded-full border-slate-200 font-bold text-slate-700 hover:bg-slate-50"
+            )}
+          >
+            다시 시도
+          </a>
+        </div>
+      </div>
+    );
+  }
 
-    const errMsg =
+  const errMsg =
       err === "invalid"
         ? "입력값을 확인해 주세요."
         : err === "forbidden"
@@ -256,41 +319,4 @@ export default async function GeofencesPage({
       </div>
     </div>
     );
-  } catch (error: unknown) {
-    rethrowNextControlFlowErrors(error);
-    console.error("Geofences page data fetch error:", error);
-    return (
-      <div className="mx-auto max-w-lg space-y-6 px-2 py-16 text-center font-outfit">
-        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-rose-50 text-rose-400">
-          <MapPin className="h-10 w-10" />
-        </div>
-        <div className="space-y-2">
-          <h1 className="text-xl font-black text-slate-900">안심 구역을 불러오지 못했어요</h1>
-          <p className="text-sm leading-relaxed text-slate-600">
-            잠시 후 다시 시도해 주세요. 문제가 계속되면 D1 마이그레이션과 Worker 로그를 확인해 주세요.
-          </p>
-        </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-          <a
-            href={`/dashboard${kindQs}`}
-            className={cn(
-              buttonVariants({}),
-              "rounded-full bg-teal-500 font-bold shadow-lg shadow-teal-100 hover:bg-teal-600"
-            )}
-          >
-            대시보드로 돌아가기
-          </a>
-          <a
-            href={`/dashboard/geofences${kindQs}`}
-            className={cn(
-              buttonVariants({ variant: "outline" }),
-              "rounded-full border-slate-200 font-bold text-slate-700 hover:bg-slate-50"
-            )}
-          >
-            다시 시도
-          </a>
-        </div>
-      </div>
-    );
-  }
 }

@@ -16,6 +16,21 @@ export async function getTenantStatus(
   return row.status === "suspended" ? "suspended" : "active";
 }
 
+/** D1 일시 오류 시에도 페이지 전체가 error.tsx로 가지 않도록 */
+export async function isTenantSuspendedSafe(
+  db: D1Database,
+  tenantId: string | null | undefined
+): Promise<boolean> {
+  const id = typeof tenantId === "string" ? tenantId.trim() : "";
+  if (!id) return false;
+  try {
+    return (await getTenantStatus(db, id)) === "suspended";
+  } catch (e) {
+    console.error("[isTenantSuspendedSafe]", e);
+    return false;
+  }
+}
+
 export async function assertTenantActive(db: D1Database, tenantId: string): Promise<void> {
   const status = await getTenantStatus(db, tenantId);
   if (!status) {
