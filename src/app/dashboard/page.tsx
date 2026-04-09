@@ -1,4 +1,4 @@
-﻿import { getPets } from "@/app/actions/pet";
+﻿import { getPetsWithDb } from "@/app/actions/pet";
 import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -6,11 +6,12 @@ import { getRequestContext } from "@cloudflare/next-on-pages";
 import type { ComponentProps } from "react";
 import DashboardClient from "@/components/dashboard/DashboardClient";
 import { parseSubjectKind } from "@/lib/subject-kind";
-import { fetchVisibleAnnouncementsForGuardian } from "@/lib/mode-announcements-guardian";
+import { fetchVisibleAnnouncementsForGuardianWithDb } from "@/lib/mode-announcements-guardian";
 import { requireTenantMember } from "@/lib/tenant-membership";
 import { getTenantPlanUsageSummary, type TenantPlanUsageSummary } from "@/lib/tenant-quota";
 import { getTenantStatus } from "@/lib/tenant-status";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
+import { isNextRedirectError } from "@/lib/next-redirect-guard";
 
 export const runtime = "edge";
 /** 관리자 공지 저장 직후에도 최신 목록이 보이도록 캐시 사용 안 함 */
@@ -41,12 +42,17 @@ export default async function DashboardPage({
     }
 
     const [pets, roleRow, announcements, tenantUsage, tenantStatus] = await Promise.all([
-      getPets(session.user.id, subjectKind, tenantId ?? undefined),
+      getPetsWithDb(context.env.DB, session.user.id, subjectKind, tenantId ?? undefined),
       context.env.DB
         .prepare("SELECT role FROM user WHERE id = ?")
         .bind(session.user.id)
         .first<{ role?: string | null }>(),
-      fetchVisibleAnnouncementsForGuardian(session.user.id, subjectKind, tenantId ?? undefined),
+      fetchVisibleAnnouncementsForGuardianWithDb(
+        context.env.DB,
+        session.user.id,
+        subjectKind,
+        tenantId ?? undefined
+      ),
       tenantId ? getTenantPlanUsageSummary(context.env.DB, tenantId) : Promise.resolve<TenantPlanUsageSummary | null>(null),
       tenantId ? getTenantStatus(context.env.DB, tenantId) : Promise.resolve<"active" | "suspended" | null>(null),
     ]);
@@ -66,8 +72,7 @@ export default async function DashboardPage({
       />
     );
   } catch (error: unknown) {
-    const redirectError = error as { digest?: string };
-    if (redirectError.digest?.includes("NEXT_REDIRECT")) {
+    if (isNextRedirectError(error)) {
       throw error;
     }
 

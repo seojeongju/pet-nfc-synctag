@@ -1,6 +1,7 @@
 import { getAuth } from "@/lib/auth";
-import { getPets } from "@/app/actions/pet";
-import { getGeofences, createGeofenceForm, deleteGeofenceForm } from "@/app/actions/geofences";
+import { getPetsWithDb } from "@/app/actions/pet";
+import { createGeofenceForm, deleteGeofenceForm } from "@/app/actions/geofences";
+import { listGeofencesForOwnerKind } from "@/lib/geofences-db";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -47,11 +48,16 @@ export default async function GeofencesPage({
       ? (await getTenantStatus(context.env.DB, tenantId)) === "suspended"
       : false;
 
-    const pets = (await getPets(session.user.id, subjectKind, tenantId ?? undefined)) as Array<{
+    const pets = (await getPetsWithDb(context.env.DB, session.user.id, subjectKind, tenantId ?? undefined)) as Array<{
       id: string;
       name: string;
     }>;
-    const geofences = await getGeofences(subjectKind, tenantId ?? undefined);
+    const geofences = await listGeofencesForOwnerKind(
+      context.env.DB,
+      session.user.id,
+      subjectKind,
+      tenantId ?? undefined
+    ).catch(() => []);
 
     const errMsg =
       err === "invalid"

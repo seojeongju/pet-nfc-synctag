@@ -1,14 +1,15 @@
+import type { D1Database } from "@cloudflare/workers-types";
 import { getDB } from "@/lib/db";
 import { parseSubjectKind, type SubjectKind } from "@/lib/subject-kind";
 import type { ModeAnnouncementRow } from "@/types/mode-announcement";
 
 /** Guardian dashboard + bell API: published mode announcements, optional batch + optional tenant targeting */
-export async function fetchVisibleAnnouncementsForGuardian(
+export async function fetchVisibleAnnouncementsForGuardianWithDb(
+  db: D1Database,
   ownerId: string,
   subjectKind: SubjectKind,
   tenantId?: string
 ): Promise<ModeAnnouncementRow[]> {
-  const db = getDB();
   const kind = parseSubjectKind(subjectKind);
   const tenant = (tenantId ?? "").trim();
 
@@ -54,4 +55,12 @@ export async function fetchVisibleAnnouncementsForGuardian(
     console.error("[fetchVisibleAnnouncementsForGuardian]", e);
     return [];
   }
+}
+
+export async function fetchVisibleAnnouncementsForGuardian(
+  ownerId: string,
+  subjectKind: SubjectKind,
+  tenantId?: string
+): Promise<ModeAnnouncementRow[]> {
+  return fetchVisibleAnnouncementsForGuardianWithDb(getDB(), ownerId, subjectKind, tenantId);
 }

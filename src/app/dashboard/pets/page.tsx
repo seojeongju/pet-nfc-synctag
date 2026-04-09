@@ -1,5 +1,5 @@
 import { getAuth } from "@/lib/auth";
-import { getPets } from "@/app/actions/pet";
+import { getPetsWithDb } from "@/app/actions/pet";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -64,7 +64,12 @@ export default async function PetsPage({
             ? (await getTenantStatus(context.env.DB, tenantId)) === "suspended"
             : false;
 
-        const pets = (await getPets(session.user.id, subjectKind, tenantId ?? undefined)) as PetListItem[];
+        const pets = (await getPetsWithDb(
+            context.env.DB,
+            session.user.id,
+            subjectKind,
+            tenantId ?? undefined
+        )) as PetListItem[];
         const subLabel =
             subjectKind === "pet" ? `${pets.length}마리의 반려동물` : `${pets.length}건의 등록`;
 

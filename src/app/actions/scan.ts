@@ -1,4 +1,5 @@
 "use server";
+import type { D1Database } from "@cloudflare/workers-types";
 import { getDB } from "@/lib/db";
 import type { SubjectKind } from "@/lib/subject-kind";
 import { parseSubjectKind } from "@/lib/subject-kind";
@@ -35,12 +36,12 @@ export async function updateScanLocation(tagId: string, lat: number, lng: number
   return { success: true as const };
 }
 
-export async function getScanLogs(
+export async function getScanLogsWithDb(
+  db: D1Database,
   ownerId: string,
   subjectKind: SubjectKind = "pet",
   tenantId?: string
 ) {
-  const db = getDB();
   const kind = parseSubjectKind(subjectKind);
   const tenant = (tenantId ?? "").trim();
   const query = tenant
@@ -80,5 +81,13 @@ export async function getScanLogs(
     : stmt.bind(ownerId, kind)
   ).all();
 
-  return results;
+  return results ?? [];
+}
+
+export async function getScanLogs(
+  ownerId: string,
+  subjectKind: SubjectKind = "pet",
+  tenantId?: string
+) {
+  return getScanLogsWithDb(getDB(), ownerId, subjectKind, tenantId);
 }

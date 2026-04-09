@@ -1,6 +1,6 @@
 import { getAuth } from "@/lib/auth";
-import { getScanLogs } from "@/app/actions/scan";
-import { getBleLocationEvents } from "@/app/actions/ble-events";
+import { getScanLogsWithDb } from "@/app/actions/scan";
+import { listBleLocationEventsForOwner } from "@/lib/ble-location-events-db";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -56,8 +56,19 @@ export default async function ScansPage({
             await requireTenantMember(context.env.DB, session.user.id, tenantId);
         }
 
-        const logs = (await getScanLogs(session.user.id, subjectKind, tenantId ?? undefined)) as ScanLog[];
-        const bleEvents = await getBleLocationEvents(subjectKind, 30, tenantId ?? undefined);
+        const logs = (await getScanLogsWithDb(
+            context.env.DB,
+            session.user.id,
+            subjectKind,
+            tenantId ?? undefined
+        )) as ScanLog[];
+        const bleEvents = await listBleLocationEventsForOwner(
+            context.env.DB,
+            session.user.id,
+            subjectKind,
+            30,
+            tenantId ?? undefined
+        ).catch(() => []);
 
         return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 font-outfit pb-20">
