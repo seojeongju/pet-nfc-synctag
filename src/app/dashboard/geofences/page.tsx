@@ -14,7 +14,7 @@ import { MapPin, Trash2, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { requireTenantMember } from "@/lib/tenant-membership";
 import { getTenantStatus } from "@/lib/tenant-status";
-import { isNextRedirectError } from "@/lib/next-redirect-guard";
+import { rethrowNextControlFlowErrors } from "@/lib/next-redirect-guard";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -257,9 +257,7 @@ export default async function GeofencesPage({
     </div>
     );
   } catch (error: unknown) {
-    if (isNextRedirectError(error)) {
-      throw error;
-    }
+    rethrowNextControlFlowErrors(error);
     console.error("Geofences page data fetch error:", error);
     return (
       <div className="mx-auto max-w-lg space-y-6 px-2 py-16 text-center font-outfit">

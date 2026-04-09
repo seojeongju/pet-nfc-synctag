@@ -11,7 +11,7 @@ import { requireTenantMember } from "@/lib/tenant-membership";
 import { getTenantPlanUsageSummary, type TenantPlanUsageSummary } from "@/lib/tenant-quota";
 import { getTenantStatus } from "@/lib/tenant-status";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
-import { isNextRedirectError } from "@/lib/next-redirect-guard";
+import { rethrowNextControlFlowErrors } from "@/lib/next-redirect-guard";
 
 export const runtime = "edge";
 /** 관리자 공지 저장 직후에도 최신 목록이 보이도록 캐시 사용 안 함 */
@@ -73,9 +73,7 @@ export default async function DashboardPage({
         />
       );
     } catch (dataError: unknown) {
-      if (isNextRedirectError(dataError)) {
-        throw dataError;
-      }
+      rethrowNextControlFlowErrors(dataError);
       console.error("Dashboard data fetch error:", dataError);
       return (
         <DashboardClient
@@ -91,9 +89,7 @@ export default async function DashboardPage({
       );
     }
   } catch (error: unknown) {
-    if (isNextRedirectError(error)) {
-      throw error;
-    }
+    rethrowNextControlFlowErrors(error);
 
     console.error("Dashboard auth / init error:", error);
 

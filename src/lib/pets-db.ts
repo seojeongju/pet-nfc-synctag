@@ -3,6 +3,16 @@ import type { SubjectKind } from "@/lib/subject-kind";
 import { parseSubjectKind } from "@/lib/subject-kind";
 import { assertMigration0008Applied } from "@/lib/db-migration-0008";
 
+/** D1 행을 RSC 직렬화에 안전한 순수 JSON 형태로 맞춤 */
+function normalizePetListRow(row: Record<string, unknown>) {
+  return {
+    id: String(row.id ?? ""),
+    name: row.name == null ? "" : String(row.name),
+    breed: row.breed == null ? null : String(row.breed),
+    photo_url: row.photo_url == null ? null : String(row.photo_url),
+  };
+}
+
 /** RSC에서 직접 호출 — app/actions/pet.ts의 use server와 분리 */
 export async function getPetsWithDb(
   db: D1Database,
@@ -21,5 +31,6 @@ export async function getPetsWithDb(
     ? stmt.bind(ownerId, tenant, kind)
     : stmt.bind(ownerId, kind)
   ).all();
-  return results ?? [];
+  const raw = (results ?? []) as Record<string, unknown>[];
+  return raw.map(normalizePetListRow);
 }

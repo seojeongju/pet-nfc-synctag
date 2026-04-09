@@ -11,7 +11,7 @@ import { extractBleRawMeta } from "@/lib/ble-raw-payload";
 import { cn } from "@/lib/utils";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
 import { requireTenantMember } from "@/lib/tenant-membership";
-import { isNextRedirectError } from "@/lib/next-redirect-guard";
+import { rethrowNextControlFlowErrors } from "@/lib/next-redirect-guard";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -285,9 +285,7 @@ export default async function ScansPage({
         </div>
         );
     } catch (error: unknown) {
-        if (isNextRedirectError(error)) {
-            throw error;
-        }
+        rethrowNextControlFlowErrors(error);
         console.error("Scans page data fetch error:", error);
         return (
             <div className="mx-auto max-w-lg space-y-6 px-2 py-16 text-center font-outfit">

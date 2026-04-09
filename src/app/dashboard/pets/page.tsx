@@ -11,7 +11,7 @@ import { parseSubjectKind, subjectKindMeta, type SubjectKind } from "@/lib/subje
 import type { LucideIcon } from "lucide-react";
 import { requireTenantMember } from "@/lib/tenant-membership";
 import { getTenantStatus } from "@/lib/tenant-status";
-import { isNextRedirectError } from "@/lib/next-redirect-guard";
+import { rethrowNextControlFlowErrors } from "@/lib/next-redirect-guard";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -185,9 +185,7 @@ export default async function PetsPage({
         </div>
         );
     } catch (error: unknown) {
-        if (isNextRedirectError(error)) {
-            throw error;
-        }
+        rethrowNextControlFlowErrors(error);
         console.error("Pets list data fetch error:", error);
         return (
             <div className="mx-auto max-w-lg space-y-6 px-2 py-16 text-center font-outfit">
