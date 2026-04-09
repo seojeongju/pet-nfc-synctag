@@ -22,7 +22,7 @@ const headerIcons: Record<SubjectKind, LucideIcon> = {
   gold: Gem,
 };
 
-function newPetLoadFailed(kindQs: string, Icon: LucideIcon) {
+function newPetLoadFailed(kindQs: string, dashboardLink: string, listLink: string, Icon: LucideIcon) {
   return (
     <div className="mx-auto max-w-lg space-y-6 px-2 py-16 text-center font-outfit">
       <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-rose-50 text-rose-400">
@@ -172,6 +172,6 @@ export default async function NewPetPage({
   } catch (error: unknown) {
     rethrowNextControlFlowErrors(error);
     console.error("[dashboard/pets/new] unexpected:", error);
-    return newPetLoadFailed(kindQs, HeaderIcon);
+    return newPetLoadFailed(kindQs, dashboardLink, listLink, HeaderIcon);
   }
 }

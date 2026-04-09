@@ -15,7 +15,7 @@ export default async function PetDetailRedirectPage({
   const { kind: kindParam, tenant: tenantParam } = await searchParams;
   
   // 펫 정보를 통해 정확한 subject_kind 확인 (없으면 파라미터 활용)
-  const pet = await getPet(pet_id);
+  const pet = (await getPet(pet_id)) as { subject_kind?: string | null } | null;
   const subjectKind = parseSubjectKind(pet?.subject_kind ?? kindParam);
   
   const tenantQs = tenantParam ? `?tenant=${encodeURIComponent(tenantParam)}` : "";

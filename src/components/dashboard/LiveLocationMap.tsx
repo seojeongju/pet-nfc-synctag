@@ -30,15 +30,20 @@ interface LiveLocationMapProps {
   isRefreshing?: boolean;
 }
 
+type KakaoLatLng = unknown;
+type KakaoMarker = { setMap: (map: unknown) => void };
+type KakaoBounds = { extend: (pos: KakaoLatLng) => void };
+type KakaoMapInstance = { setBounds: (bounds: KakaoBounds) => void };
+
 declare global {
   interface Window {
     kakao: {
       maps: {
         load: (callback: () => void) => void;
-        LatLng: new (lat: number, lng: number) => unknown;
-        Map: new (container: HTMLElement, options: unknown) => unknown;
-        Marker: new (options: unknown) => { setMap: (map: unknown) => void };
-        LatLngBounds: new () => { extend: (pos: unknown) => void };
+        LatLng: new (lat: number, lng: number) => KakaoLatLng;
+        Map: new (container: HTMLElement, options: unknown) => KakaoMapInstance;
+        Marker: new (options: unknown) => KakaoMarker;
+        LatLngBounds: new () => KakaoBounds;
         InfoWindow: new (options: unknown) => { open: (map: unknown, marker: unknown) => void };
         event: {
           addListener: (target: unknown, type: string, handler: () => void) => void;
@@ -52,10 +57,10 @@ export default function LiveLocationMap({
   subjects,
   onRefresh,
   isRefreshing,
-}: Omit<LiveLocationMapProps, 'subjectKind'>) {
+}: LiveLocationMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<unknown>(null);
-  const markersRef = useRef<Array<{ setMap: (map: unknown) => void }>>([]);
+  const mapInstanceRef = useRef<KakaoMapInstance | null>(null);
+  const markersRef = useRef<KakaoMarker[]>([]);
   const [sdkLoaded, setSdkLoaded] = useState(false);
 
   const apiKey = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY;
@@ -63,14 +68,14 @@ export default function LiveLocationMap({
   // SDK 초기화 및 지도 생성
   const initMap = () => {
     if (!window.kakao || !mapContainerRef.current || mapInstanceRef.current) return;
+    const container = mapContainerRef.current;
 
     window.kakao.maps.load(() => {
       const options = {
         center: new window.kakao.maps.LatLng(37.5665, 126.9780), // 기본 서울시청
         level: 3,
       };
-      // @ts-expect-error - Kakao SDK instantiation
-      mapInstanceRef.current = new window.kakao.maps.Map(mapContainerRef.current, options);
+      mapInstanceRef.current = new window.kakao.maps.Map(container, options);
     });
   };
 
@@ -90,7 +95,7 @@ export default function LiveLocationMap({
 
       hasLocation = true;
       const pos = new window.kakao.maps.LatLng(subject.location.lat, subject.location.lng);
-      (bounds as any).extend(pos);
+      bounds.extend(pos);
 
       // 마커 생성
       const marker = new window.kakao.maps.Marker({

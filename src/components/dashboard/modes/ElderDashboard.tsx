@@ -335,7 +335,7 @@ export default function ElderDashboard({
         <motion.section variants={itemVariants}>
            <LiveLocationMap
              subjects={subjectsWithLocation}
-             subjectKind={subjectKind as any}
+             subjectKind={subjectKind}
              onRefresh={refreshLocations}
              isRefreshing={isMapRefreshing}
            />

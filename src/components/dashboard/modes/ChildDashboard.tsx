@@ -335,7 +335,7 @@ export default function ChildDashboard({
         <motion.section variants={itemVariants}>
            <LiveLocationMap
              subjects={subjectsWithLocation}
-             subjectKind={subjectKind as any}
+             subjectKind={subjectKind}
              onRefresh={refreshLocations}
              isRefreshing={isMapRefreshing}
            />

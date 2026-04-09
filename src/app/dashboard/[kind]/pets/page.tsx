@@ -32,7 +32,12 @@ const listIcons: Record<SubjectKind, LucideIcon> = {
     gold: Gem,
 };
 
-function petsLoadFailed(kindQs: string, ListIcon: LucideIcon) {
+function petsLoadFailed(
+    kindQs: string,
+    dashboardLink: string,
+    selfLink: string,
+    ListIcon: LucideIcon
+) {
     return (
         <div className="mx-auto max-w-lg space-y-6 px-2 py-16 text-center font-outfit">
             <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-rose-50 text-rose-400">
@@ -77,6 +82,7 @@ export default async function PetsPage({
 }) {
     let kindQs = "?kind=pet";
     let dashboardLink = "/dashboard/pet";
+    let selfLink = "/dashboard/pet/pets";
     let ListIcon: LucideIcon = PawPrint;
 
     try {
@@ -90,7 +96,7 @@ export default async function PetsPage({
         const tenantQs = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : "";
         kindQs = tenantQs; // 하위 링크용 (이미 경로에 kind가 있으므로)
         dashboardLink = `/dashboard/${subjectKind}${tenantQs}`;
-        const selfLink = `/dashboard/${subjectKind}/pets${tenantQs}`;
+        selfLink = `/dashboard/${subjectKind}/pets${tenantQs}`;
 
         ListIcon = listIcons[subjectKind];
 
@@ -147,7 +153,7 @@ export default async function PetsPage({
             )) as PetListItem[];
         } catch (error: unknown) {
             console.error("Pets list data fetch error:", error);
-            return petsLoadFailed(kindQs, ListIcon);
+            return petsLoadFailed(kindQs, dashboardLink, selfLink, ListIcon);
         }
 
         const subLabel =
@@ -261,6 +267,6 @@ export default async function PetsPage({
     } catch (error: unknown) {
         rethrowNextControlFlowErrors(error);
         console.error("[dashboard/pets] unexpected:", error);
-        return petsLoadFailed(kindQs, ListIcon);
+        return petsLoadFailed(kindQs, dashboardLink, selfLink, ListIcon);
     }
 }

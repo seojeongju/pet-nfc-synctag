@@ -175,7 +175,7 @@ export default function PetDashboard({
             </div>
             {tenantId && (
               <div className="inline-flex flex-col gap-1 rounded-xl border border-teal-100 bg-teal-50 px-3 py-2">
-                <p className="text-[10px] font-black text-teal-700">{tenantUsage.tenantName}</p>
+                <p className="text-[10px] font-black text-teal-700">{tenantUsage?.tenantName ?? "조직"}</p>
                 {tenantUsage ? (
                   <p className="text-[10px] font-bold text-teal-800">
                     {tenantUsage.planName} · 펫 {limitText(tenantUsage.petUsed, tenantUsage.petLimit)} · 태그 {limitText(tenantUsage.tagUsed, tenantUsage.tagLimit)}
@@ -335,7 +335,7 @@ export default function PetDashboard({
         <motion.section variants={itemVariants}>
            <LiveLocationMap
              subjects={subjectsWithLocation}
-             subjectKind={subjectKind as any}
+             subjectKind={subjectKind}
              onRefresh={refreshLocations}
              isRefreshing={isMapRefreshing}
            />

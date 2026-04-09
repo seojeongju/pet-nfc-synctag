@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { getPet } from "@/app/actions/pet";
 import { listHealthRecordsForPet } from "@/lib/health-records-db";
-import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
+import { parseSubjectKind, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
 import { getTenantStatus } from "@/lib/tenant-status";
 import { HealthRecordForm } from "@/components/pet/HealthRecordForm";
 import { HealthRecordTimeline } from "@/components/pet/HealthRecordTimeline";
@@ -33,7 +33,7 @@ export default async function PetHealthPage({
   searchParams: Promise<{ tenant?: string }>;
 }) {
   let kindQs = "?kind=pet";
-  let subjectKind: string = "pet";
+  let subjectKind: SubjectKind = "pet";
 
   try {
     const { kind: kindParam, pet_id } = await params;
@@ -63,7 +63,7 @@ export default async function PetHealthPage({
     const tenantQs = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : "";
     kindQs = tenantQs;
 
-    const meta = subjectKindMeta[subjectKind as SubjectKind];
+    const meta = subjectKindMeta[subjectKind];
     const tenantSuspended = tenantId
       ? (await getTenantStatus(context.env.DB, tenantId)) === "suspended"
       : false;
