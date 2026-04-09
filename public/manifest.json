@@ -1,0 +1,33 @@
+{
+  "name": "링크유 Link-U | NFC 안심 플랫폼",
+  "short_name": "Link-U",
+  "description": "NFC 태그로 보호자와 아이를 연결하는 안심 플랫폼",
+  "start_url": "/hub",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#14b8a6",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/images/korean_pet_hero_1774861698476.png",
+      "sizes": "1000x1000",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Link-U Dashboard"
+    }
+  ]
+}

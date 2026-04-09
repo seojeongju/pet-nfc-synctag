@@ -5,6 +5,13 @@ import { cn } from "@/lib/utils";
 export const metadata: Metadata = {
   title: "링크유 Link-U | NFC로 연결하는 안심 플랫폼",
   description: "반려동물·가족·아이·수하물까지 NFC 태그로 보호자와 연결하는 링크유(Link-U)입니다.",
+  manifest: "/manifest.json",
+  themeColor: "#14b8a6",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Link-U",
+  },
 };
 
 export default function RootLayout({
