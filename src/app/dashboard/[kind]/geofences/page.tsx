@@ -294,9 +294,14 @@ export default async function GeofencesPage({
                   <div className="space-y-1 min-w-0">
                     <p className="font-black text-slate-900 truncate">{g.name}</p>
                     <p className="text-xs font-bold text-slate-500">{g.pet_name}</p>
-                    <p className="text-[11px] text-slate-400 font-mono">
+                    <a
+                      href={`https://map.kakao.com/link/map/${encodeURIComponent(g.name)},${g.latitude},${g.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-slate-400 font-mono hover:text-teal-600 hover:underline underline-offset-2 transition-colors"
+                    >
                       {Number(g.latitude).toFixed(5)}, {Number(g.longitude).toFixed(5)} · 반경 {g.radius_meters}m
-                    </p>
+                    </a>
                   </div>
                   <form action={deleteGeofenceForm} className="shrink-0">
                     <input type="hidden" name="id" value={g.id} />

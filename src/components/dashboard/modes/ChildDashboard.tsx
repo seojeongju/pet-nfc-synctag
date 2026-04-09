@@ -18,6 +18,8 @@ import { subjectKindMeta } from "@/lib/subject-kind";
 import ModeAnnouncementsBanner from "@/components/dashboard/ModeAnnouncementsBanner";
 import type { ModeAnnouncementRow } from "@/types/mode-announcement";
 import type { TenantPlanUsageSummary } from "@/lib/tenant-quota";
+import { getLatestLocations } from "@/app/actions/pet";
+import LiveLocationMap from "@/components/dashboard/LiveLocationMap";
 
 interface ChildDashboardProps {
   session: { user: { name?: string | null; image?: string | null } };
@@ -46,6 +48,9 @@ export default function ChildDashboard({
   const [selectedSubjectId, setSelectedSubjectId] = useState("");
   const [tagId, setTagId] = useState("");
   const [tagMessage, setTagMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [subjectsWithLocation, setSubjectsWithLocation] = useState<any[]>([]);
+  const [isMapLoading, setIsMapLoading] = useState(true);
+  const [isMapRefreshing, setIsMapRefreshing] = useState(false);
   const router = useRouter();
   
   const subjectKind = "child";
@@ -53,6 +58,25 @@ export default function ChildDashboard({
   const tenantQs = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : "";
   const kindQs = tenantQs;
   const AvatarIcon = Baby;
+
+  const refreshLocations = async () => {
+    setIsMapRefreshing(true);
+    try {
+      const data = await getLatestLocations(subjectKind as any, tenantId);
+      setSubjectsWithLocation(data);
+    } catch (err) {
+      console.error("Map data refresh failed:", err);
+    } finally {
+      setIsMapRefreshing(false);
+      setIsMapLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshLocations();
+    const interval = setInterval(refreshLocations, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (subjects.length > 0 && !selectedSubjectId) {
@@ -293,6 +317,15 @@ export default function ChildDashboard({
               )}
             </CardContent>
           </Card>
+        </motion.section>
+
+        <motion.section variants={itemVariants}>
+           <LiveLocationMap
+             subjects={subjectsWithLocation}
+             subjectKind={subjectKind as any}
+             onRefresh={refreshLocations}
+             isRefreshing={isMapRefreshing}
+           />
         </motion.section>
 
         <motion.section variants={itemVariants} className="space-y-4">

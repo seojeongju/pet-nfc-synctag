@@ -142,6 +142,63 @@ export async function updatePet(petId: string, data: Partial<PetData>) {
         .bind(...values, petId)
         .run();
 }
+export async function getLatestLocations(subjectKind: SubjectKind, tenantId?: string | null) {
+    const actorId = await requireActorUserId();
+    const db = getDB();
+    
+    // 1. 유효한 펫 목록 조회 (테넌트 필터 포함)
+    const petsQuery = tenantId 
+        ? db.prepare("SELECT id, name, photo_url, is_lost, breed FROM pets WHERE tenant_id = ? AND subject_kind = ?")
+            .bind(tenantId, subjectKind)
+        : db.prepare("SELECT id, name, photo_url, is_lost, breed FROM pets WHERE owner_id = ? AND tenant_id IS NULL AND subject_kind = ?")
+            .bind(actorId, subjectKind);
+            
+    const pets = await petsQuery.all<{ id: string; name: string; photo_url: string | null; is_lost: number | null; breed: string | null }>();
+    
+    if (!pets.results || pets.results.length === 0) return [];
 
+    const petIds = pets.results.map(p => p.id);
+    
+    // 2. 최신 스캔 로그 조회
+    const latestScans = await db.prepare(`
+        SELECT t.pet_id, s.latitude, s.longitude, s.scanned_at as timestamp, 'NFC 스캔' as type 
+        FROM scan_logs s
+        JOIN tags t ON s.tag_id = t.id
+        WHERE t.pet_id IN (${petIds.map(() => "?").join(",")})
+        GROUP BY t.pet_id
+        HAVING s.scanned_at = MAX(s.scanned_at)
+    `).bind(...petIds).all<any>();
 
+    // 3. 최신 BLE 이벤트 조회
+    const latestBle = await db.prepare(`
+        SELECT b.pet_id, b.latitude, b.longitude, b.created_at as timestamp, b.event_type as type
+        FROM ble_location_events b
+        WHERE b.pet_id IN (${petIds.map(() => "?").join(",")})
+        GROUP BY b.pet_id
+        HAVING b.created_at = MAX(b.created_at)
+    `).bind(...petIds).all<any>();
+
+    // 4. 결과 병합 및 최신 선택
+    return pets.results.map(pet => {
+        const scan = latestScans.results?.find(s => s.pet_id === pet.id);
+        const ble = latestBle.results?.find(b => b.pet_id === pet.id);
+        
+        let latest = null;
+        if (scan && ble) {
+            latest = new Date(scan.timestamp) > new Date(ble.timestamp) ? scan : ble;
+        } else {
+            latest = scan || ble;
+        }
+
+        return {
+            ...pet,
+            location: latest ? {
+                lat: latest.latitude,
+                lng: latest.longitude,
+                timestamp: latest.timestamp,
+                type: latest.type
+            } : null
+        };
+    });
+}
 

@@ -210,12 +210,17 @@ export default async function ScansPage({
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-3 text-xs">
-                                        <div className="flex items-center gap-2 p-2 rounded-xl bg-slate-50 text-slate-600">
+                                        <a
+                                            href={`https://map.kakao.com/link/map/발견위치,${log.latitude},${log.longitude}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-2 p-2 rounded-xl bg-slate-50 text-slate-600 hover:bg-teal-50 hover:text-teal-600 transition-colors"
+                                        >
                                             <MapPin className="w-4 h-4 text-rose-400" />
-                                            <span className="truncate">
+                                            <span className="truncate underline underline-offset-2">
                                                 {formatScanCoords(log.latitude, log.longitude)}
                                             </span>
-                                        </div>
+                                        </a>
                                         <div className="flex items-center gap-2 p-2 rounded-xl bg-slate-50 text-slate-600">
                                             <Smartphone className="w-4 h-4 text-teal-400" />
                                             <span className="truncate">{log.user_agent ? "모바일 확인" : "정보 없음"}</span>
@@ -297,14 +302,19 @@ export default async function ScansPage({
                                         </span>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2 text-xs text-slate-600">
-                                        <div className="flex items-center gap-1.5 p-2 rounded-xl bg-white/80">
+                                        <a
+                                            href={`https://map.kakao.com/link/map/감지위치,${ev.latitude},${ev.longitude}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-1.5 p-2 rounded-xl bg-white/80 hover:bg-white hover:text-indigo-600 transition-colors"
+                                        >
                                             <MapPin className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                                            <span className="truncate">
+                                            <span className="truncate underline underline-offset-2 font-black">
                                                 {ev.latitude != null && ev.longitude != null
                                                     ? `${Number(ev.latitude).toFixed(4)}, ${Number(ev.longitude).toFixed(4)}`
                                                     : "좌표 없음"}
                                             </span>
-                                        </div>
+                                        </a>
                                         <div className="flex items-center gap-1.5 p-2 rounded-xl bg-white/80">
                                             <Bluetooth className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
                                             <span>
