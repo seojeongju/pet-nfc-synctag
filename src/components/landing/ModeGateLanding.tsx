@@ -38,7 +38,7 @@ export default function ModeGateLanding({
   const meta = subjectKindMeta[kind];
   const Icon = visual.Icon;
 
-  const dashboardUrl = `/dashboard?kind=${encodeURIComponent(kind)}`;
+  const dashboardUrl = `/dashboard/${encodeURIComponent(kind)}`;
   const loginUrl = `/login?kind=${encodeURIComponent(kind)}&callbackUrl=${encodeURIComponent(dashboardUrl)}`;
 
   const guardianEntryLink = session ? (isAdmin ? "/admin" : dashboardUrl) : loginUrl;

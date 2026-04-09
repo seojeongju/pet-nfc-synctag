@@ -36,11 +36,11 @@ export default async function EditPetPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ pet_id: string }>;
-  searchParams: Promise<{ kind?: string; tenant?: string }>;
+  params: Promise<{ kind: string; pet_id: string }>;
+  searchParams: Promise<{ tenant?: string }>;
 }) {
-  const { pet_id } = await params;
-  const { kind: kindParam, tenant: tenantParam } = await searchParams;
+  const { kind: kindParam, pet_id } = await params;
+  const { tenant: tenantParam } = await searchParams;
 
   const context = getCfRequestContext();
   const auth = getAuth(context.env);
@@ -57,11 +57,11 @@ export default async function EditPetPage({
     notFound();
   }
 
+  const subjectKind = parseSubjectKind(pet.subject_kind);
   if (pet.owner_id !== session.user.id) {
-    redirect("/dashboard");
+    redirect(`/dashboard/${subjectKind}`);
   }
 
-  const subjectKind = parseSubjectKind(pet.subject_kind);
   const urlKind = parseSubjectKind(kindParam);
   const tenantFromPet =
     typeof pet.tenant_id === "string" && pet.tenant_id.trim() ? pet.tenant_id.trim() : null;
@@ -71,19 +71,20 @@ export default async function EditPetPage({
   if (tenantFromPet) {
     await requireTenantMember(context.env.DB, session.user.id, tenantFromPet);
     if (tenantFromUrl && tenantFromUrl !== tenantFromPet) {
-      redirect(`/dashboard/pets/${pet_id}/edit?kind=${encodeURIComponent(subjectKind)}&tenant=${encodeURIComponent(tenantFromPet)}`);
+      redirect(`/dashboard/${subjectKind}/pets/${pet_id}/edit?tenant=${encodeURIComponent(tenantFromPet)}`);
     }
   } else if (tenantFromUrl) {
-    redirect(`/dashboard/pets/${pet_id}/edit?kind=${encodeURIComponent(subjectKind)}`);
+    redirect(`/dashboard/${subjectKind}/pets/${pet_id}/edit`);
   }
 
-  const qs = new URLSearchParams({ kind: subjectKind });
-  if (tenantFromPet) qs.set("tenant", tenantFromPet);
-  const kindQs = `?${qs.toString()}`;
+  const tenantQs = tenantFromPet ? `?tenant=${encodeURIComponent(tenantFromPet)}` : "";
+  const kindQs = tenantQs;
 
-  if (kindParam !== undefined && urlKind !== subjectKind) {
-    redirect(`/dashboard/pets/${pet_id}/edit${kindQs}`);
+  if (urlKind !== subjectKind) {
+    redirect(`/dashboard/${subjectKind}/pets/${pet_id}/edit${kindQs}`);
   }
+
+  const listLink = `/dashboard/${subjectKind}/pets${kindQs}`;
 
   const meta = subjectKindMeta[subjectKind];
   const HeaderIcon = headerIcons[subjectKind];
@@ -97,7 +98,7 @@ export default async function EditPetPage({
         <div className="absolute top-0 right-0 w-64 h-64 bg-teal-50 rounded-full translate-x-1/2 -translate-y-1/2 opacity-50 blur-3xl" />
 
         <div className="relative z-10 flex items-center justify-between mb-8">
-          <a href={`/dashboard/pets${kindQs}`}>
+          <a href={listLink}>
             <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-800 hover:bg-teal-50 hover:text-teal-600 transition-colors">
               <ArrowLeft className="w-6 h-6" />
             </div>

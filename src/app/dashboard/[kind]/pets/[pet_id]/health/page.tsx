@@ -29,12 +29,15 @@ export default async function PetHealthPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ pet_id: string }>;
-  searchParams: Promise<{ kind?: string; tenant?: string }>;
+  params: Promise<{ kind: string; pet_id: string }>;
+  searchParams: Promise<{ tenant?: string }>;
 }) {
+  let kindQs = "?kind=pet";
+  let subjectKind: string = "pet";
+
   try {
-    const { pet_id } = await params;
-    const { kind: kindParam, tenant: tenantParam } = await searchParams;
+    const { kind: kindParam, pet_id } = await params;
+    const { tenant: tenantParam } = await searchParams;
 
     const context = getCfRequestContext();
     const auth = getAuth(context.env);
@@ -43,9 +46,13 @@ export default async function PetHealthPage({
 
     const pet = (await getPet(pet_id)) as PetRow | null;
     if (!pet) notFound();
-    if (pet.owner_id !== session.user.id) redirect("/dashboard");
+    
+    subjectKind = parseSubjectKind(pet.subject_kind ?? kindParam);
 
-    const subjectKind = parseSubjectKind(pet.subject_kind ?? kindParam);
+    if (pet.owner_id !== session.user.id) {
+       redirect(`/dashboard/${subjectKind}`);
+    }
+
     const tenantId =
       typeof pet.tenant_id === "string" && pet.tenant_id.trim()
         ? pet.tenant_id.trim()
@@ -53,11 +60,10 @@ export default async function PetHealthPage({
         ? tenantParam.trim()
         : null;
 
-    const qs = new URLSearchParams({ kind: subjectKind });
-    if (tenantId) qs.set("tenant", tenantId);
-    const kindQs = `?${qs.toString()}`;
+    const tenantQs = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : "";
+    kindQs = tenantQs;
 
-    const meta = subjectKindMeta[subjectKind];
+    const meta = subjectKindMeta[subjectKind as any];
     const tenantSuspended = tenantId
       ? (await getTenantStatus(context.env.DB, tenantId)) === "suspended"
       : false;
@@ -72,7 +78,7 @@ export default async function PetHealthPage({
         {/* 헤더 */}
         <div className="bg-white border-b border-slate-100 px-5 pt-8 pb-6">
           <div className="flex items-center justify-between mb-6">
-            <a href={`/dashboard/pets/${pet.id}${kindQs}`}>
+            <a href={`/dashboard/${subjectKind}/pets/${pet.id}${kindQs}`}>
               <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-teal-50 hover:text-teal-600 transition-colors">
                 <ArrowLeft className="w-5 h-5" />
               </div>
@@ -143,7 +149,7 @@ export default async function PetHealthPage({
         <div className="space-y-4">
           <p className="text-lg font-black text-slate-900">건강 기록을 불러오지 못했어요</p>
           <p className="text-sm text-slate-500">잠시 후 다시 시도해 주세요.</p>
-          <a href="/dashboard?kind=pet" className="inline-block mt-2 text-sm font-bold text-teal-600 hover:underline">
+          <a href={`/dashboard/${subjectKind}${kindQs}`} className="inline-block mt-2 text-sm font-bold text-teal-600 hover:underline">
             대시보드로 돌아가기
           </a>
         </div>

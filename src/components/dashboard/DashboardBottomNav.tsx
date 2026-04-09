@@ -28,11 +28,16 @@ const subjectAvatars: Record<SubjectKind, LucideIcon> = {
 export function DashboardBottomNav() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const kind = parseSubjectKind(searchParams.get("kind"));
-  const tenant = searchParams.get("tenant")?.trim() ?? "";
-  const qs = new URLSearchParams({ kind });
-  if (tenant) qs.set("tenant", tenant);
-  const q = `?${qs.toString()}`;
+  
+  // 경로에서 [kind] 추출 시도 (/dashboard/[kind]...)
+  const segments = pathname.split("/");
+  const pathKind = (segments[1] === "dashboard" && segments[2] && segments[2] !== "pets" && segments[2] !== "scans" && segments[2] !== "geofences") 
+    ? segments[2] 
+    : null;
+
+  const kind = parseSubjectKind(pathKind || searchParams.get("kind"));
+  const tenant = searchParams.get("tenant")?.trim() ?? null;
+  const tenantQs = tenant ? `?tenant=${encodeURIComponent(tenant)}` : "";
   const AvatarIcon = subjectAvatars[kind];
 
   const home = isDashboardHome(pathname);
@@ -46,7 +51,7 @@ export function DashboardBottomNav() {
       aria-label="대시보드 하단 메뉴"
     >
       <a
-        href={`/dashboard${q}`}
+        href={`/dashboard/${kind}${tenantQs}`}
         className="group flex min-w-0 flex-1 flex-col items-center gap-0.5 py-1"
         aria-current={home ? "page" : undefined}
       >
@@ -57,7 +62,7 @@ export function DashboardBottomNav() {
       </a>
 
       <a
-        href={`/dashboard/pets${q}`}
+        href={`/dashboard/${kind}/pets${tenantQs}`}
         className="group flex min-w-0 flex-1 flex-col items-center gap-0.5 py-1"
         aria-current={pets ? "page" : undefined}
       >
@@ -68,7 +73,7 @@ export function DashboardBottomNav() {
       </a>
 
       <a
-        href={`/dashboard/scans${q}`}
+        href={`/dashboard/${kind}/scans${tenantQs}`}
         className="group flex min-w-0 flex-1 flex-col items-center gap-0.5 py-1"
         aria-current={scans ? "page" : undefined}
       >
@@ -79,7 +84,7 @@ export function DashboardBottomNav() {
       </a>
 
       <a
-        href={`/dashboard/geofences${q}`}
+        href={`/dashboard/${kind}/geofences${tenantQs}`}
         className="group flex min-w-0 flex-1 flex-col items-center gap-0.5 py-1"
         aria-current={geofences ? "page" : undefined}
       >

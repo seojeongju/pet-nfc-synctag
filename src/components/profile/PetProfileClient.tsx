@@ -204,7 +204,7 @@ export default function PetProfileClient({
           style={{ opacity: headerOpacity }}
           className="absolute top-8 left-6 right-6 z-30 flex items-center justify-between"
         >
-          <Link href={treatAsPublicVisitor ? "/" : `/dashboard${kindQs}`}>
+          <Link href={treatAsPublicVisitor ? "/" : `/dashboard/${subjectKind}${kindQs}`}>
              <div className="w-12 h-12 rounded-2xl glass-dark border-white/10 flex items-center justify-center shadow-2xl text-white active:scale-90 transition-transform">
                 <ArrowLeft className="w-6 h-6" />
              </div>
@@ -552,13 +552,13 @@ export default function PetProfileClient({
       </motion.nav>
       ) : (
       <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm h-20 glass-dark rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] z-50 flex items-center justify-around px-4 border border-white/20">
-         <Link href={`/dashboard${kindQs}`} className="flex flex-col items-center gap-1 group">
+         <Link href={`/dashboard/${subjectKind}${kindQs}`} className="flex flex-col items-center gap-1 group">
             <div className="p-2.5 rounded-2xl text-slate-400 group-hover:text-white transition-all active:scale-90">
                <Home className="w-6 h-6" />
             </div>
             <span className="text-[9px] font-black text-slate-400 group-hover:text-white uppercase tracking-widest">Home</span>
          </Link>
-         <Link href={`/dashboard/pets${kindQs}`} className="flex flex-col items-center gap-1 group">
+         <Link href={`/dashboard/${subjectKind}/pets${kindQs}`} className="flex flex-col items-center gap-1 group">
             <div className="p-2.5 rounded-2xl text-slate-400 group-hover:text-white transition-all active:scale-90">
                <PawPrint className="w-6 h-6" />
             </div>
@@ -570,14 +570,14 @@ export default function PetProfileClient({
             </div>
             <span className="text-[9px] font-black text-teal-400 uppercase tracking-widest mt-1">Share</span>
          </div>
-         <Link href={`/dashboard/scans${kindQs}`} className="flex flex-col items-center gap-1 group">
+         <Link href={`/dashboard/${subjectKind}/scans${kindQs}`} className="flex flex-col items-center gap-1 group">
             <div className="p-2.5 rounded-2xl text-slate-400 group-hover:text-white transition-all active:scale-90">
                <Activity className="w-6 h-6" />
             </div>
             <span className="text-[9px] font-black text-slate-400 group-hover:text-white uppercase tracking-widest">Activity</span>
          </Link>
          <Link
-            href={isOwner && !writeLocked ? `/dashboard/pets/${pet.id}/edit${kindQs}` : `/dashboard${kindQs}`}
+            href={isOwner && !writeLocked ? `/dashboard/${subjectKind}/pets/${pet.id}/edit${kindQs}` : `/dashboard/${subjectKind}${kindQs}`}
             className={cn("flex flex-col items-center gap-1 group", isOwner && writeLocked ? "opacity-50" : "")}
             aria-disabled={isOwner && writeLocked}
             title={isOwner && writeLocked ? "중지된 조직에서는 수정이 잠겨 있습니다." : undefined}

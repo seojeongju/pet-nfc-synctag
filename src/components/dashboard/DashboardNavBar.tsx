@@ -22,13 +22,19 @@ type DashboardNavBarProps = {
 export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNavBarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const kind = parseSubjectKind(searchParams.get("kind"));
+  
+  // 경로에서 [kind] 추출 시도 (/dashboard/[kind]...)
+  const segments = pathname.split("/");
+  const pathKind = (segments[1] === "dashboard" && segments[2] && segments[2] !== "pets" && segments[2] !== "scans" && segments[2] !== "geofences") 
+    ? segments[2] 
+    : null;
+  
+  const kind = parseSubjectKind(pathKind || searchParams.get("kind"));
   const currentModeLabel = subjectKindMeta[kind].label;
   const tenantRaw = searchParams.get("tenant");
   const tenant = typeof tenantRaw === "string" && tenantRaw.trim() ? tenantRaw.trim() : null;
-  const qs = new URLSearchParams({ kind });
-  if (tenant) qs.set("tenant", tenant);
-  const q = `?${qs.toString()}`;
+  
+  const tenantQs = tenant ? `?tenant=${encodeURIComponent(tenant)}` : "";
 
   const dashHome = isDashboardHome(pathname);
   const dashPets = isDashboardPets(pathname);
@@ -37,17 +43,17 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
 
   const dashLinks = (
     <>
-      <a href={`/dashboard${q}`} className={dashboardTopNavLinkClass(dashHome)} aria-current={dashHome ? "page" : undefined}>
+      <a href={`/dashboard/${kind}${tenantQs}`} className={dashboardTopNavLinkClass(dashHome)} aria-current={dashHome ? "page" : undefined}>
         대시보드
       </a>
-      <a href={`/dashboard/pets${q}`} className={dashboardTopNavLinkClass(dashPets)} aria-current={dashPets ? "page" : undefined}>
+      <a href={`/dashboard/${kind}/pets${tenantQs}`} className={dashboardTopNavLinkClass(dashPets)} aria-current={dashPets ? "page" : undefined}>
         관리 대상
       </a>
-      <a href={`/dashboard/scans${q}`} className={dashboardTopNavLinkClass(dashScans)} aria-current={dashScans ? "page" : undefined}>
+      <a href={`/dashboard/${kind}/scans${tenantQs}`} className={dashboardTopNavLinkClass(dashScans)} aria-current={dashScans ? "page" : undefined}>
         스캔 기록
       </a>
       <a
-        href={`/dashboard/geofences${q}`}
+        href={`/dashboard/${kind}/geofences${tenantQs}`}
         className={`inline-flex items-center gap-1 ${dashboardTopNavLinkClass(dashGeo)}`}
         aria-current={dashGeo ? "page" : undefined}
       >

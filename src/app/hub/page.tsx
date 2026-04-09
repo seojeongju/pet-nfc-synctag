@@ -1,4 +1,4 @@
-﻿import { headers } from "next/headers";
+import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { redirect } from "next/navigation";
@@ -47,7 +47,7 @@ export default async function HubPage({
   if (deviceHint) {
     const kind = await resolveDeviceAssignedKind(context.env.DB, deviceHint);
     if (kind) {
-      redirect(`/dashboard?kind=${encodeURIComponent(kind)}`);
+      redirect(`/dashboard/${encodeURIComponent(kind)}`);
     }
   }
 
@@ -154,7 +154,7 @@ export default async function HubPage({
                         </a>
                       )}
                       <a
-                        href={`/dashboard?kind=pet&tenant=${encodeURIComponent(t.id)}`}
+                        href={`/dashboard/pet?tenant=${encodeURIComponent(t.id)}`}
                         className="rounded-xl bg-slate-900 px-3 py-2 text-[10px] font-black text-white hover:bg-teal-600"
                       >
                         대시보드
@@ -178,7 +178,7 @@ export default async function HubPage({
             return (
               <a
                 key={kind}
-                href={`/dashboard?kind=${kind}`}
+                href={`/dashboard/${kind}`}
                 className={cn(
                   "flex items-center gap-4 rounded-[28px] border border-slate-100 bg-white p-5 shadow-sm",
                   "transition-all hover:border-teal-200 hover:shadow-md active:scale-[0.99]"

@@ -50,9 +50,8 @@ export default function ElderDashboard({
   
   const subjectKind = "elder";
   const meta = subjectKindMeta[subjectKind];
-  const qs = new URLSearchParams({ kind: subjectKind });
-  if (tenantId) qs.set("tenant", tenantId);
-  const kindQs = `?${qs.toString()}`;
+  const tenantQs = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : "";
+  const kindQs = tenantQs;
   const AvatarIcon = UserRound;
 
   useEffect(() => {
@@ -266,7 +265,7 @@ export default function ElderDashboard({
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center space-y-2">
                   <p className="text-xs font-bold text-slate-500">먼저 가족 프로필을 등록해야 태그를 연결할 수 있어요.</p>
                   <a
-                    href={tenantSuspended ? "#" : `/dashboard/pets/new${kindQs}`}
+                    href={tenantSuspended ? "#" : `/dashboard/${subjectKind}/pets/new${kindQs}`}
                     aria-disabled={tenantSuspended}
                     className={cn(
                       "text-xs font-black underline underline-offset-4",
@@ -299,7 +298,7 @@ export default function ElderDashboard({
         <motion.section variants={itemVariants} className="space-y-4">
            <div className="flex items-center justify-between px-2">
               <h3 className="text-lg font-black text-slate-900">함께하는 가족</h3>
-              <a href={`/dashboard/pets${kindQs}`} className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:underline transition-all">View All</a>
+              <a href={`/dashboard/${subjectKind}/pets${kindQs}`} className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:underline transition-all">View All</a>
            </div>
 
            {subjects.some((s) => s.is_lost) && (

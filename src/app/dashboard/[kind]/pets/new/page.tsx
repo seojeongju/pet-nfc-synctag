@@ -36,7 +36,7 @@ function newPetLoadFailed(kindQs: string, Icon: LucideIcon) {
       </div>
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
         <a
-          href={`/dashboard${kindQs}`}
+          href={dashboardLink}
           className={cn(
             buttonVariants({}),
             "rounded-full bg-teal-500 font-bold shadow-lg shadow-teal-100 hover:bg-teal-600"
@@ -45,7 +45,7 @@ function newPetLoadFailed(kindQs: string, Icon: LucideIcon) {
           대시보드로
         </a>
         <a
-          href={`/dashboard/pets${kindQs}`}
+          href={listLink}
           className={cn(
             buttonVariants({ variant: "outline" }),
             "rounded-full border-slate-200 font-bold text-slate-700 hover:bg-slate-50"
@@ -59,22 +59,30 @@ function newPetLoadFailed(kindQs: string, Icon: LucideIcon) {
 }
 
 export default async function NewPetPage({
+  params,
   searchParams,
 }: {
-  searchParams: Promise<{ kind?: string; tenant?: string }>;
+  params: Promise<{ kind: string }>;
+  searchParams: Promise<{ tenant?: string }>;
 }) {
   let kindQs = "?kind=pet";
+  let dashboardLink = "/dashboard/pet";
+  let listLink = "/dashboard/pet/pets";
   let HeaderIcon: LucideIcon = PawPrint;
 
   try {
-    const { kind: kindParam, tenant: tenantParam } = await searchParams;
+    const { kind: kindParam } = await params;
+    const { tenant: tenantParam } = await searchParams;
     const subjectKind = parseSubjectKind(kindParam);
     const meta = subjectKindMeta[subjectKind];
     const tenantId =
       typeof tenantParam === "string" && tenantParam.trim() ? tenantParam.trim() : null;
-    const qs = new URLSearchParams({ kind: subjectKind });
-    if (tenantId) qs.set("tenant", tenantId);
-    kindQs = `?${qs.toString()}`;
+    
+    const tenantQs = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : "";
+    kindQs = tenantQs;
+    dashboardLink = `/dashboard/${subjectKind}${tenantQs}`;
+    listLink = `/dashboard/${subjectKind}/pets${tenantQs}`;
+
     HeaderIcon = headerIcons[subjectKind];
 
     const context = getCfRequestContext();
@@ -104,7 +112,7 @@ export default async function NewPetPage({
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
               <a
-                href={`/dashboard${kindQs}`}
+                href={dashboardLink}
                 className={cn(
                   buttonVariants({}),
                   "rounded-full bg-teal-500 font-bold shadow-lg shadow-teal-100 hover:bg-teal-600"
@@ -127,7 +135,7 @@ export default async function NewPetPage({
           <div className="absolute top-0 right-0 w-64 h-64 bg-teal-50 rounded-full translate-x-1/2 -translate-y-1/2 opacity-50 blur-3xl" />
 
           <div className="relative z-10 flex items-center justify-between mb-8">
-            <a href={`/dashboard/pets${kindQs}`}>
+            <a href={listLink}>
               <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-800 hover:bg-teal-50 hover:text-teal-600 transition-colors">
                 <ArrowLeft className="w-6 h-6" />
               </div>
