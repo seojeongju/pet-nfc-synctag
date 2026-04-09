@@ -362,9 +362,4 @@ export default async function ScansPage({
                 </div>
             </div>
         );
-    } catch (error: unknown) {
-        rethrowNextControlFlowErrors(error);
-        console.error("[dashboard/scans] unexpected:", error);
-        return scansLoadFailed(kindQs);
-    }
 }

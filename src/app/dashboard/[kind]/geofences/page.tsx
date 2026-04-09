@@ -66,9 +66,8 @@ export default async function GeofencesPage({
   let dashboardLink = "/dashboard/pet";
   let selfLink = "/dashboard/pet/geofences";
 
-  try {
-    const { kind: kindParam } = await params;
-    const { err, tenant: tenantParam } = await searchParams;
+  const { kind: kindParam } = await params;
+  const { err, tenant: tenantParam } = await searchParams;
     const subjectKind = parseSubjectKind(kindParam);
     const meta = subjectKindMeta[subjectKind];
     const tenantId =
@@ -326,9 +325,4 @@ export default async function GeofencesPage({
 
     </div>
     );
-  } catch (error: unknown) {
-    rethrowNextControlFlowErrors(error);
-    console.error("[dashboard/geofences] unexpected:", error);
-    return geofencesLoadFailed(kindQs);
-  }
 }
