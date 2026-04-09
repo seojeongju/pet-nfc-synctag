@@ -252,11 +252,6 @@ export default async function ScansPage({
                             >
                                 <span className="relative z-10">관리 대상·태그 연결</span>
                             </a>
-                            <a
-                                href="/hub"
-                                className="group/btn relative flex items-center justify-center h-14 w-full rounded-2xl border-2 border-slate-100 bg-white/50 backdrop-blur-sm font-bold text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 transition-all"
-                            >
-                                <span className="relative z-10">모드·플랜 허브</span>
                             </a>
                         </div>
                     </div>
@@ -359,12 +354,7 @@ export default async function ScansPage({
                             <p className="font-black text-slate-700 text-base">아직 기록된 BLE 이벤트가 없습니다</p>
                             <p className="text-[11px] text-slate-500 font-medium leading-relaxed max-w-[240px] mx-auto">{meta.emptyBleHint}</p>
                         </div>
-                        <a 
-                            href="/hub" 
-                            className="mt-2 inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-xs font-black text-indigo-600 shadow-sm border border-indigo-50 hover:bg-indigo-500 hover:text-white transition-all active:scale-95"
-                        >
-                            모드·기기 허브로 이동 <ChevronRight className="w-3.5 h-3.5" />
-                        </a>
+                        </div>
                     </div>
                 )}
             </div>
