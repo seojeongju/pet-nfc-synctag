@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getRequestContext } from "@cloudflare/next-on-pages";
+import type { ComponentProps } from "react";
 import DashboardClient from "@/components/dashboard/DashboardClient";
 import { parseSubjectKind } from "@/lib/subject-kind";
 import { listVisibleAnnouncementsForGuardian } from "@/app/actions/mode-announcements";
@@ -53,7 +54,7 @@ export default async function DashboardPage({
     return (
       <DashboardClient
         session={session}
-        pets={(pets as any) || []}
+        pets={(pets ?? []) as ComponentProps<typeof DashboardClient>["pets"]}
         isAdmin={isAdmin}
         subjectKind={subjectKind}
         modeAnnouncements={announcements}

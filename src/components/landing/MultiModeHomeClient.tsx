@@ -19,6 +19,7 @@ import {
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
+import { FlowTopNav } from "@/components/layout/FlowTopNav";
 
 const modeIcons: Record<SubjectKind, LucideIcon> = {
   pet: PawPrint,
@@ -69,6 +70,7 @@ export default function MultiModeHomeClient({
 
   return (
     <div className="min-h-screen bg-slate-50 font-outfit overflow-hidden relative">
+      <FlowTopNav variant="landing" session={session} isAdmin={isAdmin} />
       <div className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-teal-400/20 blur-3xl" />
       <div className="pointer-events-none absolute top-[35%] -left-20 h-64 w-64 rounded-full bg-indigo-300/20 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-16 right-[15%] h-64 w-64 rounded-full bg-cyan-300/20 blur-3xl" />
@@ -207,11 +209,6 @@ export default function MultiModeHomeClient({
                 {adminButtonLabel}
               </button>
             </Link>
-            {session && !isAdmin ? (
-              <Link href="/hub" className="text-xs font-black text-teal-600 underline-offset-4 hover:text-teal-700 hover:underline">
-                로그인한 보호자 · 대시보드로 이동
-              </Link>
-            ) : null}
             {session ? (
               <div className="inline-flex items-center gap-2 rounded-full border border-teal-100 bg-teal-50 px-4 py-1.5 text-[11px] font-black text-teal-700">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-teal-500" />

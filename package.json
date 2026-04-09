@@ -9,6 +9,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "typecheck": "tsc --noEmit",
     "d1:apply:platform-admin-role": "wrangler d1 execute pet-id-db --remote --file=migrations/0009_platform_admin_role.sql"
   },
   "dependencies": {

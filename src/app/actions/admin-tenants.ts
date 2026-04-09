@@ -75,7 +75,7 @@ async function requirePlatformAdmin() {
     throw new Error("플랫폼 관리자 권한이 필요합니다.");
   }
 
-  return { userId, actorEmail: roleRow.email ?? "system" };
+  return { userId, actorEmail: roleRow?.email ?? "system" };
 }
 
 /** 플랫폼 관리자 또는 해당 조직의 owner/admin(테넌트 관리자). */

@@ -45,7 +45,10 @@ export default async function GeofencesPage({
     ? (await getTenantStatus(context.env.DB, tenantId)) === "suspended"
     : false;
 
-  const pets = await getPets(session.user.id, subjectKind, tenantId ?? undefined);
+  const pets = (await getPets(session.user.id, subjectKind, tenantId ?? undefined)) as Array<{
+    id: string;
+    name: string;
+  }>;
   const geofences = await getGeofences(subjectKind, tenantId ?? undefined);
 
   const errMsg =
@@ -113,7 +116,7 @@ export default async function GeofencesPage({
                   )}
                   defaultValue={pets[0]?.id}
                 >
-                  {pets.map((p: { id: string; name: string }) => (
+                  {pets.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
                     </option>

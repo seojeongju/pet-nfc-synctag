@@ -61,7 +61,7 @@ export default async function PetsPage({
         ? (await getTenantStatus(context.env.DB, tenantId)) === "suspended"
         : false;
 
-    const pets = await getPets(session.user.id, subjectKind, tenantId ?? undefined);
+    const pets = (await getPets(session.user.id, subjectKind, tenantId ?? undefined)) as PetListItem[];
     const subLabel =
         subjectKind === "pet" ? `${pets.length}마리의 반려동물` : `${pets.length}건의 등록`;
 

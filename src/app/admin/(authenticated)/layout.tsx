@@ -10,7 +10,6 @@ import {
   Home,
   LogOut,
   ChevronRight,
-  Bell,
   Radio,
   Megaphone,
   Building2,
@@ -125,10 +124,6 @@ export default async function AdminAuthenticatedLayout({
             </div>
 
             <div className="flex items-center gap-2 lg:gap-8">
-              <button type="button" className={cn("relative p-2 lg:p-2.5 rounded-2xl transition-all", adminUi.subtleCard)}>
-                <Bell className="w-4 h-4 lg:w-5 lg:h-5 text-slate-500" />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-white" />
-              </button>
               <form action="/logout" method="post" className="flex items-center">
                 <button
                   type="submit"

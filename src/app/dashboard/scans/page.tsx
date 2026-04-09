@@ -48,7 +48,7 @@ export default async function ScansPage({
         await requireTenantMember(context.env.DB, session.user.id, tenantId);
     }
 
-    const logs = await getScanLogs(session.user.id, subjectKind, tenantId ?? undefined);
+    const logs = (await getScanLogs(session.user.id, subjectKind, tenantId ?? undefined)) as ScanLog[];
     const bleEvents = await getBleLocationEvents(subjectKind, 30, tenantId ?? undefined);
 
     return (

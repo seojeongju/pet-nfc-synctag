@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import type { SubjectKind } from "@/lib/subject-kind";
 import { SUBJECT_KINDS, subjectKindMeta } from "@/lib/subject-kind";
 import { modeLandingCopy, modeLandingVisual } from "@/lib/mode-landing-content";
+import { FlowTopNav } from "@/components/layout/FlowTopNav";
 
 const modePath: Record<SubjectKind, string> = {
   pet: "/pet",
@@ -44,6 +45,7 @@ export default function ModeGateLanding({ kind, session, isAdmin, fromHome = fal
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-outfit overflow-x-hidden relative">
+      <FlowTopNav variant="gate" session={session} isAdmin={isAdmin} currentModeLabel={meta.label} />
       <div
         className={cn("absolute top-[-10%] right-[-10%] w-[80%] h-[40%] blur-[120px] rounded-full", visual.blobA)}
       />
@@ -227,9 +229,9 @@ export default function ModeGateLanding({ kind, session, isAdmin, fromHome = fal
           {!isAdmin && (
             <Link
               href="/admin/login"
-              className="text-[10px] font-black text-slate-500 hover:text-teal-600 tracking-widest uppercase transition-colors"
+              className="text-[10px] font-black text-slate-500 hover:text-teal-600 tracking-wide transition-colors"
             >
-              Seller Access Center
+              관리자 로그인
             </Link>
           )}
           <p className="text-[10px] text-slate-400 font-bold tracking-widest uppercase text-center leading-loose">

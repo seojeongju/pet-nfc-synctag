@@ -2,9 +2,6 @@ import { getRequestContext } from "@cloudflare/next-on-pages";
 import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "edge";
-type R2ObjectWithMeta = R2ObjectBody & {
-  writeHttpMetadata: (headers: Headers) => void;
-};
 
 export async function GET(
   request: NextRequest,
@@ -23,11 +20,15 @@ export async function GET(
   }
 
   const resHeaders = new Headers();
-  (object as R2ObjectWithMeta).writeHttpMetadata(resHeaders);
+  const body = object.body;
+  const writeMeta = (object as unknown as { writeHttpMetadata?: (h: unknown) => void }).writeHttpMetadata;
+  if (body && typeof writeMeta === "function") {
+    writeMeta(resHeaders);
+  }
   resHeaders.set("etag", object.httpEtag);
   resHeaders.set("Cache-Control", "public, max-age=31536000, immutable");
 
-  return new NextResponse(object.body, {
+  return new NextResponse(body as unknown as BodyInit, {
     headers: resHeaders,
   });
 }
