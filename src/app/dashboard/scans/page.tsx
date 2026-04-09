@@ -4,6 +4,7 @@ import { getBleLocationEvents } from "@/app/actions/ble-events";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Bell, MapPin, Clock, Smartphone, PawPrint, Bluetooth, Cpu, Tag, KeyRound } from "lucide-react";
 import { extractBleRawMeta } from "@/lib/ble-raw-payload";
@@ -72,11 +73,17 @@ export default async function ScansPage({
                             {/* Icon / Pet Photo */}
                             <div className="relative z-10 flex-shrink-0">
                                 <div className={cn(
-                                    "w-14 h-14 rounded-2xl overflow-hidden shadow-lg border-4 border-white flex items-center justify-center transition-transform group-hover:scale-110",
+                                    "relative w-14 h-14 rounded-2xl overflow-hidden shadow-lg border-4 border-white flex items-center justify-center transition-transform group-hover:scale-110",
                                     log.pet_photo ? "bg-white" : "bg-teal-50 text-teal-500"
                                 )}>
                                     {log.pet_photo ? (
-                                        <img src={log.pet_photo} alt={log.pet_name} className="w-full h-full object-cover" />
+                                        <Image
+                                            src={log.pet_photo}
+                                            alt={log.pet_name}
+                                            fill
+                                            className="object-cover"
+                                            sizes="56px"
+                                        />
                                     ) : (
                                         <PawPrint className="w-6 h-6" />
                                     )}

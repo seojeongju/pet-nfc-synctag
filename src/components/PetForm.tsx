@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createPet, updatePet, uploadToR2 } from "@/app/actions/pet";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useState, useRef } from "react";
 import { PawPrint, Camera, Loader2, X, UserRound, Baby, Briefcase, Gem } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -127,9 +128,16 @@ export function PetForm({ ownerId, subjectKind: kindProp, tenantId, initialData,
                     className="relative group cursor-pointer"
                     onClick={() => fileInputRef.current?.click()}
                 >
-                    <div className="w-32 h-32 rounded-[40px] bg-teal-50 border-2 border-dashed border-teal-200 flex items-center justify-center text-teal-400 group-hover:bg-teal-100 transition-colors overflow-hidden">
+                    <div className="relative w-32 h-32 rounded-[40px] bg-teal-50 border-2 border-dashed border-teal-200 flex items-center justify-center text-teal-400 group-hover:bg-teal-100 transition-colors overflow-hidden">
                         {previewUrl ? (
-                            <img src={previewUrl} alt="Pet Preview" className="w-full h-full object-cover" />
+                            <Image
+                                src={previewUrl}
+                                alt="미리보기"
+                                fill
+                                className="object-cover"
+                                unoptimized
+                                sizes="128px"
+                            />
                         ) : (
                             <FormIcon className="w-12 h-12" />
                         )}

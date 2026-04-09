@@ -4,6 +4,7 @@ import { getRequestContext } from "@cloudflare/next-on-pages";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -98,10 +99,12 @@ export default async function PetsPage({
                             <Card className="rounded-[32px] border-none shadow-xl shadow-slate-100/50 overflow-hidden hover:scale-[1.02] transition-all duration-300">
                                 <div className="h-40 bg-teal-50 relative">
                                     {pet.photo_url ? (
-                                        <img 
-                                            src={pet.photo_url} 
-                                            alt={pet.name} 
-                                            className="w-full h-full object-cover"
+                                        <Image
+                                            src={pet.photo_url}
+                                            alt={pet.name}
+                                            fill
+                                            className="object-cover"
+                                            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                                         />
                                     ) : (
                                         <div className="absolute inset-0 flex items-center justify-center text-teal-200">
