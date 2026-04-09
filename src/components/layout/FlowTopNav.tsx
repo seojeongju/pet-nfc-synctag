@@ -79,25 +79,15 @@ export function FlowTopNavContent({
         className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1 sm:gap-x-3"
         aria-label="전역 이동"
       >
-        {session ? (
-          useHardNav ? (
-            <a
-              href="/hub"
-              className="inline-flex items-center gap-1 rounded-full px-2 py-1 font-black text-slate-700 hover:bg-slate-100 min-[390px]:px-2.5"
-            >
-              <LayoutGrid className="h-3.5 w-3.5 shrink-0 text-slate-500" aria-hidden />
-              허브
-            </a>
-          ) : (
-            <Link
-              href="/hub"
-              prefetch={false}
-              className="inline-flex items-center gap-1 rounded-full px-2 py-1 font-black text-slate-700 hover:bg-slate-100 min-[390px]:px-2.5"
-            >
-              <LayoutGrid className="h-3.5 w-3.5 shrink-0 text-slate-500" aria-hidden />
-              허브
-            </Link>
-          )
+        {session && !useHardNav ? (
+          <Link
+            href="/hub"
+            prefetch={false}
+            className="inline-flex items-center gap-1 rounded-full px-2 py-1 font-black text-slate-700 hover:bg-slate-100 min-[390px]:px-2.5"
+          >
+            <LayoutGrid className="h-3.5 w-3.5 shrink-0 text-slate-500" aria-hidden />
+            허브
+          </Link>
         ) : null}
 
         {session && orgManageHref ? (

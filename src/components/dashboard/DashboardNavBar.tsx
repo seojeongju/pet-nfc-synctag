@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
-import { PawPrint, LayoutGrid, MapPin } from "lucide-react";
+import { PawPrint, MapPin } from "lucide-react";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
 import { FlowTopNavContent, type FlowTopNavSession } from "@/components/layout/FlowTopNav";
 import { DashboardAnnouncementBell } from "@/components/dashboard/DashboardAnnouncementBell";
@@ -30,7 +30,6 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
   if (tenant) qs.set("tenant", tenant);
   const q = `?${qs.toString()}`;
 
-  const hubActive = pathname === "/hub" || pathname.startsWith("/hub/");
   const dashHome = isDashboardHome(pathname);
   const dashPets = isDashboardPets(pathname);
   const dashScans = isDashboardScans(pathname);
@@ -83,10 +82,6 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
           </div>
 
           <nav className="hidden md:flex md:flex-wrap md:items-center md:gap-3 lg:gap-4" aria-label="대시보드 메뉴">
-            <a href="/hub" className={`shrink-0 ${dashboardTopNavLinkClass(hubActive)} inline-flex items-center gap-1`} aria-current={hubActive ? "page" : undefined}>
-              <LayoutGrid className="w-4 h-4" />
-              모드 허브
-            </a>
             {dashLinks}
           </nav>
 
@@ -94,10 +89,6 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
             className="-mx-1 flex gap-2 overflow-x-auto pb-1 md:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             aria-label="대시보드 메뉴"
           >
-            <a href="/hub" className={`shrink-0 ${dashboardTopNavLinkClass(hubActive)} inline-flex items-center gap-1`}>
-              <LayoutGrid className="w-3.5 h-3.5" />
-              허브
-            </a>
             <div className="flex gap-2 text-slate-700">{dashLinks}</div>
           </nav>
         </div>
