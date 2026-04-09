@@ -24,6 +24,8 @@ type SearchParams = Promise<{
   invite_exp?: string;
   audit_action?: string;
   audit_q?: string;
+  audit_from?: string;
+  audit_to?: string;
 }>;
 
 function roleLabel(role: "owner" | "admin" | "member") {
@@ -67,10 +69,14 @@ export default async function TenantOrgManagePage({
 
   const auditActionRaw = typeof qs.audit_action === "string" ? qs.audit_action.trim() : "";
   const auditQRaw = typeof qs.audit_q === "string" ? qs.audit_q.trim() : "";
+  const auditFromRaw = typeof qs.audit_from === "string" ? qs.audit_from.trim() : "";
+  const auditToRaw = typeof qs.audit_to === "string" ? qs.audit_to.trim() : "";
 
   const auditLogs = await getTenantOrgAuditLogs(tenantId, {
     action: auditActionRaw || undefined,
     actorContains: auditQRaw || undefined,
+    dateFrom: auditFromRaw || undefined,
+    dateTo: auditToRaw || undefined,
     limit: 200,
   }).catch(() => [] as TenantAuditLogRow[]);
 
@@ -79,6 +85,8 @@ export default async function TenantOrgManagePage({
   const exportParams = new URLSearchParams();
   if (auditActionRaw) exportParams.set("audit_action", auditActionRaw);
   if (auditQRaw) exportParams.set("audit_q", auditQRaw);
+  if (auditFromRaw) exportParams.set("audit_from", auditFromRaw);
+  if (auditToRaw) exportParams.set("audit_to", auditToRaw);
   const auditExportHref = `/hub/org/${tenantId}/manage/audit-export${exportParams.toString() ? `?${exportParams.toString()}` : ""}`;
 
   return (
@@ -416,6 +424,24 @@ export default async function TenantOrgManagePage({
               defaultValue={auditQRaw}
               placeholder="부분 검색"
               autoComplete="off"
+              className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-semibold"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-[11px] font-bold text-slate-500 min-w-[130px]">
+            시작일
+            <input
+              name="audit_from"
+              type="date"
+              defaultValue={auditFromRaw}
+              className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-semibold"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-[11px] font-bold text-slate-500 min-w-[130px]">
+            종료일
+            <input
+              name="audit_to"
+              type="date"
+              defaultValue={auditToRaw}
               className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-semibold"
             />
           </label>

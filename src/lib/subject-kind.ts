@@ -18,6 +18,7 @@ export const subjectKindMeta: Record<
     registerSubtitle: string;
     nfcHelper: string;
     emptyRegisterHint: string;
+    dashboardBgImage: string;
   }
 > = {
   pet: {
@@ -28,6 +29,7 @@ export const subjectKindMeta: Record<
     registerSubtitle: "우리 아이의 안전을 위한 첫 걸음입니다.",
     nfcHelper: "대시보드에서 바로 태그를 연결하세요.",
     emptyRegisterHint: "먼저 반려동물을 등록해야 NFC 태그를 연결할 수 있어요.",
+    dashboardBgImage: "/images/dashboard/pet-bg.png",
   },
   elder: {
     label: "링크유 - 메모리 (기억 동행)",
@@ -37,6 +39,7 @@ export const subjectKindMeta: Record<
     registerSubtitle: "연락처를 남겨 두면, 필요할 때 가족에게 바로 연결돼요.",
     nfcHelper: "인식표를 등록해 두면 스캔 한 번으로 연락처를 확인할 수 있어요.",
     emptyRegisterHint: "먼저 가족 프로필을 등록해야 태그를 연결할 수 있어요.",
+    dashboardBgImage: "/images/dashboard/elder-bg.png",
   },
   child: {
     label: "링크유 - 키즈 (우리 아이 안심)",
@@ -46,6 +49,7 @@ export const subjectKindMeta: Record<
     registerSubtitle: "이름과 비상 연락처를 입력해 주세요.",
     nfcHelper: "태그를 연결해 두면 필요할 때 신원 확인이 쉬워져요.",
     emptyRegisterHint: "먼저 아이 프로필을 등록해야 태그를 연결할 수 있어요.",
+    dashboardBgImage: "/images/dashboard/child-bg.png",
   },
   luggage: {
     label: "링크유 - 태그 (수화물·가방)",
@@ -55,6 +59,7 @@ export const subjectKindMeta: Record<
     registerSubtitle: "가방·캐리어 등 구분하기 쉬운 이름을 입력하세요.",
     nfcHelper: "여행용 태그를 연결해 분실 시 단서를 남길 수 있어요.",
     emptyRegisterHint: "먼저 소지품을 등록해야 태그를 연결할 수 있어요.",
+    dashboardBgImage: "/images/dashboard/luggage-bg.png",
   },
   gold: {
     label: "링크유 - 골드 (고귀한 가치·인증서)",
@@ -65,6 +70,7 @@ export const subjectKindMeta: Record<
     registerSubtitle: "제품명과 연락처를 남겨 인증 가치와 분실 시 복구에 활용하세요.",
     nfcHelper: "NFC 태그를 연결하면 인증 안내와 안심 찾기 정보를 한 번에 전달할 수 있어요.",
     emptyRegisterHint: "먼저 제품을 등록해야 태그를 연결할 수 있어요.",
+    dashboardBgImage: "/images/dashboard/gold-bg.png",
   },
 };
 

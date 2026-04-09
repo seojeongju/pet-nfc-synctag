@@ -3,17 +3,20 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { PawPrint, LayoutGrid, MapPin } from "lucide-react";
-import { parseSubjectKind } from "@/lib/subject-kind";
+import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
 import { FlowTopNavContent, type FlowTopNavSession } from "@/components/layout/FlowTopNav";
+import { DashboardAnnouncementBell } from "@/components/dashboard/DashboardAnnouncementBell";
 
 type DashboardNavBarProps = {
   session: FlowTopNavSession;
   isAdmin: boolean;
+  orgManageHref?: string | null;
 };
 
-export function DashboardNavBar({ session, isAdmin }: DashboardNavBarProps) {
+export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNavBarProps) {
   const searchParams = useSearchParams();
   const kind = parseSubjectKind(searchParams.get("kind"));
+  const currentModeLabel = subjectKindMeta[kind].label;
   const tenantRaw = searchParams.get("tenant");
   const tenant = typeof tenantRaw === "string" && tenantRaw.trim() ? tenantRaw.trim() : null;
   const qs = new URLSearchParams({ kind });
@@ -43,7 +46,13 @@ export function DashboardNavBar({ session, isAdmin }: DashboardNavBarProps) {
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200/90 bg-white/90 backdrop-blur-md">
-      <FlowTopNavContent variant="dashboard" session={session} isAdmin={isAdmin} />
+      <FlowTopNavContent
+        variant="dashboard"
+        session={session}
+        isAdmin={isAdmin}
+        currentModeLabel={currentModeLabel}
+        orgManageHref={orgManageHref}
+      />
       <div className="border-t border-slate-100">
         <div className="container flex max-w-5xl flex-col gap-2 px-4 py-2.5 md:flex-row md:items-center md:justify-between md:py-2">
           <div className="flex min-w-0 items-center justify-between gap-3 md:justify-start">
@@ -51,9 +60,12 @@ export function DashboardNavBar({ session, isAdmin }: DashboardNavBarProps) {
               <PawPrint className="h-6 w-6 shrink-0" />
               <span className="truncate">링크유 Link-U</span>
             </Link>
-            {session?.user?.name ? (
-              <span className="truncate text-xs font-bold text-slate-400 md:hidden">{session.user.name}</span>
-            ) : null}
+            <div className="flex shrink-0 items-center gap-2">
+              <DashboardAnnouncementBell />
+              {session?.user?.name ? (
+                <span className="truncate text-xs font-bold text-slate-400 md:hidden">{session.user.name}</span>
+              ) : null}
+            </div>
           </div>
 
           <nav className="hidden md:flex md:flex-wrap md:items-center md:gap-6" aria-label="대시보드 메뉴">

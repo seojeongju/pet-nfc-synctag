@@ -23,9 +23,16 @@ interface ModeGateLandingProps {
   session: { user: { name?: string | null } } | null;
   isAdmin: boolean;
   fromHome?: boolean;
+  orgManageHref?: string | null;
 }
 
-export default function ModeGateLanding({ kind, session, isAdmin, fromHome = false }: ModeGateLandingProps) {
+export default function ModeGateLanding({
+  kind,
+  session,
+  isAdmin,
+  fromHome = false,
+  orgManageHref = null,
+}: ModeGateLandingProps) {
   const visual = modeLandingVisual[kind];
   const copy = modeLandingCopy[kind];
   const meta = subjectKindMeta[kind];
@@ -45,7 +52,13 @@ export default function ModeGateLanding({ kind, session, isAdmin, fromHome = fal
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-outfit overflow-x-hidden relative">
-      <FlowTopNav variant="gate" session={session} isAdmin={isAdmin} currentModeLabel={meta.label} />
+      <FlowTopNav
+        variant="gate"
+        session={session}
+        isAdmin={isAdmin}
+        currentModeLabel={meta.label}
+        orgManageHref={orgManageHref}
+      />
       <div
         className={cn("absolute top-[-10%] right-[-10%] w-[80%] h-[40%] blur-[120px] rounded-full", visual.blobA)}
       />
@@ -172,7 +185,7 @@ export default function ModeGateLanding({ kind, session, isAdmin, fromHome = fal
               href={guardianEntryLink}
               className={cn(
                 "group flex w-full min-h-[3.5rem] min-[390px]:min-h-[4.25rem] items-center justify-center gap-2 rounded-[26px] min-[390px]:rounded-[28px] px-3 py-3 text-sm min-[390px]:text-base font-black shadow-2xl transition-all active:scale-[0.98] group-hover:-translate-y-0.5 group-hover:shadow-xl duration-300 relative overflow-hidden border-2 border-white/25 ring-4 ring-black/5",
-                "text-white",
+                visual.buttonTextClass,
                 isAdmin ? "bg-slate-900 shadow-slate-300/40 hover:bg-slate-800" : visual.buttonClass
               )}
             >
@@ -183,14 +196,14 @@ export default function ModeGateLanding({ kind, session, isAdmin, fromHome = fal
                       <ShieldCheck className="w-6 h-6 text-teal-400" aria-hidden />
                     </motion.span>
                   ) : (
-                    <motion.span key="user" initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="inline-flex text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.3)]">
+                    <motion.span key="user" initial={{ scale: 0.8 }} animate={{ scale: 1 }} className={cn("inline-flex drop-shadow-[0_2px_2px_rgba(0,0,0,0.3)]", visual.buttonTextClass)}>
                       <LayoutDashboard className="w-6 h-6" strokeWidth={2.25} aria-hidden />
                     </motion.span>
                   )}
                 </AnimatePresence>
-                <span className="min-w-0 text-center leading-snug [text-wrap:balance] drop-shadow-[0_2px_2px_rgba(0,0,0,0.3)]">{guardianButtonLabel}</span>
+                <span className={cn("min-w-0 text-center leading-snug [text-wrap:balance] drop-shadow-[0_2px_2px_rgba(0,0,0,0.3)]", visual.buttonTextClass)}>{guardianButtonLabel}</span>
                 <ArrowRight
-                  className="w-5 h-5 shrink-0 opacity-80 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all drop-shadow-[0_2px_2px_rgba(0,0,0,0.3)]"
+                  className={cn("w-5 h-5 shrink-0 opacity-80 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all drop-shadow-[0_2px_2px_rgba(0,0,0,0.3)]", visual.buttonTextClass)}
                   aria-hidden
                 />
               </span>

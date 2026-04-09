@@ -11,5 +11,9 @@ export const TENANT_AUDIT_ACTIONS = [
 export type TenantOrgAuditFilter = {
   action?: string;
   actorContains?: string;
+  /** YYYY-MM-DD, created_at date (inclusive) */
+  dateFrom?: string;
+  /** YYYY-MM-DD, created_at date (inclusive) */
+  dateTo?: string;
   limit?: number;
 };

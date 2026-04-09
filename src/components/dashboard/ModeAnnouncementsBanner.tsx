@@ -8,14 +8,24 @@ import type { ModeAnnouncementRow } from "@/types/mode-announcement";
 import { cn } from "@/lib/utils";
 
 export default function ModeAnnouncementsBanner({ items }: { items: ModeAnnouncementRow[] }) {
-  if (!items.length) return null;
-
   return (
     <motion.section
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-4"
+      className="space-y-3"
+      aria-labelledby="mode-announcements-title"
     >
+      <h2
+        id="mode-announcements-title"
+        className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-600"
+      >
+        운영 공지
+      </h2>
+      {items.length === 0 ? (
+        <p className="rounded-2xl border border-dashed border-slate-200 bg-white/90 px-4 py-3 text-xs font-semibold text-slate-500">
+          표시 중인 공지가 없습니다. 플랫폼에서 발행된 소식이 있으면 이곳에 나타납니다.
+        </p>
+      ) : null}
       {items.map((a) => {
         const attUrl = a.attachment_r2_key ? `/api/r2/${a.attachment_r2_key}` : null;
         return (
@@ -79,3 +89,4 @@ export default function ModeAnnouncementsBanner({ items }: { items: ModeAnnounce
     </motion.section>
   );
 }
+

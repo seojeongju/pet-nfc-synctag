@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Home, LayoutGrid, LogOut, Shield } from "lucide-react";
+import { Home, LayoutGrid, LogOut, Shield, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type FlowTopNavSession = { user: { name?: string | null } } | null;
@@ -11,6 +11,8 @@ type FlowTopNavContentProps = {
   session: FlowTopNavSession;
   isAdmin: boolean;
   currentModeLabel?: string;
+  /** owner/admin 소속 조직이 있을 때만: 조직 관리(감사·멤버 등) */
+  orgManageHref?: string | null;
   className?: string;
 };
 
@@ -25,8 +27,18 @@ export function FlowTopNavContent({
   session,
   isAdmin,
   currentModeLabel,
+  orgManageHref,
   className,
 }: FlowTopNavContentProps) {
+  const modeSelectHref =
+    variant === "dashboard"
+      ? "/hub"
+      : variant === "landing"
+        ? "/"
+        : session
+          ? "/hub"
+          : "/";
+
   return (
     <div
       className={cn(
@@ -37,7 +49,7 @@ export function FlowTopNavContent({
     >
       <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
         <Link
-          href="/"
+          href={modeSelectHref}
           className="inline-flex shrink-0 items-center gap-1 rounded-full border border-teal-100 bg-teal-50/80 px-2 py-1 font-black text-teal-700 hover:bg-teal-100 min-[390px]:px-2.5"
         >
           <Home className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -61,6 +73,16 @@ export function FlowTopNavContent({
           >
             <LayoutGrid className="h-3.5 w-3.5 shrink-0 text-slate-500" aria-hidden />
             허브
+          </Link>
+        ) : null}
+
+        {session && orgManageHref ? (
+          <Link
+            href={orgManageHref}
+            className="inline-flex items-center gap-1 rounded-full px-2 py-1 font-black text-teal-700 hover:bg-teal-50 min-[390px]:px-2.5"
+          >
+            <Building2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            조직 관리
           </Link>
         ) : null}
 

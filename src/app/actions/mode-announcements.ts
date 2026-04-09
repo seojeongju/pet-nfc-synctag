@@ -9,6 +9,7 @@ import { nanoid } from "nanoid";
 import { parseSubjectKind, type SubjectKind } from "@/lib/subject-kind";
 import type { ModeAnnouncementAttachmentKind, ModeAnnouncementRow, ModeAnnouncementStatus } from "@/types/mode-announcement";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
+import { fetchVisibleAnnouncementsForGuardian as fetchVisibleAnnouncementsForGuardianFromLib } from "@/lib/mode-announcements-guardian";
 
 const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
 
@@ -157,6 +158,7 @@ export async function saveModeAnnouncement(input: SaveModeAnnouncementInput) {
   }
 
   revalidatePath("/admin/announcements");
+  revalidatePath("/dashboard", "layout");
   revalidatePath("/dashboard");
   return { id };
 }
@@ -174,6 +176,7 @@ export async function deleteModeAnnouncement(id: string) {
     }
   }
   revalidatePath("/admin/announcements");
+  revalidatePath("/dashboard", "layout");
   revalidatePath("/dashboard");
 }
 
@@ -197,42 +200,5 @@ export async function listVisibleAnnouncementsForGuardian(
   subjectKind: SubjectKind,
   tenantId?: string
 ): Promise<ModeAnnouncementRow[]> {
-  const db = getDB();
-  const kind = parseSubjectKind(subjectKind);
-  const tenant = (tenantId ?? "").trim();
-
-  const { results } = await db
-    .prepare(
-      `
-      SELECT m.*
-      FROM mode_announcements m
-      WHERE m.status = 'published'
-        AND m.subject_kind = ?
-        AND (m.published_at IS NULL OR datetime(m.published_at) <= datetime('now'))
-        AND (m.expires_at IS NULL OR datetime(m.expires_at) > datetime('now'))
-        AND (
-          m.target_batch_id IS NULL
-          OR EXISTS (
-            SELECT 1
-            FROM tags t
-            INNER JOIN pets p ON t.pet_id = p.id
-            WHERE p.owner_id = ?
-              AND (
-                (? <> '' AND p.tenant_id = ?)
-                OR (? = '' AND p.tenant_id IS NULL)
-              )
-              AND t.batch_id IS NOT NULL
-              AND t.batch_id = m.target_batch_id
-              AND COALESCE(p.subject_kind, 'pet') = m.subject_kind
-          )
-        )
-      ORDER BY m.priority DESC, datetime(COALESCE(m.published_at, m.created_at)) DESC
-      LIMIT 20
-    `
-    )
-    .bind(kind, ownerId, tenant, tenant, tenant)
-    .all<ModeAnnouncementRow>()
-    .catch(() => ({ results: [] as ModeAnnouncementRow[] }));
-
-  return results;
+  return fetchVisibleAnnouncementsForGuardianFromLib(ownerId, subjectKind, tenantId);
 }

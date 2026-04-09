@@ -8,12 +8,16 @@ export async function GET(req: Request, context: { params: Promise<{ tenantId: s
   const url = new URL(req.url);
   const action = url.searchParams.get("audit_action") ?? "";
   const actor = url.searchParams.get("audit_q") ?? "";
+  const auditFrom = url.searchParams.get("audit_from") ?? "";
+  const auditTo = url.searchParams.get("audit_to") ?? "";
 
   let rows;
   try {
     rows = await getTenantOrgAuditLogs(tenantId, {
       action: action || undefined,
       actorContains: actor || undefined,
+      dateFrom: auditFrom || undefined,
+      dateTo: auditTo || undefined,
       limit: 2000,
     });
   } catch {

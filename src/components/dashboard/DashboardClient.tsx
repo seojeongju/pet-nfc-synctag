@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState, useTransition } from "react";
 import { motion } from "framer-motion";
@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Plus, MapPin, PawPrint, Search, Bell,
-  LogOut, ShieldCheck, Heart, History, Activity, Home, Smartphone, CheckCircle, AlertCircle,
+  ShieldCheck, Activity, Smartphone, CheckCircle, AlertCircle,
   UserRound, Baby, Briefcase, Gem,
 } from "lucide-react";
 import Link from "next/link";
@@ -104,7 +104,9 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind, m
         animate="visible"
         className="max-w-md mx-auto px-5 pt-8 space-y-8"
       >
-        <ModeAnnouncementsBanner items={modeAnnouncements} />
+        <div id="mode-announcements" className="scroll-mt-28">
+          <ModeAnnouncementsBanner items={modeAnnouncements} />
+        </div>
 
         {isAdmin && (
           <motion.section variants={itemVariants}>
@@ -192,6 +194,18 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind, m
 
         <motion.section variants={itemVariants}>
           <Card className="border-none rounded-[40px] bg-slate-900 text-white overflow-hidden relative shadow-[0_32px_64px_-12px_rgba(0,0,0,0.2)]">
+            {/* Background Image with Overlay */}
+            <div className="absolute inset-0 z-0">
+              <Image
+                src={meta.dashboardBgImage}
+                alt=""
+                fill
+                className="object-cover opacity-60"
+                priority
+              />
+              <div className="absolute inset-0 bg-gradient-to-br from-slate-900/80 via-slate-900/40 to-transparent" />
+            </div>
+
             <div className="p-8 space-y-5 relative z-10">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
@@ -200,15 +214,13 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind, m
                 </div>
                 <h2 className="text-xl font-black leading-[1.2]">{meta.label}</h2>
               </div>
-              <p className="text-slate-400 text-[11px] font-bold leading-relaxed max-w-[70%]">
+              <p className="text-white/80 text-[11px] font-bold leading-relaxed max-w-[70%] drop-shadow-md">
                  NFC로 빠르게 연결하고, BLE·안심 구역은 단계적으로 더해집니다.
               </p>
               <Button className="rounded-2xl font-black bg-teal-500 text-white hover:bg-teal-600 px-6 h-11 text-xs shadow-lg shadow-teal-500/20">
                 상세 리포트 보기
               </Button>
             </div>
-            <div className="absolute top-0 right-0 w-40 h-40 bg-teal-500/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl block" />
-            <div className="absolute bottom-4 right-6 w-16 h-16 opacity-50"><Heart className="w-full h-full text-white/5 rotate-12" /></div>
           </Card>
         </motion.section>
 
@@ -270,6 +282,13 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind, m
                   >
                     등록하러 가기
                   </Link>
+                  <p className="text-[11px] font-semibold text-slate-400 pt-1">
+                    다른 모드나 조직이 필요하면{" "}
+                    <Link href="/hub" className="font-black text-teal-600 hover:underline">
+                      허브
+                    </Link>
+                    에서 바꿀 수 있어요.
+                  </p>
                 </div>
               )}
 
@@ -359,33 +378,6 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind, m
            </Card>
         </motion.section>
       </motion.div>
-
-      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm h-20 glass-dark rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] z-50 flex items-center justify-around px-4 border border-white/20">
-         <Link href={`/dashboard${kindQs}`} className="flex flex-col items-center gap-1 group">
-            <div className="p-2.5 rounded-2xl bg-teal-500 text-white shadow-xl shadow-teal-500/20 transition-all active:scale-90">
-               <Home className="w-6 h-6" />
-            </div>
-            <span className="text-[9px] font-black text-teal-400 uppercase tracking-widest">Home</span>
-         </Link>
-         <Link href={`/dashboard/pets${kindQs}`} className="flex flex-col items-center gap-1 group">
-            <div className="p-2.5 rounded-2xl text-slate-400 group-hover:text-white transition-colors transition-all active:scale-90">
-               <AvatarIcon className="w-6 h-6" />
-            </div>
-            <span className="text-[9px] font-black text-slate-400 group-hover:text-white uppercase tracking-widest">목록</span>
-         </Link>
-         <Link href={`/dashboard/scans${kindQs}`} className="flex flex-col items-center gap-1 group">
-            <div className="p-2.5 rounded-2xl text-slate-400 group-hover:text-white transition-colors transition-all active:scale-90">
-               <History className="w-6 h-6" />
-            </div>
-            <span className="text-[9px] font-black text-slate-400 group-hover:text-white uppercase tracking-widest">History</span>
-         </Link>
-         <Link href="/logout" className="flex flex-col items-center gap-1 group">
-            <div className="p-2.5 rounded-2xl text-slate-400 group-hover:text-rose-400 transition-colors transition-all active:scale-90">
-               <LogOut className="w-6 h-6" />
-            </div>
-            <span className="text-[9px] font-black text-slate-400 group-hover:text-rose-400 uppercase tracking-widest">Log Out</span>
-         </Link>
-      </nav>
     </div>
   );
 }

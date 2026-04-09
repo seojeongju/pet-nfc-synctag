@@ -6,13 +6,15 @@ import { getRequestContext } from "@cloudflare/next-on-pages";
 import type { ComponentProps } from "react";
 import DashboardClient from "@/components/dashboard/DashboardClient";
 import { parseSubjectKind } from "@/lib/subject-kind";
-import { listVisibleAnnouncementsForGuardian } from "@/app/actions/mode-announcements";
+import { fetchVisibleAnnouncementsForGuardian } from "@/lib/mode-announcements-guardian";
 import { requireTenantMember } from "@/lib/tenant-membership";
 import { getTenantPlanUsageSummary, type TenantPlanUsageSummary } from "@/lib/tenant-quota";
 import { getTenantStatus } from "@/lib/tenant-status";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
 
 export const runtime = "edge";
+/** 관리자 공지 저장 직후에도 최신 목록이 보이도록 캐시 사용 안 함 */
+export const dynamic = "force-dynamic";
 
 export default async function DashboardPage({
   searchParams,
@@ -44,7 +46,7 @@ export default async function DashboardPage({
         .prepare("SELECT role FROM user WHERE id = ?")
         .bind(session.user.id)
         .first<{ role?: string | null }>(),
-      listVisibleAnnouncementsForGuardian(session.user.id, subjectKind, tenantId ?? undefined),
+      fetchVisibleAnnouncementsForGuardian(session.user.id, subjectKind, tenantId ?? undefined),
       tenantId ? getTenantPlanUsageSummary(context.env.DB, tenantId) : Promise.resolve<TenantPlanUsageSummary | null>(null),
       tenantId ? getTenantStatus(context.env.DB, tenantId) : Promise.resolve<"active" | "suspended" | null>(null),
     ]);

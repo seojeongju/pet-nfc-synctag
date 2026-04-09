@@ -3,6 +3,7 @@ import { getAuth } from "@/lib/auth";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { FlowTopNav } from "@/components/layout/FlowTopNav";
 import { PawPrint, UserRound, Baby, Briefcase, Gem, ChevronRight, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
@@ -73,7 +74,9 @@ export default async function HubPage({
   >;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] font-outfit px-5 py-10 pb-24">
+    <div className="min-h-screen bg-[#F8FAFC] font-outfit">
+      <FlowTopNav variant="landing" session={session} isAdmin={isPlatformAdmin} />
+      <div className="px-5 py-10 pb-24">
       <div className="max-w-md mx-auto space-y-8">
         <header className="space-y-2">
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-600">
@@ -101,6 +104,17 @@ export default async function HubPage({
             <ChevronRight className="h-3.5 w-3.5" />
           </Link>
         </header>
+
+        <section className="rounded-2xl border border-teal-100 bg-teal-50/50 p-4 space-y-2">
+          <p className="text-[10px] font-black uppercase text-teal-600">이용 순서</p>
+          <ol className="text-xs font-semibold text-slate-600 space-y-1 list-decimal list-inside leading-relaxed">
+            <li>
+              아래에서 사용할 <strong className="text-slate-800">모드</strong>를 고릅니다.
+            </li>
+            <li>대시보드에서 관리 대상을 등록하고 NFC 태그를 연결합니다.</li>
+            <li>조직(B2B)은 소속 조직 카드에서 관리·대시보드로 이동할 수 있습니다.</li>
+          </ol>
+        </section>
 
         {tenants.length > 0 && (
           <section className="space-y-3">
@@ -196,6 +210,7 @@ export default async function HubPage({
         <p className="text-center text-[10px] text-slate-400 font-bold">
           로그아웃은 각 모드 대시보드 하단에서 할 수 있어요.
         </p>
+      </div>
       </div>
     </div>
   );

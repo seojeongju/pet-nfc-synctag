@@ -670,6 +670,12 @@ export async function getTenantAdminAuditLogs(limit = 80): Promise<TenantAuditLo
   return rows.results ?? [];
 }
 
+function parseAuditDay(raw: string | undefined): string | undefined {
+  const t = raw?.trim() ?? "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) return undefined;
+  return t;
+}
+
 /** 이 조직에 한정된 감사 로그(플랫폼 관리자 또는 조직 owner/admin). */
 export async function getTenantOrgAuditLogs(
   tenantId: string,
@@ -685,6 +691,8 @@ export async function getTenantOrgAuditLogs(
     actionTrim && (TENANT_AUDIT_ACTIONS as readonly string[]).includes(actionTrim) ? actionTrim : "";
 
   const actorQ = normalizeActorSearch(filter?.actorContains);
+  const dateFrom = parseAuditDay(filter?.dateFrom);
+  const dateTo = parseAuditDay(filter?.dateTo);
   const placeholders = TENANT_AUDIT_ACTIONS.map(() => "?").join(",");
 
   let sql = `SELECT id, action, actor_email, payload, created_at
@@ -700,6 +708,14 @@ export async function getTenantOrgAuditLogs(
   if (actorQ) {
     sql += ` AND instr(lower(coalesce(actor_email, '')), lower(?)) > 0`;
     bindList.push(actorQ);
+  }
+  if (dateFrom) {
+    sql += ` AND date(created_at) >= date(?)`;
+    bindList.push(dateFrom);
+  }
+  if (dateTo) {
+    sql += ` AND date(created_at) <= date(?)`;
+    bindList.push(dateTo);
   }
   sql += ` ORDER BY datetime(created_at) DESC, id DESC LIMIT ?`;
   bindList.push(safeLimit);

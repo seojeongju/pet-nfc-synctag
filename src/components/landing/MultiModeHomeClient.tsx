@@ -43,6 +43,7 @@ interface MultiModeHomeClientProps {
   /** 관리자 콘솔 또는 관리자 로그인 (하단 소형 버튼 전용) */
   adminEntryLink: string;
   adminButtonLabel: string;
+  orgManageHref?: string | null;
 }
 
 export default function MultiModeHomeClient({
@@ -50,6 +51,7 @@ export default function MultiModeHomeClient({
   isAdmin,
   adminEntryLink,
   adminButtonLabel,
+  orgManageHref = null,
 }: MultiModeHomeClientProps) {
   const router = useRouter();
   const [selectedKind, setSelectedKind] = useState<SubjectKind | null>(null);
@@ -70,7 +72,7 @@ export default function MultiModeHomeClient({
 
   return (
     <div className="min-h-screen bg-slate-50 font-outfit overflow-hidden relative">
-      <FlowTopNav variant="landing" session={session} isAdmin={isAdmin} />
+      <FlowTopNav variant="landing" session={session} isAdmin={isAdmin} orgManageHref={orgManageHref} />
       <div className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-teal-400/20 blur-3xl" />
       <div className="pointer-events-none absolute top-[35%] -left-20 h-64 w-64 rounded-full bg-indigo-300/20 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-16 right-[15%] h-64 w-64 rounded-full bg-cyan-300/20 blur-3xl" />
@@ -172,6 +174,26 @@ export default function MultiModeHomeClient({
             })}
           </div>
           </LayoutGroup>
+        </motion.section>
+
+        <motion.section
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.06, duration: 0.45 }}
+          className="rounded-[26px] border border-teal-100/90 bg-gradient-to-br from-teal-50/95 to-white p-[18px] shadow-[0_12px_30px_rgba(15,23,42,0.05)] min-[390px]:rounded-[28px] min-[390px]:p-5"
+        >
+          <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-teal-600">보호자 이용 순서</p>
+          <ol className="list-inside list-decimal space-y-2 text-[12px] font-semibold leading-relaxed text-slate-700">
+            <li>
+              <span className="text-slate-900">모드</span>를 고른 뒤 로그인합니다.
+            </li>
+            <li>
+              <span className="text-slate-900">대시보드</span>에서 관리 대상을 등록하고 NFC 태그를 연결합니다.
+            </li>
+            <li>
+              조직(B2B)이 필요하면 <span className="text-slate-900">허브</span>에서 조직 대시보드로 전환합니다.
+            </li>
+          </ol>
         </motion.section>
 
         <section className="space-y-3.5 rounded-[26px] border border-slate-200/80 bg-white p-[18px] shadow-[0_12px_30px_rgba(15,23,42,0.05)] min-[390px]:space-y-4 min-[390px]:rounded-[28px] min-[390px]:p-5">
