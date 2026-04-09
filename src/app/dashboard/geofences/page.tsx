@@ -1,5 +1,5 @@
 import { getAuth } from "@/lib/auth";
-import { getPetsWithDb } from "@/app/actions/pet";
+import { getPetsWithDb } from "@/lib/pets-db";
 import { createGeofenceForm, deleteGeofenceForm } from "@/app/actions/geofences";
 import { listGeofencesForOwnerKind } from "@/lib/geofences-db";
 import { getCfRequestContext } from "@/lib/cf-request-context";

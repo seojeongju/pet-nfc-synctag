@@ -1,5 +1,4 @@
 ﻿"use server";
-import type { D1Database } from "@cloudflare/workers-types";
 import { headers } from "next/headers";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { getAuth } from "@/lib/auth";
@@ -72,31 +71,6 @@ export async function createPet(ownerId: string, data: PetData) {
     .run();
 
     return id;
-}
-
-/** RSC에서 `getCfRequestContext()`는 요청당 1회만 안전 — 이미 연 `D1`을 넘기세요 */
-export async function getPetsWithDb(
-    db: D1Database,
-    ownerId: string,
-    subjectKind: SubjectKind = "pet",
-    tenantId?: string
-) {
-    await assertMigration0008Applied(db);
-    const kind = parseSubjectKind(subjectKind);
-    const tenant = (tenantId ?? "").trim();
-    const query = tenant
-        ? "SELECT * FROM pets WHERE owner_id = ? AND tenant_id = ? AND COALESCE(subject_kind, 'pet') = ? ORDER BY created_at DESC"
-        : "SELECT * FROM pets WHERE owner_id = ? AND tenant_id IS NULL AND COALESCE(subject_kind, 'pet') = ? ORDER BY created_at DESC";
-    const stmt = db.prepare(query);
-    const { results } = await (tenant
-        ? stmt.bind(ownerId, tenant, kind)
-        : stmt.bind(ownerId, kind))
-        .all();
-    return results ?? [];
-}
-
-export async function getPets(ownerId: string, subjectKind: SubjectKind = "pet", tenantId?: string) {
-    return getPetsWithDb(getDB(), ownerId, subjectKind, tenantId);
 }
 
 export async function getPet(petId: string) {

@@ -1,4 +1,4 @@
-﻿import { getPetsWithDb } from "@/app/actions/pet";
+﻿import { getPetsWithDb } from "@/lib/pets-db";
 import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
 import { redirect } from "next/navigation";

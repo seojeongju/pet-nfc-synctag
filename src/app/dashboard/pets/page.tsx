@@ -1,5 +1,5 @@
 import { getAuth } from "@/lib/auth";
-import { getPetsWithDb } from "@/app/actions/pet";
+import { getPetsWithDb } from "@/lib/pets-db";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
