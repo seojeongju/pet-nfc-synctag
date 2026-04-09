@@ -21,6 +21,7 @@ type PetListItem = {
     name: string;
     breed?: string | null;
     photo_url?: string | null;
+    is_lost?: number | null;
 };
 
 const listIcons: Record<SubjectKind, LucideIcon> = {
@@ -174,7 +175,8 @@ export default async function PetsPage({
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 px-2">
                     {pets.length > 0 ? (
                         pets.map((pet: PetListItem) => (
-                            <a href={`/profile/${pet.id}${kindQs}`} key={pet.id} className="group">
+                            /* 보호자 전용 상세 페이지로 이동 */
+                            <a href={`/dashboard/pets/${pet.id}${kindQs}`} key={pet.id} className="group">
                                 <Card className="rounded-[32px] border-none shadow-xl shadow-slate-100/50 overflow-hidden hover:scale-[1.02] transition-all duration-300">
                                     <div className="h-40 bg-teal-50 relative">
                                         {pet.photo_url ? (
@@ -190,6 +192,12 @@ export default async function PetsPage({
                                                 <ListIcon className="w-16 h-16 opacity-50" />
                                             </div>
                                         )}
+                                        {/* 실종 뱃지 */}
+                                        {pet.is_lost ? (
+                                            <div className="absolute top-2 left-2 flex items-center gap-1 bg-rose-500 text-white text-[9px] font-black px-2 py-1 rounded-full shadow-lg">
+                                                <span className="animate-pulse">🚨</span> 실종
+                                            </div>
+                                        ) : null}
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                     </div>
                                     <CardContent className="p-6">

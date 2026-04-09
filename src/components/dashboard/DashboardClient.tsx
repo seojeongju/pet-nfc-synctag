@@ -7,7 +7,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Plus, MapPin, PawPrint, Search, Bell,
   ShieldCheck, Activity, Smartphone, CheckCircle, AlertCircle,
-  UserRound, Baby, Briefcase, Gem,
+  UserRound, Baby, Briefcase, Gem, AlertTriangle,
 } from "lucide-react";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
@@ -30,7 +30,7 @@ const subjectAvatars: Record<SubjectKind, LucideIcon> = {
 
 interface DashboardClientProps {
   session: { user: { name?: string | null; image?: string | null } };
-  pets: Array<{ id: string; name: string; breed?: string | null; photo_url?: string | null }>;
+  pets: Array<{ id: string; name: string; breed?: string | null; photo_url?: string | null; is_lost?: number | null }>;
   isAdmin: boolean;
   subjectKind: SubjectKind;
   modeAnnouncements: ModeAnnouncementRow[];
@@ -314,6 +314,19 @@ export default function DashboardClient({ session, pets, isAdmin, subjectKind, m
               <h3 className="text-lg font-black text-slate-900">{meta.listHeading}</h3>
               <a href={`/dashboard/pets${kindQs}`} className="text-[10px] font-black text-teal-600 uppercase tracking-widest hover:underline transition-all">View All</a>
            </div>
+
+           {/* 실종 신고 중인 아이가 있을 때 경고 카드 */}
+           {pets.some((p) => p.is_lost) && (
+             <div className="flex items-start gap-3 rounded-[20px] bg-rose-500 px-4 py-3 shadow-lg shadow-rose-300/30">
+               <AlertTriangle className="w-5 h-5 text-white shrink-0 mt-0.5 animate-pulse" />
+               <div className="flex-1 min-w-0">
+                 <p className="text-xs font-black text-white">🚨 실종 신고 중인 아이가 있어요</p>
+                 <p className="text-[10px] text-white/80 font-bold mt-0.5">
+                   {pets.filter((p) => p.is_lost).map((p) => p.name).join(", ")} — 공개 프로필에 긴급 배너가 표시 중입니다.
+                 </p>
+               </div>
+             </div>
+           )}
 
            <div className="flex gap-4 overflow-x-auto pb-6 pt-2 scrollbar-hide -mx-5 px-5">
               {pets.map((pet) => (

@@ -27,6 +27,8 @@ function normalizePetListRow(row: Record<string, unknown>) {
     name: sanitizeFlightString(row.name),
     breed: row.breed == null ? null : sanitizeFlightString(row.breed),
     photo_url: row.photo_url == null ? null : sanitizeFlightUrl(row.photo_url),
+    /** 0 = 안전, 1 = 실종 신고 중 */
+    is_lost: row.is_lost == null ? 0 : Number(row.is_lost),
   };
 }
 

@@ -38,6 +38,8 @@ type PetDetail = {
   photo_url?: string | null;
   emergency_contact?: string | null;
   medical_info?: string | null;
+  /** 0 = 안전, 1 = 실종 신고 중 */
+  is_lost?: number | null;
 };
 
 export default async function PublicProfilePage({ 

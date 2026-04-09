@@ -43,6 +43,8 @@ interface PetProfileClientProps {
     photo_url?: string | null;
     emergency_contact?: string | null;
     medical_info?: string | null;
+    /** 0 | null = 안전, 1 = 실종 신고 중 */
+    is_lost?: number | null;
   };
   tenantId?: string | null;
   tenantSuspended?: boolean;
@@ -238,6 +240,21 @@ export default function PetProfileClient({
         {/* Curved bottom separator */}
         <div className="absolute bottom-0 left-0 w-full h-12 bg-[#FDFCFB] rounded-t-[48px] z-10" />
       </div>
+
+      {/* 실종 모드 활성화 시 긴급 배너 */}
+      {Boolean(pet.is_lost) && (
+        <div className="max-w-md mx-auto px-6 -mt-2 mb-3 relative z-20">
+          <div className="flex items-center gap-3 rounded-2xl bg-rose-500 px-4 py-3 shadow-xl shadow-rose-500/30 animate-in slide-in-from-top-2 duration-300">
+            <AlertTriangle className="w-5 h-5 text-white shrink-0 animate-pulse" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-black text-white">🚨 현재 실종 신고 중입니다</p>
+              <p className="text-[10px] text-white/80 font-bold">
+                이동 경로나 발견 정보가 있으시면 아래 연락처로 바로 연락해 주세요.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {nfcEntry && treatAsPublicVisitor && (
         <div className="max-w-md mx-auto px-6 -mt-2 mb-2 relative z-20">

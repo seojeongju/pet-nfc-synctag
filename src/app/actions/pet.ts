@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 import { headers } from "next/headers";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { getAuth } from "@/lib/auth";
@@ -77,6 +77,32 @@ export async function getPet(petId: string) {
     const db = getDB();
     await assertMigration0008Applied(db);
     return await db.prepare("SELECT * FROM pets WHERE id = ?").bind(petId).first();
+}
+
+/** 실종 모드 토글 — 소유자만 호출 가능 */
+export async function toggleLostMode(petId: string, isLost: boolean): Promise<void> {
+    const actorId = await requireActorUserId();
+    const db = getDB();
+    await assertMigration0008Applied(db);
+
+    // 소유자 또는 테넌트 어드민만 수정 가능
+    const target = await db
+        .prepare("SELECT owner_id, tenant_id FROM pets WHERE id = ?")
+        .bind(petId)
+        .first<{ owner_id: string; tenant_id: string | null }>();
+    if (!target) throw new Error("반려동물을 찾을 수 없습니다.");
+
+    if (target.tenant_id) {
+        await assertTenantActive(db, target.tenant_id);
+        await assertTenantRole(db, actorId, target.tenant_id, "admin");
+    } else if (target.owner_id !== actorId) {
+        throw new Error("수정 권한이 없습니다.");
+    }
+
+    await db
+        .prepare("UPDATE pets SET is_lost = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+        .bind(isLost ? 1 : 0, petId)
+        .run();
 }
 
 export async function updatePet(petId: string, data: Partial<PetData>) {
