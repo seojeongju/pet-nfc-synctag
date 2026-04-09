@@ -239,15 +239,6 @@ export default async function PetsPage({
                                 >
                                     {meta.emptyPetsCta}
                                 </a>
-                                <a
-                                    href="/hub"
-                                    className={cn(
-                                        buttonVariants({ variant: "outline" }),
-                                        "rounded-full border-slate-200 text-slate-700 hover:bg-slate-50 font-bold px-8 h-12"
-                                    )}
-                                >
-                                    모드·용량 허브
-                                </a>
                             </div>
                             <a
                                 href={`/dashboard${kindQs}`}

@@ -190,12 +190,6 @@ export default async function GeofencesPage({
               >
                 관리 대상 등록하기
               </a>
-              <p className="text-xs text-slate-400">
-                <a href="/hub" className="font-bold text-teal-600 hover:underline">
-                  모드 허브
-                </a>
-                에서 용량·모드를 확인할 수 있어요.
-              </p>
             </div>
           ) : (
             <form action={createGeofenceForm} className="grid gap-4 sm:grid-cols-2">
@@ -318,13 +312,6 @@ export default async function GeofencesPage({
         )}
       </div>
 
-      <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4 text-[11px] text-slate-500 leading-relaxed">
-        <p className="font-bold text-slate-600 mb-1">API</p>
-        <p>
-          위치 점검: <code className="bg-white px-1 rounded">POST /api/geofence/check</code> — 본문{" "}
-          <code className="bg-white px-1 rounded">{"{ pet_id, latitude, longitude, record_breach?: true }"}</code>
-        </p>
-      </div>
     </div>
     );
   } catch (error: unknown) {
