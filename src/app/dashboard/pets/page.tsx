@@ -31,6 +31,14 @@ const listIcons: Record<SubjectKind, LucideIcon> = {
     gold: Gem,
 };
 
+function isNextRedirectError(error: unknown): boolean {
+    if (typeof error !== "object" || error === null) return false;
+    const o = error as { digest?: unknown; message?: unknown };
+    if (typeof o.digest === "string" && o.digest.includes("NEXT_REDIRECT")) return true;
+    if (o.message === "NEXT_REDIRECT") return true;
+    return false;
+}
+
 export default async function PetsPage({
     searchParams,
 }: {
@@ -46,17 +54,17 @@ export default async function PetsPage({
     const kindQs = `?${qs.toString()}`;
     const ListIcon = listIcons[subjectKind];
 
-    const context = getRequestContext();
-    const auth = getAuth(context.env);
-    const session = await auth.api.getSession({
-        headers: await headers(),
-    });
-
-    if (!session) {
-        redirect("/login");
-    }
-
     try {
+        const context = getRequestContext();
+        const auth = getAuth(context.env);
+        const session = await auth.api.getSession({
+            headers: await headers(),
+        });
+
+        if (!session) {
+            redirect("/login");
+        }
+
         if (tenantId) {
             await requireTenantMember(context.env.DB, session.user.id, tenantId);
         }
@@ -176,8 +184,7 @@ export default async function PetsPage({
         </div>
         );
     } catch (error: unknown) {
-        const redirectError = error as { digest?: string };
-        if (redirectError.digest?.includes("NEXT_REDIRECT")) {
+        if (isNextRedirectError(error)) {
             throw error;
         }
         console.error("Pets list data fetch error:", error);
