@@ -14,6 +14,8 @@ import { requireTenantMember } from "@/lib/tenant-membership";
 import { getTenantStatus } from "@/lib/tenant-status";
 
 export const runtime = "edge";
+export const dynamic = "force-dynamic";
+
 type PetListItem = {
     id: string;
     name: string;
@@ -54,18 +56,19 @@ export default async function PetsPage({
         redirect("/login");
     }
 
-    if (tenantId) {
-        await requireTenantMember(context.env.DB, session.user.id, tenantId);
-    }
-    const tenantSuspended = tenantId
-        ? (await getTenantStatus(context.env.DB, tenantId)) === "suspended"
-        : false;
+    try {
+        if (tenantId) {
+            await requireTenantMember(context.env.DB, session.user.id, tenantId);
+        }
+        const tenantSuspended = tenantId
+            ? (await getTenantStatus(context.env.DB, tenantId)) === "suspended"
+            : false;
 
-    const pets = (await getPets(session.user.id, subjectKind, tenantId ?? undefined)) as PetListItem[];
-    const subLabel =
-        subjectKind === "pet" ? `${pets.length}마리의 반려동물` : `${pets.length}건의 등록`;
+        const pets = (await getPets(session.user.id, subjectKind, tenantId ?? undefined)) as PetListItem[];
+        const subLabel =
+            subjectKind === "pet" ? `${pets.length}마리의 반려동물` : `${pets.length}건의 등록`;
 
-    return (
+        return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 font-outfit pb-20">
             <div className="flex items-center justify-between px-2">
                 <div className="space-y-1">
@@ -171,5 +174,46 @@ export default async function PetsPage({
                 )}
             </div>
         </div>
-    );
+        );
+    } catch (error: unknown) {
+        const redirectError = error as { digest?: string };
+        if (redirectError.digest?.includes("NEXT_REDIRECT")) {
+            throw error;
+        }
+        console.error("Pets list data fetch error:", error);
+        return (
+            <div className="mx-auto max-w-lg space-y-6 px-2 py-16 text-center font-outfit">
+                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-rose-50 text-rose-400">
+                    <ListIcon className="h-10 w-10" />
+                </div>
+                <div className="space-y-2">
+                    <h1 className="text-xl font-black text-slate-900">목록을 불러오지 못했어요</h1>
+                    <p className="text-sm leading-relaxed text-slate-600">
+                        잠시 후 다시 시도해 주세요. 문제가 계속되면 Cloudflare 대시보드의 Worker 로그나 D1 마이그레이션 적용
+                        여부를 확인해 주세요.
+                    </p>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+                    <a
+                        href={`/dashboard${kindQs}`}
+                        className={cn(
+                            buttonVariants({}),
+                            "rounded-full bg-teal-500 font-bold shadow-lg shadow-teal-100 hover:bg-teal-600"
+                        )}
+                    >
+                        대시보드로 돌아가기
+                    </a>
+                    <a
+                        href={`/dashboard/pets${kindQs}`}
+                        className={cn(
+                            buttonVariants({ variant: "outline" }),
+                            "rounded-full border-slate-200 font-bold text-slate-700 hover:bg-slate-50"
+                        )}
+                    >
+                        다시 시도
+                    </a>
+                </div>
+            </div>
+        );
+    }
 }
