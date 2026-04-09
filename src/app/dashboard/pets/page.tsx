@@ -36,17 +36,21 @@ export default async function PetsPage({
 }: {
     searchParams: Promise<{ kind?: string; tenant?: string }>;
 }) {
-    const { kind: kindParam, tenant: tenantParam } = await searchParams;
-    const subjectKind = parseSubjectKind(kindParam);
-    const meta = subjectKindMeta[subjectKind];
-    const tenantId =
-        typeof tenantParam === "string" && tenantParam.trim() ? tenantParam.trim() : null;
-    const qs = new URLSearchParams({ kind: subjectKind });
-    if (tenantId) qs.set("tenant", tenantId);
-    const kindQs = `?${qs.toString()}`;
-    const ListIcon = listIcons[subjectKind];
+    /** catch 블록에서도 안전하게 쓰기 위해 try 밖에서 기본값 유지 */
+    let kindQs = "?kind=pet";
+    let ListIcon: LucideIcon = PawPrint;
 
     try {
+        const { kind: kindParam, tenant: tenantParam } = await searchParams;
+        const subjectKind = parseSubjectKind(kindParam);
+        const meta = subjectKindMeta[subjectKind];
+        const tenantId =
+            typeof tenantParam === "string" && tenantParam.trim() ? tenantParam.trim() : null;
+        const qs = new URLSearchParams({ kind: subjectKind });
+        if (tenantId) qs.set("tenant", tenantId);
+        kindQs = `?${qs.toString()}`;
+        ListIcon = listIcons[subjectKind];
+
         const context = getCfRequestContext();
         const auth = getAuth(context.env);
         const session = await auth.api.getSession({
