@@ -1,19 +1,18 @@
-import { unstable_rethrow } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
+import { isHTTPAccessFallbackError } from "next/dist/client/components/http-access-fallback/http-access-fallback";
 
 /**
- * try/catch로 감싼 서버 컴포넌트에서 먼저 호출하세요.
- * redirect·notFound·dynamic rendering 등 Next 내부 제어 흐름 오류는 여기서 다시 throw 되며,
- * 이걸 삼키면 500·error.tsx로 이어질 수 있습니다.
+ * try/catch 안에서만 호출. redirect()·notFound()·forbidden()·unauthorized() 는 다시 throw.
+ *
+ * `next/navigation`의 unstable_rethrow 는 Dynamic Server Error 등도 재던지므로,
+ * 데이터 조회 실패까지 전부 세그먼트 error.tsx 로 새는 문제가 생길 수 있어 사용하지 않습니다.
  */
 export function rethrowNextControlFlowErrors(error: unknown): void {
-  unstable_rethrow(error);
+  if (isRedirectError(error)) throw error;
+  if (isHTTPAccessFallbackError(error)) throw error;
 }
 
-/** @deprecated rethrowNextControlFlowErrors(unstable_rethrow) 사용 권장 */
+/** @deprecated rethrowNextControlFlowErrors 사용 권장 */
 export function isNextRedirectError(error: unknown): boolean {
-  if (typeof error !== "object" || error === null) return false;
-  const o = error as { digest?: unknown; message?: unknown };
-  if (typeof o.digest === "string" && o.digest.includes("NEXT_REDIRECT")) return true;
-  if (o.message === "NEXT_REDIRECT") return true;
-  return false;
+  return isRedirectError(error);
 }
