@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Script from "next/script";
 import { type SubjectKind } from "@/lib/subject-kind";
 import { Card } from "@/components/ui/card";
-import { Activity, MapPin, RefreshCw, AlertTriangle } from "lucide-react";
+import { Activity, RefreshCw, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface LocationData {
@@ -32,19 +32,30 @@ interface LiveLocationMapProps {
 
 declare global {
   interface Window {
-    kakao: any;
+    kakao: {
+      maps: {
+        load: (callback: () => void) => void;
+        LatLng: new (lat: number, lng: number) => unknown;
+        Map: new (container: HTMLElement, options: unknown) => unknown;
+        Marker: new (options: unknown) => { setMap: (map: unknown) => void };
+        LatLngBounds: new () => { extend: (pos: unknown) => void };
+        InfoWindow: new (options: unknown) => { open: (map: unknown, marker: unknown) => void };
+        event: {
+          addListener: (target: unknown, type: string, handler: () => void) => void;
+        };
+      };
+    };
   }
 }
 
 export default function LiveLocationMap({
   subjects,
-  subjectKind,
   onRefresh,
   isRefreshing,
-}: LiveLocationMapProps) {
+}: Omit<LiveLocationMapProps, 'subjectKind'>) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<any>(null);
-  const markersRef = useRef<any[]>([]);
+  const mapInstanceRef = useRef<unknown>(null);
+  const markersRef = useRef<Array<{ setMap: (map: unknown) => void }>>([]);
   const [sdkLoaded, setSdkLoaded] = useState(false);
 
   const apiKey = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY;
@@ -58,7 +69,7 @@ export default function LiveLocationMap({
         center: new window.kakao.maps.LatLng(37.5665, 126.9780), // 기본 서울시청
         level: 3,
       };
-      // @ts-ignore
+      // @ts-expect-error - Kakao SDK instantiation
       mapInstanceRef.current = new window.kakao.maps.Map(mapContainerRef.current, options);
     });
   };
@@ -79,7 +90,7 @@ export default function LiveLocationMap({
 
       hasLocation = true;
       const pos = new window.kakao.maps.LatLng(subject.location.lat, subject.location.lng);
-      bounds.extend(pos);
+      (bounds as any).extend(pos);
 
       // 마커 생성
       const marker = new window.kakao.maps.Marker({

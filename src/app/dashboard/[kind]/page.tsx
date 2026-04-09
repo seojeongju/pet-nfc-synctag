@@ -65,7 +65,7 @@ export default async function DashboardKindPage({
       return (
         <DashboardClient
           session={session}
-          pets={(pets ?? []) as any}
+          pets={pets}
           isAdmin={isAdmin}
           subjectKind={subjectKind}
           modeAnnouncements={announcements}

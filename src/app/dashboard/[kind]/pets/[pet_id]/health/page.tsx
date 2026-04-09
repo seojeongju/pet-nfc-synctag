@@ -63,7 +63,7 @@ export default async function PetHealthPage({
     const tenantQs = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : "";
     kindQs = tenantQs;
 
-    const meta = subjectKindMeta[subjectKind as any];
+    const meta = subjectKindMeta[subjectKind as SubjectKind];
     const tenantSuspended = tenantId
       ? (await getTenantStatus(context.env.DB, tenantId)) === "suspended"
       : false;

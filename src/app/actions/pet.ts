@@ -159,6 +159,14 @@ export async function getLatestLocations(subjectKind: SubjectKind, tenantId?: st
 
     const petIds = pets.results.map(p => p.id);
     
+    interface LatestLocationRow {
+        pet_id: string;
+        latitude: number;
+        longitude: number;
+        timestamp: string;
+        type: string;
+    }
+
     // 2. 최신 스캔 로그 조회
     const latestScans = await db.prepare(`
         SELECT t.pet_id, s.latitude, s.longitude, s.scanned_at as timestamp, 'NFC 스캔' as type 
@@ -167,7 +175,7 @@ export async function getLatestLocations(subjectKind: SubjectKind, tenantId?: st
         WHERE t.pet_id IN (${petIds.map(() => "?").join(",")})
         GROUP BY t.pet_id
         HAVING s.scanned_at = MAX(s.scanned_at)
-    `).bind(...petIds).all<any>();
+    `).bind(...petIds).all<LatestLocationRow>();
 
     // 3. 최신 BLE 이벤트 조회
     const latestBle = await db.prepare(`
@@ -176,7 +184,7 @@ export async function getLatestLocations(subjectKind: SubjectKind, tenantId?: st
         WHERE b.pet_id IN (${petIds.map(() => "?").join(",")})
         GROUP BY b.pet_id
         HAVING b.created_at = MAX(b.created_at)
-    `).bind(...petIds).all<any>();
+    `).bind(...petIds).all<LatestLocationRow>();
 
     // 4. 결과 병합 및 최신 선택
     return pets.results.map(pet => {

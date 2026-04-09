@@ -6,7 +6,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
-import { Bell, MapPin, Clock, Smartphone, PawPrint, Bluetooth, Cpu, Tag, KeyRound } from "lucide-react";
+import { Bell, MapPin, Clock, Smartphone, PawPrint, Bluetooth, Cpu, Tag } from "lucide-react";
 import { extractBleRawMeta } from "@/lib/ble-raw-payload";
 import { cn } from "@/lib/utils";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
@@ -35,7 +35,7 @@ function formatScanCoords(lat: unknown, lng: unknown): string {
     return `${la.toFixed(4)}, ${ln.toFixed(4)}`;
 }
 
-function scansLoadFailed(kindQs: string) {
+function scansLoadFailed(dashboardLink: string, selfLink: string) {
     return (
         <div className="mx-auto max-w-lg space-y-6 px-2 py-16 text-center font-outfit">
             <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-rose-50 text-rose-400">
@@ -49,7 +49,7 @@ function scansLoadFailed(kindQs: string) {
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
                 <a
-                    href={kindQs}
+                    href={dashboardLink}
                     className={cn(
                         buttonVariants({}),
                         "rounded-full bg-teal-500 font-bold shadow-lg shadow-teal-100 hover:bg-teal-600"
@@ -58,7 +58,7 @@ function scansLoadFailed(kindQs: string) {
                     대시보드로 돌아가기
                 </a>
                 <a
-                    href={selfKindQs}
+                    href={selfLink}
                     className={cn(
                         buttonVariants({ variant: "outline" }),
                         "rounded-full border-slate-200 font-bold text-slate-700 hover:bg-slate-50"
@@ -78,19 +78,16 @@ export default async function ScansPage({
     params: Promise<{ kind: string }>;
     searchParams: Promise<{ tenant?: string }>;
 }) {
-    let kindQs = "?kind=pet";
+    const { kind: kindParam } = await params;
+    const { tenant: tenantParam } = await searchParams;
+    const subjectKind = parseSubjectKind(kindParam);
+    const meta = subjectKindMeta[subjectKind];
+    const tenantId =
+        typeof tenantParam === "string" && tenantParam.trim() ? tenantParam.trim() : null;
 
-    try {
-        const { kind: kindParam } = await params;
-        const { tenant: tenantParam } = await searchParams;
-        const subjectKind = parseSubjectKind(kindParam);
-        const meta = subjectKindMeta[subjectKind];
-        const tenantId =
-            typeof tenantParam === "string" && tenantParam.trim() ? tenantParam.trim() : null;
-        
-        const tenantQs = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : "";
-        kindQs = `/dashboard/${subjectKind}${tenantQs}`;
-        const selfKindQs = `/dashboard/${subjectKind}/scans${tenantQs}`;
+    const tenantQs = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : "";
+    const dashboardLink = `/dashboard/${subjectKind}${tenantQs}`;
+    const selfLink = `/dashboard/${subjectKind}/scans${tenantQs}`;
 
         const context = getCfRequestContext();
         const auth = getAuth(context.env);
@@ -119,7 +116,7 @@ export default async function ScansPage({
                         </div>
                         <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
                             <a
-                                href={kindQs}
+                                href={dashboardLink}
                                 className={cn(
                                     buttonVariants({}),
                                     "rounded-full bg-teal-500 font-bold shadow-lg shadow-teal-100 hover:bg-teal-600"
@@ -151,7 +148,15 @@ export default async function ScansPage({
             ).catch(() => []);
         } catch (error: unknown) {
             console.error("Scans page data fetch error:", error);
-            return scansLoadFailed(kindQs);
+            // Recompute links for safety if needed, or use the ones from outer try if we move them
+            const { kind: kindParam } = await params;
+            const { tenant: tenantParam } = await searchParams;
+            const subjectKind = parseSubjectKind(kindParam);
+            const tenantId = typeof tenantParam === "string" && tenantParam.trim() ? tenantParam.trim() : null;
+            const tenantQs = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : "";
+            const dLink = `/dashboard/${subjectKind}${tenantQs}`;
+            const sLink = `/dashboard/${subjectKind}/scans${tenantQs}`;
+            return scansLoadFailed(dLink, sLink);
         }
 
         return (

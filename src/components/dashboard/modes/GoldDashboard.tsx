@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -20,6 +20,21 @@ import type { ModeAnnouncementRow } from "@/types/mode-announcement";
 import type { TenantPlanUsageSummary } from "@/lib/tenant-quota";
 import { getLatestLocations } from "@/app/actions/pet";
 import LiveLocationMap from "@/components/dashboard/LiveLocationMap";
+import { type SubjectKind } from "@/lib/subject-kind";
+
+interface SubjectWithLocation {
+  id: string;
+  name: string;
+  breed?: string | null;
+  photo_url?: string | null;
+  is_lost?: number | null;
+  location: {
+    lat: number;
+    lng: number;
+    timestamp: string;
+    type: string;
+  } | null;
+}
 
 interface GoldDashboardProps {
   session: { user: { name?: string | null; image?: string | null } };
@@ -48,8 +63,7 @@ export default function GoldDashboard({
   const [selectedItemId, setSelectedItemId] = useState("");
   const [tagId, setTagId] = useState("");
   const [tagMessage, setTagMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [subjectsWithLocation, setSubjectsWithLocation] = useState<any[]>([]);
-  const [isMapLoading, setIsMapLoading] = useState(true);
+  const [subjectsWithLocation, setSubjectsWithLocation] = useState<SubjectWithLocation[]>([]);
   const [isMapRefreshing, setIsMapRefreshing] = useState(false);
   const router = useRouter();
   
@@ -59,24 +73,23 @@ export default function GoldDashboard({
   const kindQs = tenantQs;
   const AvatarIcon = Gem;
 
-  const refreshLocations = async () => {
+  const refreshLocations = useCallback(async () => {
     setIsMapRefreshing(true);
     try {
-      const data = await getLatestLocations(subjectKind as any, tenantId);
+      const data = await getLatestLocations(subjectKind as SubjectKind, tenantId);
       setSubjectsWithLocation(data);
     } catch (err) {
       console.error("Map data refresh failed:", err);
     } finally {
       setIsMapRefreshing(false);
-      setIsMapLoading(false);
     }
-  };
+  }, [subjectKind, tenantId]);
 
   useEffect(() => {
     refreshLocations();
     const interval = setInterval(refreshLocations, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [refreshLocations]);
 
   useEffect(() => {
     if (items.length > 0 && !selectedItemId) {

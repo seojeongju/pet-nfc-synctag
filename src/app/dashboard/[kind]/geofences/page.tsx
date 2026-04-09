@@ -19,7 +19,7 @@ import { rethrowNextControlFlowErrors } from "@/lib/next-redirect-guard";
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
 
-function geofencesLoadFailed(kindQs: string) {
+function geofencesLoadFailed(dashboardLink: string, selfLink: string) {
   return (
     <div className="mx-auto max-w-lg space-y-6 px-2 py-16 text-center font-outfit">
       <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-rose-50 text-rose-400">
@@ -134,7 +134,7 @@ export default async function GeofencesPage({
     ).catch(() => []);
   } catch (error: unknown) {
     console.error("Geofences page data fetch error:", error);
-    return geofencesLoadFailed(kindQs);
+    return geofencesLoadFailed(dashboardLink, selfLink);
   }
 
   const errMsg =
