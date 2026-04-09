@@ -6,7 +6,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
-import { Bell, MapPin, Clock, Smartphone, PawPrint, Bluetooth, Cpu, Tag, KeyRound, ChevronRight } from "lucide-react";
+import { Bell, MapPin, Clock, Smartphone, PawPrint, Bluetooth, Cpu, Tag, KeyRound } from "lucide-react";
 import { extractBleRawMeta } from "@/lib/ble-raw-payload";
 import { cn } from "@/lib/utils";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
@@ -252,7 +252,6 @@ export default async function ScansPage({
                             >
                                 <span className="relative z-10">관리 대상·태그 연결</span>
                             </a>
-                            </a>
                         </div>
                     </div>
                 )}
@@ -354,11 +353,10 @@ export default async function ScansPage({
                             <p className="font-black text-slate-700 text-base">아직 기록된 BLE 이벤트가 없습니다</p>
                             <p className="text-[11px] text-slate-500 font-medium leading-relaxed max-w-[240px] mx-auto">{meta.emptyBleHint}</p>
                         </div>
-                        </div>
                     </div>
                 )}
+                </div>
             </div>
-        </div>
         );
     } catch (error: unknown) {
         rethrowNextControlFlowErrors(error);
