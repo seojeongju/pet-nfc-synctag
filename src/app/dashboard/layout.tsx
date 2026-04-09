@@ -33,7 +33,10 @@ export default async function DashboardLayout({
       </Suspense>
       <footer className="border-t bg-white py-6">
         <div className="container px-4 text-center text-sm text-slate-500">
-          © 2024 링크유 Link-U. All rights reserved.
+          <p>© 2026 WOW3D PRO. (주)와우쓰리디. All rights reserved.</p>
+          <p className="mt-1">대표 전화: 02-3144-3137 / 054-464-3144</p>
+          <p>이메일 문의: wow3d16@naver.com</p>
+          <p>사업자등록번호: 849-88-01659</p>
         </div>
       </footer>
     </div>

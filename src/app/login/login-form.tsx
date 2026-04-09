@@ -178,7 +178,12 @@ export function LoginForm() {
         </Card>
 
         <footer className="text-center">
-          <p className="text-xs text-slate-400 font-semibold">링크유 Link-U © 2024. All Rights Reserved.</p>
+          <div className="space-y-1 text-[11px] text-slate-400 font-semibold leading-relaxed">
+            <p>© 2026 WOW3D PRO. (주)와우쓰리디. All rights reserved.</p>
+            <p>대표 전화: 02-3144-3137 / 054-464-3144</p>
+            <p>이메일 문의: wow3d16@naver.com</p>
+            <p>사업자등록번호: 849-88-01659</p>
+          </div>
         </footer>
       </div>
     </div>

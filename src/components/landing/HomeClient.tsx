@@ -161,9 +161,12 @@ export default function HomeClient({ session, isAdmin, guardianEntryLink, guardi
                 Seller Access Center
              </Link>
            )}
-           <p className="text-[10px] text-slate-300 font-bold tracking-widest uppercase text-center leading-loose">
-             링크유 Link-U © 2024 <br /> All Rights Reserved.
-           </p>
+           <div className="text-[10px] text-slate-400 font-bold text-center leading-relaxed space-y-1">
+             <p>© 2026 WOW3D PRO. (주)와우쓰리디. All rights reserved.</p>
+             <p>대표 전화: 02-3144-3137 / 054-464-3144</p>
+             <p>이메일 문의: wow3d16@naver.com</p>
+             <p>사업자등록번호: 849-88-01659</p>
+           </div>
         </footer>
       </main>
     </div>

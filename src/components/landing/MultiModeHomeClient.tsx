@@ -245,9 +245,12 @@ export default function MultiModeHomeClient({
         </section>
 
         <footer className="pt-1 text-center">
-          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-300">
-            Link-U © 2024
-          </p>
+          <div className="space-y-1 text-[10px] font-bold text-slate-400 leading-relaxed">
+            <p>© 2026 WOW3D PRO. (주)와우쓰리디. All rights reserved.</p>
+            <p>대표 전화: 02-3144-3137 / 054-464-3144</p>
+            <p>이메일 문의: wow3d16@naver.com</p>
+            <p>사업자등록번호: 849-88-01659</p>
+          </div>
         </footer>
       </main>
     </div>
