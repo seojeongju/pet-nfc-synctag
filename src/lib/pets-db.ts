@@ -3,13 +3,30 @@ import type { SubjectKind } from "@/lib/subject-kind";
 import { parseSubjectKind } from "@/lib/subject-kind";
 import { assertMigration0008Applied } from "@/lib/db-migration-0008";
 
+function sanitizeFlightString(value: unknown, maxLen = 20_000): string {
+  if (value == null) return "";
+  const s = typeof value === "string" ? value : String(value);
+  const clipped = s.length > maxLen ? s.slice(0, maxLen) : s;
+  return clipped.replace(/[\uD800-\uDFFF]/g, "\uFFFD");
+}
+
+function sanitizeFlightUrl(value: unknown): string | null {
+  const s = sanitizeFlightString(value, 4096).trim();
+  if (!s) return null;
+  const head = s.slice(0, 12).toLowerCase();
+  if (s.startsWith("/") && !s.startsWith("//")) return s;
+  if (head.startsWith("https://") || head.startsWith("http://")) return s;
+  return null;
+}
+
 /** D1 행을 RSC 직렬화에 안전한 순수 JSON 형태로 맞춤 */
 function normalizePetListRow(row: Record<string, unknown>) {
+  const id = sanitizeFlightString(row.id).trim();
   return {
-    id: String(row.id ?? ""),
-    name: row.name == null ? "" : String(row.name),
-    breed: row.breed == null ? null : String(row.breed),
-    photo_url: row.photo_url == null ? null : String(row.photo_url),
+    id,
+    name: sanitizeFlightString(row.name),
+    breed: row.breed == null ? null : sanitizeFlightString(row.breed),
+    photo_url: row.photo_url == null ? null : sanitizeFlightUrl(row.photo_url),
   };
 }
 
@@ -32,5 +49,5 @@ export async function getPetsWithDb(
     : stmt.bind(ownerId, kind)
   ).all();
   const raw = (results ?? []) as Record<string, unknown>[];
-  return raw.map(normalizePetListRow);
+  return raw.map(normalizePetListRow).filter((p) => p.id.length > 0);
 }
