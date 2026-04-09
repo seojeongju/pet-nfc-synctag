@@ -13,6 +13,7 @@ import { MapPin, Trash2, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { requireTenantMember } from "@/lib/tenant-membership";
 import { getTenantStatus } from "@/lib/tenant-status";
+import { isNextRedirectError } from "@/lib/next-redirect-guard";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -31,14 +32,14 @@ export default async function GeofencesPage({
   if (tenantId) qs.set("tenant", tenantId);
   const kindQs = `?${qs.toString()}`;
 
-  const context = getRequestContext();
-  const auth = getAuth(context.env);
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) {
-    redirect("/login");
-  }
-
   try {
+    const context = getRequestContext();
+    const auth = getAuth(context.env);
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session) {
+      redirect("/login");
+    }
+
     if (tenantId) {
       await requireTenantMember(context.env.DB, session.user.id, tenantId);
     }
@@ -250,8 +251,7 @@ export default async function GeofencesPage({
     </div>
     );
   } catch (error: unknown) {
-    const redirectError = error as { digest?: string };
-    if (redirectError.digest?.includes("NEXT_REDIRECT")) {
+    if (isNextRedirectError(error)) {
       throw error;
     }
     console.error("Geofences page data fetch error:", error);

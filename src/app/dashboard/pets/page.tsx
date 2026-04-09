@@ -3,7 +3,6 @@ import { getPets } from "@/app/actions/pet";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -12,6 +11,7 @@ import { parseSubjectKind, subjectKindMeta, type SubjectKind } from "@/lib/subje
 import type { LucideIcon } from "lucide-react";
 import { requireTenantMember } from "@/lib/tenant-membership";
 import { getTenantStatus } from "@/lib/tenant-status";
+import { isNextRedirectError } from "@/lib/next-redirect-guard";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -30,14 +30,6 @@ const listIcons: Record<SubjectKind, LucideIcon> = {
     luggage: Briefcase,
     gold: Gem,
 };
-
-function isNextRedirectError(error: unknown): boolean {
-    if (typeof error !== "object" || error === null) return false;
-    const o = error as { digest?: unknown; message?: unknown };
-    if (typeof o.digest === "string" && o.digest.includes("NEXT_REDIRECT")) return true;
-    if (o.message === "NEXT_REDIRECT") return true;
-    return false;
-}
 
 export default async function PetsPage({
     searchParams,
@@ -109,12 +101,12 @@ export default async function PetsPage({
                             <Card className="rounded-[32px] border-none shadow-xl shadow-slate-100/50 overflow-hidden hover:scale-[1.02] transition-all duration-300">
                                 <div className="h-40 bg-teal-50 relative">
                                     {pet.photo_url ? (
-                                        <Image
+                                        // eslint-disable-next-line @next/next/no-img-element -- Edge RSC에서 next/image 이슈 회피
+                                        <img
                                             src={pet.photo_url}
                                             alt={pet.name}
-                                            fill
-                                            className="object-cover"
-                                            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                                            className="absolute inset-0 h-full w-full object-cover"
+                                            loading="lazy"
                                         />
                                     ) : (
                                         <div className="absolute inset-0 flex items-center justify-center text-teal-200">

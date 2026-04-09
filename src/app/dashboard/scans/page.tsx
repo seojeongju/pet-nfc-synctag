@@ -4,7 +4,6 @@ import { getBleLocationEvents } from "@/app/actions/ble-events";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { Bell, MapPin, Clock, Smartphone, PawPrint, Bluetooth, Cpu, Tag, KeyRound } from "lucide-react";
@@ -12,6 +11,7 @@ import { extractBleRawMeta } from "@/lib/ble-raw-payload";
 import { cn } from "@/lib/utils";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
 import { requireTenantMember } from "@/lib/tenant-membership";
+import { isNextRedirectError } from "@/lib/next-redirect-guard";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -41,17 +41,17 @@ export default async function ScansPage({
     if (tenantId) qs.set("tenant", tenantId);
     const kindQs = `?${qs.toString()}`;
 
-    const context = getRequestContext();
-    const auth = getAuth(context.env);
-    const session = await auth.api.getSession({
-        headers: await headers(),
-    });
-
-    if (!session) {
-        redirect("/login");
-    }
-
     try {
+        const context = getRequestContext();
+        const auth = getAuth(context.env);
+        const session = await auth.api.getSession({
+            headers: await headers(),
+        });
+
+        if (!session) {
+            redirect("/login");
+        }
+
         if (tenantId) {
             await requireTenantMember(context.env.DB, session.user.id, tenantId);
         }
@@ -84,12 +84,11 @@ export default async function ScansPage({
                                     log.pet_photo ? "bg-white" : "bg-teal-50 text-teal-500"
                                 )}>
                                     {log.pet_photo ? (
-                                        <Image
+                                        // eslint-disable-next-line @next/next/no-img-element -- Edge RSC에서 next/image 이슈 회피
+                                        <img
                                             src={log.pet_photo}
                                             alt={log.pet_name}
-                                            fill
-                                            className="object-cover"
-                                            sizes="56px"
+                                            className="absolute inset-0 h-full w-full object-cover"
                                         />
                                     ) : (
                                         <PawPrint className="w-6 h-6" />
@@ -269,8 +268,7 @@ export default async function ScansPage({
         </div>
         );
     } catch (error: unknown) {
-        const redirectError = error as { digest?: string };
-        if (redirectError.digest?.includes("NEXT_REDIRECT")) {
+        if (isNextRedirectError(error)) {
             throw error;
         }
         console.error("Scans page data fetch error:", error);
