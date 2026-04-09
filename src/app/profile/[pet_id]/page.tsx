@@ -4,7 +4,7 @@ import { getPetTags } from "@/app/actions/tag";
 import { notFound } from "next/navigation";
 import { getAuth } from "@/lib/auth";
 import { headers } from "next/headers";
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getCfRequestContext } from "@/lib/cf-request-context";
 import PetProfileClient from "@/components/profile/PetProfileClient";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
 import { getTenantStatus } from "@/lib/tenant-status";
@@ -50,7 +50,7 @@ export default async function PublicProfilePage({
   const { pet_id } = await params;
   const { tag, from } = await searchParams;
 
-  const context = getRequestContext();
+  const context = getCfRequestContext();
   const auth = getAuth(context.env);
   const session = await auth.api.getSession({
     headers: await headers(),

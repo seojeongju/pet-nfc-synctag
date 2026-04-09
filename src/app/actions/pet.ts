@@ -1,7 +1,7 @@
 ﻿"use server";
 import type { D1Database } from "@cloudflare/workers-types";
 import { headers } from "next/headers";
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getCfRequestContext } from "@/lib/cf-request-context";
 import { getAuth } from "@/lib/auth";
 import { getDB, getR2 } from "@/lib/db";
 import { nanoid } from "nanoid";
@@ -22,7 +22,7 @@ interface PetData {
 }
 
 async function requireActorUserId(): Promise<string> {
-    const context = getRequestContext();
+    const context = getCfRequestContext();
     const auth = getAuth(context.env);
     const session = await auth.api.getSession({ headers: await headers() });
     const id = session?.user?.id;
@@ -74,7 +74,7 @@ export async function createPet(ownerId: string, data: PetData) {
     return id;
 }
 
-/** RSC에서 `getRequestContext()`는 요청당 1회만 안전 — 이미 연 `D1`을 넘기세요 */
+/** RSC에서 `getCfRequestContext()`는 요청당 1회만 안전 — 이미 연 `D1`을 넘기세요 */
 export async function getPetsWithDb(
     db: D1Database,
     ownerId: string,

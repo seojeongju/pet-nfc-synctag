@@ -2,7 +2,7 @@
 
 import { nanoid } from "nanoid";
 import { headers } from "next/headers";
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getCfRequestContext } from "@/lib/cf-request-context";
 import { getAuth } from "@/lib/auth";
 import { getDB } from "@/lib/db";
 import { parseSubjectKind, type SubjectKind } from "@/lib/subject-kind";
@@ -15,7 +15,7 @@ import {
 import { parseBleEventBody, type BleEventInputNormalized } from "@/lib/ble-events-input";
 
 async function requireSessionUserId(): Promise<string> {
-  const context = getRequestContext();
+  const context = getCfRequestContext();
   const auth = getAuth(context.env);
   const session = await auth.api.getSession({ headers: await headers() });
   const id = session?.user?.id;

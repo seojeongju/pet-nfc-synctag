@@ -1,4 +1,4 @@
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getCfRequestContext } from "@/lib/cf-request-context";
 import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "edge";
@@ -10,7 +10,7 @@ export async function GET(
   const { key } = await params;
   const fullKey = key.join("/");
 
-  const context = getRequestContext();
+  const context = getCfRequestContext();
   const r2 = context.env.R2;
 
   const object = await r2.get(fullKey);

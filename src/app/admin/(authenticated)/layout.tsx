@@ -1,5 +1,5 @@
 ﻿import { getAuth } from "@/lib/auth";
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getCfRequestContext } from "@/lib/cf-request-context";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -27,7 +27,7 @@ export default async function AdminAuthenticatedLayout({
   children: React.ReactNode;
 }) {
   type SessionUser = { id: string; image?: string | null; name?: string | null };
-  const context = getRequestContext();
+  const context = getCfRequestContext();
   const auth = getAuth(context.env);
   const session = await auth.api.getSession({
     headers: await headers(),

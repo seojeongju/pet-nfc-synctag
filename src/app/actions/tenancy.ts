@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getCfRequestContext } from "@/lib/cf-request-context";
 import { getDB } from "@/lib/db";
 import { listTenantsForUser } from "@/lib/tenant-membership";
 import { resolvePersonalPlan } from "@/lib/plan-resolution";
@@ -11,7 +11,7 @@ import type { PersonalPlanResolution } from "@/lib/plan-resolution";
 import { nanoid } from "nanoid";
 
 async function requireUserId(): Promise<string> {
-  const context = getRequestContext();
+  const context = getCfRequestContext();
   const auth = getAuth(context.env);
   const session = await auth.api.getSession({ headers: await headers() });
   const uid = session?.user?.id;

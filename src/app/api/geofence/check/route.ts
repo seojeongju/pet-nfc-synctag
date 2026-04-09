@@ -1,4 +1,4 @@
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getCfRequestContext } from "@/lib/cf-request-context";
 import { NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 import { getAuth } from "@/lib/auth";
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid longitude" }, { status: 400 });
   }
 
-  const context = getRequestContext();
+  const context = getCfRequestContext();
   const auth = getAuth(context.env);
   const session = await auth.api.getSession({ headers: request.headers });
   const userId = session?.user?.id;

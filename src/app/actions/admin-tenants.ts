@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { nanoid } from "nanoid";
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getCfRequestContext } from "@/lib/cf-request-context";
 import { getAuth } from "@/lib/auth";
 import { getDB } from "@/lib/db";
 import { assertTenantRole, getMembership } from "@/lib/tenant-membership";
@@ -58,7 +58,7 @@ function normalizeActorSearch(raw: string | undefined): string {
 }
 
 async function requirePlatformAdmin() {
-  const context = getRequestContext();
+  const context = getCfRequestContext();
   const auth = getAuth(context.env);
   const session = await auth.api.getSession({ headers: await headers() });
   const userId = session?.user?.id;
@@ -80,7 +80,7 @@ async function requirePlatformAdmin() {
 
 /** 플랫폼 관리자 또는 해당 조직의 owner/admin(테넌트 관리자). */
 async function requirePlatformOrTenantOrgAdmin(tenantId: string): Promise<OrgActor> {
-  const context = getRequestContext();
+  const context = getCfRequestContext();
   const auth = getAuth(context.env);
   const session = await auth.api.getSession({ headers: await headers() });
   const userId = session?.user?.id;

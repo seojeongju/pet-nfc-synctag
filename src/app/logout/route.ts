@@ -1,12 +1,12 @@
 import { getAuth } from "@/lib/auth";
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getCfRequestContext } from "@/lib/cf-request-context";
 import { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 export const runtime = "edge";
 
 async function performLogout(req: NextRequest) {
-    const context = getRequestContext();
+    const context = getCfRequestContext();
     const auth = getAuth(context.env);
     const origin = new URL("/", req.url);
 

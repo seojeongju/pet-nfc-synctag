@@ -1,4 +1,4 @@
-﻿import { getRequestContext } from "@cloudflare/next-on-pages";
+﻿import { getCfRequestContext } from "@/lib/cf-request-context";
 import { NextResponse } from "next/server";
 import { getAuth } from "@/lib/auth";
 import { getMigration0008Status } from "@/lib/db-migration-0008";
@@ -14,7 +14,7 @@ type DiagEnv = CloudflareEnv & {
 };
 
 export async function GET() {
-  const context = getRequestContext();
+  const context = getCfRequestContext();
   const env = context.env as DiagEnv;
 
   const diagnostics = {

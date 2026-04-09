@@ -1,6 +1,6 @@
 ﻿import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getCfRequestContext } from "@/lib/cf-request-context";
 import { redirect } from "next/navigation";
 import { FlowTopNav } from "@/components/layout/FlowTopNav";
 import { PawPrint, UserRound, Baby, Briefcase, Gem, ChevronRight, Building2 } from "lucide-react";
@@ -31,7 +31,7 @@ export default async function HubPage({
 }: {
   searchParams: Promise<{ device?: string; uid?: string }>;
 }) {
-  const context = getRequestContext();
+  const context = getCfRequestContext();
   const auth = getAuth(context.env);
   const session = await auth.api.getSession({ headers: await headers() });
 

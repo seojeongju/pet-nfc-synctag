@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getCfRequestContext } from "@/lib/cf-request-context";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
 
 export type LandingSessionState = {
@@ -10,7 +10,7 @@ export type LandingSessionState = {
 
 export async function getLandingSessionState(): Promise<LandingSessionState> {
   try {
-    const context = getRequestContext();
+    const context = getCfRequestContext();
     const auth = getAuth(context.env);
     const session = await auth.api.getSession({ headers: await headers() });
     const user = session?.user;

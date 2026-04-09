@@ -3,7 +3,7 @@ import { getDB } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getCfRequestContext } from "@/lib/cf-request-context";
 import { parseSubjectKind, SUBJECT_KINDS, type SubjectKind } from "@/lib/subject-kind";
 import { normalizeBleMac } from "@/lib/device-mode";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
@@ -28,7 +28,7 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
 
 async function getActorEmailSafe() {
     try {
-        const context = getRequestContext();
+        const context = getCfRequestContext();
         const auth = getAuth(context.env);
         const session = await auth.api.getSession({ headers: await headers() });
         return session?.user?.email ?? "system";
@@ -388,7 +388,7 @@ export async function getAdminFailureTopActions(days = 7, limit = 5) {
 }
 
 async function assertAdminRole() {
-    const context = getRequestContext();
+    const context = getCfRequestContext();
     const auth = getAuth(context.env);
     const session = await auth.api.getSession({ headers: await headers() });
     if (!session?.user?.id) throw new Error("인증이 필요합니다.");

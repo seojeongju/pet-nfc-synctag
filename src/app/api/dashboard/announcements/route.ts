@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getCfRequestContext } from "@/lib/cf-request-context";
 import { getAuth } from "@/lib/auth";
 import { fetchVisibleAnnouncementsForGuardian } from "@/lib/mode-announcements-guardian";
 import { parseSubjectKind } from "@/lib/subject-kind";
@@ -9,7 +9,7 @@ export const runtime = "edge";
 
 /** Guardian: published announcements for current kind/tenant (dashboard bell) */
 export async function GET(req: Request) {
-  const context = getRequestContext();
+  const context = getCfRequestContext();
   const auth = getAuth(context.env);
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) {

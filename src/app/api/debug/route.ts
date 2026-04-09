@@ -1,4 +1,4 @@
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getCfRequestContext } from "@/lib/cf-request-context";
 import { NextResponse } from "next/server";
 
 export const runtime = "edge";
@@ -6,7 +6,7 @@ type DebugEnv = CloudflareEnv & Record<string, unknown>;
 
 export async function GET() {
   try {
-    const context = getRequestContext();
+    const context = getCfRequestContext();
     if (!context) {
       return NextResponse.json({ status: "Error", message: "No context found" });
     }

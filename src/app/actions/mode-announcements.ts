@@ -4,7 +4,7 @@ import { getDB, getR2 } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getCfRequestContext } from "@/lib/cf-request-context";
 import { nanoid } from "nanoid";
 import { parseSubjectKind, type SubjectKind } from "@/lib/subject-kind";
 import type { ModeAnnouncementAttachmentKind, ModeAnnouncementRow, ModeAnnouncementStatus } from "@/types/mode-announcement";
@@ -14,7 +14,7 @@ import { fetchVisibleAnnouncementsForGuardian as fetchVisibleAnnouncementsForGua
 const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
 
 async function assertAdminRole() {
-  const context = getRequestContext();
+  const context = getCfRequestContext();
   const auth = getAuth(context.env);
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) throw new Error("인증이 필요합니다.");
@@ -28,7 +28,7 @@ async function assertAdminRole() {
 
 async function getActorEmailSafe() {
   try {
-    const context = getRequestContext();
+    const context = getCfRequestContext();
     const auth = getAuth(context.env);
     const session = await auth.api.getSession({ headers: await headers() });
     return session?.user?.email ?? "system";

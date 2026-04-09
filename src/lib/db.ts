@@ -1,7 +1,7 @@
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getCfRequestContext } from "@/lib/cf-request-context";
 
 export function getDB() {
-  const context = getRequestContext();
+  const context = getCfRequestContext();
   if (!context || !context.env) {
     throw new Error("Unable to access Cloudflare bindings. Make sure you are running with 'wrangler pages dev' or deployed on Cloudflare Pages.");
   }
@@ -9,7 +9,7 @@ export function getDB() {
 }
 
 export function getR2() {
-  const context = getRequestContext();
+  const context = getCfRequestContext();
   if (!context || !context.env) {
     throw new Error("Unable to access Cloudflare bindings. Make sure you are running with 'wrangler pages dev' or deployed on Cloudflare Pages.");
   }

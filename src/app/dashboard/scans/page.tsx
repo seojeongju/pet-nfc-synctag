@@ -1,7 +1,7 @@
 import { getAuth } from "@/lib/auth";
 import { getScanLogsWithDb } from "@/app/actions/scan";
 import { listBleLocationEventsForOwner } from "@/lib/ble-location-events-db";
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getCfRequestContext } from "@/lib/cf-request-context";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
@@ -42,7 +42,7 @@ export default async function ScansPage({
     const kindQs = `?${qs.toString()}`;
 
     try {
-        const context = getRequestContext();
+        const context = getCfRequestContext();
         const auth = getAuth(context.env);
         const session = await auth.api.getSession({
             headers: await headers(),

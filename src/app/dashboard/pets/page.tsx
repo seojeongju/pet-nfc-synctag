@@ -1,6 +1,6 @@
 import { getAuth } from "@/lib/auth";
 import { getPetsWithDb } from "@/app/actions/pet";
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getCfRequestContext } from "@/lib/cf-request-context";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
@@ -47,7 +47,7 @@ export default async function PetsPage({
     const ListIcon = listIcons[subjectKind];
 
     try {
-        const context = getRequestContext();
+        const context = getCfRequestContext();
         const auth = getAuth(context.env);
         const session = await auth.api.getSession({
             headers: await headers(),

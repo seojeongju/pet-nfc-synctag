@@ -4,7 +4,7 @@ import { ArrowLeft, PawPrint, UserRound, Baby, Briefcase, Gem } from "lucide-rea
 import type { LucideIcon } from "lucide-react";
 import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getCfRequestContext } from "@/lib/cf-request-context";
 import { notFound, redirect } from "next/navigation";
 import { parseSubjectKind, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
 import { requireTenantMember } from "@/lib/tenant-membership";
@@ -42,7 +42,7 @@ export default async function EditPetPage({
   const { pet_id } = await params;
   const { kind: kindParam, tenant: tenantParam } = await searchParams;
 
-  const context = getRequestContext();
+  const context = getCfRequestContext();
   const auth = getAuth(context.env);
   const session = await auth.api.getSession({
     headers: await headers(),

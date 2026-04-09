@@ -1,4 +1,4 @@
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getCfRequestContext } from "@/lib/cf-request-context";
 import { NextResponse } from "next/server";
 import { getAuth } from "@/lib/auth";
 import { getDB } from "@/lib/db";
@@ -15,7 +15,7 @@ export async function DELETE(
     return NextResponse.json({ error: "Missing id" }, { status: 400 });
   }
 
-  const ctx = getRequestContext();
+  const ctx = getCfRequestContext();
   const auth = getAuth(ctx.env);
   const session = await auth.api.getSession({ headers: request.headers });
   const userId = session?.user?.id;

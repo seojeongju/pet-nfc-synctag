@@ -1,5 +1,5 @@
 import { getAuth } from "@/lib/auth";
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getCfRequestContext } from "@/lib/cf-request-context";
 import { NextResponse } from "next/server";
 
 export const runtime = "edge";
@@ -7,7 +7,7 @@ const toError = (e: unknown): Error => (e instanceof Error ? e : new Error(Strin
 
 export async function GET(req: Request) {
     try {
-        const context = getRequestContext();
+        const context = getCfRequestContext();
         const auth = getAuth(context.env);
         return await auth.handler(req);
     } catch (e: unknown) {
@@ -29,7 +29,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
     try {
-        const context = getRequestContext();
+        const context = getCfRequestContext();
         const auth = getAuth(context.env);
         return await auth.handler(req);
     } catch (e: unknown) {

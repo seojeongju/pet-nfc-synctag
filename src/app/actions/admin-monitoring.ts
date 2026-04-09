@@ -3,7 +3,7 @@
 import { getDB } from "@/lib/db";
 import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getCfRequestContext } from "@/lib/cf-request-context";
 import { revalidatePath } from "next/cache";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
 
@@ -12,7 +12,7 @@ function normalizeUid(uid: string) {
 }
 
 async function assertAdmin() {
-  const context = getRequestContext();
+  const context = getCfRequestContext();
   const auth = getAuth(context.env);
   const session = await auth.api.getSession({ headers: await headers() });
   const userId = session?.user?.id;

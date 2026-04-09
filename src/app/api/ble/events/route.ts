@@ -1,4 +1,4 @@
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getCfRequestContext } from "@/lib/cf-request-context";
 import { NextResponse } from "next/server";
 import { getAuth } from "@/lib/auth";
 import { getDB } from "@/lib/db";
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
-  const context = getRequestContext();
+  const context = getCfRequestContext();
   const auth = getAuth(context.env);
   const session = await auth.api.getSession({ headers: request.headers });
   const userId = session?.user?.id;
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
-  const context = getRequestContext();
+  const context = getCfRequestContext();
   const auth = getAuth(context.env);
   const session = await auth.api.getSession({ headers: request.headers });
   const userId = session?.user?.id;

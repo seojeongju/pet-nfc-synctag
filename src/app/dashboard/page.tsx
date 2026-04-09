@@ -2,7 +2,7 @@
 import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getCfRequestContext } from "@/lib/cf-request-context";
 import type { ComponentProps } from "react";
 import DashboardClient from "@/components/dashboard/DashboardClient";
 import { parseSubjectKind } from "@/lib/subject-kind";
@@ -25,7 +25,7 @@ export default async function DashboardPage({
   const { kind: kindParam, tenant: tenantParam } = await searchParams;
   const subjectKind = parseSubjectKind(kindParam);
   const tenantId = typeof tenantParam === "string" && tenantParam.trim() ? tenantParam.trim() : null;
-  const context = getRequestContext();
+  const context = getCfRequestContext();
   const auth = getAuth(context.env);
 
   const session = await auth.api.getSession({

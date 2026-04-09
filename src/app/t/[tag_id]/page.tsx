@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { parseSubjectKind } from "@/lib/subject-kind";
 import { getAuth } from "@/lib/auth";
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getCfRequestContext } from "@/lib/cf-request-context";
 
 export const runtime = "edge";
 
@@ -81,7 +81,7 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
   const tenantForLinks =
     typeof tag.pet_tenant_id === "string" && tag.pet_tenant_id.trim() ? tag.pet_tenant_id.trim() : null;
 
-  const context = getRequestContext();
+  const context = getCfRequestContext();
   const auth = getAuth(context.env);
   const session = await auth.api.getSession({ headers: await headers() });
   if (session?.user?.id) {

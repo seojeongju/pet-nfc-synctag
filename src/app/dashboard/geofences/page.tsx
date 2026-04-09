@@ -2,7 +2,7 @@ import { getAuth } from "@/lib/auth";
 import { getPetsWithDb } from "@/app/actions/pet";
 import { createGeofenceForm, deleteGeofenceForm } from "@/app/actions/geofences";
 import { listGeofencesForOwnerKind } from "@/lib/geofences-db";
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getCfRequestContext } from "@/lib/cf-request-context";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
@@ -34,7 +34,7 @@ export default async function GeofencesPage({
   const kindQs = `?${qs.toString()}`;
 
   try {
-    const context = getRequestContext();
+    const context = getCfRequestContext();
     const auth = getAuth(context.env);
     const session = await auth.api.getSession({ headers: await headers() });
     if (!session) {

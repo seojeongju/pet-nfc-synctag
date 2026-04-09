@@ -3,7 +3,7 @@ import { getDB } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getCfRequestContext } from "@/lib/cf-request-context";
 import { parseSubjectKind } from "@/lib/subject-kind";
 import { assertTenantRole } from "@/lib/tenant-membership";
 import { assertTenantTagQuota } from "@/lib/tenant-quota";
@@ -21,7 +21,7 @@ function isValidUidFormat(uid: string): boolean {
 }
 
 async function requireActor(): Promise<{ userId: string; email: string | null }> {
-    const context = getRequestContext();
+    const context = getCfRequestContext();
     const auth = getAuth(context.env);
     const session = await auth.api.getSession({ headers: await headers() });
     const userId = session?.user?.id;
@@ -210,7 +210,7 @@ export async function getPetTags(petId: string, tenantId?: string | null): Promi
 export type PetTagRow = { id: string; is_active?: boolean };
 
 export async function verifyOwnerAndLoadPetTags(petId: string, tenantId?: string | null) {
-    const context = getRequestContext();
+    const context = getCfRequestContext();
     const auth = getAuth(context.env);
     const session = await auth.api.getSession({ headers: await headers() });
     if (!session?.user?.id) {
