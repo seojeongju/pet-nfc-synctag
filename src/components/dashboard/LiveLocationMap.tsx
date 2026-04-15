@@ -63,7 +63,9 @@ export default function LiveLocationMap({
   const markersRef = useRef<KakaoMarker[]>([]);
   const [sdkLoaded, setSdkLoaded] = useState(false);
 
-  const apiKey = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY;
+  const apiKey =
+    process.env.NEXT_PUBLIC_KAKAO_MAP_JS_KEY ??
+    process.env.NEXT_PUBLIC_KAKAO_MAP_KEY;
 
   // SDK 초기화 및 지도 생성
   const initMap = () => {
@@ -171,7 +173,8 @@ export default function LiveLocationMap({
                         <span className="text-xs font-black uppercase">API Key Missing</span>
                     </div>
                     <p className="text-[10px] text-amber-700 font-bold leading-relaxed">
-                        카카오맵 API 키(NEXT_PUBLIC_KAKAO_MAP_KEY)가 설정되지 않았습니다.<br />
+                        카카오맵 API 키(
+                        NEXT_PUBLIC_KAKAO_MAP_JS_KEY 또는 NEXT_PUBLIC_KAKAO_MAP_KEY)가 설정되지 않았습니다.<br />
                         환경 변수를 확인해 주세요.
                     </p>
                 </div>
