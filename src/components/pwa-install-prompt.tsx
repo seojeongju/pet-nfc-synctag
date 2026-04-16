@@ -3,8 +3,13 @@
 import { useState, useEffect } from "react";
 import { Download, X } from "lucide-react";
 
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+};
+
 export function PwaInstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isDismissed, setIsDismissed] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -13,7 +18,8 @@ export function PwaInstallPrompt() {
     setIsMounted(true);
     
     // Check if the app is already installed/running in standalone mode
-    const isStandalone = window.matchMedia("(display-mode: standalone)").matches || (window.navigator as any).standalone === true;
+    const nav = window.navigator as Navigator & { standalone?: boolean };
+    const isStandalone = window.matchMedia("(display-mode: standalone)").matches || nav.standalone === true;
     
     if (isStandalone) {
       return; // Do not show if already installed
@@ -31,7 +37,7 @@ export function PwaInstallPrompt() {
       // Prevent Chrome 67 and earlier from automatically showing the prompt
       e.preventDefault();
       // Stash the event so it can be triggered later.
-      setDeferredPrompt(e);
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
