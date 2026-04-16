@@ -78,7 +78,7 @@ export function AdminNfcWriteCard() {
   }, [tagId]);
 
   return (
-    <AdminCard variant="section" className="space-y-4">
+    <AdminCard id="nfc-url-write" variant="section" className="space-y-4 scroll-mt-24">
       <div className="flex items-start gap-3">
         <div className="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-600 flex items-center justify-center shrink-0">
           <Radio className="w-5 h-5" />

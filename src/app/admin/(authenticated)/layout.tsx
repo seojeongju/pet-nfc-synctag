@@ -13,6 +13,7 @@ import {
   Radio,
   Megaphone,
   Building2,
+  Smartphone,
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -49,6 +50,12 @@ export default async function AdminAuthenticatedLayout({
     { href: "/admin/announcements", label: "모드·배치 공지", icon: Megaphone, color: "text-indigo-500" },
     { href: "/admin/monitoring", label: "NFC/BLE 모니터링", icon: Radio, color: "text-sky-500" },
     { href: "/admin/tags", label: "태그 재고 관리", icon: Tag, color: "text-amber-500" },
+    {
+      href: "/admin/tags#nfc-url-write",
+      label: "NFC URL 기록",
+      icon: Smartphone,
+      color: "text-amber-600",
+    },
     { href: "/admin/tenants", label: "조직·멤버 관리", icon: Building2, color: "text-emerald-500" },
   ];
 
