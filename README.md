@@ -30,6 +30,18 @@ NEXT_PUBLIC_KAKAO_MAP_JS_KEY=your_kakao_javascript_key_here
 
 For backward compatibility, `NEXT_PUBLIC_KAKAO_MAP_KEY` is also supported.
 
+### Production (GitHub Actions → Cloudflare Pages)
+
+`NEXT_PUBLIC_*` values are inlined at **build time** when CI runs `npm run build`.  
+Setting the key only in the Cloudflare dashboard does **not** inject it into that GitHub Actions build, which can cause `sdk.js` to return **401** in the browser.
+
+Add the same key in the GitHub repository:
+
+**Settings → Secrets and variables → Actions** → **Secrets** or **Variables** →  
+name: `NEXT_PUBLIC_KAKAO_MAP_JS_KEY`, value: your Kakao **JavaScript** key.
+
+Also register your production URL under the key’s **JavaScript SDK 도메인** in Kakao Developers.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
