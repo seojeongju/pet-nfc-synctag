@@ -10,8 +10,8 @@ import { cn } from "@/lib/utils";
 import type { AdminAuditLogRow } from "@/types/admin-tags";
 import { useAdminTagsAuditUrl } from "@/hooks/use-admin-tags-audit-url";
 
-function getResultLabel(success: boolean) {
-  return success ? "성공" : "실패";
+function getResultLabel(success: boolean | number) {
+  return Boolean(success) ? "성공" : "실패";
 }
 
 function getActorLabel(actorEmail?: string | null) {
