@@ -10,6 +10,7 @@ import { TagBulkRegisterCard } from "@/components/admin/tags/TagBulkRegisterCard
 import { TagInventorySection } from "@/components/admin/tags/TagInventorySection";
 import { TagLinkLogsSection } from "@/components/admin/tags/TagLinkLogsSection";
 import { AdminAuditLogsPanel } from "@/components/admin/tags/AdminAuditLogsPanel";
+import { AdminNfcWriteCard } from "@/components/admin/tags/AdminNfcWriteCard";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -66,8 +67,9 @@ export default function AdminTagsPageClient({
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <motion.div variants={itemVariants} className="lg:col-span-1 h-fit">
+          <motion.div variants={itemVariants} className="lg:col-span-1 h-fit space-y-8">
             <TagBulkRegisterCard />
+            <AdminNfcWriteCard />
           </motion.div>
           <motion.div variants={itemVariants} className="lg:col-span-2">
             <TagInventorySection tags={tags} opsStats={opsStats} />

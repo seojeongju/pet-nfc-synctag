@@ -438,3 +438,74 @@ export async function updateTagProductProfile(
     revalidatePath("/admin/tags");
     revalidatePath("/admin/monitoring");
 }
+
+const NFC_WRITE_ACTION = "nfc_web_write";
+
+/**
+ * Web NFC로 기록할 공개 URL을 반환합니다. 태그가 DB에 등록된 경우에만 허용합니다.
+ */
+export async function prepareNfcTagWrite(tagIdRaw: string): Promise<
+    { ok: true; tagId: string; url: string } | { ok: false; error: string }
+> {
+    await assertAdminRole();
+    const id = normalizeUid(tagIdRaw);
+    if (!isValidUidFormat(id)) {
+        return { ok: false, error: "UID 형식이 올바르지 않습니다." };
+    }
+    const base =
+        process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "").trim() ||
+        "";
+    if (!base) {
+        return { ok: false, error: "NEXT_PUBLIC_APP_URL이 설정되지 않았습니다." };
+    }
+    const db = getDB();
+    const row = await db
+        .prepare("SELECT id FROM tags WHERE id = ?")
+        .bind(id)
+        .first<{ id: string }>();
+    if (!row) {
+        return { ok: false, error: "등록되지 않은 태그입니다. 먼저 태그를 인벤토리에 등록하세요." };
+    }
+    const url = `${base}/t/${encodeURIComponent(id)}`;
+    return { ok: true, tagId: id, url };
+}
+
+/**
+ * Web NFC 기록 시도 결과를 admin_action_logs에 남깁니다.
+ */
+export async function recordNfcWebWriteAudit(input: {
+    tagId: string;
+    url: string;
+    success: boolean;
+    clientError?: string;
+}): Promise<void> {
+    await assertAdminRole();
+    const db = getDB();
+    await db.prepare(`
+            CREATE TABLE IF NOT EXISTS admin_action_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                action TEXT NOT NULL,
+                actor_email TEXT,
+                success BOOLEAN NOT NULL DEFAULT 1,
+                payload TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `).run();
+    const payload = JSON.stringify({
+        tagId: input.tagId,
+        url: input.url,
+        ...(input.clientError ? { clientError: input.clientError } : {}),
+    });
+    await db
+        .prepare(
+            "INSERT INTO admin_action_logs (action, actor_email, success, payload) VALUES (?, ?, ?, ?)"
+        )
+        .bind(
+            NFC_WRITE_ACTION,
+            await getActorEmailSafe(),
+            input.success ? 1 : 0,
+            payload
+        )
+        .run();
+    revalidatePath("/admin/tags");
+}

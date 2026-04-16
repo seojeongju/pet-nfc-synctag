@@ -17,6 +17,12 @@ function summarizePayload(payloadRaw?: string | null) {
     if (payload?.registeredCount !== undefined) {
       return `등록 ${payload.registeredCount} / 실패 ${payload.failedCount ?? 0}`;
     }
+    if (payload?.tagId && payload?.url && payload?.clientError === undefined) {
+      return `tagId=${payload.tagId}, url=${String(payload.url).slice(0, 48)}…`;
+    }
+    if (payload?.tagId && payload?.url && payload?.clientError !== undefined) {
+      return `tagId=${payload.tagId}, err=${String(payload.clientError).slice(0, 40)}`;
+    }
     if (payload?.tagId && payload?.petId) {
       return `tagId=${payload.tagId}, petId=${payload.petId}`;
     }
