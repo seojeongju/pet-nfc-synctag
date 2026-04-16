@@ -62,10 +62,34 @@ export default function LiveLocationMap({
   const mapInstanceRef = useRef<KakaoMapInstance | null>(null);
   const markersRef = useRef<KakaoMarker[]>([]);
   const [sdkLoaded, setSdkLoaded] = useState(false);
+  /** CI 빌드에 잘못된 키가 박혀도 Cloudflare 런타임 env를 쓰도록 API에서 조회 */
+  const [appKey, setAppKey] = useState<string | null>(null);
+  const [configStatus, setConfigStatus] = useState<"loading" | "ready" | "missing" | "error">("loading");
+  const [scriptLoadFailed, setScriptLoadFailed] = useState(false);
 
-  const apiKey =
-    process.env.NEXT_PUBLIC_KAKAO_MAP_JS_KEY ??
-    process.env.NEXT_PUBLIC_KAKAO_MAP_KEY;
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/kakao-map-config", { cache: "no-store" });
+        if (!res.ok) throw new Error("config fetch failed");
+        const data = (await res.json()) as { appKey: string | null };
+        if (cancelled) return;
+        if (data.appKey) {
+          setAppKey(data.appKey);
+          setConfigStatus("ready");
+        } else {
+          setAppKey(null);
+          setConfigStatus("missing");
+        }
+      } catch {
+        if (!cancelled) setConfigStatus("error");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // SDK 초기화 및 지도 생성
   const initMap = () => {
@@ -158,15 +182,17 @@ export default function LiveLocationMap({
         className="w-full h-[350px] bg-slate-50 transition-all"
       />
 
-      {(!sdkLoaded || !apiKey) && (
+      {(!sdkLoaded || configStatus !== "ready" || scriptLoadFailed) && (
         <div className="absolute inset-0 z-10 bg-slate-50/70 backdrop-blur-sm flex flex-col items-center justify-center text-center p-8">
             <div className="w-16 h-16 rounded-[24px] bg-white shadow-xl flex items-center justify-center text-teal-500 mb-6">
                 <Activity className="w-8 h-8 animate-pulse" />
             </div>
             <p className="text-base font-black text-slate-900 leading-tight">
-                지도를 불러오는 중입니다...
+                {configStatus === "loading"
+                  ? "지도 설정을 불러오는 중입니다..."
+                  : "지도를 불러오는 중입니다..."}
             </p>
-            {!apiKey ? (
+            {configStatus === "missing" ? (
                 <div className="mt-4 px-6 py-4 bg-amber-50 rounded-2xl border border-amber-100 max-w-[80%]">
                     <div className="flex items-center gap-2 text-amber-600 mb-2 justify-center">
                         <AlertTriangle className="w-4 h-4" />
@@ -175,22 +201,40 @@ export default function LiveLocationMap({
                     <p className="text-[10px] text-amber-700 font-bold leading-relaxed">
                         카카오맵 API 키(
                         NEXT_PUBLIC_KAKAO_MAP_JS_KEY 또는 NEXT_PUBLIC_KAKAO_MAP_KEY)가 설정되지 않았습니다.<br />
-                        환경 변수를 확인해 주세요.
+                        Cloudflare Pages 환경 변수를 확인해 주세요.
                     </p>
                 </div>
-            ) : (
+            ) : configStatus === "error" ? (
+                <div className="mt-4 px-6 py-4 bg-rose-50 rounded-2xl border border-rose-100 max-w-[80%]">
+                    <p className="text-[10px] text-rose-700 font-bold leading-relaxed">
+                        지도 설정을 불러오지 못했습니다. 잠시 후 새로고침해 주세요.
+                    </p>
+                </div>
+            ) : scriptLoadFailed ? (
+                <div className="mt-4 px-6 py-4 bg-amber-50 rounded-2xl border border-amber-100 max-w-[80%]">
+                    <div className="flex items-center gap-2 text-amber-600 mb-2 justify-center">
+                        <AlertTriangle className="w-4 h-4" />
+                        <span className="text-xs font-black uppercase">SDK 로드 실패</span>
+                    </div>
+                    <p className="text-[10px] text-amber-700 font-bold leading-relaxed">
+                        카카오 JavaScript 키·JavaScript SDK 도메인(현재 사이트 주소)이 일치하는지 확인해 주세요.
+                    </p>
+                </div>
+            ) : configStatus === "ready" && appKey ? (
                 <p className="text-[11px] text-slate-400 font-bold mt-2 font-outfit uppercase tracking-widest">Initialising SDK</p>
-            )}
+            ) : null}
         </div>
       )}
 
-      {apiKey ? (
+      {appKey && configStatus === "ready" ? (
         <Script
-          src={`https://dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&autoload=false`}
+          src={`https://dapi.kakao.com/v2/maps/sdk.js?appkey=${encodeURIComponent(appKey)}&autoload=false`}
           onLoad={() => {
+            setScriptLoadFailed(false);
             setSdkLoaded(true);
             setTimeout(initMap, 200);
           }}
+          onError={() => setScriptLoadFailed(true)}
         />
       ) : null}
     </Card>
