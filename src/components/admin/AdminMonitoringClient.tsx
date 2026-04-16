@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useTransition, type ComponentType, type ReactNode } from "react";
+import { useRef, useState, useTransition, type ComponentType, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { AdminCard } from "@/components/admin/ui/AdminCard";
+import { CardContent } from "@/components/ui/card";
 import {
   AdminTableHeadCell,
   AdminTableHeadRow,
@@ -24,12 +26,18 @@ import { motion } from "framer-motion";
 import type {
   LandingAutoRouteRow,
   LowBatteryRow,
+  MapTelemetryHealthSummary,
+  MapTelemetryAlertState,
+  MapTelemetryThresholds,
+  MapTelemetryTrendPoint,
   RecentBleRow,
   RecentNfcScanRow,
   UnknownAccessRow,
 } from "@/lib/admin-monitoring-data";
 import {
+  acknowledgeMapTelemetryAlert,
   getTagDiagnosticsForAdmin,
+  updateMapTelemetryThresholds,
   updateTagBleMac,
   type TagDiagnosticResult,
 } from "@/app/actions/admin-monitoring";
@@ -51,6 +59,11 @@ type Summary = {
 
 export default function AdminMonitoringClient({
   summary,
+  mapHealth,
+  mapThresholds,
+  mapAlertState,
+  mapTrend,
+  period,
   recentNfc,
   unknownAccess,
   autoRouteEvents,
@@ -58,6 +71,11 @@ export default function AdminMonitoringClient({
   lowBattery,
 }: {
   summary: Summary;
+  mapHealth: MapTelemetryHealthSummary;
+  mapThresholds: MapTelemetryThresholds;
+  mapAlertState: MapTelemetryAlertState;
+  mapTrend: MapTelemetryTrendPoint[];
+  period: "1h" | "24h" | "7d";
   recentNfc: RecentNfcScanRow[];
   unknownAccess: UnknownAccessRow[];
   autoRouteEvents: LandingAutoRouteRow[];
@@ -69,6 +87,12 @@ export default function AdminMonitoringClient({
   const [diagError, setDiagError] = useState<string | null>(null);
   const [bleMacEdit, setBleMacEdit] = useState("");
   const [pending, startTransition] = useTransition();
+  const [thresholdPending, startThresholdTransition] = useTransition();
+  const [ackPending, startAckTransition] = useTransition();
+  const router = useRouter();
+  const [thresholdForm, setThresholdForm] = useState(mapThresholds);
+  const chartRef = useRef<SVGSVGElement | null>(null);
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
   const runLookup = () => {
     setDiagError(null);
@@ -101,6 +125,57 @@ export default function AdminMonitoringClient({
     summary.tagsTotal > 0
       ? ((summary.tagsActive / summary.tagsTotal) * 100).toFixed(1)
       : "0";
+  const healthTone =
+    mapHealth.errorRatePercent24h >= thresholdForm.dangerErrorRate ||
+    mapHealth.timeoutRatePercent24h >= thresholdForm.dangerTimeoutRate ||
+    mapHealth.offlineRatePercent24h >= thresholdForm.dangerOfflineRate
+      ? "danger"
+      : mapHealth.errorRatePercent24h >= thresholdForm.warningErrorRate ||
+          mapHealth.timeoutRatePercent24h >= thresholdForm.warningTimeoutRate ||
+          mapHealth.offlineRatePercent24h >= thresholdForm.warningOfflineRate
+        ? "warning"
+        : "ok";
+  const healthToneClass =
+    healthTone === "danger"
+      ? "border-rose-200 bg-rose-50"
+      : healthTone === "warning"
+        ? "border-amber-200 bg-amber-50"
+        : "border-teal-200 bg-teal-50";
+  const topFailureLabel =
+    mapHealth.topFailureReason === "timeout"
+      ? "타임아웃"
+      : mapHealth.topFailureReason === "offline"
+        ? "오프라인"
+        : mapHealth.topFailureReason === "error"
+          ? "요청 실패"
+          : "이상 없음";
+  const trendMax = Math.max(1, ...mapTrend.map((p) => p.avgRefreshMs));
+  const avgTrendPoints = mapTrend
+    .map((p, idx) => `${idx === 0 ? "M" : "L"} ${idx * 14},${36 - (p.avgRefreshMs / trendMax) * 32}`)
+    .join(" ");
+  const errorTrendPoints = mapTrend
+    .map((p, idx) => `${idx === 0 ? "M" : "L"} ${idx * 14},${36 - (Math.max(0, Math.min(100, p.errorRatePercent)) / 100) * 32}`)
+    .join(" ");
+  const timeoutTrendPoints = mapTrend
+    .map((p, idx) => `${idx === 0 ? "M" : "L"} ${idx * 14},${36 - (Math.max(0, Math.min(100, p.timeoutRatePercent)) / 100) * 32}`)
+    .join(" ");
+  const activePoint = hoverIdx != null && mapTrend[hoverIdx] ? mapTrend[hoverIdx] : null;
+  const ackUntilTs = mapAlertState.acknowledgedUntil ? Date.parse(mapAlertState.acknowledgedUntil) : 0;
+  const ackActive = Boolean(ackUntilTs && !Number.isNaN(ackUntilTs) && Date.now() < ackUntilTs);
+  const showDangerBanner = healthTone === "danger" && !ackActive;
+
+  const saveThresholds = () => {
+    startThresholdTransition(async () => {
+      await updateMapTelemetryThresholds(thresholdForm);
+      router.refresh();
+    });
+  };
+  const acknowledgeAlert = () => {
+    startAckTransition(async () => {
+      await acknowledgeMapTelemetryAlert(60);
+      router.refresh();
+    });
+  };
 
   return (
     <div className="p-4 lg:p-10 space-y-8 max-w-[1600px] mx-auto">
@@ -155,6 +230,211 @@ export default function AdminMonitoringClient({
           tone="teal"
         />
       </div>
+
+      {showDangerBanner && (
+        <AdminCard variant="subtle" className="border border-rose-200 bg-rose-50">
+          <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-black text-rose-700">지도 상태 위험: 즉시 점검이 필요합니다.</p>
+              <p className="text-[11px] font-bold text-rose-600 mt-1">
+                실패율 {mapHealth.errorRatePercent24h}% / 타임아웃율 {mapHealth.timeoutRatePercent24h}% / 오프라인율 {mapHealth.offlineRatePercent24h}%
+              </p>
+            </div>
+            <Button
+              type="button"
+              onClick={acknowledgeAlert}
+              disabled={ackPending}
+              className="h-9 text-[10px] font-black uppercase bg-rose-600 hover:bg-rose-700"
+            >
+              {ackPending ? "처리 중..." : "1시간 알림 숨기기"}
+            </Button>
+          </CardContent>
+        </AdminCard>
+      )}
+
+      <AdminCard variant="subtle">
+        <CardContent className="p-5 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">지도 건강도 ({mapHealth.windowLabel})</p>
+            <div className="flex items-center gap-1">
+              <a
+                href="/admin/monitoring?period=1h"
+                className={cn("px-2 py-1 rounded-lg text-[10px] font-black", period === "1h" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500")}
+              >
+                1시간
+              </a>
+              <a
+                href="/admin/monitoring?period=24h"
+                className={cn("px-2 py-1 rounded-lg text-[10px] font-black", period === "24h" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500")}
+              >
+                24시간
+              </a>
+              <a
+                href="/admin/monitoring?period=7d"
+                className={cn("px-2 py-1 rounded-lg text-[10px] font-black", period === "7d" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500")}
+              >
+                7일
+              </a>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className={cn("rounded-xl border p-3", healthToneClass)}>
+              <p className="text-[10px] text-slate-400 font-black">표본 수</p>
+              <p className="text-lg font-black text-slate-900 mt-1">{mapHealth.samples24h}</p>
+            </div>
+            <div className="rounded-xl bg-slate-50 border border-slate-100 p-3">
+              <p className="text-[10px] text-slate-400 font-black">평균 지연</p>
+              <p className="text-lg font-black text-slate-900 mt-1">{mapHealth.avgRefreshMs24h}ms</p>
+            </div>
+            <div className="rounded-xl bg-rose-50 border border-rose-100 p-3">
+              <p className="text-[10px] text-rose-400 font-black">실패율 / 타임아웃율</p>
+              <p className="text-lg font-black text-rose-600 mt-1">
+                {mapHealth.errorRatePercent24h}% / {mapHealth.timeoutRatePercent24h}%
+              </p>
+            </div>
+            <div className="rounded-xl bg-teal-50 border border-teal-100 p-3">
+              <p className="text-[10px] text-teal-500 font-black">오프라인율 / 자동갱신 ON</p>
+              <p className="text-lg font-black text-teal-600 mt-1">
+                {mapHealth.offlineRatePercent24h}% / {mapHealth.autoRefreshOnRatePercent24h}%
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+            <div className="rounded-xl bg-slate-50 border border-slate-100 p-3 lg:col-span-2">
+              <p className="text-[10px] text-slate-400 font-black">실패 원인 Top</p>
+              <p className="text-sm font-black text-slate-800 mt-1">{topFailureLabel}</p>
+            </div>
+            <div className="rounded-xl bg-slate-50 border border-slate-100 p-3">
+              <p className="text-[10px] text-slate-400 font-black">오류 샘플</p>
+              <p className="text-sm font-black text-slate-800 mt-1">{mapHealth.errorSamples}</p>
+            </div>
+            <div className="rounded-xl bg-slate-50 border border-slate-100 p-3">
+              <p className="text-[10px] text-slate-400 font-black">타임아웃/오프라인</p>
+              <p className="text-sm font-black text-slate-800 mt-1">
+                {mapHealth.timeoutSamples} / {mapHealth.offlineSamples}
+              </p>
+            </div>
+          </div>
+          <p className="text-[10px] text-slate-400 font-bold">
+            최근 수신: {mapHealth.lastReceivedAt ?? "없음"}
+          </p>
+          <div className="rounded-xl bg-white border border-slate-100 p-3 space-y-2">
+            <p className="text-[10px] text-slate-400 font-black">평균 지연/실패율 추세</p>
+            {mapTrend.length > 1 ? (
+              <svg
+                ref={chartRef}
+                viewBox={`0 0 ${Math.max(20, (mapTrend.length - 1) * 14 + 4)} 40`}
+                className="w-full h-16"
+                onMouseMove={(e) => {
+                  const el = chartRef.current;
+                  if (!el || mapTrend.length === 0) return;
+                  const rect = el.getBoundingClientRect();
+                  const x = e.clientX - rect.left;
+                  const ratio = rect.width > 0 ? x / rect.width : 0;
+                  const idx = Math.max(0, Math.min(mapTrend.length - 1, Math.round(ratio * (mapTrend.length - 1))));
+                  setHoverIdx(idx);
+                }}
+                onMouseLeave={() => setHoverIdx(null)}
+              >
+                <path d={avgTrendPoints} fill="none" stroke="#0d9488" strokeWidth="2.5" strokeLinecap="round" />
+                <path d={errorTrendPoints} fill="none" stroke="#f43f5e" strokeWidth="2" strokeLinecap="round" />
+                <path d={timeoutTrendPoints} fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeDasharray="3 2" />
+              </svg>
+            ) : (
+              <p className="text-[10px] font-bold text-slate-400">추세 데이터를 수집 중입니다.</p>
+            )}
+            {activePoint && (
+              <p className="text-[10px] font-black text-slate-500">
+                {activePoint.bucket} · 지연 {activePoint.avgRefreshMs}ms · 실패율 {activePoint.errorRatePercent}% · 타임아웃율 {activePoint.timeoutRatePercent}%
+              </p>
+            )}
+            <div className="flex items-center gap-3 text-[10px] font-black text-slate-400">
+              <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-teal-600" />지연(ms)</span>
+              <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-rose-500" />실패율</span>
+              <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" />타임아웃율</span>
+            </div>
+          </div>
+          <div className="rounded-xl bg-slate-50 border border-slate-100 p-3 space-y-3">
+            <p className="text-[10px] text-slate-400 font-black">임계치 설정 (%)</p>
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+              <label className="text-[10px] font-black text-slate-500">
+                주의 실패율
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={thresholdForm.warningErrorRate}
+                  onChange={(e) => setThresholdForm((p) => ({ ...p, warningErrorRate: Number(e.target.value) || 0 }))}
+                  className="h-9 mt-1"
+                />
+              </label>
+              <label className="text-[10px] font-black text-slate-500">
+                주의 타임아웃율
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={thresholdForm.warningTimeoutRate}
+                  onChange={(e) => setThresholdForm((p) => ({ ...p, warningTimeoutRate: Number(e.target.value) || 0 }))}
+                  className="h-9 mt-1"
+                />
+              </label>
+              <label className="text-[10px] font-black text-slate-500">
+                주의 오프라인율
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={thresholdForm.warningOfflineRate}
+                  onChange={(e) => setThresholdForm((p) => ({ ...p, warningOfflineRate: Number(e.target.value) || 0 }))}
+                  className="h-9 mt-1"
+                />
+              </label>
+              <label className="text-[10px] font-black text-slate-500">
+                위험 실패율
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={thresholdForm.dangerErrorRate}
+                  onChange={(e) => setThresholdForm((p) => ({ ...p, dangerErrorRate: Number(e.target.value) || 0 }))}
+                  className="h-9 mt-1"
+                />
+              </label>
+              <label className="text-[10px] font-black text-slate-500">
+                위험 타임아웃율
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={thresholdForm.dangerTimeoutRate}
+                  onChange={(e) => setThresholdForm((p) => ({ ...p, dangerTimeoutRate: Number(e.target.value) || 0 }))}
+                  className="h-9 mt-1"
+                />
+              </label>
+              <label className="text-[10px] font-black text-slate-500">
+                위험 오프라인율
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={thresholdForm.dangerOfflineRate}
+                  onChange={(e) => setThresholdForm((p) => ({ ...p, dangerOfflineRate: Number(e.target.value) || 0 }))}
+                  className="h-9 mt-1"
+                />
+              </label>
+            </div>
+            <Button
+              type="button"
+              onClick={saveThresholds}
+              disabled={thresholdPending}
+              className="h-9 text-[10px] font-black uppercase tracking-wide"
+            >
+              {thresholdPending ? "저장 중..." : "임계치 저장"}
+            </Button>
+          </div>
+        </CardContent>
+      </AdminCard>
 
       <AdminCard variant="section" className="p-5 lg:p-6 space-y-4">
         <div className="flex items-center gap-2 text-slate-800 font-black text-xs uppercase tracking-widest">

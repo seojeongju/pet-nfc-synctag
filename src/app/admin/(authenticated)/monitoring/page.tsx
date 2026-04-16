@@ -1,6 +1,10 @@
 ﻿import AdminMonitoringClient from "@/components/admin/AdminMonitoringClient";
 import {
+  getMapTelemetryAlertState,
   getLandingAutoRouteEvents,
+  getMapTelemetryHealthSummary,
+  getMapTelemetryThresholds,
+  getMapTelemetryTrend,
   getLowBatteryCandidates,
   getMonitoringSummary,
   getRecentBleEvents,
@@ -10,8 +14,14 @@ import {
 
 export const runtime = "edge";
 
-export default async function AdminMonitoringPage() {
-  const [summary, recentNfc, unknownAccess, autoRouteEvents, recentBle, lowBattery] = await Promise.all([
+export default async function AdminMonitoringPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ period?: string }>;
+}) {
+  const sp = await searchParams;
+  const period = sp.period === "1h" || sp.period === "7d" ? sp.period : "24h";
+  const [summary, mapHealth, mapThresholds, mapAlertState, mapTrend, recentNfc, unknownAccess, autoRouteEvents, recentBle, lowBattery] = await Promise.all([
     getMonitoringSummary().catch(() => ({
       nfcScans24h: 0,
       nfcScans7d: 0,
@@ -26,6 +36,30 @@ export default async function AdminMonitoringPage() {
       tagsActive: 0,
       tagsUnsold: 0,
     })),
+    getMapTelemetryHealthSummary(period).catch(() => ({
+      windowLabel: period === "1h" ? "최근 1시간" : period === "7d" ? "최근 7일" : "최근 24시간",
+      samples24h: 0,
+      avgRefreshMs24h: 0,
+      errorRatePercent24h: 0,
+      timeoutRatePercent24h: 0,
+      offlineRatePercent24h: 0,
+      autoRefreshOnRatePercent24h: 0,
+      errorSamples: 0,
+      timeoutSamples: 0,
+      offlineSamples: 0,
+      topFailureReason: "none" as const,
+      lastReceivedAt: null,
+    })),
+    getMapTelemetryThresholds().catch(() => ({
+      warningErrorRate: 8,
+      warningTimeoutRate: 5,
+      warningOfflineRate: 8,
+      dangerErrorRate: 20,
+      dangerTimeoutRate: 15,
+      dangerOfflineRate: 20,
+    })),
+    getMapTelemetryAlertState().catch(() => ({ acknowledgedUntil: null })),
+    getMapTelemetryTrend(period).catch(() => []),
     getRecentNfcScans(40).catch(() => []),
     getUnknownTagAccesses(30).catch(() => []),
     getLandingAutoRouteEvents(30).catch(() => []),
@@ -36,6 +70,11 @@ export default async function AdminMonitoringPage() {
   return (
     <AdminMonitoringClient
       summary={summary}
+      mapHealth={mapHealth}
+      mapThresholds={mapThresholds}
+      mapAlertState={mapAlertState}
+      mapTrend={mapTrend}
+      period={period}
       recentNfc={recentNfc}
       unknownAccess={unknownAccess}
       autoRouteEvents={autoRouteEvents}

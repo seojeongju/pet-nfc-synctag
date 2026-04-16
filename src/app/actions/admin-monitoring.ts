@@ -6,6 +6,7 @@ import { getAuth } from "@/lib/auth";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { revalidatePath } from "next/cache";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
+import { getMapTelemetryThresholds } from "@/lib/admin-monitoring-data";
 
 function normalizeUid(uid: string) {
   return uid.trim().toUpperCase();
@@ -22,6 +23,10 @@ async function assertAdmin() {
     .bind(userId)
     .first<{ role?: string | null }>();
   if (!isPlatformAdminRole(row?.role)) throw new Error("플랫폼 관리자만 접근할 수 있습니다.");
+  return {
+    userId,
+    userEmail: session?.user?.email ?? "unknown",
+  };
 }
 
 export type TagDiagnosticResult =
@@ -191,5 +196,118 @@ export async function updateTagBleMac(tagId: string, bleMac: string | null) {
           : String(e)
       );
     });
+  revalidatePath("/admin/monitoring");
+}
+
+export async function updateMapTelemetryThresholds(input: {
+  warningErrorRate: number;
+  warningTimeoutRate: number;
+  warningOfflineRate: number;
+  dangerErrorRate: number;
+  dangerTimeoutRate: number;
+  dangerOfflineRate: number;
+}) {
+  const admin = await assertAdmin();
+  const db = getDB();
+
+  const clamp = (n: number) => Math.max(0, Math.min(100, Number.isFinite(n) ? n : 0));
+  const warningErrorRate = clamp(input.warningErrorRate);
+  const warningTimeoutRate = clamp(input.warningTimeoutRate);
+  const warningOfflineRate = clamp(input.warningOfflineRate);
+  const dangerErrorRate = clamp(input.dangerErrorRate);
+  const dangerTimeoutRate = clamp(input.dangerTimeoutRate);
+  const dangerOfflineRate = clamp(input.dangerOfflineRate);
+
+  await db
+    .prepare(
+      "CREATE TABLE IF NOT EXISTS map_telemetry_thresholds (" +
+        "id INTEGER PRIMARY KEY CHECK (id = 1), " +
+        "warning_error_rate REAL NOT NULL, " +
+        "warning_timeout_rate REAL NOT NULL, " +
+        "warning_offline_rate REAL NOT NULL, " +
+        "danger_error_rate REAL NOT NULL, " +
+        "danger_timeout_rate REAL NOT NULL, " +
+        "danger_offline_rate REAL NOT NULL, " +
+        "updated_at TEXT DEFAULT (datetime('now'))" +
+        ")"
+    )
+    .run();
+
+  await db
+    .prepare(
+      "CREATE TABLE IF NOT EXISTS map_telemetry_threshold_audit (" +
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+        "actor_email TEXT, " +
+        "payload TEXT, " +
+        "created_at TEXT DEFAULT (datetime('now'))" +
+        ")"
+    )
+    .run();
+
+  await db
+    .prepare("INSERT INTO map_telemetry_threshold_audit (actor_email, payload) VALUES (?, ?)")
+    .bind(
+      admin.userEmail,
+      JSON.stringify({
+        warningErrorRate,
+        warningTimeoutRate,
+        warningOfflineRate,
+        dangerErrorRate,
+        dangerTimeoutRate,
+        dangerOfflineRate,
+      })
+    )
+    .run();
+
+  await db
+    .prepare(
+      "INSERT INTO map_telemetry_thresholds (" +
+        "id, warning_error_rate, warning_timeout_rate, warning_offline_rate, " +
+        "danger_error_rate, danger_timeout_rate, danger_offline_rate, updated_at" +
+        ") VALUES (1, ?, ?, ?, ?, ?, ?, datetime('now')) " +
+        "ON CONFLICT(id) DO UPDATE SET " +
+        "warning_error_rate = excluded.warning_error_rate, " +
+        "warning_timeout_rate = excluded.warning_timeout_rate, " +
+        "warning_offline_rate = excluded.warning_offline_rate, " +
+        "danger_error_rate = excluded.danger_error_rate, " +
+        "danger_timeout_rate = excluded.danger_timeout_rate, " +
+        "danger_offline_rate = excluded.danger_offline_rate, " +
+        "updated_at = datetime('now')"
+    )
+    .bind(
+      warningErrorRate,
+      warningTimeoutRate,
+      warningOfflineRate,
+      dangerErrorRate,
+      dangerTimeoutRate,
+      dangerOfflineRate
+    )
+    .run();
+
+  revalidatePath("/admin/monitoring");
+  return await getMapTelemetryThresholds();
+}
+
+export async function acknowledgeMapTelemetryAlert(minutes = 60) {
+  await assertAdmin();
+  const safeMinutes = Math.max(5, Math.min(minutes, 24 * 60));
+  const db = getDB();
+  await db
+    .prepare(
+      "CREATE TABLE IF NOT EXISTS map_telemetry_alert_state (" +
+        "id INTEGER PRIMARY KEY CHECK (id = 1), " +
+        "last_sent_at TEXT, " +
+        "acknowledged_until TEXT" +
+        ")"
+    )
+    .run();
+  await db.prepare("ALTER TABLE map_telemetry_alert_state ADD COLUMN acknowledged_until TEXT").run().catch(() => {});
+  await db
+    .prepare(
+      "INSERT INTO map_telemetry_alert_state (id, acknowledged_until) VALUES (1, datetime('now', ?)) " +
+        "ON CONFLICT(id) DO UPDATE SET acknowledged_until = excluded.acknowledged_until"
+    )
+    .bind(`+${safeMinutes} minutes`)
+    .run();
   revalidatePath("/admin/monitoring");
 }
