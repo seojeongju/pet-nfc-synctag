@@ -66,8 +66,8 @@ export default function ModeGateLanding({
         className={cn("absolute bottom-[-10%] left-[-10%] w-[80%] h-[40%] blur-[120px] rounded-full", visual.blobB)}
       />
 
-      <main className="flex-1 flex flex-col max-w-md mx-auto w-full relative z-10">
-        <section className="relative px-4 pt-6 pb-4">
+      <main className="flex-1 flex flex-col max-w-screen-sm mx-auto w-full relative z-10">
+        <section className="relative px-4 min-[430px]:px-5 pt-6 pb-4">
           <motion.div
             initial={{ opacity: 0, y: fromHome ? 8 : 30, scale: fromHome ? 0.97 : 1 }}
             animate={{ opacity: 1, y: 0 }}
@@ -130,7 +130,7 @@ export default function ModeGateLanding({
           </motion.div>
         </section>
 
-        <section className="flex-1 flex flex-col px-6 min-[390px]:px-8 pt-7 min-[390px]:pt-8 pb-11 min-[390px]:pb-12 space-y-7 min-[390px]:space-y-8 bg-white/85 backdrop-blur-sm rounded-[40px] border border-slate-100/90 shadow-[0_8px_32px_rgba(15,23,42,0.06)]">
+        <section className="flex-1 flex flex-col px-5 min-[390px]:px-7 min-[430px]:px-8 pt-7 min-[390px]:pt-8 pb-10 min-[390px]:pb-12 space-y-7 min-[390px]:space-y-8 bg-white/85 backdrop-blur-sm rounded-[34px] min-[390px]:rounded-[40px] border border-slate-100/90 shadow-[0_8px_32px_rgba(15,23,42,0.06)]">
           <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto" />
 
           <motion.div
@@ -224,7 +224,7 @@ export default function ModeGateLanding({
           </motion.div>
         </section>
 
-        <footer className="px-4 min-[390px]:px-8 pb-10 pt-2 bg-white/50 flex flex-col items-center gap-4 w-full max-w-md mx-auto relative z-10">
+        <footer className="px-4 min-[390px]:px-7 min-[430px]:px-8 pb-10 pt-2 bg-white/50 flex flex-col items-center gap-4 w-full max-w-screen-sm mx-auto relative z-10">
           <nav className="flex flex-wrap justify-center gap-x-3 gap-y-2 text-[10px] min-[390px]:text-[11px] font-black text-slate-600 uppercase tracking-wide max-w-full px-1">
             <Link href="/" className="hover:text-slate-900 transition-colors whitespace-nowrap">
               전체 홈

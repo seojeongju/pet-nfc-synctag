@@ -16,7 +16,15 @@ function getStatusLabel(status: string) {
   return status;
 }
 
-export function TagProductRow({ tag, onAfterSave }: { tag: AdminTag; onAfterSave: () => void }) {
+export function TagProductRow({
+  tag,
+  onAfterSave,
+  mobile = false,
+}: {
+  tag: AdminTag;
+  onAfterSave: () => void;
+  mobile?: boolean;
+}) {
   const [productName, setProductName] = useState(tag.product_name ?? "");
   const [mode, setMode] = useState(tag.assigned_subject_kind ?? "");
   const [ble, setBle] = useState(tag.ble_mac ?? "");
@@ -42,6 +50,69 @@ export function TagProductRow({ tag, onAfterSave }: { tag: AdminTag; onAfterSave
       }
     });
   };
+
+  if (mobile) {
+    return (
+      <div className={cn(adminUi.subtleCard, "rounded-2xl p-4 space-y-3 border border-slate-100")}>
+        <div className="space-y-1">
+          <p className="font-mono text-[11px] font-bold text-slate-700 break-all">{tag.id}</p>
+          {tag.batch_id && <p className="text-[10px] text-slate-500 font-black">배치: {tag.batch_id}</p>}
+        </div>
+
+        <div className="grid grid-cols-1 gap-2">
+          <input
+            value={productName}
+            onChange={(e) => setProductName(e.target.value)}
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium"
+            placeholder="제품명"
+          />
+          <select
+            value={mode}
+            onChange={(e) => setMode(e.target.value)}
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold bg-white"
+          >
+            <option value="">미지정 (허브 선택)</option>
+            {SUBJECT_KINDS.map((k) => (
+              <option key={k} value={k}>
+                {subjectKindMeta[k].label}
+              </option>
+            ))}
+          </select>
+          <input
+            value={ble}
+            onChange={(e) => setBle(e.target.value)}
+            className="w-full font-mono rounded-lg border border-slate-200 px-3 py-2 text-[11px]"
+            placeholder="AA:BB:…"
+          />
+        </div>
+
+        <div className="flex items-center justify-between gap-3">
+          <span
+            className={cn(
+              "inline-flex px-2.5 py-1 rounded-lg text-[10px] font-black tracking-wide border",
+              tag.status === "active"
+                ? adminUi.successBadge
+                : tag.status === "unsold"
+                  ? adminUi.warningBadge
+                  : adminUi.neutralBadge
+            )}
+          >
+            {getStatusLabel(tag.status)}
+          </span>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            className="h-9 text-[11px] font-black px-3"
+            disabled={pending}
+            onClick={save}
+          >
+            저장
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AdminTableRow className="group transition-all duration-300 align-top">

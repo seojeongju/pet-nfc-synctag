@@ -17,7 +17,9 @@ type FlowTopNavContentProps = {
 };
 
 const maxWClass = (variant: FlowTopNavContentProps["variant"]) =>
-  variant === "dashboard" ? "container max-w-5xl px-4" : "mx-auto w-full max-w-md px-3 min-[390px]:px-4";
+  variant === "dashboard"
+    ? "container max-w-5xl px-4"
+    : "mx-auto w-full max-w-screen-sm px-4 min-[430px]:px-5";
 
 /**
  * 상단 링크 행만 (스티키·테두리 없음). 대시보드 등에서 다른 헤더와 합칠 때 사용.
@@ -45,7 +47,7 @@ export function FlowTopNavContent({
   return (
     <div
       className={cn(
-        "flex min-h-[2.75rem] flex-wrap items-center justify-between gap-x-2 gap-y-1.5 py-2 text-[11px] font-bold text-slate-600 min-[390px]:text-xs",
+        "flex min-h-12 flex-wrap items-center justify-between gap-x-2.5 gap-y-2 py-2.5 text-xs font-bold text-slate-600",
         maxWClass(variant),
         className
       )}

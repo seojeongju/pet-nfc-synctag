@@ -76,7 +76,7 @@ export default async function AdminAuthenticatedLayout({
 
           <nav className="px-4 pb-4 lg:pb-0 lg:space-y-2 lg:mt-4">
             <p className="hidden lg:block px-4 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">메인 메뉴</p>
-            <div className="grid grid-cols-2 gap-2 lg:grid-cols-1 lg:gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 lg:grid-cols-1 lg:gap-2">
               {navItems.map((item) => {
                 const NavIcon = item.icon;
                 return (
@@ -85,13 +85,13 @@ export default async function AdminAuthenticatedLayout({
                     href={item.href}
                     prefetch={false}
                     className={cn(
-                      "flex items-center justify-between px-3 lg:px-4 py-3 lg:py-4 hover:bg-teal-50 transition-all group",
+                      "flex items-center justify-between px-3 lg:px-4 py-3.5 lg:py-4 hover:bg-teal-50 transition-all group min-h-12",
                       adminUi.subtleCard
                     )}
                   >
                     <div className="flex items-center gap-3 lg:gap-4 relative z-10 min-w-0">
                       <NavIcon className={`w-4 h-4 lg:w-5 lg:h-5 ${item.color} group-hover:scale-110 transition-transform`} />
-                      <span className="font-black text-[10px] lg:text-xs text-slate-800 uppercase tracking-wide truncate">{item.label}</span>
+                      <span className="font-black text-xs lg:text-xs text-slate-800 tracking-tight lg:tracking-wide truncate">{item.label}</span>
                     </div>
                     <ChevronRight className="hidden lg:block w-3 h-3 text-slate-300 group-hover:text-teal-500 transition-colors" />
                   </Link>
@@ -104,18 +104,18 @@ export default async function AdminAuthenticatedLayout({
             <Link
               href="/"
               prefetch={false}
-              className={cn("flex items-center gap-4 px-4 py-4 bg-slate-50 text-slate-500 hover:text-slate-900 transition-all group", adminUi.subtleCard)}
+              className={cn("flex items-center gap-4 px-4 py-4 bg-slate-50 text-slate-500 hover:text-slate-900 transition-all group min-h-12", adminUi.subtleCard)}
             >
               <Home className="w-5 h-5" />
-              <span className="font-black text-[10px] uppercase tracking-widest">사용자 화면</span>
+              <span className="font-black text-xs tracking-wide">사용자 화면</span>
             </Link>
             <form action="/logout" method="post">
               <button
                 type="submit"
-                className="w-full flex items-center gap-4 px-4 py-4 rounded-2xl hover:bg-rose-500/10 transition-all text-rose-500 border border-rose-100/0 hover:border-rose-500/20 bg-white shadow-md"
+                className="w-full flex items-center gap-4 px-4 py-4 rounded-2xl hover:bg-rose-500/10 transition-all text-rose-500 border border-rose-100/0 hover:border-rose-500/20 bg-white shadow-md min-h-12"
               >
                 <LogOut className="w-5 h-5" />
-                <span className="font-black text-[10px] uppercase tracking-widest">안전 로그아웃</span>
+                <span className="font-black text-xs tracking-wide">안전 로그아웃</span>
               </button>
             </form>
           </div>
@@ -125,8 +125,8 @@ export default async function AdminAuthenticatedLayout({
           <header className="h-16 lg:h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-4 lg:px-10 z-10 sticky top-0">
             <div className="flex items-center gap-3 lg:gap-4 min-w-0">
               <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse shadow-[0_0_8px_rgba(20,184,166,0.5)]" />
-              <h2 className="text-slate-700 text-[11px] lg:text-sm font-black uppercase tracking-[0.08em] italic truncate">
-                시스템 상태: <span className="text-slate-400 font-bold ml-1">실시간 운영 모니터링</span>
+              <h2 className="text-slate-700 text-[11px] lg:text-sm font-black tracking-[0.02em] lg:tracking-[0.08em] italic truncate">
+                시스템 상태: <span className="text-slate-400 font-bold ml-1 hidden sm:inline">실시간 운영 모니터링</span>
               </h2>
             </div>
 

@@ -75,18 +75,18 @@ export default async function HubPage({
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-outfit">
       <FlowTopNav variant="landing" session={session} isAdmin={isPlatformAdmin} />
-      <div className="px-5 py-10 pb-24">
-      <div className="max-w-md mx-auto space-y-8">
+      <div className="px-4 min-[430px]:px-5 py-6 min-[430px]:py-8 pb-20">
+      <div className="max-w-screen-sm mx-auto space-y-6 min-[430px]:space-y-8">
         <header className="space-y-2">
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-600">
             링크유 Link-U
           </p>
-          <h1 className="text-2xl font-black text-slate-900 leading-tight">
+          <h1 className="text-[30px] font-black text-slate-900 leading-tight tracking-tight">
             어떤 동행으로
             <br />
             <span className="text-teal-500">시작할까요?</span>
           </h1>
-          <p className="text-sm text-slate-500 font-medium">
+          <p className="text-base text-slate-500 font-medium leading-relaxed">
             돌봄과 연결을 위해 맞춤 화면이 달라요. 나중에 언제든 바꿀 수 있어요.
           </p>
           {personalPlan && (
@@ -97,7 +97,7 @@ export default async function HubPage({
           )}
           <a
             href="/hub/org/new"
-            className="inline-flex items-center gap-1 text-xs font-black text-teal-600 hover:text-teal-700"
+            className="inline-flex items-center gap-1.5 text-sm font-black text-teal-600 hover:text-teal-700 min-h-10"
           >
             조직 만들기 (B2B)
             <ChevronRight className="h-3.5 w-3.5" />
@@ -180,16 +180,16 @@ export default async function HubPage({
                 key={kind}
                 href={`/dashboard/${kind}`}
                 className={cn(
-                  "flex items-center gap-4 rounded-[28px] border border-slate-100 bg-white p-5 shadow-sm",
+                  "flex items-center gap-4 rounded-[24px] border border-slate-100 bg-white p-4 min-[430px]:p-5 shadow-sm",
                   "transition-all hover:border-teal-200 hover:shadow-md active:scale-[0.99]"
                 )}
               >
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-teal-50 text-teal-600">
-                  <Icon className="h-7 w-7" />
+                <div className="flex h-12 w-12 min-[430px]:h-14 min-[430px]:w-14 shrink-0 items-center justify-center rounded-2xl bg-teal-50 text-teal-600">
+                  <Icon className="h-6 w-6 min-[430px]:h-7 min-[430px]:w-7" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="font-black text-slate-900">{meta.label}</p>
-                  <p className="text-xs text-slate-500 font-medium mt-0.5">{meta.description}</p>
+                  <p className="font-black text-slate-900 text-[15px] min-[430px]:text-base">{meta.label}</p>
+                  <p className="text-[13px] text-slate-500 font-medium mt-0.5 leading-snug">{meta.description}</p>
                 </div>
                 <ChevronRight className="h-5 w-5 text-slate-300 shrink-0" />
               </a>

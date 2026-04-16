@@ -6,6 +6,7 @@ import { AdminCard } from "@/components/admin/ui/AdminCard";
 import { AdminTableHeadCell, AdminTableHeadRow } from "@/components/admin/ui/AdminTable";
 import { Database, BarChart3, Search } from "lucide-react";
 import { adminUi } from "@/styles/admin/ui";
+import { cn } from "@/lib/utils";
 import type { AdminTag, TagOpsStats } from "@/types/admin-tags";
 import { TagProductRow } from "./TagProductRow";
 
@@ -26,7 +27,7 @@ export function TagInventorySection({ tags, opsStats }: { tags: AdminTag[]; opsS
 
   return (
     <AdminCard variant="section" className="space-y-8 h-full">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 px-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 px-2">
         <div className="space-y-1">
           <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
             <Database className="w-5 h-5 text-teal-400" />
@@ -34,19 +35,31 @@ export function TagInventorySection({ tags, opsStats }: { tags: AdminTag[]; opsS
           </h3>
           <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">마스터 데이터 목록</p>
         </div>
-        <div className="relative group min-w-[240px]">
+        <div className="relative group w-full sm:w-auto sm:min-w-[240px]">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-teal-400 transition-colors" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="UID · 제품명 · 펫 이름 검색..."
-            className={adminUi.searchInput}
+            className={cn(adminUi.searchInput, "w-full")}
           />
         </div>
       </div>
 
-      <div className="overflow-x-auto custom-scrollbar">
+      <div className="md:hidden space-y-3">
+        {filteredTags.length > 0 ? (
+          filteredTags.map((tag) => (
+            <TagProductRow key={tag.id} tag={tag} onAfterSave={() => router.refresh()} mobile />
+          ))
+        ) : (
+          <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-xs text-slate-500 font-bold">
+            등록된 인벤토리가 없습니다.
+          </div>
+        )}
+      </div>
+
+      <div className="hidden md:block overflow-x-auto custom-scrollbar">
         <table className="w-full text-left">
           <thead>
             <AdminTableHeadRow>
@@ -89,13 +102,13 @@ export function TagInventorySection({ tags, opsStats }: { tags: AdminTag[]; opsS
             (opsStats?.batches ?? []).map((batch) => (
               <div
                 key={batch.batch_id}
-                className="rounded-2xl border border-slate-100 bg-slate-50 p-4 flex items-center justify-between gap-4"
+                className="rounded-2xl border border-slate-100 bg-slate-50 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4"
               >
                 <div>
                   <p className="text-xs font-black text-slate-900">{batch.batch_id}</p>
                   <p className="text-[10px] text-slate-500 font-bold">{new Date(batch.latest_created_at).toLocaleString()}</p>
                 </div>
-                <div className="flex items-center gap-4 text-[10px] font-black uppercase">
+                <div className="flex items-center gap-3 sm:gap-4 text-[10px] font-black uppercase flex-wrap">
                   <span className="text-slate-300">총 {batch.total_count}</span>
                   <span className="text-teal-400">활성 {batch.active_count}</span>
                   <span className="text-amber-400">미판매 {batch.unsold_count}</span>

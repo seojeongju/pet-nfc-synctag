@@ -77,7 +77,7 @@ export default function MultiModeHomeClient({
       <div className="pointer-events-none absolute top-[35%] -left-20 h-64 w-64 rounded-full bg-indigo-300/20 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-16 right-[15%] h-64 w-64 rounded-full bg-cyan-300/20 blur-3xl" />
 
-      <main className="relative z-10 mx-auto flex w-full max-w-md flex-col gap-5 px-3.5 pb-9 pt-7 min-[390px]:gap-6 min-[390px]:px-4 min-[390px]:pb-10 min-[390px]:pt-8 min-[430px]:px-5">
+      <main className="relative z-10 mx-auto flex w-full max-w-screen-sm flex-col gap-5 px-4 pb-9 pt-7 min-[390px]:gap-6 min-[390px]:pb-10 min-[390px]:pt-8 min-[430px]:px-5">
         <motion.section
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
@@ -145,7 +145,7 @@ export default function MultiModeHomeClient({
                   onClick={() => handleModeClick(k)}
                   disabled={isRouting}
                   className={cn(
-                    "group relative flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-left transition min-[390px]:px-4 min-[390px]:py-3",
+                    "group relative flex min-h-12 items-center justify-between rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-left transition min-[390px]:px-4 min-[390px]:py-3",
                     "hover:-translate-y-0.5 hover:border-teal-200 hover:shadow-md",
                     isRouting && !isActive && "opacity-70",
                     isActive && "border-teal-300 shadow-md"
