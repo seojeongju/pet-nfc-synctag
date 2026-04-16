@@ -1,4 +1,4 @@
-name = "pet-id-connect"
+name = "pet-nfc-synctag"
 compatibility_date = "2025-01-01"
 pages_build_output_dir = ".vercel/output/static"
 
