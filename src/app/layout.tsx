@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 
 export const metadata: Metadata = {
   title: "링크유 Link-U | NFC로 연결하는 안심 플랫폼",
@@ -38,7 +39,10 @@ export default function RootLayout({
         />
         {/* eslint-enable @next/next/no-page-custom-font */}
       </head>
-      <body className="antialiased font-outfit">{children}</body>
+      <body className="antialiased font-outfit">
+        {children}
+        <PwaInstallPrompt />
+      </body>
     </html>
   );
 }
