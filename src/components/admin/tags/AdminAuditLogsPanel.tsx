@@ -10,6 +10,14 @@ import { cn } from "@/lib/utils";
 import type { AdminAuditLogRow } from "@/types/admin-tags";
 import { useAdminTagsAuditUrl } from "@/hooks/use-admin-tags-audit-url";
 
+function getResultLabel(success: boolean) {
+  return success ? "성공" : "실패";
+}
+
+function getActorLabel(actorEmail?: string | null) {
+  return actorEmail || "시스템";
+}
+
 function summarizePayload(payloadRaw?: string | null) {
   if (!payloadRaw) return "-";
   try {
@@ -82,8 +90,8 @@ export function AdminAuditLogsPanel({
         return [
           new Date(log.created_at).toISOString(),
           log.action,
-          log.actor_email || "system",
-          log.success ? "success" : "failed",
+          getActorLabel(log.actor_email),
+          getResultLabel(log.success),
           summary,
         ];
       }),
@@ -193,7 +201,7 @@ export function AdminAuditLogsPanel({
                     <AdminTableRow key={log.id}>
                       <td className={cn(adminUi.tableBodyCell, "text-slate-400")}>{new Date(log.created_at).toLocaleString()}</td>
                       <td className={cn(adminUi.tableBodyCell, "text-slate-700")}>{log.action}</td>
-                      <td className={cn(adminUi.tableBodyCell, "text-slate-400")}>{log.actor_email || "system"}</td>
+                      <td className={cn(adminUi.tableBodyCell, "text-slate-400")}>{getActorLabel(log.actor_email)}</td>
                       <td className="py-4 px-4">
                         <span
                           className={cn(
@@ -201,7 +209,7 @@ export function AdminAuditLogsPanel({
                             log.success ? adminUi.successBadge : adminUi.dangerBadge
                           )}
                         >
-                          {log.success ? "success" : "failed"}
+                          {getResultLabel(log.success)}
                         </span>
                       </td>
                       <td className={adminUi.tableBodyCell}>{summary}</td>
@@ -271,10 +279,10 @@ export function AdminAuditLogsPanel({
                 액션: <span className="text-slate-800 font-bold">{selectedAudit.action}</span>
               </p>
               <p className="text-slate-500">
-                결과: <span className="text-slate-800 font-bold">{selectedAudit.success ? "success" : "failed"}</span>
+                결과: <span className="text-slate-800 font-bold">{getResultLabel(selectedAudit.success)}</span>
               </p>
               <p className="text-slate-500">
-                실행자: <span className="text-slate-800 font-bold">{selectedAudit.actor_email || "system"}</span>
+                실행자: <span className="text-slate-800 font-bold">{getActorLabel(selectedAudit.actor_email)}</span>
               </p>
               <p className="text-slate-500">
                 시각: <span className="text-slate-800 font-bold">{new Date(selectedAudit.created_at).toLocaleString()}</span>

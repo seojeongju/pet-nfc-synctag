@@ -9,6 +9,13 @@ import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
 import type { AdminTag } from "@/types/admin-tags";
 
+function getStatusLabel(status: string) {
+  if (status === "active") return "활성";
+  if (status === "unsold") return "미판매";
+  if (status === "inactive") return "비활성";
+  return status;
+}
+
 export function TagProductRow({ tag, onAfterSave }: { tag: AdminTag; onAfterSave: () => void }) {
   const [productName, setProductName] = useState(tag.product_name ?? "");
   const [mode, setMode] = useState(tag.assigned_subject_kind ?? "");
@@ -88,7 +95,7 @@ export function TagProductRow({ tag, onAfterSave }: { tag: AdminTag; onAfterSave
                 : adminUi.neutralBadge
           )}
         >
-          {tag.status}
+          {getStatusLabel(tag.status)}
         </span>
       </td>
       <td className="py-4 px-2">

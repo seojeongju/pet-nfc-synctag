@@ -35,13 +35,13 @@ export function AdminNfcWriteCard() {
     const Writer = getNdefWriterClass();
     if (!Writer) {
       setHint(
-        "Web NFC (NDEFWriter) is not available. Use Android Chrome over HTTPS, or write the same URL with a desktop NFC tool. See docs/NFC_BLE_WEB_WRITING.md"
+        "현재 브라우저에서는 Web NFC(NDEFWriter)를 사용할 수 없습니다. Android Chrome(HTTPS)에서 실행하거나, 데스크톱 NFC 도구로 동일한 URL을 기록해 주세요. 자세한 내용은 docs/NFC_BLE_WEB_WRITING.md를 확인하세요."
       );
       return;
     }
     const trimmed = tagId.trim();
     if (!trimmed) {
-      setHint("Enter tag UID.");
+      setHint("태그 UID를 입력해 주세요.");
       return;
     }
     setBusy(true);
@@ -61,7 +61,7 @@ export function AdminNfcWriteCard() {
           url: prep.url,
           success: true,
         });
-        setHint("Done. Audit log recorded.");
+        setHint("기록이 완료되었습니다. 감사 로그에도 저장했습니다.");
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
         await recordNfcWebWriteAudit({
@@ -70,7 +70,7 @@ export function AdminNfcWriteCard() {
           success: false,
           clientError: msg,
         });
-        setHint(`Write failed: ${msg}`);
+        setHint(`기록에 실패했습니다: ${msg}`);
       }
     } finally {
       setBusy(false);
@@ -84,9 +84,9 @@ export function AdminNfcWriteCard() {
           <Radio className="w-5 h-5" />
         </div>
         <div className="space-y-1 min-w-0">
-          <h2 className="text-lg font-black text-slate-900 tracking-tight">Web NFC URL write</h2>
+          <h2 className="text-lg font-black text-slate-900 tracking-tight">Web NFC URL 기록</h2>
           <p className="text-xs font-bold text-slate-500 leading-relaxed">
-            Writes NDEF URL for registered tags: NEXT_PUBLIC_APP_URL + /t/UID. Requires Android Chrome, HTTPS, and a user tap.
+            등록된 태그에 NDEF URL(`NEXT_PUBLIC_APP_URL + /t/UID`)을 기록합니다. Android Chrome, HTTPS, 사용자 탭이 필요합니다.
           </p>
         </div>
       </div>
@@ -99,19 +99,19 @@ export function AdminNfcWriteCard() {
           )}
         >
           <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-          <span>NDEFWriter not supported in this browser.</span>
+          <span>이 브라우저는 NDEFWriter를 지원하지 않습니다.</span>
         </div>
       )}
 
       <div className="space-y-2">
         <Label htmlFor="nfc-tag-uid" className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-          Tag UID
+          태그 UID
         </Label>
         <Input
           id="nfc-tag-uid"
           value={tagId}
           onChange={(e) => setTagId(e.target.value)}
-          placeholder="UID on tag back"
+          placeholder="태그 뒷면 UID"
           disabled={busy}
           className={cn(adminUi.input, "h-12 rounded-2xl font-mono text-sm")}
         />
@@ -126,10 +126,10 @@ export function AdminNfcWriteCard() {
         {busy ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin mr-2 inline" />
-            Writing...
+            기록 중...
           </>
         ) : (
-          "Write URL to NFC tag"
+          "NFC 태그에 URL 기록"
         )}
       </Button>
 
