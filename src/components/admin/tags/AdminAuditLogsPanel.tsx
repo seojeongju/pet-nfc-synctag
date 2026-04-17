@@ -31,6 +31,12 @@ function summarizePayload(payloadRaw?: string | null) {
     if (payload?.tagId && payload?.url && payload?.clientError !== undefined) {
       return `tagId=${payload.tagId}, err=${String(payload.clientError).slice(0, 40)}`;
     }
+    if (payload?.source && payload?.tagId && payload?.clientError === undefined) {
+      return `source=${payload.source}, tagId=${payload.tagId}`;
+    }
+    if (payload?.source && payload?.clientError) {
+      return `source=${payload.source}, err=${String(payload.clientError).slice(0, 40)}`;
+    }
     if (payload?.tagId && payload?.petId) {
       return `tagId=${payload.tagId}, petId=${payload.petId}`;
     }
@@ -159,6 +165,8 @@ export function AdminAuditLogsPanel({
               <option value="bulk_register">bulk_register</option>
               <option value="tag_link">tag_link</option>
               <option value="tag_unlink">tag_unlink</option>
+              <option value="nfc_web_read">nfc_web_read</option>
+              <option value="nfc_web_write">nfc_web_write</option>
             </select>
             <div className="flex gap-2">
               <select

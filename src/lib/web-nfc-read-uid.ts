@@ -3,6 +3,8 @@ import { isValidTagUidFormat, normalizeTagUid } from "@/lib/tag-uid-format";
 type NdefReaderLike = {
   addEventListener(type: "reading", listener: (event: Event) => void): void;
   addEventListener(type: "readingerror", listener: () => void): void;
+  removeEventListener(type: "reading", listener: (event: Event) => void): void;
+  removeEventListener(type: "readingerror", listener: () => void): void;
   scan(options?: { signal?: AbortSignal }): Promise<void>;
 };
 
@@ -12,28 +14,32 @@ type NdefReadingEventLike = Event & {
 
 const DEFAULT_TIMEOUT_MS = 45_000;
 
+function getNdefReaderCtor(): (new () => NdefReaderLike) | null {
+  if (typeof window === "undefined") return null;
+  return (window as unknown as { NDEFReader?: new () => NdefReaderLike }).NDEFReader ?? null;
+}
+
 export function isWebNfcReadSupported(): boolean {
-  if (typeof window === "undefined") return false;
-  return Boolean((window as unknown as { NDEFReader?: new () => NdefReaderLike }).NDEFReader);
+  return Boolean(getNdefReaderCtor());
 }
 
 export type ReadNfcTagUidResult =
   | { ok: true; uid: string }
   | { ok: false; error: string };
 
+export type NfcUidScanSession = {
+  stop: () => void;
+};
+
 export async function readNfcTagUidOnce(options?: {
   signal?: AbortSignal;
   timeoutMs?: number;
 }): Promise<ReadNfcTagUidResult> {
-  if (typeof window === "undefined") {
-    return { ok: false, error: "브라우저에서만 사용할 수 있습니다." };
-  }
-  const Ctor = (window as unknown as { NDEFReader?: new () => NdefReaderLike }).NDEFReader;
+  const Ctor = getNdefReaderCtor();
   if (!Ctor) {
     return {
       ok: false,
-      error:
-        "이 브라우저는 Web NFC 읽기(NDEFReader)를 지원하지 않습니다. Android Chrome(HTTPS)에서 시도하거나 UID를 직접 입력하세요.",
+      error: "NDEFReader is not supported in this browser.",
     };
   }
 
@@ -48,52 +54,42 @@ export async function readNfcTagUidOnce(options?: {
   if (options?.signal) {
     if (options.signal.aborted) {
       clearTimeout(timeoutId);
-      return { ok: false, error: "취소되었습니다." };
+      return { ok: false, error: "Cancelled." };
     }
-    options.signal.addEventListener(
-      "abort",
-      () => {
-        ac.abort();
-      },
-      { once: true }
-    );
+    options.signal.addEventListener("abort", () => ac.abort(), { once: true });
   }
 
   const reader = new Ctor();
   let settled = false;
 
   return await new Promise<ReadNfcTagUidResult>((resolve) => {
-    const finish = (r: ReadNfcTagUidResult) => {
+    const finish = (result: ReadNfcTagUidResult) => {
       if (settled) return;
       settled = true;
       clearTimeout(timeoutId);
       ac.abort();
-      resolve(r);
+      reader.removeEventListener("reading", onReading);
+      reader.removeEventListener("readingerror", onReadingError);
+      resolve(result);
     };
 
     const onReading = (event: Event) => {
-      if (settled) return;
       const e = event as NdefReadingEventLike;
       const raw = typeof e.serialNumber === "string" ? e.serialNumber.trim() : "";
       if (!raw) {
-        finish({
-          ok: false,
-          error:
-            "태그는 인식됐지만 UID(시리얼)를 제공하지 않습니다. 다른 태그를 쓰거나 UID를 직접 입력해 주세요.",
-        });
+        finish({ ok: false, error: "Tag was read but serialNumber is empty." });
         return;
       }
       const uid = normalizeTagUid(raw);
       if (!isValidTagUidFormat(uid)) {
-        finish({ ok: false, error: `읽은 값이 허용 형식이 아닙니다: ${raw}` });
+        finish({ ok: false, error: `Invalid UID format: ${raw}` });
         return;
       }
       finish({ ok: true, uid });
     };
 
     const onReadingError = () => {
-      if (settled) return;
-      finish({ ok: false, error: "NFC 읽기 오류입니다. 태그를 기기에 밀착한 뒤 다시 시도해 주세요." });
+      finish({ ok: false, error: "NFC reading error." });
     };
 
     reader.addEventListener("reading", onReading);
@@ -104,25 +100,89 @@ export async function readNfcTagUidOnce(options?: {
       const name = err instanceof Error ? err.name : "";
       if (name === "AbortError") {
         if (options?.signal?.aborted) {
-          finish({ ok: false, error: "취소되었습니다." });
+          finish({ ok: false, error: "Cancelled." });
           return;
         }
         if (timedOut) {
-          finish({
-            ok: false,
-            error: `${Math.round(timeoutMs / 1000)}초 안에 태그를 인식하지 못했습니다. 태그를 가까이 대고 다시 눌러 주세요.`,
-          });
+          finish({ ok: false, error: `No tag detected within ${Math.round(timeoutMs / 1000)}s.` });
           return;
         }
-        finish({ ok: false, error: "NFC 세션이 중단되었습니다. 다시 시도해 주세요." });
+        finish({ ok: false, error: "NFC session was aborted." });
         return;
       }
       if (name === "NotAllowedError") {
-        finish({ ok: false, error: "NFC 권한이 거부됐거나 대화 상자가 닫혔습니다." });
+        finish({ ok: false, error: "NFC permission denied." });
         return;
       }
-      const msg = err instanceof Error ? err.message : String(err);
-      finish({ ok: false, error: msg || "NFC를 시작할 수 없습니다." });
+      finish({ ok: false, error: err instanceof Error ? err.message : String(err) });
     });
   });
+}
+
+export async function startNfcUidScanSession(options: {
+  onUid: (uid: string) => void;
+  onError?: (error: string) => void;
+  signal?: AbortSignal;
+}): Promise<{ ok: true; session: NfcUidScanSession } | { ok: false; error: string }> {
+  const Ctor = getNdefReaderCtor();
+  if (!Ctor) {
+    return { ok: false, error: "NDEFReader is not supported in this browser." };
+  }
+
+  const ac = new AbortController();
+  const reader = new Ctor();
+
+  const stop = () => {
+    if (!ac.signal.aborted) ac.abort();
+  };
+
+  if (options.signal) {
+    if (options.signal.aborted) {
+      return { ok: false, error: "Cancelled." };
+    }
+    options.signal.addEventListener("abort", stop, { once: true });
+  }
+
+  const onReading = (event: Event) => {
+    const e = event as NdefReadingEventLike;
+    const raw = typeof e.serialNumber === "string" ? e.serialNumber.trim() : "";
+    if (!raw) {
+      options.onError?.("Tag was read but serialNumber is empty.");
+      return;
+    }
+    const uid = normalizeTagUid(raw);
+    if (!isValidTagUidFormat(uid)) {
+      options.onError?.(`Invalid UID format: ${raw}`);
+      return;
+    }
+    options.onUid(uid);
+  };
+
+  const onReadingError = () => {
+    options.onError?.("NFC reading error.");
+  };
+
+  reader.addEventListener("reading", onReading);
+  reader.addEventListener("readingerror", onReadingError);
+
+  try {
+    await reader.scan({ signal: ac.signal });
+  } catch (err: unknown) {
+    reader.removeEventListener("reading", onReading);
+    reader.removeEventListener("readingerror", onReadingError);
+    const name = err instanceof Error ? err.name : "";
+    if (name === "NotAllowedError") return { ok: false, error: "NFC permission denied." };
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+
+  ac.signal.addEventListener(
+    "abort",
+    () => {
+      reader.removeEventListener("reading", onReading);
+      reader.removeEventListener("readingerror", onReadingError);
+    },
+    { once: true }
+  );
+
+  return { ok: true, session: { stop } };
 }

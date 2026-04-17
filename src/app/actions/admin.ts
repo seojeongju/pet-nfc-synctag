@@ -433,6 +433,7 @@ export async function updateTagProductProfile(
 }
 
 const NFC_WRITE_ACTION = "nfc_web_write";
+const NFC_READ_ACTION = "nfc_web_read";
 
 /**
  * Web NFC로 기록할 공개 URL을 반환합니다. 태그가 DB에 등록된 경우에만 허용합니다.
@@ -495,6 +496,47 @@ export async function recordNfcWebWriteAudit(input: {
         )
         .bind(
             NFC_WRITE_ACTION,
+            await getActorEmailSafe(),
+            input.success ? 1 : 0,
+            payload
+        )
+        .run();
+    revalidatePath("/admin/tags");
+    revalidatePath("/admin/nfc-tags");
+}
+
+/**
+ * Web NFC UID 읽기 시도 결과를 admin_action_logs에 남깁니다.
+ */
+export async function recordNfcWebReadAudit(input: {
+    success: boolean;
+    source: "bulk_register" | "write_card";
+    tagId?: string;
+    clientError?: string;
+}): Promise<void> {
+    await assertAdminRole();
+    const db = getDB();
+    await db.prepare(`
+            CREATE TABLE IF NOT EXISTS admin_action_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                action TEXT NOT NULL,
+                actor_email TEXT,
+                success BOOLEAN NOT NULL DEFAULT 1,
+                payload TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `).run();
+    const payload = JSON.stringify({
+        source: input.source,
+        ...(input.tagId ? { tagId: input.tagId } : {}),
+        ...(input.clientError ? { clientError: input.clientError } : {}),
+    });
+    await db
+        .prepare(
+            "INSERT INTO admin_action_logs (action, actor_email, success, payload) VALUES (?, ?, ?, ?)"
+        )
+        .bind(
+            NFC_READ_ACTION,
             await getActorEmailSafe(),
             input.success ? 1 : 0,
             payload

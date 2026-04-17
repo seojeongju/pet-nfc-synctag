@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { prepareNfcTagWrite, recordNfcWebWriteAudit } from "@/app/actions/admin";
+import { prepareNfcTagWrite, recordNfcWebReadAudit, recordNfcWebWriteAudit } from "@/app/actions/admin";
 import { AdminCard } from "@/components/admin/ui/AdminCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -146,8 +146,10 @@ export function AdminNfcWriteCard() {
               if (r.ok) {
                 setTagId(r.uid);
                 setHint(`UID를 읽었습니다: ${r.uid}`);
+                void recordNfcWebReadAudit({ success: true, source: "write_card", tagId: r.uid });
               } else {
                 setHint(r.error);
+                void recordNfcWebReadAudit({ success: false, source: "write_card", clientError: r.error });
               }
             });
           }}
