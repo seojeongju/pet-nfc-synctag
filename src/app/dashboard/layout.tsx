@@ -21,11 +21,11 @@ export default async function DashboardLayout({
   const orgManageHref = await getOrgManageHrefForUser(landing.session?.user?.id).catch(() => null);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="flex min-h-dvh min-h-[100svh] w-full min-w-0 flex-col bg-slate-50">
       <Suspense fallback={<div className="min-h-[7rem] border-b bg-white/80" />}>
         <DashboardNavBar session={landing.session} isAdmin={landing.isAdmin} orgManageHref={orgManageHref} />
       </Suspense>
-      <main className="flex-1 container py-8 px-4 mx-auto max-w-5xl pb-28">
+      <main className="mx-auto w-full min-w-0 max-w-5xl flex-1 px-3 py-4 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] sm:px-4 sm:py-8">
         {children}
       </main>
       <Suspense fallback={null}>

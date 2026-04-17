@@ -17,6 +17,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  /** 접근성: 사용자 확대 허용 (고정 maximumScale 금지) */
+  maximumScale: 5,
   viewportFit: "cover",
   themeColor: "#14b8a6",
 };
@@ -27,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className={cn("font-outfit")}>
+    <html lang="ko" className={cn("font-outfit h-full")}>
       <head>
         {/* Cloudflare Edge에서 next/font Google 로더 이슈 회피 — 루트에서 전역 링크 */}
         {/* eslint-disable @next/next/no-page-custom-font -- root layout; applies site-wide */}
@@ -39,7 +41,7 @@ export default function RootLayout({
         />
         {/* eslint-enable @next/next/no-page-custom-font */}
       </head>
-      <body className="antialiased font-outfit">
+      <body className="min-h-dvh min-h-[100svh] antialiased font-outfit">
         {children}
         <PwaInstallPrompt />
       </body>

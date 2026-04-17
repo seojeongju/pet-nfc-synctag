@@ -125,14 +125,14 @@ export default function ElderDashboard({
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] font-outfit pb-32 overflow-x-hidden relative">
-      <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-b from-indigo-500/10 to-transparent pointer-events-none" />
+    <div className="relative min-h-0 w-full min-w-0 overflow-x-hidden bg-[#F8FAFC] pb-6 font-outfit">
+      <div className="pointer-events-none absolute left-0 top-0 h-[300px] w-full bg-gradient-to-b from-indigo-500/10 to-transparent" />
 
       <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="max-w-md mx-auto px-5 pt-8 space-y-8"
+        className="mx-auto w-full min-w-0 max-w-lg space-y-8 px-4 pt-6 sm:px-5 sm:pt-8"
       >
         <div id="mode-announcements" className="scroll-mt-28">
           <ModeAnnouncementsBanner items={modeAnnouncements} />

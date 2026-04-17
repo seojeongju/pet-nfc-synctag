@@ -18,7 +18,7 @@ type FlowTopNavContentProps = {
 
 const maxWClass = (variant: FlowTopNavContentProps["variant"]) =>
   variant === "dashboard"
-    ? "container max-w-5xl px-4"
+    ? "mx-auto w-full min-w-0 max-w-5xl px-3 sm:px-4"
     : "mx-auto w-full max-w-screen-sm px-4 min-[430px]:px-5";
 
 /**
@@ -47,7 +47,7 @@ export function FlowTopNavContent({
   return (
     <div
       className={cn(
-        "flex min-h-12 flex-wrap items-center justify-between gap-x-2.5 gap-y-2 py-2.5 text-xs font-bold text-slate-600",
+        "flex min-h-12 flex-wrap items-center justify-between gap-x-2.5 gap-y-2 py-2.5 text-sm font-bold text-slate-600",
         maxWClass(variant),
         className
       )}
@@ -71,7 +71,7 @@ export function FlowTopNavContent({
           </Link>
         )}
         {currentModeLabel ? (
-          <span className="truncate text-[10px] font-black uppercase tracking-wide text-slate-400 min-[390px]:text-[11px]">
+          <span className="truncate text-xs font-black uppercase tracking-wide text-slate-400 min-[390px]:text-sm">
             {currentModeLabel}
           </span>
         ) : null}
