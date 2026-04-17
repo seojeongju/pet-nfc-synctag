@@ -122,6 +122,7 @@ export async function registerBulkTags(uids: string[], options?: RegisterBulkTag
         ).bind("bulk_register", await getActorEmailSafe(), JSON.stringify(result)).run();
         
         revalidatePath("/admin/tags");
+        revalidatePath("/admin/nfc-tags");
         return result;
     } catch (error) {
         await db.prepare(`
@@ -436,6 +437,7 @@ export async function updateTagProductProfile(
         });
 
     revalidatePath("/admin/tags");
+    revalidatePath("/admin/nfc-tags");
     revalidatePath("/admin/monitoring");
 }
 
@@ -508,4 +510,5 @@ export async function recordNfcWebWriteAudit(input: {
         )
         .run();
     revalidatePath("/admin/tags");
+    revalidatePath("/admin/nfc-tags");
 }

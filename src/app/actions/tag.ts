@@ -130,6 +130,7 @@ export async function linkTag(petId: string, tagId: string) {
     revalidatePath(`/profile/${petId}`);
     revalidatePath(`/dashboard`);
     revalidatePath(`/admin/tags`);
+    revalidatePath(`/admin/nfc-tags`);
 }
 
 export async function unlinkTag(tagId: string) {

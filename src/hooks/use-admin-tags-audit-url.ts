@@ -53,7 +53,7 @@ export function useAdminTagsAuditUrl() {
     params.set("sortBy", auditSortBy);
     params.set("sortOrder", auditSortOrder);
     params.set("page", String(auditPage));
-    router.replace(`/admin/tags?${params.toString()}`);
+    router.replace(`/admin/nfc-tags/history?${params.toString()}`);
   }, [
     auditSuccessFilter,
     auditDaysFilter,

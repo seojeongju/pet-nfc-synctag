@@ -348,18 +348,18 @@ export default function AdminDashboardClient({
                        </div>
                     </div>
 
-                    <Link href="/admin/tags" className="block group/btn">
+                    <Link href="/admin/nfc-tags/inventory" className="block group/btn">
                        <button className="w-full h-16 bg-white hover:bg-teal-400 text-slate-950 font-black rounded-[20px] transition-all duration-300 flex items-center justify-center gap-3 active:scale-95 shadow-xl shadow-teal-500/5 group-hover/btn:shadow-teal-500/20 group-hover/btn:text-white">
                           인벤토리 관리하기 <Package className="w-5 h-5" />
                        </button>
                     </Link>
                     <div className="grid grid-cols-2 gap-3">
-                      <Link href="/admin/tags" className="block">
+                      <Link href="/admin/nfc-tags/history" className="block">
                         <button className={cn("w-full h-11 text-xs rounded-xl", adminUi.darkButton)}>
                           감사 로그 보기
                         </button>
                       </Link>
-                      <Link href="/admin/tags" className="block">
+                      <Link href="/admin/nfc-tags/register" className="block">
                         <button className={cn("w-full h-11 text-xs rounded-xl", adminUi.darkButton)}>
                           재고 등록하기
                         </button>
