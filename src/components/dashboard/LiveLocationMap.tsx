@@ -4,7 +4,24 @@ import { useEffect, useRef, useState } from "react";
 import Script from "next/script";
 import { type SubjectKind } from "@/lib/subject-kind";
 import { Card } from "@/components/ui/card";
-import { Activity, RefreshCw, AlertTriangle, LocateFixed, Compass, Navigation, Siren, Play, Pause, RotateCcw, Grid3X3, Wifi, WifiOff } from "lucide-react";
+import {
+  Activity,
+  RefreshCw,
+  AlertTriangle,
+  LocateFixed,
+  Compass,
+  Navigation,
+  Siren,
+  Play,
+  Pause,
+  RotateCcw,
+  Grid3X3,
+  Wifi,
+  WifiOff,
+  ChevronLeft,
+  ChevronRight,
+  X,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface LocationData {
@@ -113,6 +130,9 @@ export default function LiveLocationMap({
   const watchIdRef = useRef<number | null>(null);
   const lastMyLatLngRef = useRef<KakaoLatLng | null>(null);
   const mapStateStorageKeyRef = useRef(`live-map-state:${subjectKind}`);
+  /** 좁은 화면에서 지도 위 오버레이를 좌·우 패널로 접기 */
+  const [mapLeftOpen, setMapLeftOpen] = useState(false);
+  const [mapRightOpen, setMapRightOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -559,119 +579,298 @@ export default function LiveLocationMap({
     setFollowMyLocation(true);
   };
 
+  const leftStatusStack = (
+    <>
+      <div className="flex items-center gap-2 rounded-2xl border border-slate-100 bg-white/90 px-4 py-2 shadow-sm backdrop-blur-md">
+        <div className="h-2 w-2 animate-pulse rounded-full bg-teal-500" />
+        <span className="text-[10px] font-black uppercase leading-none tracking-widest text-slate-800">실시간 위치 관제</span>
+      </div>
+      <div
+        className={cn(
+          "flex items-center gap-1.5 rounded-2xl border px-3 py-2 text-[10px] font-black shadow-sm backdrop-blur-md",
+          connectionStatus === "online"
+            ? "border-teal-100 bg-white/90 text-teal-600"
+            : connectionStatus === "offline"
+              ? "border-rose-100 bg-white/90 text-rose-600"
+              : "border-slate-100 bg-white/90 text-slate-500"
+        )}
+      >
+        {connectionStatus === "offline" ? <WifiOff className="h-3.5 w-3.5" /> : <Wifi className="h-3.5 w-3.5" />}
+        {connectionStatus === "online" ? "연결 정상" : connectionStatus === "offline" ? "오프라인" : "자동 갱신 일시정지"}
+      </div>
+      <button
+        type="button"
+        onClick={() => setShowLostOnly((v) => !v)}
+        className={cn(
+          "flex items-center gap-1.5 rounded-2xl border px-3 py-2 text-[10px] font-black shadow-sm backdrop-blur-md transition-all",
+          showLostOnly
+            ? "border-rose-200 bg-white/90 text-rose-600"
+            : "border-slate-100 bg-white/90 text-slate-500 hover:border-rose-100 hover:text-rose-500"
+        )}
+        title="실종 대상만 보기"
+        aria-label="실종 대상만 보기 토글"
+      >
+        <Siren className="h-3.5 w-3.5" />
+        {showLostOnly ? "실종만 보는 중" : "전체 보기"}
+      </button>
+      <button
+        type="button"
+        onClick={() => setUseClustering((v) => !v)}
+        className={cn(
+          "flex items-center gap-1.5 rounded-2xl border px-3 py-2 text-[10px] font-black shadow-sm backdrop-blur-md transition-all",
+          useClustering
+            ? "border-teal-200 bg-white/90 text-teal-600"
+            : "border-slate-100 bg-white/90 text-slate-500 hover:border-teal-100 hover:text-teal-500"
+        )}
+        title="마커 클러스터링"
+        aria-label="마커 클러스터링 토글"
+      >
+        <Grid3X3 className="h-3.5 w-3.5" />
+        {useClustering ? "클러스터 ON" : "클러스터 OFF"}
+      </button>
+      <button
+        type="button"
+        onClick={() => setAutoRefreshEnabled((v) => !v)}
+        className={cn(
+          "flex items-center gap-1.5 rounded-2xl border px-3 py-2 text-[10px] font-black shadow-sm backdrop-blur-md transition-all",
+          autoRefreshEnabled
+            ? "border-teal-200 bg-white/90 text-teal-600"
+            : "border-slate-100 bg-white/90 text-slate-500 hover:border-teal-100 hover:text-teal-500"
+        )}
+        title="자동 갱신 토글"
+        aria-label="자동 갱신 토글"
+      >
+        <RefreshCw className={cn("h-3.5 w-3.5", autoRefreshEnabled && "animate-spin")} />
+        {autoRefreshEnabled ? "자동 갱신 ON" : "자동 갱신 OFF"}
+      </button>
+    </>
+  );
+
+  const mapToolButtons = (
+    <div className="flex flex-col gap-2">
+      <button
+        type="button"
+        onClick={onRefresh}
+        className={cn(
+          "flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-slate-600 shadow-lg transition-all hover:text-teal-500 active:scale-95",
+          isRefreshing && "animate-spin"
+        )}
+        title="새로고침"
+        aria-label="지도 데이터 새로고침"
+      >
+        <RefreshCw className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onClick={onClickMyLocation}
+        className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-slate-600 shadow-lg transition-all hover:text-teal-500 active:scale-95"
+        title="현재 위치로 이동"
+        aria-label="현재 위치로 이동"
+      >
+        <LocateFixed className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onClick={() => setFollowMyLocation((v) => !v)}
+        className={cn(
+          "flex h-10 w-10 items-center justify-center rounded-2xl bg-white shadow-lg transition-all active:scale-95",
+          followMyLocation ? "text-teal-600 ring-2 ring-teal-200" : "text-slate-600 hover:text-teal-500"
+        )}
+        title="자동 추적"
+        aria-label="내 위치 자동 추적 토글"
+      >
+        <Navigation className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onClick={() => setCompassMode((v) => !v)}
+        className={cn(
+          "flex h-10 w-10 items-center justify-center rounded-2xl bg-white shadow-lg transition-all active:scale-95",
+          compassMode ? "text-teal-600 ring-2 ring-teal-200" : "text-slate-600 hover:text-teal-500"
+        )}
+        title="나침반 모드"
+        aria-label="나침반 모드 토글"
+      >
+        <Compass className="h-4 w-4" />
+      </button>
+    </div>
+  );
+
+  const telemetryPanel =
+    lastRefreshAt || refreshCount > 0 ? (
+      <div className="rounded-2xl border border-slate-100 bg-white/95 px-3 py-2 shadow-sm backdrop-blur">
+        <p className="text-[10px] font-bold text-slate-500">
+          관측: {refreshCount}회 갱신
+          {avgRefreshMs != null ? ` · 평균 ${avgRefreshMs}ms` : ""}
+        </p>
+        <p className="text-[10px] font-bold text-slate-400">
+          실패 {refreshErrorCount}회 · 타임아웃 {refreshTimeoutCount}회
+        </p>
+        {lastRefreshAt ? (
+          <p className="text-[10px] font-bold text-slate-400">
+            최근: {new Date(lastRefreshAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+          </p>
+        ) : null}
+      </div>
+    ) : null;
+
+  const playbackControlsRow = (
+    <div className="flex items-center gap-1.5 rounded-2xl border border-slate-100 bg-white/95 px-2 py-2 shadow-sm backdrop-blur">
+      <button
+        type="button"
+        onClick={() => {
+          if (playbackItems.length === 0) return;
+          setPlaybackActive((v) => !v);
+        }}
+        disabled={playbackItems.length === 0}
+        className={cn(
+          "flex h-8 w-8 items-center justify-center rounded-xl text-slate-600 transition",
+          playbackItems.length === 0 ? "cursor-not-allowed opacity-40" : "hover:bg-slate-100",
+          playbackActive && "text-teal-600"
+        )}
+        title="이벤트 재생"
+        aria-label="이벤트 재생 토글"
+      >
+        {playbackActive ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          setPlaybackActive(false);
+          setPlaybackIndex(0);
+        }}
+        disabled={playbackItems.length === 0}
+        className={cn(
+          "flex h-8 w-8 items-center justify-center rounded-xl text-slate-600 transition",
+          playbackItems.length === 0 ? "cursor-not-allowed opacity-40" : "hover:bg-slate-100"
+        )}
+        title="재생 초기화"
+        aria-label="재생 초기화"
+      >
+        <RotateCcw className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onClick={() => setPlaybackSpeed((v) => (v === 1 ? 2 : 1))}
+        disabled={playbackItems.length === 0}
+        className={cn(
+          "h-8 rounded-xl px-2 text-[10px] font-black text-slate-600 transition",
+          playbackItems.length === 0 ? "cursor-not-allowed opacity-40" : "hover:bg-slate-100",
+          playbackSpeed === 2 && "text-teal-600"
+        )}
+        title="재생 속도 변경"
+        aria-label="재생 속도 변경"
+      >
+        {playbackSpeed}x
+      </button>
+    </div>
+  );
+
+  const playbackInfoPanel =
+    playbackItems.length > 0 ? (
+      <div className="rounded-2xl border border-slate-100 bg-white/95 px-3 py-2 shadow-sm backdrop-blur">
+        <p className="text-[10px] font-bold text-slate-500">
+          재생 {Math.min(playbackIndex + 1, playbackItems.length)} / {playbackItems.length}
+        </p>
+        <p className="text-[11px] font-black text-slate-700">
+          {playbackItems[Math.min(playbackIndex, playbackItems.length - 1)]?.name} ·{" "}
+          {playbackItems[Math.min(playbackIndex, playbackItems.length - 1)]?.label}
+        </p>
+      </div>
+    ) : null;
+
   return (
-    <Card className="rounded-[40px] border-none shadow-app overflow-hidden bg-white relative">
-      <div className="absolute top-5 left-5 z-20 flex flex-col gap-2">
-         <div className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl flex items-center gap-2 shadow-sm border border-slate-100">
-            <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
-            <span className="text-[10px] font-black text-slate-800 uppercase tracking-widest leading-none">실시간 위치 관제</span>
-         </div>
-         <div
-          className={cn(
-            "bg-white/90 backdrop-blur-md px-3 py-2 rounded-2xl flex items-center gap-1.5 shadow-sm border text-[10px] font-black",
-            connectionStatus === "online"
-              ? "border-teal-100 text-teal-600"
-              : connectionStatus === "offline"
-                ? "border-rose-100 text-rose-600"
-                : "border-slate-100 text-slate-500"
-          )}
-         >
-          {connectionStatus === "offline" ? <WifiOff className="w-3.5 h-3.5" /> : <Wifi className="w-3.5 h-3.5" />}
-          {connectionStatus === "online" ? "연결 정상" : connectionStatus === "offline" ? "오프라인" : "자동 갱신 일시정지"}
-         </div>
-         <button
-          onClick={() => setShowLostOnly((v) => !v)}
-          className={cn(
-            "bg-white/90 backdrop-blur-md px-3 py-2 rounded-2xl flex items-center gap-1.5 shadow-sm border text-[10px] font-black transition-all",
-            showLostOnly
-              ? "border-rose-200 text-rose-600"
-              : "border-slate-100 text-slate-500 hover:text-rose-500 hover:border-rose-100"
-          )}
-          title="실종 대상만 보기"
-          aria-label="실종 대상만 보기 토글"
-        >
-          <Siren className="w-3.5 h-3.5" />
-          {showLostOnly ? "실종만 보는 중" : "전체 보기"}
-        </button>
+    <Card className="relative overflow-hidden rounded-[40px] border-none bg-white shadow-app">
+      {(mapLeftOpen || mapRightOpen) && (
         <button
-          onClick={() => setUseClustering((v) => !v)}
-          className={cn(
-            "bg-white/90 backdrop-blur-md px-3 py-2 rounded-2xl flex items-center gap-1.5 shadow-sm border text-[10px] font-black transition-all",
-            useClustering
-              ? "border-teal-200 text-teal-600"
-              : "border-slate-100 text-slate-500 hover:text-teal-500 hover:border-teal-100"
-          )}
-          title="마커 클러스터링"
-          aria-label="마커 클러스터링 토글"
-        >
-          <Grid3X3 className="w-3.5 h-3.5" />
-          {useClustering ? "클러스터 ON" : "클러스터 OFF"}
-        </button>
-        <button
-          onClick={() => setAutoRefreshEnabled((v) => !v)}
-          className={cn(
-            "bg-white/90 backdrop-blur-md px-3 py-2 rounded-2xl flex items-center gap-1.5 shadow-sm border text-[10px] font-black transition-all",
-            autoRefreshEnabled
-              ? "border-teal-200 text-teal-600"
-              : "border-slate-100 text-slate-500 hover:text-teal-500 hover:border-teal-100"
-          )}
-          title="자동 갱신 토글"
-          aria-label="자동 갱신 토글"
-        >
-          <RefreshCw className={cn("w-3.5 h-3.5", autoRefreshEnabled && "animate-spin")} />
-          {autoRefreshEnabled ? "자동 갱신 ON" : "자동 갱신 OFF"}
-        </button>
+          type="button"
+          className="absolute inset-0 z-[21] bg-slate-900/35 md:hidden"
+          aria-label="패널 닫기"
+          onClick={() => {
+            setMapLeftOpen(false);
+            setMapRightOpen(false);
+          }}
+        />
+      )}
+
+      {/* 좌측: 데스크톱 항상 표시 */}
+      <div className="absolute left-5 top-5 z-[22] hidden flex-col gap-2 md:flex">{leftStatusStack}</div>
+
+      {/* 좌측: 모바일 접기/펼치기 */}
+      <div className="md:hidden">
+        {!mapLeftOpen ? (
+          <button
+            type="button"
+            className="absolute left-2 top-20 z-[23] flex h-12 w-9 items-center justify-center rounded-r-xl border border-slate-200 bg-white/95 text-slate-600 shadow-lg active:scale-95"
+            aria-expanded={false}
+            aria-label="관제·필터 패널 열기"
+            onClick={() => {
+              setMapRightOpen(false);
+              setMapLeftOpen(true);
+            }}
+          >
+            <ChevronRight className="h-5 w-5" aria-hidden />
+          </button>
+        ) : (
+          <div className="absolute left-2 top-3 z-[23] flex max-h-[min(72vh,calc(100%-1.5rem))] w-[min(17.5rem,calc(100vw-2.5rem))] flex-col gap-2 overflow-y-auto rounded-2xl border border-slate-200 bg-white/95 p-2.5 shadow-xl">
+            <div className="mb-1 flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
+              <span className="text-xs font-black text-slate-800">관제·필터</span>
+              <button
+                type="button"
+                className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100"
+                onClick={() => setMapLeftOpen(false)}
+                aria-label="패널 닫기"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            {leftStatusStack}
+            {telemetryPanel}
+          </div>
+        )}
       </div>
 
-      <div className="absolute top-5 right-5 z-20">
-        <div className="flex flex-col gap-2">
+      {/* 우측: 데스크톱 */}
+      <div className="absolute right-5 top-5 z-[22] hidden md:block">{mapToolButtons}</div>
+
+      {/* 우측: 모바일 */}
+      <div className="md:hidden">
+        {!mapRightOpen ? (
           <button
-            onClick={onRefresh}
-            className={cn(
-              "w-10 h-10 rounded-2xl bg-white shadow-lg flex items-center justify-center text-slate-600 hover:text-teal-500 transition-all active:scale-95",
-              isRefreshing && "animate-spin"
-            )}
-            title="새로고침"
-            aria-label="지도 데이터 새로고침"
+            type="button"
+            className="absolute right-2 top-20 z-[23] flex h-12 w-9 items-center justify-center rounded-l-xl border border-slate-200 bg-white/95 text-slate-600 shadow-lg active:scale-95"
+            aria-expanded={false}
+            aria-label="지도 도구·재생 패널 열기"
+            onClick={() => {
+              setMapLeftOpen(false);
+              setMapRightOpen(true);
+            }}
           >
-            <RefreshCw className="w-4 h-4" />
+            <ChevronLeft className="h-5 w-5" aria-hidden />
           </button>
-          <button
-            onClick={onClickMyLocation}
-            className="w-10 h-10 rounded-2xl bg-white shadow-lg flex items-center justify-center text-slate-600 hover:text-teal-500 transition-all active:scale-95"
-            title="현재 위치로 이동"
-            aria-label="현재 위치로 이동"
-          >
-            <LocateFixed className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setFollowMyLocation((v) => !v)}
-            className={cn(
-              "w-10 h-10 rounded-2xl bg-white shadow-lg flex items-center justify-center transition-all active:scale-95",
-              followMyLocation ? "text-teal-600 ring-2 ring-teal-200" : "text-slate-600 hover:text-teal-500"
-            )}
-            title="자동 추적"
-            aria-label="내 위치 자동 추적 토글"
-          >
-            <Navigation className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setCompassMode((v) => !v)}
-            className={cn(
-              "w-10 h-10 rounded-2xl bg-white shadow-lg flex items-center justify-center transition-all active:scale-95",
-              compassMode ? "text-teal-600 ring-2 ring-teal-200" : "text-slate-600 hover:text-teal-500"
-            )}
-            title="나침반 모드"
-            aria-label="나침반 모드 토글"
-          >
-            <Compass className="w-4 h-4" />
-          </button>
-        </div>
+        ) : (
+          <div className="absolute right-2 top-3 z-[23] flex max-h-[min(72vh,calc(100%-1.5rem))] w-[min(11rem,calc(100vw-2.5rem))] flex-col items-stretch gap-2 overflow-y-auto rounded-2xl border border-slate-200 bg-white/95 p-2.5 shadow-xl">
+            <div className="mb-1 flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
+              <span className="text-xs font-black text-slate-800">도구·재생</span>
+              <button
+                type="button"
+                className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100"
+                onClick={() => setMapRightOpen(false)}
+                aria-label="패널 닫기"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            {mapToolButtons}
+            {playbackControlsRow}
+            {playbackInfoPanel}
+          </div>
+        )}
       </div>
 
       {(followMyLocation || compassMode || geoMessage) && (
-        <div className="absolute bottom-4 left-4 right-4 z-20 rounded-2xl bg-white/95 backdrop-blur px-3 py-2 border border-slate-100 shadow-sm">
-          <p className="text-[11px] font-bold text-slate-600 leading-relaxed">
+        <div className="absolute bottom-4 left-4 right-4 z-[22] rounded-2xl border border-slate-100 bg-white/95 px-3 py-2 shadow-sm backdrop-blur max-md:bottom-[max(1rem,env(safe-area-inset-bottom,0px))] max-md:left-2 max-md:right-2">
+          <p className="text-[11px] font-bold leading-relaxed text-slate-600">
             {followMyLocation ? "내 위치 자동 추적 중" : "내 위치 자동 추적 꺼짐"}
             {compassMode ? " · 나침반 모드 ON" : ""}
             {geoMessage ? ` · ${geoMessage}` : ""}
@@ -680,85 +879,14 @@ export default function LiveLocationMap({
         </div>
       )}
 
-      <div className="absolute bottom-4 right-4 z-20 rounded-2xl bg-white/95 backdrop-blur px-2 py-2 border border-slate-100 shadow-sm flex items-center gap-1.5">
-        <button
-          onClick={() => {
-            if (playbackItems.length === 0) return;
-            setPlaybackActive((v) => !v);
-          }}
-          disabled={playbackItems.length === 0}
-          className={cn(
-            "w-8 h-8 rounded-xl flex items-center justify-center text-slate-600 transition",
-            playbackItems.length === 0 ? "opacity-40 cursor-not-allowed" : "hover:bg-slate-100",
-            playbackActive && "text-teal-600"
-          )}
-          title="이벤트 재생"
-          aria-label="이벤트 재생 토글"
-        >
-          {playbackActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-        </button>
-        <button
-          onClick={() => {
-            setPlaybackActive(false);
-            setPlaybackIndex(0);
-          }}
-          disabled={playbackItems.length === 0}
-          className={cn(
-            "w-8 h-8 rounded-xl flex items-center justify-center text-slate-600 transition",
-            playbackItems.length === 0 ? "opacity-40 cursor-not-allowed" : "hover:bg-slate-100"
-          )}
-          title="재생 초기화"
-          aria-label="재생 초기화"
-        >
-          <RotateCcw className="w-4 h-4" />
-        </button>
-        <button
-          onClick={() => setPlaybackSpeed((v) => (v === 1 ? 2 : 1))}
-          disabled={playbackItems.length === 0}
-          className={cn(
-            "h-8 px-2 rounded-xl text-[10px] font-black text-slate-600 transition",
-            playbackItems.length === 0 ? "opacity-40 cursor-not-allowed" : "hover:bg-slate-100",
-            playbackSpeed === 2 && "text-teal-600"
-          )}
-          title="재생 속도 변경"
-          aria-label="재생 속도 변경"
-        >
-          {playbackSpeed}x
-        </button>
-      </div>
+      {/* 재생·관측: 데스크톱만 지도 모서리 고정 */}
+      <div className="absolute bottom-4 right-4 z-[22] hidden md:flex md:items-center md:gap-1.5">{playbackControlsRow}</div>
 
-      {playbackItems.length > 0 && (
-        <div className="absolute bottom-16 right-4 z-20 rounded-2xl bg-white/95 backdrop-blur px-3 py-2 border border-slate-100 shadow-sm">
-          <p className="text-[10px] font-bold text-slate-500">
-            재생 {Math.min(playbackIndex + 1, playbackItems.length)} / {playbackItems.length}
-          </p>
-          <p className="text-[11px] font-black text-slate-700">
-            {playbackItems[Math.min(playbackIndex, playbackItems.length - 1)]?.name} · {playbackItems[Math.min(playbackIndex, playbackItems.length - 1)]?.label}
-          </p>
-        </div>
-      )}
+      <div className="absolute bottom-16 right-4 z-[22] hidden md:block">{playbackInfoPanel}</div>
 
-      {(lastRefreshAt || refreshCount > 0) && (
-        <div className="absolute bottom-4 left-4 z-20 rounded-2xl bg-white/95 backdrop-blur px-3 py-2 border border-slate-100 shadow-sm">
-          <p className="text-[10px] font-bold text-slate-500">
-            관측: {refreshCount}회 갱신
-            {avgRefreshMs != null ? ` · 평균 ${avgRefreshMs}ms` : ""}
-          </p>
-          <p className="text-[10px] font-bold text-slate-400">
-            실패 {refreshErrorCount}회 · 타임아웃 {refreshTimeoutCount}회
-          </p>
-          {lastRefreshAt && (
-            <p className="text-[10px] font-bold text-slate-400">
-              최근: {new Date(lastRefreshAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-            </p>
-          )}
-        </div>
-      )}
+      <div className="absolute bottom-4 left-4 z-[22] hidden md:block">{telemetryPanel}</div>
 
-      <div 
-        ref={mapContainerRef} 
-        className="w-full h-[350px] bg-slate-50 transition-all"
-      />
+      <div ref={mapContainerRef} className="h-[350px] w-full bg-slate-50 transition-all" />
 
       {(!sdkLoaded || configStatus !== "ready" || scriptLoadFailed) && (
         <div className="absolute inset-0 z-10 bg-slate-50/70 backdrop-blur-sm flex flex-col items-center justify-center text-center p-8">
