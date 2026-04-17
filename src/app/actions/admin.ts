@@ -7,16 +7,7 @@ import { getCfRequestContext } from "@/lib/cf-request-context";
 import { parseSubjectKind, SUBJECT_KINDS, type SubjectKind } from "@/lib/subject-kind";
 import { normalizeBleMac } from "@/lib/device-mode";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
-
-function normalizeUid(uid: string): string {
-    return uid.trim().toUpperCase();
-}
-
-function isValidUidFormat(uid: string): boolean {
-    const hexWithColon = /^([0-9A-F]{2}:){3,15}[0-9A-F]{2}$/;
-    const alnum = /^[A-Z0-9_-]{8,32}$/;
-    return hexWithColon.test(uid) || alnum.test(uid);
-}
+import { isValidTagUidFormat, normalizeTagUid } from "@/lib/tag-uid-format";
 
 function chunkArray<T>(arr: T[], size: number): T[][] {
     const chunks: T[][] = [];
@@ -52,9 +43,9 @@ export async function registerBulkTags(uids: string[], options?: RegisterBulkTag
     const kindSlug =
         kind && (SUBJECT_KINDS as readonly string[]).includes(kind) ? kind : "generic";
     const currentBatch = options?.batchId || `BATCH-${kindSlug}-${Date.now()}`;
-    const normalized = uids.map(normalizeUid).filter((uid) => uid.length > 0);
+    const normalized = uids.map(normalizeTagUid).filter((uid) => uid.length > 0);
     const uniqueNormalized = Array.from(new Set(normalized));
-    const validUids = uniqueNormalized.filter(isValidUidFormat);
+    const validUids = uniqueNormalized.filter(isValidTagUidFormat);
     const invalidCount = uniqueNormalized.length - validUids.length;
     const duplicateInRequest = normalized.length - uniqueNormalized.length;
     let duplicateExisting = 0;
@@ -413,7 +404,7 @@ export async function updateTagProductProfile(
 ) {
     await assertAdminRole();
     const db = getDB();
-    const id = normalizeUid(tagId);
+    const id = normalizeTagUid(tagId);
     const productName = payload.product_name?.trim() || null;
     const modeRaw = payload.assigned_subject_kind;
     const mode: string | null =
@@ -450,8 +441,8 @@ export async function prepareNfcTagWrite(tagIdRaw: string): Promise<
     { ok: true; tagId: string; url: string } | { ok: false; error: string }
 > {
     await assertAdminRole();
-    const id = normalizeUid(tagIdRaw);
-    if (!isValidUidFormat(id)) {
+    const id = normalizeTagUid(tagIdRaw);
+    if (!isValidTagUidFormat(id)) {
         return { ok: false, error: "UID 형식이 올바르지 않습니다." };
     }
     const base =

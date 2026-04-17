@@ -6,9 +6,10 @@ import { AdminCard } from "@/components/admin/ui/AdminCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Radio, Loader2, AlertTriangle } from "lucide-react";
+import { Radio, Loader2, AlertTriangle, Smartphone } from "lucide-react";
 import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
+import { isWebNfcReadSupported, readNfcTagUidOnce } from "@/lib/web-nfc-read-uid";
 
 type NDEFWriterCtor = new () => {
   write(message: { records: Array<{ recordType: string; data: string }> }): Promise<void>;
@@ -25,9 +26,12 @@ export function AdminNfcWriteCard() {
   const [busy, setBusy] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
   const [nfcSupported, setNfcSupported] = useState<boolean | null>(null);
+  const [nfcReadSupported, setNfcReadSupported] = useState<boolean | null>(null);
+  const [readBusy, setReadBusy] = useState(false);
 
   useEffect(() => {
     setNfcSupported(!!getNdefWriterClass());
+    setNfcReadSupported(isWebNfcReadSupported());
   }, []);
 
   const onWrite = useCallback(async () => {
@@ -103,6 +107,18 @@ export function AdminNfcWriteCard() {
         </div>
       )}
 
+      {nfcReadSupported === false && nfcSupported !== false && (
+        <div
+          className={cn(
+            "flex items-start gap-2 rounded-2xl border px-4 py-3 text-[11px] font-bold",
+            "border-slate-200 bg-slate-50 text-slate-700"
+          )}
+        >
+          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+          <span>NDEFReader(UID 읽기)는 이 환경에서 쓸 수 없습니다. UID는 수동 입력하세요.</span>
+        </div>
+      )}
+
       <div className="space-y-2">
         <Label htmlFor="nfc-tag-uid" className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
           태그 UID
@@ -117,21 +133,54 @@ export function AdminNfcWriteCard() {
         />
       </div>
 
-      <Button
-        type="button"
-        onClick={() => void onWrite()}
-        disabled={busy || nfcSupported === false}
-        className={cn("w-full h-12 rounded-2xl font-black", adminUi.darkButton)}
-      >
-        {busy ? (
-          <>
-            <Loader2 className="w-4 h-4 animate-spin mr-2 inline" />
-            기록 중...
-          </>
-        ) : (
-          "NFC 태그에 URL 기록"
-        )}
-      </Button>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={readBusy || busy || nfcReadSupported === false}
+          onClick={() => {
+            setHint(null);
+            setReadBusy(true);
+            void readNfcTagUidOnce().then((r) => {
+              setReadBusy(false);
+              if (r.ok) {
+                setTagId(r.uid);
+                setHint(`UID를 읽었습니다: ${r.uid}`);
+              } else {
+                setHint(r.error);
+              }
+            });
+          }}
+          className="h-12 rounded-2xl border-slate-200 font-black text-xs"
+        >
+          {readBusy ? (
+            <>
+              <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+              읽는 중…
+            </>
+          ) : (
+            <>
+              <Smartphone className="mr-2 inline h-4 w-4" />
+              NFC로 UID 읽기
+            </>
+          )}
+        </Button>
+        <Button
+          type="button"
+          onClick={() => void onWrite()}
+          disabled={busy || nfcSupported === false}
+          className={cn("h-12 rounded-2xl font-black", adminUi.darkButton)}
+        >
+          {busy ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin mr-2 inline" />
+              기록 중...
+            </>
+          ) : (
+            "NFC 태그에 URL 기록"
+          )}
+        </Button>
+      </div>
 
       {hint && (
         <p className="text-[11px] font-bold text-slate-600 whitespace-pre-wrap leading-relaxed">{hint}</p>

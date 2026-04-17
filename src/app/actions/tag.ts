@@ -9,16 +9,7 @@ import { assertTenantRole } from "@/lib/tenant-membership";
 import { assertTenantTagQuota } from "@/lib/tenant-quota";
 import { assertMigration0008Applied } from "@/lib/db-migration-0008";
 import { assertTenantActive } from "@/lib/tenant-status";
-
-function normalizeUid(uid: string): string {
-    return uid.trim().toUpperCase();
-}
-
-function isValidUidFormat(uid: string): boolean {
-    const hexWithColon = /^([0-9A-F]{2}:){3,15}[0-9A-F]{2}$/;
-    const alnum = /^[A-Z0-9_-]{8,32}$/;
-    return hexWithColon.test(uid) || alnum.test(uid);
-}
+import { isValidTagUidFormat, normalizeTagUid } from "@/lib/tag-uid-format";
 
 async function requireActor(): Promise<{ userId: string; email: string | null }> {
     const context = getCfRequestContext();
@@ -42,9 +33,9 @@ export async function linkTag(petId: string, tagId: string) {
     const db = getDB();
     await assertMigration0008Applied(db);
     type ExistingTag = { id: string; status: string; pet_id?: string | null };
-    const normalizedTagId = normalizeUid(tagId);
+    const normalizedTagId = normalizeTagUid(tagId);
 
-    if (!isValidUidFormat(normalizedTagId)) {
+    if (!isValidTagUidFormat(normalizedTagId)) {
         throw new Error("UID 형식이 올바르지 않습니다. 태그 뒷면 UID를 다시 확인해 주세요.");
     }
 
@@ -136,7 +127,7 @@ export async function linkTag(petId: string, tagId: string) {
 export async function unlinkTag(tagId: string) {
     const db = getDB();
     await assertMigration0008Applied(db);
-    const normalizedTagId = normalizeUid(tagId);
+    const normalizedTagId = normalizeTagUid(tagId);
     const { userId } = await requireActor();
 
     const existing = await db

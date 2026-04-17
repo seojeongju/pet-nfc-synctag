@@ -7,10 +7,7 @@ import { getCfRequestContext } from "@/lib/cf-request-context";
 import { revalidatePath } from "next/cache";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
 import { getMapTelemetryThresholds } from "@/lib/admin-monitoring-data";
-
-function normalizeUid(uid: string) {
-  return uid.trim().toUpperCase();
-}
+import { normalizeTagUid } from "@/lib/tag-uid-format";
 
 async function assertAdmin() {
   const context = getCfRequestContext();
@@ -47,7 +44,7 @@ export type TagDiagnosticResult =
 
 export async function getTagDiagnosticsForAdmin(rawUid: string): Promise<TagDiagnosticResult> {
   await assertAdmin();
-  const tagId = normalizeUid(rawUid);
+  const tagId = normalizeTagUid(rawUid);
   if (!tagId) {
     return { ok: false, reason: "not_found" };
   }
@@ -182,7 +179,7 @@ export async function getTagDiagnosticsForAdmin(rawUid: string): Promise<TagDiag
 
 export async function updateTagBleMac(tagId: string, bleMac: string | null) {
   await assertAdmin();
-  const id = normalizeUid(tagId);
+  const id = normalizeTagUid(tagId);
   const raw = bleMac?.trim() || null;
   const mac = raw ? raw.toUpperCase() : null;
   await getDB()

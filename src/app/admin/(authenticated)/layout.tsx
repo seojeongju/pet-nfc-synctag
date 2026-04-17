@@ -55,8 +55,8 @@ export default async function AdminAuthenticatedLayout({
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-outfit text-slate-700 relative">
       <div className="absolute top-0 left-0 w-full h-[260px] bg-gradient-to-b from-teal-500/10 to-transparent pointer-events-none" />
-      <div className="flex min-h-screen flex-col lg:flex-row">
-        <aside className="w-full lg:w-72 bg-white/90 backdrop-blur-md border-b lg:border-b-0 lg:border-r border-slate-100 z-20 shadow-lg shadow-slate-100/50">
+      <div className="flex min-h-screen flex-col lg:grid lg:min-h-screen lg:grid-cols-[18rem_minmax(0,1fr)]">
+        <aside className="w-full shrink-0 border-b border-slate-100 bg-white/90 shadow-lg shadow-slate-100/50 backdrop-blur-md lg:z-auto lg:w-auto lg:border-b-0 lg:border-r">
           <div className="p-5 lg:p-8 flex items-center gap-3">
             <div className="w-10 h-10 rounded-[14px] bg-teal-500 flex items-center justify-center shadow-lg shadow-teal-500/20">
               <Package className="w-5 h-5 text-white" />
@@ -114,8 +114,8 @@ export default async function AdminAuthenticatedLayout({
           </div>
         </aside>
 
-        <div className="flex-1 flex flex-col relative min-w-0 z-10">
-          <header className="h-16 lg:h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-4 lg:px-10 z-10 sticky top-0">
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col lg:z-10">
+          <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between border-b border-slate-100 bg-white/80 px-4 backdrop-blur-md lg:h-20 lg:px-10">
             <div className="flex items-center gap-3 lg:gap-4 min-w-0">
               <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse shadow-[0_0_8px_rgba(20,184,166,0.5)]" />
               <h2 className="text-slate-700 text-[11px] lg:text-sm font-black tracking-[0.02em] lg:tracking-[0.08em] italic truncate">

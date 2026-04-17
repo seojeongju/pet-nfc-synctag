@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { registerBulkTags } from "@/app/actions/admin";
 import { AdminCard } from "@/components/admin/ui/AdminCard";
@@ -15,11 +15,15 @@ import {
   Baby,
   Briefcase,
   Gem,
+  Smartphone,
+  Loader2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { adminUi } from "@/styles/admin/ui";
 import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
+import { isValidTagUidFormat, normalizeTagUid } from "@/lib/tag-uid-format";
+import { isWebNfcReadSupported, readNfcTagUidOnce } from "@/lib/web-nfc-read-uid";
 
 const kindIcon: Record<SubjectKind, typeof PawPrint> = {
   pet: PawPrint,
@@ -60,16 +64,6 @@ const kindTabStyles: Record<
   },
 };
 
-function normalizeUid(uid: string): string {
-  return uid.trim().toUpperCase();
-}
-
-function isValidUidFormat(uid: string): boolean {
-  const hexWithColon = /^([0-9A-F]{2}:){3,15}[0-9A-F]{2}$/;
-  const alnum = /^[A-Z0-9_-]{8,32}$/;
-  return hexWithColon.test(uid) || alnum.test(uid);
-}
-
 export function TagBulkRegisterCard() {
   const router = useRouter();
   const [activeKind, setActiveKind] = useState<SubjectKind>("pet");
@@ -82,20 +76,27 @@ export function TagBulkRegisterCard() {
   });
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [nfcReadSupported, setNfcReadSupported] = useState<boolean | null>(null);
+  const [nfcBusy, setNfcBusy] = useState(false);
+  const [nfcHint, setNfcHint] = useState<string | null>(null);
+
+  useEffect(() => {
+    setNfcReadSupported(isWebNfcReadSupported());
+  }, []);
 
   const uids = uidsByKind[activeKind];
   const setUidsForActive = (value: string) =>
     setUidsByKind((prev) => ({ ...prev, [activeKind]: value }));
 
-  const uidTokens = uids.split(/[\n,]+/).map(normalizeUid).filter((u) => u.length > 0);
+  const uidTokens = uids.split(/[\n,]+/).map(normalizeTagUid).filter((u) => u.length > 0);
   const uniqueTokens = Array.from(new Set(uidTokens));
-  const validUids = uniqueTokens.filter(isValidUidFormat);
+  const validUids = uniqueTokens.filter(isValidTagUidFormat);
   const duplicateInInputCount = uidTokens.length - uniqueTokens.length;
   const invalidCount = uniqueTokens.length - validUids.length;
 
   const handleRegister = () => {
     if (!uids.trim()) return;
-    const uidList = uids.split(/[\n,]+/).map(normalizeUid).filter((u) => u.length > 0);
+    const uidList = uids.split(/[\n,]+/).map(normalizeTagUid).filter((u) => u.length > 0);
     if (uidList.length === 0) return;
 
     startTransition(async () => {
@@ -180,7 +181,57 @@ export function TagBulkRegisterCard() {
         })}
       </div>
 
-      <div className="relative z-10">
+      <div className="relative z-10 space-y-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-[10px] font-bold text-slate-500 leading-relaxed sm:max-w-[60%]">
+            Android Chrome에서 태그를 스캔하면 UID가 한 줄 추가됩니다. HTTPS·사용자 탭이 필요합니다.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={nfcBusy || nfcReadSupported === false || isPending}
+            onClick={() => {
+              setNfcHint(null);
+              setMessage(null);
+              setNfcBusy(true);
+              const kind = activeKind;
+              void readNfcTagUidOnce().then((r) => {
+                setNfcBusy(false);
+                if (r.ok) {
+                  setUidsByKind((prev) => {
+                    const cur = prev[kind].trim();
+                    const next = cur ? `${cur}\n${r.uid}` : r.uid;
+                    return { ...prev, [kind]: next };
+                  });
+                  setNfcHint(`UID를 추가했습니다: ${r.uid}`);
+                } else {
+                  setNfcHint(r.error);
+                }
+              });
+            }}
+            className="h-11 shrink-0 rounded-2xl border-slate-200 font-black text-xs"
+          >
+            {nfcBusy ? (
+              <>
+                <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+                태그 대기 중…
+              </>
+            ) : (
+              <>
+                <Smartphone className="mr-2 inline h-4 w-4" />
+                NFC로 UID 한 줄 추가
+              </>
+            )}
+          </Button>
+        </div>
+        {nfcReadSupported === false && (
+          <p className="text-[10px] font-bold text-amber-700">
+            이 브라우저는 NDEFReader를 지원하지 않습니다. UID를 직접 입력하거나 Android Chrome에서 열어 주세요.
+          </p>
+        )}
+        {nfcHint && (
+          <p className="text-[10px] font-bold text-slate-600 whitespace-pre-wrap leading-relaxed">{nfcHint}</p>
+        )}
         <textarea
           value={uids}
           onChange={(e) => setUidsForActive(e.target.value)}
