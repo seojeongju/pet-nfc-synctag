@@ -311,3 +311,25 @@ export async function acknowledgeMapTelemetryAlert(minutes = 60) {
     .run();
   revalidatePath("/admin/monitoring");
 }
+
+export async function clearMapTelemetryAlertAcknowledge() {
+  await assertAdmin();
+  const db = getDB();
+  await db
+    .prepare(
+      "CREATE TABLE IF NOT EXISTS map_telemetry_alert_state (" +
+        "id INTEGER PRIMARY KEY CHECK (id = 1), " +
+        "last_sent_at TEXT, " +
+        "acknowledged_until TEXT" +
+        ")"
+    )
+    .run();
+  await db.prepare("ALTER TABLE map_telemetry_alert_state ADD COLUMN acknowledged_until TEXT").run().catch(() => {});
+  await db
+    .prepare(
+      "INSERT INTO map_telemetry_alert_state (id, acknowledged_until) VALUES (1, NULL) " +
+        "ON CONFLICT(id) DO UPDATE SET acknowledged_until = NULL"
+    )
+    .run();
+  revalidatePath("/admin/monitoring");
+}

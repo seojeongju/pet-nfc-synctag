@@ -28,6 +28,7 @@ import type {
   LowBatteryRow,
   MapTelemetryHealthSummary,
   MapTelemetryAlertState,
+  MapTelemetryThresholdAuditRow,
   MapTelemetryThresholds,
   MapTelemetryTrendPoint,
   RecentBleRow,
@@ -36,6 +37,7 @@ import type {
 } from "@/lib/admin-monitoring-data";
 import {
   acknowledgeMapTelemetryAlert,
+  clearMapTelemetryAlertAcknowledge,
   getTagDiagnosticsForAdmin,
   updateMapTelemetryThresholds,
   updateTagBleMac,
@@ -62,6 +64,7 @@ export default function AdminMonitoringClient({
   mapHealth,
   mapThresholds,
   mapAlertState,
+  mapThresholdAudits,
   mapTrend,
   period,
   recentNfc,
@@ -74,6 +77,7 @@ export default function AdminMonitoringClient({
   mapHealth: MapTelemetryHealthSummary;
   mapThresholds: MapTelemetryThresholds;
   mapAlertState: MapTelemetryAlertState;
+  mapThresholdAudits: MapTelemetryThresholdAuditRow[];
   mapTrend: MapTelemetryTrendPoint[];
   period: "1h" | "24h" | "7d";
   recentNfc: RecentNfcScanRow[];
@@ -176,6 +180,12 @@ export default function AdminMonitoringClient({
       router.refresh();
     });
   };
+  const clearAcknowledge = () => {
+    startAckTransition(async () => {
+      await clearMapTelemetryAlertAcknowledge();
+      router.refresh();
+    });
+  };
 
   return (
     <div className="p-4 lg:p-10 space-y-8 max-w-[1600px] mx-auto">
@@ -247,6 +257,27 @@ export default function AdminMonitoringClient({
               className="h-9 text-[10px] font-black uppercase bg-rose-600 hover:bg-rose-700"
             >
               {ackPending ? "처리 중..." : "1시간 알림 숨기기"}
+            </Button>
+          </CardContent>
+        </AdminCard>
+      )}
+
+      {ackActive && (
+        <AdminCard variant="subtle" className="border border-amber-200 bg-amber-50">
+          <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-black text-amber-700">지도 알림이 일시 무시 상태입니다.</p>
+              <p className="text-[11px] font-bold text-amber-600 mt-1">
+                만료 시각: {mapAlertState.acknowledgedUntil}
+              </p>
+            </div>
+            <Button
+              type="button"
+              onClick={clearAcknowledge}
+              disabled={ackPending}
+              className="h-9 text-[10px] font-black uppercase bg-amber-600 hover:bg-amber-700"
+            >
+              {ackPending ? "처리 중..." : "즉시 재활성화"}
             </Button>
           </CardContent>
         </AdminCard>
@@ -432,6 +463,21 @@ export default function AdminMonitoringClient({
             >
               {thresholdPending ? "저장 중..." : "임계치 저장"}
             </Button>
+          </div>
+          <div className="rounded-xl bg-white border border-slate-100 p-3 space-y-2">
+            <p className="text-[10px] text-slate-400 font-black">임계치 변경 이력</p>
+            {mapThresholdAudits.length === 0 ? (
+              <p className="text-[10px] font-bold text-slate-400">이력이 없습니다.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {mapThresholdAudits.map((row) => (
+                  <div key={row.id} className="text-[10px] font-bold text-slate-500 flex items-center justify-between gap-2">
+                    <span className="truncate">{row.actorEmail ?? "unknown"}</span>
+                    <span className="shrink-0">{row.createdAt}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </CardContent>
       </AdminCard>

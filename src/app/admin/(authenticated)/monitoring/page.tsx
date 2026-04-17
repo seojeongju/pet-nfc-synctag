@@ -1,6 +1,7 @@
 ﻿import AdminMonitoringClient from "@/components/admin/AdminMonitoringClient";
 import {
   getMapTelemetryAlertState,
+  getMapTelemetryThresholdAudits,
   getLandingAutoRouteEvents,
   getMapTelemetryHealthSummary,
   getMapTelemetryThresholds,
@@ -21,7 +22,7 @@ export default async function AdminMonitoringPage({
 }) {
   const sp = await searchParams;
   const period = sp.period === "1h" || sp.period === "7d" ? sp.period : "24h";
-  const [summary, mapHealth, mapThresholds, mapAlertState, mapTrend, recentNfc, unknownAccess, autoRouteEvents, recentBle, lowBattery] = await Promise.all([
+  const [summary, mapHealth, mapThresholds, mapAlertState, mapThresholdAudits, mapTrend, recentNfc, unknownAccess, autoRouteEvents, recentBle, lowBattery] = await Promise.all([
     getMonitoringSummary().catch(() => ({
       nfcScans24h: 0,
       nfcScans7d: 0,
@@ -59,6 +60,7 @@ export default async function AdminMonitoringPage({
       dangerOfflineRate: 20,
     })),
     getMapTelemetryAlertState().catch(() => ({ acknowledgedUntil: null })),
+    getMapTelemetryThresholdAudits(10).catch(() => []),
     getMapTelemetryTrend(period).catch(() => []),
     getRecentNfcScans(40).catch(() => []),
     getUnknownTagAccesses(30).catch(() => []),
@@ -73,6 +75,7 @@ export default async function AdminMonitoringPage({
       mapHealth={mapHealth}
       mapThresholds={mapThresholds}
       mapAlertState={mapAlertState}
+      mapThresholdAudits={mapThresholdAudits}
       mapTrend={mapTrend}
       period={period}
       recentNfc={recentNfc}

@@ -138,6 +138,13 @@ export type MapTelemetryAlertState = {
   acknowledgedUntil: string | null;
 };
 
+export type MapTelemetryThresholdAuditRow = {
+  id: number;
+  actorEmail: string | null;
+  payload: string | null;
+  createdAt: string;
+};
+
 export async function getMapTelemetryHealthSummary(period: "1h" | "24h" | "7d" = "24h"): Promise<MapTelemetryHealthSummary> {
   const db = getDB();
   const rangeExpr = period === "1h" ? "-1 hour" : period === "7d" ? "-7 days" : "-1 day";
@@ -348,6 +355,24 @@ export async function getMapTelemetryAlertState(): Promise<MapTelemetryAlertStat
     };
   } catch {
     return { acknowledgedUntil: null };
+  }
+}
+
+export async function getMapTelemetryThresholdAudits(limit = 10): Promise<MapTelemetryThresholdAuditRow[]> {
+  const db = getDB();
+  const safe = Math.max(1, Math.min(limit, 50));
+  try {
+    const { results } = await db
+      .prepare(
+        "SELECT id, actor_email AS actorEmail, payload, created_at AS createdAt " +
+          "FROM map_telemetry_threshold_audit " +
+          "ORDER BY datetime(created_at) DESC LIMIT ?"
+      )
+      .bind(safe)
+      .all<MapTelemetryThresholdAuditRow>();
+    return results ?? [];
+  } catch {
+    return [];
   }
 }
 
