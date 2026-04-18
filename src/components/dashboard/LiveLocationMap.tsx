@@ -645,51 +645,51 @@ export default function LiveLocationMap({
   );
 
   const mapToolButtons = (
-    <div className="flex flex-col gap-1.5 md:gap-2">
+    <div className="flex flex-col gap-2">
       <button
         type="button"
         onClick={onRefresh}
         className={cn(
-          "flex h-9 w-9 touch-manipulation items-center justify-center rounded-xl bg-white text-slate-600 shadow-md ring-1 ring-slate-200/80 transition-all hover:text-teal-500 active:scale-95 md:h-10 md:w-10 md:rounded-2xl md:shadow-lg md:ring-0",
+          "flex h-10 w-10 touch-manipulation items-center justify-center rounded-2xl bg-white text-slate-600 shadow-lg transition-all hover:text-teal-500 active:scale-95",
           isRefreshing && "animate-spin"
         )}
         title="새로고침"
         aria-label="지도 데이터 새로고침"
       >
-        <RefreshCw className="h-3.5 w-3.5 md:h-4 md:w-4" />
+        <RefreshCw className="h-4 w-4" />
       </button>
       <button
         type="button"
         onClick={onClickMyLocation}
-        className="flex h-9 w-9 touch-manipulation items-center justify-center rounded-xl bg-white text-slate-600 shadow-md ring-1 ring-slate-200/80 transition-all hover:text-teal-500 active:scale-95 md:h-10 md:w-10 md:rounded-2xl md:shadow-lg md:ring-0"
+        className="flex h-10 w-10 touch-manipulation items-center justify-center rounded-2xl bg-white text-slate-600 shadow-lg transition-all hover:text-teal-500 active:scale-95"
         title="현재 위치로 이동"
         aria-label="현재 위치로 이동"
       >
-        <LocateFixed className="h-3.5 w-3.5 md:h-4 md:w-4" />
+        <LocateFixed className="h-4 w-4" />
       </button>
       <button
         type="button"
         onClick={() => setFollowMyLocation((v) => !v)}
         className={cn(
-          "flex h-9 w-9 touch-manipulation items-center justify-center rounded-xl bg-white shadow-md ring-1 ring-slate-200/80 transition-all active:scale-95 md:h-10 md:w-10 md:rounded-2xl md:shadow-lg md:ring-0",
+          "flex h-10 w-10 touch-manipulation items-center justify-center rounded-2xl bg-white shadow-lg transition-all active:scale-95",
           followMyLocation ? "text-teal-600 ring-2 ring-teal-200" : "text-slate-600 hover:text-teal-500"
         )}
         title="자동 추적"
         aria-label="내 위치 자동 추적 토글"
       >
-        <Navigation className="h-3.5 w-3.5 md:h-4 md:w-4" />
+        <Navigation className="h-4 w-4" />
       </button>
       <button
         type="button"
         onClick={() => setCompassMode((v) => !v)}
         className={cn(
-          "flex h-9 w-9 touch-manipulation items-center justify-center rounded-xl bg-white shadow-md ring-1 ring-slate-200/80 transition-all active:scale-95 md:h-10 md:w-10 md:rounded-2xl md:shadow-lg md:ring-0",
+          "flex h-10 w-10 touch-manipulation items-center justify-center rounded-2xl bg-white shadow-lg transition-all active:scale-95",
           compassMode ? "text-teal-600 ring-2 ring-teal-200" : "text-slate-600 hover:text-teal-500"
         )}
         title="나침반 모드"
         aria-label="나침반 모드 토글"
       >
-        <Compass className="h-3.5 w-3.5 md:h-4 md:w-4" />
+        <Compass className="h-4 w-4" />
       </button>
     </div>
   );
@@ -764,59 +764,6 @@ export default function LiveLocationMap({
     </div>
   );
 
-  /** 좁은 우측 레일용 — 한 줄로 수납 */
-  const playbackControlsRowCompact = (
-    <div className="flex items-center justify-center gap-0.5 rounded-xl border border-slate-100 bg-white/95 px-1 py-1.5 shadow-sm backdrop-blur">
-      <button
-        type="button"
-        onClick={() => {
-          if (playbackItems.length === 0) return;
-          setPlaybackActive((v) => !v);
-        }}
-        disabled={playbackItems.length === 0}
-        className={cn(
-          "flex h-7 w-7 touch-manipulation items-center justify-center rounded-lg text-slate-600 transition",
-          playbackItems.length === 0 ? "cursor-not-allowed opacity-40" : "hover:bg-slate-100",
-          playbackActive && "text-teal-600"
-        )}
-        title="이벤트 재생"
-        aria-label="이벤트 재생 토글"
-      >
-        {playbackActive ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-      </button>
-      <button
-        type="button"
-        onClick={() => {
-          setPlaybackActive(false);
-          setPlaybackIndex(0);
-        }}
-        disabled={playbackItems.length === 0}
-        className={cn(
-          "flex h-7 w-7 touch-manipulation items-center justify-center rounded-lg text-slate-600 transition",
-          playbackItems.length === 0 ? "cursor-not-allowed opacity-40" : "hover:bg-slate-100"
-        )}
-        title="재생 초기화"
-        aria-label="재생 초기화"
-      >
-        <RotateCcw className="h-3.5 w-3.5" />
-      </button>
-      <button
-        type="button"
-        onClick={() => setPlaybackSpeed((v) => (v === 1 ? 2 : 1))}
-        disabled={playbackItems.length === 0}
-        className={cn(
-          "h-7 min-w-[1.75rem] touch-manipulation rounded-lg px-1 text-[9px] font-black text-slate-600 transition",
-          playbackItems.length === 0 ? "cursor-not-allowed opacity-40" : "hover:bg-slate-100",
-          playbackSpeed === 2 && "text-teal-600"
-        )}
-        title="재생 속도 변경"
-        aria-label="재생 속도 변경"
-      >
-        {playbackSpeed}x
-      </button>
-    </div>
-  );
-
   const playbackInfoPanel =
     playbackItems.length > 0 ? (
       <div className="rounded-2xl border border-slate-100 bg-white/95 px-3 py-2 shadow-sm backdrop-blur">
@@ -830,24 +777,12 @@ export default function LiveLocationMap({
       </div>
     ) : null;
 
-  const playbackInfoPanelCompact =
-    playbackItems.length > 0 ? (
-      <div className="rounded-xl border border-slate-100 bg-white/95 px-2 py-1.5 shadow-sm backdrop-blur">
-        <p className="text-[9px] font-bold text-slate-500">
-          {Math.min(playbackIndex + 1, playbackItems.length)}/{playbackItems.length}
-        </p>
-        <p className="line-clamp-2 text-[9px] font-black leading-tight text-slate-700">
-          {playbackItems[Math.min(playbackIndex, playbackItems.length - 1)]?.name}
-        </p>
-      </div>
-    ) : null;
-
   return (
     <Card className="relative overflow-hidden rounded-[40px] border-none bg-white shadow-app">
       {mapLeftOpen && (
         <button
           type="button"
-          className="absolute bottom-0 left-0 right-[7.5rem] top-0 z-[21] bg-slate-900/35 md:hidden"
+          className="absolute bottom-0 left-0 right-[4.75rem] top-0 z-[21] bg-slate-900/35 md:hidden"
           aria-label="패널 닫기"
           onClick={() => {
             setMapLeftOpen(false);
@@ -874,7 +809,7 @@ export default function LiveLocationMap({
           </button>
         ) : (
           <div
-            className="animate-in fade-in slide-in-from-left-2 absolute left-2 top-3 z-[23] flex max-h-[min(72vh,calc(100%-1.5rem))] w-[min(17.5rem,calc(100%-9.5rem))] flex-col gap-2 overflow-y-auto rounded-2xl border border-slate-200 bg-white/95 p-2.5 shadow-xl duration-200"
+            className="animate-in fade-in slide-in-from-left-2 absolute left-2 top-3 z-[23] flex max-h-[min(72vh,calc(100%-1.5rem))] w-[min(17.5rem,calc(100%-5.75rem))] flex-col gap-2 overflow-y-auto rounded-2xl border border-slate-200 bg-white/95 p-2.5 shadow-xl duration-200"
             role="dialog"
             aria-label="관제·필터"
             aria-modal="true"
@@ -896,23 +831,11 @@ export default function LiveLocationMap({
         )}
       </div>
 
-      {/* 우측: 데스크톱 */}
-      <div className="absolute right-5 top-5 z-[22] hidden md:block">{mapToolButtons}</div>
-
-      {/* 우측: 모바일 — 고정 레일(겹침 방지). 백드롭은 이 영역을 비움 */}
-      <div className="pointer-events-none md:hidden">
-        <div className="pointer-events-auto absolute right-2 top-3 z-[24] flex max-h-[min(78vh,calc(100%-0.75rem))] w-[7rem] flex-col items-center gap-1.5 overflow-y-auto overflow-x-hidden rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-xl ring-1 ring-slate-200/60">
-          <span className="w-full select-none border-b border-slate-100 pb-1.5 text-center text-[9px] font-black uppercase tracking-wider text-slate-500">
-            도구·재생
-          </span>
-          {mapToolButtons}
-          {playbackControlsRowCompact}
-          {playbackInfoPanelCompact}
-        </div>
-      </div>
+      {/* 우측: 플로팅 도구(PC·모바일 동일) */}
+      <div className="absolute right-5 top-5 z-[22]">{mapToolButtons}</div>
 
       {(followMyLocation || compassMode || geoMessage) && (
-        <div className="absolute bottom-4 left-4 right-4 z-[22] rounded-2xl border border-slate-100 bg-white/95 px-3 py-2 shadow-sm backdrop-blur max-md:bottom-[max(1rem,env(safe-area-inset-bottom,0px))] max-md:left-2 max-md:right-[calc(7.5rem+0.75rem)]">
+        <div className="absolute bottom-4 left-4 right-4 z-[21] rounded-2xl border border-slate-100 bg-white/95 px-3 py-2 shadow-sm backdrop-blur max-md:bottom-[max(1rem,env(safe-area-inset-bottom,0px))] max-md:left-2 max-md:right-44">
           <p className="text-[11px] font-bold leading-relaxed text-slate-600">
             {followMyLocation ? "내 위치 자동 추적 중" : "내 위치 자동 추적 꺼짐"}
             {compassMode ? " · 나침반 모드 ON" : ""}
@@ -922,10 +845,16 @@ export default function LiveLocationMap({
         </div>
       )}
 
-      {/* 재생·관측: 데스크톱만 지도 모서리 고정 */}
-      <div className="absolute bottom-4 right-4 z-[22] hidden md:flex md:items-center md:gap-1.5">{playbackControlsRow}</div>
+      {/* 재생: 지도 우하단(PC·모바일 동일) */}
+      <div className="absolute bottom-4 right-4 z-[22] flex shrink-0 items-center gap-1.5 max-md:bottom-[max(1rem,env(safe-area-inset-bottom,0px))]">
+        {playbackControlsRow}
+      </div>
 
-      <div className="absolute bottom-16 right-4 z-[22] hidden md:block">{playbackInfoPanel}</div>
+      {playbackInfoPanel ? (
+        <div className="absolute bottom-16 right-4 z-[22] max-md:bottom-[calc(max(1rem,env(safe-area-inset-bottom,0px))+3.25rem)]">
+          {playbackInfoPanel}
+        </div>
+      ) : null}
 
       <div className="absolute bottom-4 left-4 z-[22] hidden md:block">{telemetryPanel}</div>
 
