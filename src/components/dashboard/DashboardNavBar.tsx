@@ -19,6 +19,7 @@ type DashboardNavBarProps = {
   orgManageHref?: string | null;
 };
 
+/** 데스크톱 가로 탭은 xl(1280px) 이상만. pointer:fine은 안드 Chrome·OAuth 직후에 오탐되어 모바일에서도 PC 탭이 뜰 수 있음 */
 export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNavBarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -57,7 +58,7 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
         className={`inline-flex items-center gap-1 ${dashboardTopNavLinkClass(dashGeo)}`}
         aria-current={dashGeo ? "page" : undefined}
       >
-        <MapPin className="w-3.5 h-3.5 shrink-0 [@media(min-width:1024px)_and_(pointer:fine)]:w-4 [@media(min-width:1024px)_and_(pointer:fine)]:h-4" />
+        <MapPin className="w-3.5 h-3.5 shrink-0 xl:w-4 xl:h-4" />
         안심 구역
       </a>
     </>
@@ -73,8 +74,8 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
         orgManageHref={orgManageHref}
       />
       <div className="border-t border-slate-100">
-        <div className="container flex max-w-5xl flex-col gap-2 px-4 py-2.5 [@media(min-width:1024px)_and_(pointer:fine)]:flex-row [@media(min-width:1024px)_and_(pointer:fine)]:items-center [@media(min-width:1024px)_and_(pointer:fine)]:justify-between [@media(min-width:1024px)_and_(pointer:fine)]:py-2">
-          <div className="flex min-w-0 items-center justify-between gap-3 [@media(min-width:1024px)_and_(pointer:fine)]:justify-start">
+        <div className="container flex max-w-5xl flex-col gap-2 px-4 py-2.5 xl:flex-row xl:items-center xl:justify-between xl:py-2">
+          <div className="flex min-w-0 items-center justify-between gap-3 xl:justify-start">
             <a href="/hub" className="flex min-w-0 items-center gap-2 font-bold text-xl text-primary hover:opacity-90">
               <PawPrint className="h-6 w-6 shrink-0" />
               <span className="truncate">링크유 Link-U</span>
@@ -82,20 +83,17 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
             <div className="flex shrink-0 items-center gap-2">
               <DashboardAnnouncementBell />
               {session?.user?.name ? (
-                <span className="truncate text-xs font-bold text-slate-400 [@media(min-width:1024px)_and_(pointer:fine)]:hidden">{session.user.name}</span>
+                <span className="truncate text-xs font-bold text-slate-400 xl:hidden">{session.user.name}</span>
               ) : null}
             </div>
           </div>
 
-          <nav
-            className="hidden [@media(min-width:1024px)_and_(pointer:fine)]:flex [@media(min-width:1024px)_and_(pointer:fine)]:flex-wrap [@media(min-width:1024px)_and_(pointer:fine)]:items-center [@media(min-width:1024px)_and_(pointer:fine)]:gap-4"
-            aria-label="대시보드 메뉴"
-          >
+          <nav className="hidden xl:flex xl:flex-wrap xl:items-center xl:gap-4" aria-label="대시보드 메뉴">
             {dashLinks}
           </nav>
 
           <nav
-            className="-mx-1 flex gap-2 overflow-x-auto pb-1 [@media(min-width:1024px)_and_(pointer:fine)]:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="-mx-1 flex gap-2 overflow-x-auto pb-1 xl:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             aria-label="대시보드 메뉴"
           >
             <div className="flex gap-2 text-slate-700">{dashLinks}</div>
