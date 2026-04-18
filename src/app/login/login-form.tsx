@@ -48,87 +48,6 @@ function resolveLoginCallbackUrl(searchParams: Pick<URLSearchParams, "get">): st
   return DEFAULT_CALLBACK;
 }
 
-/** better-auth OAuth 라우트 베이스 (@/lib/auth 기본과 동일) */
-const AUTH_HTTP_BASE = "/api/auth";
-
-/**
- * 인가 URL 보강: 모바일·터치 환경에서 Google 계정 UI가 PC형(가운데 카드)으로 고정되는 현상 완화.
- * - `display=touch` — OAuth 스펙상 터치 단말용 UI 힌트 (Android의 `wap`은 구형이라 최신 선택 화면에서 피함)
- * - `btmpl=mobile` — 비공식 파라미터이나 무시되어도 무해하며 일부 세션에서 모바일 템플릿을 선택한다고 알려짐
- */
-function augmentGoogleAuthorizationUrl(authUrl: string): string {
-  try {
-    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
-    const u = new URL(authUrl);
-
-    const isAndroid = /Android/i.test(ua);
-    const isIos = /iPhone|iPad|iPod/i.test(ua);
-    const coarse =
-      typeof window !== "undefined" && typeof window.matchMedia === "function"
-        ? window.matchMedia("(pointer: coarse)").matches
-        : false;
-    const narrowViewport =
-      typeof window !== "undefined" && typeof window.innerWidth === "number" && window.innerWidth < 1024;
-
-    const preferMobileChrome = isAndroid || isIos || coarse || narrowViewport;
-    if (!preferMobileChrome) {
-      return authUrl;
-    }
-
-    u.searchParams.set("display", "touch");
-    u.searchParams.set("btmpl", "mobile");
-    return u.toString();
-  } catch {
-    return authUrl;
-  }
-}
-
-/** fetch로 OAuth URL 수신 → 클라이언트 보강 후 이동 (signIn.social 래핑과 무관하게 url 확보) */
-async function redirectToGoogleOAuth(callbackURL: string): Promise<void> {
-  const res = await fetch(`${AUTH_HTTP_BASE}/sign-in/social`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    credentials: "include",
-    body: JSON.stringify({
-      provider: "google",
-      callbackURL,
-      disableRedirect: true,
-    }),
-  });
-
-  const text = await res.text();
-  if (!res.ok) {
-    console.error("[sign-in/google] HTTP", res.status, text.slice(0, 500));
-    return;
-  }
-
-  let parsed: unknown;
-  try {
-    parsed = text ? JSON.parse(text) : null;
-  } catch {
-    console.error("[sign-in/google] JSON parse failed", text.slice(0, 300));
-    return;
-  }
-
-  const url =
-    typeof parsed === "object" &&
-    parsed !== null &&
-    "url" in parsed &&
-    typeof (parsed as { url: unknown }).url === "string"
-      ? (parsed as { url: string }).url
-      : null;
-
-  if (url && url.length > 0) {
-    window.location.assign(augmentGoogleAuthorizationUrl(url));
-    return;
-  }
-
-  console.error("[sign-in/google] 응답에 url 없음", parsed);
-}
-
 type LoginContext = {
   title: string;
   subtitle: string;
@@ -202,11 +121,15 @@ export function LoginForm() {
   const ctx = MODE_CONTEXT[kind];
   const IconComponent = ctx.icon;
 
+  /**
+   * 통합 소셜 로그인 핸들러.
+   * 구글·카카오 모두 동일하게 signIn.social()을 사용합니다.
+   * 서버 auth.ts에서 google: { display: "touch" }가 설정되어,
+   * 모바일 환경에서 구글 계정 UI가 터치 UI로 렌더링됩니다.
+   * (이전에는 구글만 수동 fetch + URL 보강 방식을 썼지만,
+   *  이 방식은 better-auth redirectPlugin을 우회하여 viewport 불일치 발생)
+   */
   const handleLogin = async (provider: "google" | "kakao") => {
-    if (provider === "google") {
-      await redirectToGoogleOAuth(callbackURL);
-      return;
-    }
     await signIn.social({
       provider,
       callbackURL,

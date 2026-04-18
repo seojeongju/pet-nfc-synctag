@@ -31,10 +31,8 @@ export default function RootLayout({
   return (
     <html lang="ko" className={cn("font-outfit h-full")}>
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
+        {/* viewport meta는 export const viewport가 자동 생성 — 수동 추가 금지 (중복 시 모바일 반응형 깨짐) */}
         <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         {/* Cloudflare Edge에서 next/font Google 로더 이슈 회피 — 루트에서 전역 링크 */}
         {/* eslint-disable @next/next/no-page-custom-font -- root layout; applies site-wide */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
