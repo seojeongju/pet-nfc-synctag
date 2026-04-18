@@ -57,7 +57,7 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
         className={`inline-flex items-center gap-1 ${dashboardTopNavLinkClass(dashGeo)}`}
         aria-current={dashGeo ? "page" : undefined}
       >
-        <MapPin className="w-3.5 h-3.5 shrink-0 lg:w-4 lg:h-4" />
+        <MapPin className="w-3.5 h-3.5 shrink-0 [@media(min-width:1024px)_and_(pointer:fine)]:w-4 [@media(min-width:1024px)_and_(pointer:fine)]:h-4" />
         안심 구역
       </a>
     </>
@@ -73,8 +73,8 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
         orgManageHref={orgManageHref}
       />
       <div className="border-t border-slate-100">
-        <div className="container flex max-w-5xl flex-col gap-2 px-4 py-2.5 lg:flex-row lg:items-center lg:justify-between lg:py-2">
-          <div className="flex min-w-0 items-center justify-between gap-3 lg:justify-start">
+        <div className="container flex max-w-5xl flex-col gap-2 px-4 py-2.5 [@media(min-width:1024px)_and_(pointer:fine)]:flex-row [@media(min-width:1024px)_and_(pointer:fine)]:items-center [@media(min-width:1024px)_and_(pointer:fine)]:justify-between [@media(min-width:1024px)_and_(pointer:fine)]:py-2">
+          <div className="flex min-w-0 items-center justify-between gap-3 [@media(min-width:1024px)_and_(pointer:fine)]:justify-start">
             <a href="/hub" className="flex min-w-0 items-center gap-2 font-bold text-xl text-primary hover:opacity-90">
               <PawPrint className="h-6 w-6 shrink-0" />
               <span className="truncate">링크유 Link-U</span>
@@ -82,17 +82,20 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
             <div className="flex shrink-0 items-center gap-2">
               <DashboardAnnouncementBell />
               {session?.user?.name ? (
-                <span className="truncate text-xs font-bold text-slate-400 lg:hidden">{session.user.name}</span>
+                <span className="truncate text-xs font-bold text-slate-400 [@media(min-width:1024px)_and_(pointer:fine)]:hidden">{session.user.name}</span>
               ) : null}
             </div>
           </div>
 
-          <nav className="hidden lg:flex lg:flex-wrap lg:items-center lg:gap-3 xl:gap-4" aria-label="대시보드 메뉴">
+          <nav
+            className="hidden [@media(min-width:1024px)_and_(pointer:fine)]:flex [@media(min-width:1024px)_and_(pointer:fine)]:flex-wrap [@media(min-width:1024px)_and_(pointer:fine)]:items-center [@media(min-width:1024px)_and_(pointer:fine)]:gap-4"
+            aria-label="대시보드 메뉴"
+          >
             {dashLinks}
           </nav>
 
           <nav
-            className="-mx-1 flex gap-2 overflow-x-auto pb-1 lg:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="-mx-1 flex gap-2 overflow-x-auto pb-1 [@media(min-width:1024px)_and_(pointer:fine)]:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             aria-label="대시보드 메뉴"
           >
             <div className="flex gap-2 text-slate-700">{dashLinks}</div>

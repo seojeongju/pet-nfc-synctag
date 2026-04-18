@@ -21,6 +21,36 @@ import { type SubjectKind, parseSubjectKind } from "@/lib/subject-kind";
 
 const DEFAULT_CALLBACK = "/hub";
 
+/**
+ * better-auth가 내려주는 Google 인가 URL에 `display`를 덧붙인다.
+ * 일부 안드로이드 WebView/Custom Tab은 서버 쪽 `options.display`만으로는
+ * PC형 계정 UI가 뜨는 경우가 있어, Android → `wap`, 기타 터치/모바일 → `touch` 힌트를 강제한다.
+ */
+function augmentGoogleAuthorizationUrl(authUrl: string): string {
+  try {
+    const u = new URL(authUrl);
+    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+    if (/Android/i.test(ua)) {
+      u.searchParams.set("display", "wap");
+      return u.toString();
+    }
+    if (typeof window === "undefined") {
+      return authUrl;
+    }
+    if (
+      /iPhone|iPad|iPod/i.test(ua) ||
+      window.matchMedia("(pointer: coarse)").matches ||
+      window.innerWidth < 1024
+    ) {
+      u.searchParams.set("display", "touch");
+      return u.toString();
+    }
+    return authUrl;
+  } catch {
+    return authUrl;
+  }
+}
+
 function safeCallbackUrl(raw: string | null): string {
   if (!raw || typeof raw !== "string") return DEFAULT_CALLBACK;
   try {
@@ -110,6 +140,22 @@ export function LoginForm() {
   const IconComponent = ctx.icon;
 
   const handleLogin = async (provider: "google" | "kakao") => {
+    if (provider === "google") {
+      const res = await signIn.social({
+        provider: "google",
+        callbackURL,
+        disableRedirect: true,
+      });
+      if (res.error) {
+        console.error("[sign-in/google]", res.error);
+        return;
+      }
+      const rawUrl = res.data?.url;
+      if (typeof rawUrl === "string" && rawUrl.length > 0) {
+        window.location.assign(augmentGoogleAuthorizationUrl(rawUrl));
+        return;
+      }
+    }
     await signIn.social({
       provider,
       callbackURL,
