@@ -21,34 +21,85 @@ import { type SubjectKind, parseSubjectKind } from "@/lib/subject-kind";
 
 const DEFAULT_CALLBACK = "/hub";
 
+/** better-auth OAuth 라우트 베이스 (@/lib/auth 기본과 동일) */
+const AUTH_HTTP_BASE = "/api/auth";
+
 /**
- * better-auth가 내려주는 Google 인가 URL에 `display`를 덧붙인다.
- * 일부 안드로이드 WebView/Custom Tab은 서버 쪽 `options.display`만으로는
- * PC형 계정 UI가 뜨는 경우가 있어, Android → `wap`, 기타 터치/모바일 → `touch` 힌트를 강제한다.
+ * 인가 URL 보강: 모바일·터치 환경에서 Google 계정 UI가 PC형(가운데 카드)으로 고정되는 현상 완화.
+ * - `display=touch` — OAuth 스펙상 터치 단말용 UI 힌트 (Android의 `wap`은 구형이라 최신 선택 화면에서 피함)
+ * - `btmpl=mobile` — 비공식 파라미터이나 무시되어도 무해하며 일부 세션에서 모바일 템플릿을 선택한다고 알려짐
  */
 function augmentGoogleAuthorizationUrl(authUrl: string): string {
   try {
-    const u = new URL(authUrl);
     const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
-    if (/Android/i.test(ua)) {
-      u.searchParams.set("display", "wap");
-      return u.toString();
-    }
-    if (typeof window === "undefined") {
+    const u = new URL(authUrl);
+
+    const isAndroid = /Android/i.test(ua);
+    const isIos = /iPhone|iPad|iPod/i.test(ua);
+    const coarse =
+      typeof window !== "undefined" && typeof window.matchMedia === "function"
+        ? window.matchMedia("(pointer: coarse)").matches
+        : false;
+    const narrowViewport =
+      typeof window !== "undefined" && typeof window.innerWidth === "number" && window.innerWidth < 1024;
+
+    const preferMobileChrome = isAndroid || isIos || coarse || narrowViewport;
+    if (!preferMobileChrome) {
       return authUrl;
     }
-    if (
-      /iPhone|iPad|iPod/i.test(ua) ||
-      window.matchMedia("(pointer: coarse)").matches ||
-      window.innerWidth < 1024
-    ) {
-      u.searchParams.set("display", "touch");
-      return u.toString();
-    }
-    return authUrl;
+
+    u.searchParams.set("display", "touch");
+    u.searchParams.set("btmpl", "mobile");
+    return u.toString();
   } catch {
     return authUrl;
   }
+}
+
+/** fetch로 OAuth URL 수신 → 클라이언트 보강 후 이동 (signIn.social 래핑과 무관하게 url 확보) */
+async function redirectToGoogleOAuth(callbackURL: string): Promise<void> {
+  const res = await fetch(`${AUTH_HTTP_BASE}/sign-in/social`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    credentials: "include",
+    body: JSON.stringify({
+      provider: "google",
+      callbackURL,
+      disableRedirect: true,
+    }),
+  });
+
+  const text = await res.text();
+  if (!res.ok) {
+    console.error("[sign-in/google] HTTP", res.status, text.slice(0, 500));
+    return;
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = text ? JSON.parse(text) : null;
+  } catch {
+    console.error("[sign-in/google] JSON parse failed", text.slice(0, 300));
+    return;
+  }
+
+  const url =
+    typeof parsed === "object" &&
+    parsed !== null &&
+    "url" in parsed &&
+    typeof (parsed as { url: unknown }).url === "string"
+      ? (parsed as { url: string }).url
+      : null;
+
+  if (url && url.length > 0) {
+    window.location.assign(augmentGoogleAuthorizationUrl(url));
+    return;
+  }
+
+  console.error("[sign-in/google] 응답에 url 없음", parsed);
 }
 
 function safeCallbackUrl(raw: string | null): string {
@@ -141,20 +192,8 @@ export function LoginForm() {
 
   const handleLogin = async (provider: "google" | "kakao") => {
     if (provider === "google") {
-      const res = await signIn.social({
-        provider: "google",
-        callbackURL,
-        disableRedirect: true,
-      });
-      if (res.error) {
-        console.error("[sign-in/google]", res.error);
-        return;
-      }
-      const rawUrl = res.data?.url;
-      if (typeof rawUrl === "string" && rawUrl.length > 0) {
-        window.location.assign(augmentGoogleAuthorizationUrl(rawUrl));
-        return;
-      }
+      await redirectToGoogleOAuth(callbackURL);
+      return;
     }
     await signIn.social({
       provider,
