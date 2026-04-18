@@ -17,9 +17,36 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { type SubjectKind, parseSubjectKind } from "@/lib/subject-kind";
+import { SUBJECT_KINDS, type SubjectKind, parseSubjectKind } from "@/lib/subject-kind";
 
 const DEFAULT_CALLBACK = "/hub";
+
+function safeCallbackUrl(raw: string | null): string {
+  if (!raw || typeof raw !== "string") return DEFAULT_CALLBACK;
+  try {
+    const decoded = decodeURIComponent(raw.trim());
+    if (!decoded.startsWith("/") || decoded.startsWith("//")) return DEFAULT_CALLBACK;
+    if (decoded.includes("://")) return DEFAULT_CALLBACK;
+    return decoded.length > 2048 ? DEFAULT_CALLBACK : decoded;
+  } catch {
+    return DEFAULT_CALLBACK;
+  }
+}
+
+/**
+ * OAuth 완료 후 이동할 경로. `callbackUrl`이 없어도 `kind`만 있으면 해당 모드 대시보드로 직행(허브 경유 방지).
+ */
+function resolveLoginCallbackUrl(searchParams: Pick<URLSearchParams, "get">): string {
+  const explicit = searchParams.get("callbackUrl");
+  if (explicit && explicit.trim()) {
+    return safeCallbackUrl(explicit);
+  }
+  const kindParam = searchParams.get("kind");
+  if (kindParam && (SUBJECT_KINDS as readonly string[]).includes(kindParam)) {
+    return `/dashboard/${encodeURIComponent(kindParam)}`;
+  }
+  return DEFAULT_CALLBACK;
+}
 
 /** better-auth OAuth 라우트 베이스 (@/lib/auth 기본과 동일) */
 const AUTH_HTTP_BASE = "/api/auth";
@@ -102,18 +129,6 @@ async function redirectToGoogleOAuth(callbackURL: string): Promise<void> {
   console.error("[sign-in/google] 응답에 url 없음", parsed);
 }
 
-function safeCallbackUrl(raw: string | null): string {
-  if (!raw || typeof raw !== "string") return DEFAULT_CALLBACK;
-  try {
-    const decoded = decodeURIComponent(raw.trim());
-    if (!decoded.startsWith("/") || decoded.startsWith("//")) return DEFAULT_CALLBACK;
-    if (decoded.includes("://")) return DEFAULT_CALLBACK;
-    return decoded.length > 2048 ? DEFAULT_CALLBACK : decoded;
-  } catch {
-    return DEFAULT_CALLBACK;
-  }
-}
-
 type LoginContext = {
   title: string;
   subtitle: string;
@@ -180,10 +195,7 @@ const MODE_CONTEXT: Record<SubjectKind, LoginContext> = {
 
 export function LoginForm() {
   const searchParams = useSearchParams();
-  const callbackURL = useMemo(
-    () => safeCallbackUrl(searchParams.get("callbackUrl")),
-    [searchParams]
-  );
+  const callbackURL = useMemo(() => resolveLoginCallbackUrl(searchParams), [searchParams]);
   
   const kindParam = searchParams.get("kind");
   const kind = parseSubjectKind(kindParam);

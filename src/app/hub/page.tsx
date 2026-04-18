@@ -76,7 +76,7 @@ export default async function HubPage({
     <div className="min-h-screen bg-[#F8FAFC] font-outfit">
       <FlowTopNav variant="landing" session={session} isAdmin={isPlatformAdmin} />
       <div className="px-4 min-[430px]:px-5 py-6 min-[430px]:py-8 pb-20">
-      <div className="max-w-screen-sm mx-auto space-y-6 min-[430px]:space-y-8">
+      <div className="w-full max-w-none lg:max-w-screen-sm mx-auto space-y-6 min-[430px]:space-y-8">
         <header className="space-y-2">
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-600">
             링크유 Link-U

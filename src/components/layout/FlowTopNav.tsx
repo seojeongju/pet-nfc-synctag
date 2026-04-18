@@ -19,7 +19,7 @@ type FlowTopNavContentProps = {
 const maxWClass = (variant: FlowTopNavContentProps["variant"]) =>
   variant === "dashboard"
     ? "container max-w-5xl px-4"
-    : "mx-auto w-full max-w-screen-sm px-4 min-[430px]:px-5";
+    : "mx-auto w-full max-w-none lg:max-w-screen-sm px-4 min-[430px]:px-5";
 
 /**
  * 상단 링크 행만 (스티키·테두리 없음). 대시보드 등에서 다른 헤더와 합칠 때 사용.

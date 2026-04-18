@@ -66,7 +66,7 @@ export default function ModeGateLanding({
         className={cn("absolute bottom-[-10%] left-[-10%] w-[80%] h-[40%] blur-[120px] rounded-full", visual.blobB)}
       />
 
-      <main className="flex-1 flex flex-col max-w-screen-sm mx-auto w-full relative z-10">
+      <main className="flex-1 flex flex-col w-full max-w-none lg:max-w-screen-sm mx-auto relative z-10">
         <section className="relative px-4 min-[430px]:px-5 pt-6 pb-4">
           <motion.div
             initial={{ opacity: 0, y: fromHome ? 8 : 30, scale: fromHome ? 0.97 : 1 }}
