@@ -18,7 +18,6 @@ import {
   Grid3X3,
   Wifi,
   WifiOff,
-  ChevronLeft,
   ChevronRight,
   X,
 } from "lucide-react";
@@ -130,9 +129,8 @@ export default function LiveLocationMap({
   const watchIdRef = useRef<number | null>(null);
   const lastMyLatLngRef = useRef<KakaoLatLng | null>(null);
   const mapStateStorageKeyRef = useRef(`live-map-state:${subjectKind}`);
-  /** 좁은 화면에서 지도 위 오버레이를 좌·우 패널로 접기 */
+  /** 좁은 화면에서 좌측 관제 패널만 접기 (우측 도구는 상시 노출) */
   const [mapLeftOpen, setMapLeftOpen] = useState(false);
-  const [mapRightOpen, setMapRightOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -781,14 +779,13 @@ export default function LiveLocationMap({
 
   return (
     <Card className="relative overflow-hidden rounded-[40px] border-none bg-white shadow-app">
-      {(mapLeftOpen || mapRightOpen) && (
+      {mapLeftOpen && (
         <button
           type="button"
           className="absolute inset-0 z-[21] bg-slate-900/35 md:hidden"
           aria-label="패널 닫기"
           onClick={() => {
             setMapLeftOpen(false);
-            setMapRightOpen(false);
           }}
         />
       )}
@@ -805,7 +802,6 @@ export default function LiveLocationMap({
             aria-expanded={false}
             aria-label="관제·필터 패널 열기"
             onClick={() => {
-              setMapRightOpen(false);
               setMapLeftOpen(true);
             }}
           >
@@ -833,39 +829,16 @@ export default function LiveLocationMap({
       {/* 우측: 데스크톱 */}
       <div className="absolute right-5 top-5 z-[22] hidden md:block">{mapToolButtons}</div>
 
-      {/* 우측: 모바일 */}
+      {/* 우측: 모바일 — 도구·재생 상시 노출 */}
       <div className="md:hidden">
-        {!mapRightOpen ? (
-          <button
-            type="button"
-            className="absolute right-2 top-20 z-[23] flex h-12 w-9 items-center justify-center rounded-l-xl border border-slate-200 bg-white/95 text-slate-600 shadow-lg active:scale-95"
-            aria-expanded={false}
-            aria-label="지도 도구·재생 패널 열기"
-            onClick={() => {
-              setMapLeftOpen(false);
-              setMapRightOpen(true);
-            }}
-          >
-            <ChevronLeft className="h-5 w-5" aria-hidden />
-          </button>
-        ) : (
-          <div className="absolute right-2 top-3 z-[23] flex max-h-[min(72vh,calc(100%-1.5rem))] w-[min(11rem,calc(100vw-2.5rem))] flex-col items-stretch gap-2 overflow-y-auto rounded-2xl border border-slate-200 bg-white/95 p-2.5 shadow-xl">
-            <div className="mb-1 flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
-              <span className="text-xs font-black text-slate-800">도구·재생</span>
-              <button
-                type="button"
-                className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100"
-                onClick={() => setMapRightOpen(false)}
-                aria-label="패널 닫기"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            {mapToolButtons}
-            {playbackControlsRow}
-            {playbackInfoPanel}
+        <div className="absolute right-2 top-3 z-[23] flex max-h-[min(72vh,calc(100%-1.5rem))] w-[min(11rem,calc(100vw-2.5rem))] flex-col items-stretch gap-2 overflow-y-auto rounded-2xl border border-slate-200 bg-white/95 p-2.5 shadow-xl">
+          <div className="mb-1 border-b border-slate-100 pb-2">
+            <span className="text-xs font-black text-slate-800">도구·재생</span>
           </div>
-        )}
+          {mapToolButtons}
+          {playbackControlsRow}
+          {playbackInfoPanel}
+        </div>
       </div>
 
       {(followMyLocation || compassMode || geoMessage) && (
