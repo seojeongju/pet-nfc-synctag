@@ -17,8 +17,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  /** 접근성: 사용자 확대 허용 (고정 maximumScale 금지) */
-  maximumScale: 5,
+  maximumScale: 1,
+  userScalable: false,
   viewportFit: "cover",
   themeColor: "#14b8a6",
 };
@@ -31,15 +31,6 @@ export default function RootLayout({
   return (
     <html lang="ko" className={cn("font-outfit h-full")}>
       <head>
-        {/*
-          viewport: export const viewport로 자동 생성되지만,
-          Cloudflare Edge(next-on-pages) 환경에서 실기기에 누락될 수 있으므로
-          수동 meta도 함께 선언합니다. (중복 시 브라우저가 첫 번째 것 우선 사용)
-        */}
-        <meta
-          name="viewport"
-          content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover"
-        />
         <meta name="mobile-web-app-capable" content="yes" />
         {/* Cloudflare Edge에서 next/font Google 로더 이슈 회피 — 루트에서 전역 링크 */}
         {/* eslint-disable @next/next/no-page-custom-font -- root layout; applies site-wide */}
