@@ -31,7 +31,15 @@ export default function RootLayout({
   return (
     <html lang="ko" className={cn("font-outfit h-full")}>
       <head>
-        {/* viewport meta는 export const viewport가 자동 생성 — 수동 추가 금지 (중복 시 모바일 반응형 깨짐) */}
+        {/*
+          viewport: export const viewport로 자동 생성되지만,
+          Cloudflare Edge(next-on-pages) 환경에서 실기기에 누락될 수 있으므로
+          수동 meta도 함께 선언합니다. (중복 시 브라우저가 첫 번째 것 우선 사용)
+        */}
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover"
+        />
         <meta name="mobile-web-app-capable" content="yes" />
         {/* Cloudflare Edge에서 next/font Google 로더 이슈 회피 — 루트에서 전역 링크 */}
         {/* eslint-disable @next/next/no-page-custom-font -- root layout; applies site-wide */}
