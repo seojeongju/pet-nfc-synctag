@@ -30,6 +30,12 @@ export const getAuth = (env: AuthEnv) => {
             google: {
                 clientId: env.GOOGLE_CLIENT_ID || "",
                 clientSecret: env.GOOGLE_CLIENT_SECRET || "",
+                /**
+                 * Google OAuth: `display=touch` — 모바일/터치에 맞는 계정 UI(전체 폭)로 유도.
+                 * 미지정 시 일부 WebView/UA에서 데스크톱용(가운데 작은 카드) 화면이 노출될 수 있음.
+                 * @see https://developers.google.com/identity/protocols/oauth2/web-server#creatingclient
+                 */
+                display: "touch",
             },
             kakao: {
                 clientId: env.KAKAO_CLIENT_ID || "",
