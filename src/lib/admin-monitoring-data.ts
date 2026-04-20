@@ -534,3 +534,29 @@ export async function getLowBatteryCandidates(limit = 30) {
     .all<LowBatteryRow>();
   return results ?? [];
 }
+
+export type NativeRejectReasonRow = {
+  reason: string;
+  count: number;
+};
+
+export async function getNativeRejectTopReasons(limit = 5): Promise<NativeRejectReasonRow[]> {
+  const db = getDB();
+  const safe = Math.max(1, Math.min(limit, 20));
+  const { results } = await db
+    .prepare(
+      "SELECT COALESCE(json_extract(payload, '$.reason'), 'unknown') AS reason, COUNT(*) AS count " +
+        "FROM admin_action_logs " +
+        "WHERE action = 'nfc_native_write_rejected' AND created_at >= datetime('now', '-7 days') " +
+        "GROUP BY COALESCE(json_extract(payload, '$.reason'), 'unknown') " +
+        "ORDER BY count DESC " +
+        "LIMIT ?"
+    )
+    .bind(safe)
+    .all<{ reason: string; count: number }>()
+    .catch(() => ({ results: [] as { reason: string; count: number }[] }));
+  return (results ?? []).map((r) => ({
+    reason: String(r.reason ?? "unknown"),
+    count: Number(r.count ?? 0),
+  }));
+}

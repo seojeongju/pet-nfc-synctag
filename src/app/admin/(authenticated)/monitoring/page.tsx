@@ -6,6 +6,7 @@ import {
   getMapTelemetryHealthSummary,
   getMapTelemetryThresholds,
   getMapTelemetryTrend,
+  getNativeRejectTopReasons,
   getLowBatteryCandidates,
   getMonitoringSummary,
   getRecentBleEvents,
@@ -22,7 +23,7 @@ export default async function AdminMonitoringPage({
 }) {
   const sp = await searchParams;
   const period = sp.period === "1h" || sp.period === "7d" ? sp.period : "24h";
-  const [summary, mapHealth, mapThresholds, mapAlertState, mapThresholdAudits, mapTrend, recentNfc, unknownAccess, autoRouteEvents, recentBle, lowBattery] = await Promise.all([
+  const [summary, mapHealth, mapThresholds, mapAlertState, mapThresholdAudits, mapTrend, recentNfc, unknownAccess, autoRouteEvents, recentBle, lowBattery, nativeRejectTop] = await Promise.all([
     getMonitoringSummary().catch(() => ({
       nfcScans24h: 0,
       nfcScans7d: 0,
@@ -72,6 +73,7 @@ export default async function AdminMonitoringPage({
     getLandingAutoRouteEvents(30).catch(() => []),
     getRecentBleEvents(40).catch(() => []),
     getLowBatteryCandidates(30).catch(() => []),
+    getNativeRejectTopReasons(5).catch(() => []),
   ]);
 
   return (
@@ -88,6 +90,7 @@ export default async function AdminMonitoringPage({
       autoRouteEvents={autoRouteEvents}
       recentBle={recentBle}
       lowBattery={lowBattery}
+      nativeRejectTop={nativeRejectTop}
     />
   );
 }

@@ -28,6 +28,7 @@ import type {
   LowBatteryRow,
   MapTelemetryHealthSummary,
   MapTelemetryAlertState,
+  NativeRejectReasonRow,
   MapTelemetryThresholdAuditRow,
   MapTelemetryThresholds,
   MapTelemetryTrendPoint,
@@ -77,6 +78,7 @@ export default function AdminMonitoringClient({
   autoRouteEvents,
   recentBle,
   lowBattery,
+  nativeRejectTop,
 }: {
   summary: Summary;
   mapHealth: MapTelemetryHealthSummary;
@@ -90,6 +92,7 @@ export default function AdminMonitoringClient({
   autoRouteEvents: LandingAutoRouteRow[];
   recentBle: RecentBleRow[];
   lowBattery: LowBatteryRow[];
+  nativeRejectTop: NativeRejectReasonRow[];
 }) {
   const [uidQuery, setUidQuery] = useState("");
   const [diag, setDiag] = useState<TagDiagnosticResult | null>(null);
@@ -319,6 +322,21 @@ export default function AdminMonitoringClient({
               감사 로그 확인
             </a>
           </CardContent>
+          {nativeRejectTop.length > 0 && (
+            <CardContent className="pt-0 pb-4 px-4">
+              <div className="rounded-lg border border-rose-100 bg-white/80 p-3">
+                <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-2">거절 사유 TOP (7d)</p>
+                <div className="grid gap-1">
+                  {nativeRejectTop.map((row) => (
+                    <div key={row.reason} className="flex items-center justify-between text-[11px]">
+                      <span className="font-bold text-slate-700">{row.reason}</span>
+                      <span className="font-black text-rose-600">{row.count}건</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          )}
         </AdminCard>
       )}
 
