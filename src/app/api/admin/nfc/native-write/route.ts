@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getDB } from "@/lib/db";
 import { isValidTagUidFormat, normalizeTagUid } from "@/lib/tag-uid-format";
 import { verifyNativeHandoffToken, verifyWithSecret } from "@/lib/nfc-native-security";
@@ -109,12 +109,39 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unknown tagId" }, { status: 404 });
   }
 
+  await db.prepare(`
+      CREATE TABLE IF NOT EXISTS nfc_native_handoff_tokens (
+        jti TEXT PRIMARY KEY,
+        tag_id TEXT NOT NULL,
+        url TEXT NOT NULL,
+        expires_at DATETIME NOT NULL,
+        issued_by TEXT,
+        consumed_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run();
+  const consumeResult = await db
+    .prepare(
+      `UPDATE nfc_native_handoff_tokens
+       SET consumed_at = CURRENT_TIMESTAMP
+       WHERE jti = ?
+         AND consumed_at IS NULL
+         AND datetime(expires_at) >= CURRENT_TIMESTAMP`
+    )
+    .bind(handoffVerified.payload.jti)
+    .run();
+  const consumedChanges = Number((consumeResult as { meta?: { changes?: number } }).meta?.changes ?? 0);
+  if (consumedChanges !== 1) {
+    return NextResponse.json({ error: "Handoff token already used or expired" }, { status: 409 });
+  }
+
   const payload = JSON.stringify({
     tagId,
     url,
     deviceId,
     source: "native_app",
     keyId: request.headers.get("x-native-key-id")?.trim() || "current",
+    handoffJti: handoffVerified.payload.jti,
     handoffExp: handoffVerified.payload.exp,
     ...(clientError ? { clientError } : {}),
     ...(writtenAt ? { writtenAt } : {}),

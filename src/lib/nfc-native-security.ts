@@ -1,9 +1,11 @@
-﻿const encoder = new TextEncoder();
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
 
 export type HandoffPayload = {
   uid: string;
   url: string;
   exp: number;
+  jti: string;
 };
 
 function toBase64Url(bytes: Uint8Array): string {
@@ -20,6 +22,12 @@ function fromBase64Url(input: string): Uint8Array | null {
   } catch {
     return null;
   }
+}
+
+function randomHex(bytes = 16): string {
+  const arr = new Uint8Array(bytes);
+  crypto.getRandomValues(arr);
+  return Array.from(arr, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 async function importHmacKey(secret: string): Promise<CryptoKey> {
@@ -42,8 +50,7 @@ export async function verifyWithSecret(secret: string, message: string, signatur
   const sig = fromBase64Url(signatureB64Url);
   if (!sig) return false;
   const key = await importHmacKey(secret);
-  const sigBytes = new Uint8Array(sig);
-  return crypto.subtle.verify("HMAC", key, sigBytes, encoder.encode(message));
+  return crypto.subtle.verify("HMAC", key, new Uint8Array(sig), encoder.encode(message));
 }
 
 export async function mintNativeHandoffToken(input: {
@@ -51,19 +58,20 @@ export async function mintNativeHandoffToken(input: {
   url: string;
   expiresInSec: number;
   secret: string;
-}): Promise<{ token: string; expiresAt: number }> {
+}): Promise<{ token: string; expiresAt: number; jti: string }> {
   const nowSec = Math.floor(Date.now() / 1000);
   const payload: HandoffPayload = {
     uid: input.uid,
     url: input.url,
     exp: nowSec + Math.max(30, input.expiresInSec),
+    jti: randomHex(16),
   };
-  const payloadJson = JSON.stringify(payload);
-  const payloadB64 = toBase64Url(encoder.encode(payloadJson));
+  const payloadB64 = toBase64Url(encoder.encode(JSON.stringify(payload)));
   const signatureB64 = await signWithSecret(input.secret, payloadB64);
   return {
     token: `${payloadB64}.${signatureB64}`,
     expiresAt: payload.exp,
+    jti: payload.jti,
   };
 }
 
@@ -85,15 +93,20 @@ export async function verifyNativeHandoffToken(input: {
   if (!bytes) {
     return { ok: false, error: "invalid token payload" };
   }
+
   let payload: HandoffPayload;
   try {
-    payload = JSON.parse(new TextDecoder().decode(bytes)) as HandoffPayload;
+    payload = JSON.parse(decoder.decode(bytes)) as HandoffPayload;
   } catch {
     return { ok: false, error: "invalid token payload json" };
   }
+
   const nowSec = Math.floor(Date.now() / 1000);
   if (!payload.exp || payload.exp < nowSec) {
     return { ok: false, error: "token expired" };
+  }
+  if (!payload.jti || typeof payload.jti !== "string") {
+    return { ok: false, error: "missing token id" };
   }
   if (payload.uid !== input.uid || payload.url !== input.url) {
     return { ok: false, error: "token subject mismatch" };

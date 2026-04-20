@@ -585,6 +585,7 @@ export type PrepareNfcNativeHandoffResult =
         appLink: string;
         handoffToken: string;
         expiresAt: number;
+        jti: string;
     }
     | { ok: false; error: string };
 
@@ -599,7 +600,7 @@ export async function prepareNfcNativeHandoff(tagIdRaw: string): Promise<Prepare
     if (!handoffSecret) {
         return { ok: false, error: "NFC_NATIVE_HANDOFF_SECRET이 설정되지 않았습니다." };
     }
-    const { token, expiresAt } = await mintNativeHandoffToken({
+    const { token, expiresAt, jti } = await mintNativeHandoffToken({
         uid: prep.tagId,
         url: prep.url,
         expiresInSec: 10 * 60,
@@ -617,11 +618,35 @@ export async function prepareNfcNativeHandoff(tagIdRaw: string): Promise<Prepare
         tagId: prep.tagId,
         url: prep.url,
         appLink,
+        jti,
         expiresAt,
         source: "admin_write_card",
     });
 
     const db = getDB();
+    await db.prepare(`
+            CREATE TABLE IF NOT EXISTS nfc_native_handoff_tokens (
+                jti TEXT PRIMARY KEY,
+                tag_id TEXT NOT NULL,
+                url TEXT NOT NULL,
+                expires_at DATETIME NOT NULL,
+                issued_by TEXT,
+                consumed_at DATETIME,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `).run();
+    await db
+        .prepare(
+            "INSERT OR REPLACE INTO nfc_native_handoff_tokens (jti, tag_id, url, expires_at, issued_by) VALUES (?, ?, ?, ?, ?)"
+        )
+        .bind(
+            jti,
+            prep.tagId,
+            prep.url,
+            new Date(expiresAt * 1000).toISOString(),
+            await getActorEmailSafe()
+        )
+        .run();
     await db.prepare(`
             CREATE TABLE IF NOT EXISTS admin_action_logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -650,5 +675,6 @@ export async function prepareNfcNativeHandoff(tagIdRaw: string): Promise<Prepare
         appLink,
         handoffToken: token,
         expiresAt,
+        jti,
     };
 }
