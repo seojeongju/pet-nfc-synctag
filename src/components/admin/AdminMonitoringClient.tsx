@@ -172,6 +172,7 @@ export default function AdminMonitoringClient({
   const ackUntilTs = mapAlertState.acknowledgedUntil ? Date.parse(mapAlertState.acknowledgedUntil) : 0;
   const ackActive = Boolean(ackUntilTs && !Number.isNaN(ackUntilTs) && Date.now() < ackUntilTs);
   const showDangerBanner = healthTone === "danger" && !ackActive;
+  const showNativeRejectBanner = summary.nativeRejected24h > 0;
 
   const saveThresholds = () => {
     startThresholdTransition(async () => {
@@ -298,6 +299,25 @@ export default function AdminMonitoringClient({
             >
               {ackPending ? "처리 중..." : "즉시 재활성화"}
             </Button>
+          </CardContent>
+        </AdminCard>
+      )}
+
+      {showNativeRejectBanner && (
+        <AdminCard variant="subtle" className="border border-rose-200 bg-rose-50">
+          <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-black text-rose-700">네이티브 콜백 보안 거절 이벤트가 감지되었습니다.</p>
+              <p className="text-[11px] font-bold text-rose-600 mt-1">
+                최근 24시간 {summary.nativeRejected24h}건 / 7일 {summary.nativeRejected7d}건
+              </p>
+            </div>
+            <a
+              href="/admin/nfc-tags/history?action=nfc_native_write_rejected&days=7"
+              className="inline-flex items-center justify-center h-9 px-3 rounded-lg bg-rose-600 hover:bg-rose-700 text-[10px] font-black uppercase text-white"
+            >
+              감사 로그 확인
+            </a>
           </CardContent>
         </AdminCard>
       )}
