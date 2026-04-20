@@ -6,7 +6,7 @@ import { CardContent } from "@/components/ui/card";
 import { AdminCard } from "@/components/admin/ui/AdminCard";
 import { 
   Users, Package, CheckCircle, ArrowUpRight, 
-  TrendingUp, Shield, Layers, Activity, Database,
+  Shield, Layers, Activity, Database,
   LayoutGrid, ListPlus, Smartphone, History, ArrowRight
 } from "lucide-react";
 import Link from "next/link";
@@ -190,7 +190,7 @@ export default function AdminDashboardClient({
                 시스템 관리 콘솔
              </div>
              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">관리자 대시보드</h1>
-             <p className="text-slate-500 text-sm font-bold">실시간 시스템 리소스 및 자산 관리 현황</p>
+             <p className="text-slate-500 text-sm font-bold">핵심 운영 지표 요약</p>
           </div>
           
           <div className="flex items-center gap-4">
@@ -220,9 +220,6 @@ export default function AdminDashboardClient({
                   <div className="space-y-1">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{card.title}</p>
                     <h2 className="text-3xl font-black text-slate-900 tracking-tighter tabular-nums">{card.value.toLocaleString()}</h2>
-                    <p className="text-[10px] font-bold text-slate-500 pt-3 border-t border-slate-100 mt-4">
-                       {card.description}
-                    </p>
                   </div>
                 </CardContent>
               </AdminCard>
@@ -452,98 +449,35 @@ export default function AdminDashboardClient({
           </AdminCard>
         </motion.div>
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8">
-           {/* System Insights */}
-           <motion.div variants={itemVariants} className="lg:col-span-2">
-              <AdminCard variant="section" className="rounded-[28px] lg:rounded-[40px] p-5 lg:p-8 h-full">
-                 <div className="flex items-center justify-between mb-8">
-                    <div className="space-y-1">
-                       <h3 className="text-lg lg:text-xl font-black text-slate-900 px-1">최근 비즈니스 통찰</h3>
-                       <p className="text-xs font-bold text-slate-500 px-1 italic">링크유 운영 시스템 분석 결과</p>
-                    </div>
-                    <TrendingUp className="w-6 h-6 text-slate-400" />
-                 </div>
-                 
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="p-6 rounded-[28px] bg-amber-500/5 border border-amber-500/10 space-y-4 hover:bg-amber-500/10 transition-colors">
-                       <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-500">
-                          <Package className="w-5 h-5" />
-                       </div>
-                       <div>
-                          <h4 className="font-bold text-slate-800 text-sm">재고 경보: 등록 필요</h4>
-                          <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                             현재 미판매 재고가 <span className="text-amber-500 font-black">{stats.unsoldTags}개</span> 남았습니다. 원활한 판매를 위해 추가 태그 UID 등록을 권장합니다.
-                          </p>
-                       </div>
-                    </div>
-
-                    <div className="p-6 rounded-[28px] bg-teal-500/5 border border-teal-500/10 space-y-4 hover:bg-teal-500/10 transition-colors">
-                       <div className="w-10 h-10 rounded-xl bg-teal-500/20 flex items-center justify-center text-teal-500">
-                          <CheckCircle className="w-5 h-5" />
-                       </div>
-                       <div>
-                          <h4 className="font-bold text-slate-800 text-sm">시스템 무결성 확인</h4>
-                          <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                             모든 NFC 인식표 정보가 암호화되어 안전하게 관리되고 있습니다. 최근 24시간 내 보안 이슈가 발견되지 않았습니다.
-                          </p>
-                       </div>
-                    </div>
-                 </div>
-              </AdminCard>
-           </motion.div>
-
-           {/* Quick Actions Panel */}
-           <motion.div variants={itemVariants}>
-              <AdminCard variant="section" className="bg-gradient-to-br from-slate-900 to-slate-800 border-white/50 rounded-[28px] lg:rounded-[40px] p-5 lg:p-8 h-full relative overflow-hidden group shadow-2xl">
-                 <div className="relative z-10 flex flex-col h-full justify-between gap-10">
-                    <div className="space-y-6">
-                       <div className="w-16 h-16 rounded-[24px] bg-teal-500/10 flex items-center justify-center text-teal-400 border border-teal-500/20">
-                          <Layers className="w-8 h-8" />
-                       </div>
-                       <div className="space-y-3">
-                          <h3 className="text-xl lg:text-2xl font-black text-white leading-tight">마스터 태그 <br /> 관리</h3>
-                          <p className="text-slate-500 text-sm font-bold leading-relaxed">
-                             공장에서 생산된 태그 UID를 대량으로 시스템에 업로드하고 유효성을 검사합니다.
-                          </p>
-                       </div>
-                    </div>
-
-                    <Link href="/admin/nfc-tags/inventory" className="block group/btn">
-                       <button className="w-full h-16 bg-white hover:bg-teal-400 text-slate-950 font-black rounded-[20px] transition-all duration-300 flex items-center justify-center gap-3 active:scale-95 shadow-xl shadow-teal-500/5 group-hover/btn:shadow-teal-500/20 group-hover/btn:text-white">
-                          인벤토리 관리하기 <Package className="w-5 h-5" />
-                       </button>
-                    </Link>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Link href="/admin/nfc-tags/history" className="block">
-                        <button className={cn("w-full h-11 text-xs rounded-xl", adminUi.darkButton)}>
-                          감사 로그 보기
-                        </button>
-                      </Link>
-                      <Link href="/admin/nfc-tags/register" className="block">
-                        <button className={cn("w-full h-11 text-xs rounded-xl", adminUi.darkButton)}>
-                          재고 등록하기
-                        </button>
-                      </Link>
-                    </div>
-                 </div>
-                 
-                 {/* Decorative Glow */}
-                 <div className="absolute top-0 right-0 w-40 h-40 bg-teal-500/5 rounded-full blur-[80px] group-hover:bg-teal-500/10 transition-all duration-700" />
-              </AdminCard>
-           </motion.div>
-        </div>
-
-        {/* Footer Info */}
-        <motion.div variants={itemVariants} className="flex flex-col items-center gap-4 opacity-60 pt-10 border-t border-slate-200">
-           <div className="flex items-center gap-6">
-              <Database className="w-4 h-4 text-slate-500" />
-              <Layers className="w-4 h-4 text-slate-500" />
-              <Shield className="w-4 h-4 text-slate-500" />
-           </div>
-           <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em]">
-              Link-U Admin © 2024
-           </p>
+        <motion.div variants={itemVariants}>
+          <AdminCard variant="section" className="bg-gradient-to-br from-slate-900 to-slate-800 border-white/50 rounded-[28px] p-5 lg:p-6 relative overflow-hidden group shadow-2xl">
+            <div className="relative z-10 flex flex-col gap-6">
+              <div className="space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-teal-500/10 flex items-center justify-center text-teal-400 border border-teal-500/20">
+                  <Layers className="w-6 h-6" />
+                </div>
+                <h3 className="text-lg font-black text-white">빠른 운영 이동</h3>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Link href="/admin/nfc-tags/inventory" className="block">
+                  <button className="w-full h-12 bg-white hover:bg-teal-400 text-slate-950 font-black text-sm rounded-xl transition-all duration-300 flex items-center justify-center gap-2 active:scale-95">
+                    인벤토리 <Package className="w-4 h-4" />
+                  </button>
+                </Link>
+                <Link href="/admin/nfc-tags/history" className="block">
+                  <button className={cn("w-full h-12 text-sm rounded-xl", adminUi.darkButton)}>
+                    감사 로그
+                  </button>
+                </Link>
+                <Link href="/admin/nfc-tags/register" className="block">
+                  <button className={cn("w-full h-12 text-sm rounded-xl", adminUi.darkButton)}>
+                    UID 등록
+                  </button>
+                </Link>
+              </div>
+            </div>
+            <div className="absolute top-0 right-0 w-40 h-40 bg-teal-500/5 rounded-full blur-[80px] group-hover:bg-teal-500/10 transition-all duration-700" />
+          </AdminCard>
         </motion.div>
       </motion.div>
     </div>

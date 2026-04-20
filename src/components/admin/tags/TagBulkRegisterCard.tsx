@@ -362,16 +362,16 @@ export function TagBulkRegisterCard() {
         onClick={handleRegister}
         disabled={isPending || !uids.trim()}
         className={cn(
-          "w-full h-16 rounded-[24px] group relative overflow-hidden font-black text-sm transition-all active:scale-95 shadow-xl",
+          "w-full min-h-14 rounded-[24px] group relative overflow-hidden font-black text-sm transition-all active:scale-95 shadow-xl px-4 py-3",
           adminUi.darkButton
         )}
       >
-        <span className="relative z-10 flex items-center justify-center gap-2">
+        <span className="relative z-10 flex w-full items-center justify-center gap-2 text-center leading-snug break-keep whitespace-normal">
           {isPending ? (
             "처리 중..."
           ) : (
             <>
-              {subjectKindMeta[activeKind].label} 묶음으로 태그 인벤토리 등록
+              {subjectKindMeta[activeKind].label} 태그 인벤토리 등록
               <ArrowUpRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity" />
             </>
           )}
