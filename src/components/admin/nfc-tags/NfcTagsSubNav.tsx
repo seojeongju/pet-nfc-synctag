@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { adminUi } from "@/styles/admin/ui";
+import { NfcWebNfcEnvironmentHelp } from "@/components/admin/nfc-tags/NfcAdminHelpDialogs";
 
 const items = [
   {
@@ -96,18 +97,8 @@ export function NfcTagsSubNav() {
                 등록 → 기록 → 점검 → 감사
                 <ArrowRight className="h-3 w-3 text-teal-500" aria-hidden />
               </span>
+              <NfcWebNfcEnvironmentHelp />
             </div>
-            <p className="hidden md:block text-xs font-bold leading-relaxed text-slate-500 max-w-2xl">
-              Android Chrome에서 URL 기록 시 HTTPS·사용자 제스처가 필요합니다. iOS Safari는 Web NFC를 지원하지 않습니다.
-            </p>
-            <details className="md:hidden rounded-xl border border-slate-100 bg-slate-50/90 px-3 py-2">
-              <summary className="cursor-pointer text-[11px] font-black text-slate-600 outline-none marker:text-teal-600">
-                Web NFC 환경 안내
-              </summary>
-              <p className="mt-2 text-[11px] font-bold leading-relaxed text-slate-500">
-                Android Chrome에서 URL 기록 시 HTTPS·사용자 제스처가 필요합니다. iOS Safari는 Web NFC를 지원하지 않습니다.
-              </p>
-            </details>
           </div>
           <Link
             href="/admin"
