@@ -6,7 +6,7 @@ import { AdminCard } from "@/components/admin/ui/AdminCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Radio, Loader2, AlertTriangle, Smartphone } from "lucide-react";
+import { Loader2, AlertTriangle, Smartphone } from "lucide-react";
 import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
 import { isWebNfcReadSupported, readNfcTagUidOnce } from "@/lib/web-nfc-read-uid";
@@ -83,17 +83,8 @@ export function AdminNfcWriteCard() {
 
   return (
     <AdminCard id="nfc-url-write" variant="section" className="space-y-4 scroll-mt-24">
-      <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-600 flex items-center justify-center shrink-0">
-          <Radio className="w-5 h-5" />
-        </div>
-        <div className="space-y-1 min-w-0">
-          <h2 className="text-lg font-black text-slate-900 tracking-tight">Web NFC URL 기록</h2>
-          <p className="text-xs font-bold text-slate-500 leading-relaxed">
-            등록된 태그에 NDEF URL(`NEXT_PUBLIC_APP_URL + /t/UID`)을 기록합니다. Android Chrome, HTTPS, 사용자 탭이 필요합니다.
-          </p>
-        </div>
-      </div>
+      {/* 페이지 상단(AdminPageIntro)과 중복되지 않도록 시각적 제목은 숨김 */}
+      <h2 className="sr-only">NDEF URL 기록 폼</h2>
 
       {nfcSupported === false && (
         <div
