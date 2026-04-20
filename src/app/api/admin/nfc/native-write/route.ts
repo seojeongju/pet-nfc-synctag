@@ -28,8 +28,13 @@ function getStringOrNull(v: unknown): string | null {
 }
 
 async function verifyNativeSignature(request: Request, rawBody: string): Promise<boolean> {
-  const hmacSecret = process.env.NFC_NATIVE_APP_HMAC_SECRET?.trim();
-  // Rolling migration: if no HMAC secret, keep bearer-only mode.
+  const keyId = request.headers.get("x-native-key-id")?.trim() || "current";
+  const legacy = process.env.NFC_NATIVE_APP_HMAC_SECRET?.trim();
+  const current = process.env.NFC_NATIVE_APP_HMAC_SECRET_CURRENT?.trim();
+  const next = process.env.NFC_NATIVE_APP_HMAC_SECRET_NEXT?.trim();
+  const hmacSecret = keyId === "next" ? (next || "") : (current || legacy || "");
+
+  // Rolling migration: if no HMAC secret configured, keep bearer-only mode.
   if (!hmacSecret) return true;
 
   const ts = request.headers.get("x-native-timestamp")?.trim() || "";
@@ -109,6 +114,7 @@ export async function POST(request: Request) {
     url,
     deviceId,
     source: "native_app",
+    keyId: request.headers.get("x-native-key-id")?.trim() || "current",
     handoffExp: handoffVerified.payload.exp,
     ...(clientError ? { clientError } : {}),
     ...(writtenAt ? { writtenAt } : {}),
