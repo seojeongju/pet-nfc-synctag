@@ -15,6 +15,72 @@ type NativeWriteBody = {
   handoffToken?: unknown;
 };
 
+async function maybeSendNativeRejectAlert(
+  db: ReturnType<typeof getDB>,
+  reason: string,
+  payload: Record<string, unknown>
+) {
+  const webhook = process.env.NATIVE_SECURITY_WEBHOOK_URL?.trim();
+  if (!webhook) return;
+
+  await db.prepare(
+    "CREATE TABLE IF NOT EXISTS native_security_alert_state (" +
+      "id INTEGER PRIMARY KEY CHECK (id = 1), " +
+      "last_sent_at TEXT" +
+      ")"
+  ).run();
+
+  const state = await db
+    .prepare("SELECT last_sent_at FROM native_security_alert_state WHERE id = 1")
+    .first<{ last_sent_at: string | null }>()
+    .catch(() => ({ last_sent_at: null }));
+
+  const nowTs = Date.now();
+  const lastTs = state?.last_sent_at ? Date.parse(state.last_sent_at) : 0;
+  const cooldownMs = 10 * 60 * 1000;
+  if (lastTs && !Number.isNaN(lastTs) && nowTs - lastTs < cooldownMs) return;
+
+  const summary = await db
+    .prepare(
+      "SELECT COUNT(*) AS c FROM admin_action_logs " +
+        "WHERE action = 'nfc_native_write_rejected' AND created_at >= datetime('now', '-1 hour')"
+    )
+    .first<{ c: number }>()
+    .catch(() => ({ c: 0 }));
+
+  const top = await db
+    .prepare(
+      "SELECT COALESCE(json_extract(payload, '$.reason'), 'unknown') AS reason, COUNT(*) AS c " +
+        "FROM admin_action_logs " +
+        "WHERE action = 'nfc_native_write_rejected' AND created_at >= datetime('now', '-24 hours') " +
+        "GROUP BY COALESCE(json_extract(payload, '$.reason'), 'unknown') " +
+        "ORDER BY c DESC LIMIT 3"
+    )
+    .all<{ reason: string; c: number }>()
+    .catch(() => ({ results: [] as { reason: string; c: number }[] }));
+
+  const topLine = (top.results ?? []).map((r) => `${r.reason}:${r.c}`).join(", ");
+  const text =
+    "[NativeSecurity Reject Alert]\n" +
+    `reason=${reason}\n` +
+    `last_1h=${summary?.c ?? 0}\n` +
+    `top_24h=${topLine || "none"}\n` +
+    `payload=${JSON.stringify(payload).slice(0, 400)}`;
+
+  await fetch(webhook, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  }).catch(() => {
+    // webhook 장애는 요청 처리 흐름에 영향 주지 않음
+  });
+
+  await db.prepare(
+    "INSERT INTO native_security_alert_state (id, last_sent_at) VALUES (1, datetime('now')) " +
+      "ON CONFLICT(id) DO UPDATE SET last_sent_at = excluded.last_sent_at"
+  ).run();
+}
+
 async function logNativeReject(reason: string, payload: Record<string, unknown>) {
   const db = getDB();
   await db.prepare(`
@@ -38,6 +104,7 @@ async function logNativeReject(reason: string, payload: Record<string, unknown>)
       })
     )
     .run();
+  await maybeSendNativeRejectAlert(db, reason, payload);
 }
 
 function getBearerToken(request: Request): string | null {
