@@ -6,7 +6,8 @@ import { CardContent } from "@/components/ui/card";
 import { AdminCard } from "@/components/admin/ui/AdminCard";
 import { 
   Users, Package, CheckCircle, ArrowUpRight, 
-  TrendingUp, Shield, Layers, Activity, Database
+  TrendingUp, Shield, Layers, Activity, Database,
+  LayoutGrid, ListPlus, Smartphone, History, ArrowRight
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -166,6 +167,58 @@ export default function AdminDashboardClient({
             );
           })}
         </div>
+
+        <motion.div variants={itemVariants}>
+          <AdminCard variant="section" className="rounded-[28px] border border-amber-100/80 bg-gradient-to-br from-amber-50/50 to-white">
+            <CardContent className="p-5 sm:p-6 space-y-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div className="space-y-1 min-w-0">
+                  <p className="text-[10px] font-black text-amber-600 uppercase tracking-[0.2em]">Pet-ID NFC</p>
+                  <h3 className="text-lg font-black text-slate-900">기능별 바로가기</h3>
+                  <p className="text-xs font-bold text-slate-500 max-w-2xl">
+                    사이드 메뉴와 동일한 단계입니다. 표준 순서는 <span className="text-slate-800 font-black">UID 등록 → URL 기록 → 인벤토리 → 감사</span> 입니다.
+                  </p>
+                </div>
+                <Link
+                  href="/admin/nfc-tags"
+                  prefetch={false}
+                  className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-2xl border border-amber-200 bg-white px-3.5 py-2 text-[11px] font-black text-amber-800 shadow-sm transition hover:border-teal-200 hover:bg-teal-50 hover:text-teal-900"
+                >
+                  NFC 허브
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+                {[
+                  { href: "/admin/nfc-tags", label: "허브·개요", sub: "KPI·체크리스트", icon: LayoutGrid, accent: "text-amber-600 bg-amber-500/15 border-amber-100" },
+                  { href: "/admin/nfc-tags/register", label: "① UID 등록", sub: "인벤토리 추가", icon: ListPlus, accent: "text-teal-600 bg-teal-500/10 border-teal-100" },
+                  { href: "/admin/nfc-tags/write-url", label: "② URL 기록", sub: "Web NFC", icon: Smartphone, accent: "text-indigo-600 bg-indigo-500/10 border-indigo-100" },
+                  { href: "/admin/nfc-tags/inventory", label: "③ 인벤토리", sub: "마스터 데이터", icon: Database, accent: "text-amber-700 bg-amber-500/10 border-amber-100" },
+                  { href: "/admin/nfc-tags/history", label: "④ 연결·감사", sub: "로그·추적", icon: History, accent: "text-slate-600 bg-slate-500/10 border-slate-100" },
+                ].map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      prefetch={false}
+                      className="group rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-teal-100 hover:shadow-md"
+                    >
+                      <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl border ${item.accent}`}>
+                        <Icon className="h-5 w-5" aria-hidden />
+                      </div>
+                      <p className="text-xs font-black text-slate-900">{item.label}</p>
+                      <p className="mt-1 text-[10px] font-bold text-slate-400">{item.sub}</p>
+                      <span className="mt-3 inline-flex items-center gap-1 text-[10px] font-black text-teal-600 opacity-0 transition group-hover:opacity-100">
+                        이동 <ArrowRight className="h-3 w-3" />
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </AdminCard>
+        </motion.div>
 
         <motion.div variants={itemVariants}>
           <AdminCard variant="subtle">
