@@ -52,6 +52,20 @@ export async function registerBulkTags(uids: string[], options?: RegisterBulkTag
     let duplicateExisting = 0;
 
     try {
+        type TableInfoRow = { name?: string | null };
+        const tableInfo = await db
+            .prepare("PRAGMA table_info(tags)")
+            .all<TableInfoRow>()
+            .catch(() => ({ results: [] as TableInfoRow[] }));
+        const tagColumns = new Set(
+            (tableInfo.results ?? [])
+                .map((row) => (typeof row.name === "string" ? row.name : ""))
+                .filter((v) => v.length > 0)
+        );
+        const hasStatusColumn = tagColumns.has("status");
+        const hasBatchIdColumn = tagColumns.has("batch_id");
+        const hasAssignedKindColumn = tagColumns.has("assigned_subject_kind");
+
         const chunks = chunkArray(validUids, 200);
         for (const chunk of chunks) {
             if (chunk.length === 0) continue;
@@ -76,13 +90,33 @@ export async function registerBulkTags(uids: string[], options?: RegisterBulkTag
         const toInsert = validUids.filter((uid) => !existingSet.has(uid));
         
         // 중복 제거 및 트랜잭션 처리 (D1 배치는 순차 처리 권장)
-        const queries = toInsert.map((uid) =>
-            db
+        const queries = toInsert.map((uid) => {
+            const columns = ["id"];
+            const values = ["?"];
+            const binds: Array<string | null> = [uid];
+
+            if (hasStatusColumn) {
+                columns.push("status");
+                values.push("?");
+                binds.push("unsold");
+            }
+            if (hasBatchIdColumn) {
+                columns.push("batch_id");
+                values.push("?");
+                binds.push(currentBatch);
+            }
+            if (hasAssignedKindColumn) {
+                columns.push("assigned_subject_kind");
+                values.push("?");
+                binds.push(kind);
+            }
+
+            return db
                 .prepare(
-                    "INSERT OR IGNORE INTO tags (id, status, batch_id, assigned_subject_kind) VALUES (?, 'unsold', ?, ?)"
+                    `INSERT OR IGNORE INTO tags (${columns.join(", ")}) VALUES (${values.join(", ")})`
                 )
-                .bind(uid, currentBatch, kind)
-        );
+                .bind(...binds);
+        });
         if (queries.length > 0) {
             await db.batch(queries);
         }

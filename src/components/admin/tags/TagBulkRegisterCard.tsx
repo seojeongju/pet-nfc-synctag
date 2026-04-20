@@ -38,6 +38,14 @@ const kindIcon: Record<SubjectKind, typeof PawPrint> = {
   gold: Gem,
 };
 
+const kindShortLabel: Record<SubjectKind, string> = {
+  pet: "펫",
+  elder: "메모리",
+  child: "키즈",
+  luggage: "태그",
+  gold: "골드",
+};
+
 const kindTabStyles: Record<
   SubjectKind,
   { active: string; inactive: string; iconBg: string }
@@ -152,12 +160,12 @@ export function TagBulkRegisterCard() {
           <PlusCircle className="w-5 h-5 text-teal-500" />
           NFC 태그 대량 등록
         </h3>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-          모드 탭 선택 → UID 입력 또는 NFC 스캔
+        <p className="text-[10px] font-bold uppercase tracking-tight text-slate-500">
+          모드 선택 → UID 입력/스캔 → 등록
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {SUBJECT_KINDS.map((kind) => {
           const Icon = kindIcon[kind];
           const tab = kindTabStyles[kind];
@@ -174,7 +182,7 @@ export function TagBulkRegisterCard() {
                 setMessage(null);
               }}
               className={cn(
-                "flex items-center gap-2 rounded-2xl border px-3 py-2.5 text-left transition-all outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+                "shrink-0 flex min-w-[106px] items-center gap-2 rounded-2xl border px-3 py-2.5 text-left transition-all outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
                 active ? tab.active : tab.inactive,
                 active ? "ring-offset-white focus-visible:ring-teal-500/40" : "focus-visible:ring-slate-300"
               )}
@@ -189,7 +197,7 @@ export function TagBulkRegisterCard() {
               </span>
               <span className="min-w-0">
                 <span className="block text-[10px] font-black uppercase tracking-tight text-slate-400">모드</span>
-                <span className="block truncate text-xs font-black">{subjectKindMeta[kind].label}</span>
+                <span className="block truncate text-xs font-black">{kindShortLabel[kind]}</span>
               </span>
             </button>
           );
@@ -197,12 +205,11 @@ export function TagBulkRegisterCard() {
       </div>
 
       <div className="relative z-10 space-y-2">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[9px] font-bold leading-snug text-slate-500 sm:hidden">NFC 스캔: Chrome·도움말 참고</p>
-          <p className="hidden text-[10px] font-bold leading-relaxed text-slate-500 sm:block sm:max-w-[55%]">
-            Chrome·HTTPS·버튼 탭 후 NFC 스캔 시 UID가 한 줄씩 붙습니다. (상세: 도움말)
+        <div className="flex flex-col gap-2">
+          <p className="text-[10px] font-bold leading-snug text-slate-500">
+            NFC 스캔은 Android Chrome + HTTPS 환경에서 동작합니다.
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <Button
             type="button"
             variant="outline"
@@ -228,7 +235,7 @@ export function TagBulkRegisterCard() {
                 }
               });
             }}
-            className="h-11 shrink-0 rounded-2xl border-slate-200 font-black text-xs"
+            className="h-11 rounded-2xl border-slate-200 font-black text-xs"
           >
             {nfcBusy ? (
               <>
@@ -289,7 +296,7 @@ export function TagBulkRegisterCard() {
                   setNfcHint("연속 스캔 시작: 태그를 가까이 대면 UID가 자동으로 추가됩니다.");
                 });
               }}
-              className="h-11 shrink-0 rounded-2xl border-slate-200 font-black text-xs"
+              className="h-11 rounded-2xl border-slate-200 font-black text-xs"
             >
               {nfcContinuous ? "연속 스캔 중지" : "연속 스캔 시작"}
             </Button>
@@ -308,7 +315,7 @@ export function TagBulkRegisterCard() {
           onChange={(e) => setUidsForActive(e.target.value)}
           placeholder="UID (줄 또는 쉼표로 구분)"
           className={cn(
-            "w-full h-48 bg-slate-50 border border-slate-200 rounded-[23px] p-6 text-sm font-mono text-slate-700",
+            "w-full h-44 bg-slate-50 border border-slate-200 rounded-[23px] p-5 text-sm font-mono text-slate-700",
             "focus:ring-4 focus:outline-none transition-all resize-none shadow-inner",
             focusRingByKind[activeKind]
           )}
@@ -316,17 +323,17 @@ export function TagBulkRegisterCard() {
       </div>
 
       <div className={cn("rounded-xl border p-4 text-[11px] font-bold space-y-2", statsPanelByKind[activeKind])}>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <span className="text-slate-500">유효 UID</span>
           <span className="text-slate-900 tabular-nums">{validUids.length}개</span>
         </div>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <span className={duplicateInInputCount > 0 ? "text-amber-600" : "text-slate-500"}>입력 내 중복</span>
           <span className={duplicateInInputCount > 0 ? "text-amber-700 tabular-nums" : "text-slate-700 tabular-nums"}>
             {duplicateInInputCount}개
           </span>
         </div>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <span className={invalidCount > 0 ? "text-rose-600" : "text-slate-500"}>형식 오류</span>
           <span className={invalidCount > 0 ? "text-rose-700 tabular-nums" : "text-slate-700 tabular-nums"}>
             {invalidCount}개
@@ -371,7 +378,7 @@ export function TagBulkRegisterCard() {
             "처리 중..."
           ) : (
             <>
-              {subjectKindMeta[activeKind].label} 태그 인벤토리 등록
+              {kindShortLabel[activeKind]} 태그 인벤토리 등록
               <ArrowUpRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity" />
             </>
           )}
