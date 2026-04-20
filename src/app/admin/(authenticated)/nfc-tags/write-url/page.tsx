@@ -7,7 +7,7 @@ export const runtime = "edge";
 export default function AdminNfcTagsWriteUrlPage() {
   return (
     <div className="relative pb-20">
-      <div className={adminUi.pageContainer}>
+      <div className={adminUi.nfcTagsPageBody}>
         <div className="mb-6 space-y-4">
           <AdminPageIntro
             title="② URL 기록 (Web NFC)"

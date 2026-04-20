@@ -68,8 +68,15 @@ export function NfcTagsSubNav() {
   const pathname = usePathname() || "";
 
   return (
-    <div className="border-b border-slate-200/80 bg-gradient-to-b from-white to-slate-50/90 backdrop-blur-md sticky top-16 lg:top-20 z-[15] shadow-sm shadow-slate-100/80">
-      <div className={cn(adminUi.pageContainer, "py-4 lg:py-5 space-y-4")}>
+    <div
+      className={cn(
+        "border-b border-slate-200/80 bg-white shadow-sm",
+        /* 모바일: 일반 흐름(겹침 방지). md 이상: 헤더 아래 고정 */
+        "relative z-10",
+        "md:sticky md:top-16 lg:top-20"
+      )}
+    >
+      <div className={cn(adminUi.pageContainer, "py-4 pb-5 lg:py-5 lg:pb-6 space-y-4")}>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0 flex-1 space-y-2">
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-teal-600">Pet-ID NFC 운영</p>

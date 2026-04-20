@@ -7,7 +7,7 @@ export const runtime = "edge";
 export default function AdminNfcTagsRegisterPage() {
   return (
     <div className="relative pb-20">
-      <div className={adminUi.pageContainer}>
+      <div className={adminUi.nfcTagsPageBody}>
         <div className="mb-8 space-y-6">
           <AdminPageIntro
             title="① 태그 UID 등록"

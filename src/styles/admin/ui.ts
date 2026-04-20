@@ -1,5 +1,7 @@
 ﻿export const adminUi = {
   pageContainer: "max-w-6xl mx-auto px-4 sm:px-6 pt-6 lg:pt-10 space-y-6 lg:space-y-10 relative z-10",
+  /** NFC 하위 페이지 본문: 상단 sticky 서브네비보다 아래 레이어에 두어 탭과 제목이 겹쳐 보이지 않게 함 */
+  nfcTagsPageBody: "max-w-6xl mx-auto px-4 sm:px-6 pt-6 lg:pt-10 space-y-6 lg:space-y-10 relative z-0",
   sectionCard: "bg-white border-slate-100 rounded-[40px] p-8 shadow-xl",
   kpiCard: "bg-white border-slate-100 rounded-3xl p-5 shadow-md",
   subtleCard: "bg-white border-slate-100 shadow-md rounded-2xl",

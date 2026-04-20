@@ -18,7 +18,7 @@ export default async function AdminNfcTagsOverviewPage() {
       <div className="pointer-events-none absolute right-1/4 top-0 h-[420px] w-[420px] rounded-full bg-teal-500/10 blur-[110px]" />
       <div className="pointer-events-none absolute -left-20 bottom-0 h-[320px] w-[320px] rounded-full bg-indigo-500/10 blur-[100px]" />
 
-      <div className={adminUi.pageContainer}>
+      <div className={adminUi.nfcTagsPageBody}>
         <AdminPageIntro
           title="Pet-ID NFC 허브"
           subtitle="인벤토리 등록 → 실물 태그 URL 기록 → 재고·연결 확인 → 감사까지 한 곳에서 이동합니다. 운영 표준 순서를 따르면 오류와 재작업이 줄어듭니다."

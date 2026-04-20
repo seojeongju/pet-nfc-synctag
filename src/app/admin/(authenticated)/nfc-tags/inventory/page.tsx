@@ -11,7 +11,7 @@ export default async function AdminNfcTagsInventoryPage() {
 
   return (
     <div className="relative pb-20">
-      <div className={adminUi.pageContainer}>
+      <div className={adminUi.nfcTagsPageBody}>
         <div className="mb-8 space-y-6">
           <AdminPageIntro
             title="③ 태그 인벤토리"

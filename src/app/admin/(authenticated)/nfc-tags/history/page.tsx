@@ -41,7 +41,7 @@ export default async function AdminNfcTagsHistoryPage({
   return (
     <Suspense fallback={<div className="min-h-[40vh] bg-[#F8FAFC]" />}>
       <div className="relative space-y-10 pb-20">
-        <div className={adminUi.pageContainer}>
+        <div className={adminUi.nfcTagsPageBody}>
           <div className="mb-8 space-y-6">
             <AdminPageIntro
               title="④ 연결·감사 이력"
@@ -54,10 +54,10 @@ export default async function AdminNfcTagsHistoryPage({
             />
           </div>
         </div>
-        <div className={adminUi.pageContainer}>
+        <div className={adminUi.nfcTagsPageBody}>
           <TagLinkLogsSection linkLogs={linkLogs} />
         </div>
-        <div className={adminUi.pageContainer}>
+        <div className={adminUi.nfcTagsPageBody}>
           <AdminAuditLogsPanel auditLogs={audits.rows as AdminAuditLogRow[]} auditTotalCount={audits.total} />
         </div>
       </div>
