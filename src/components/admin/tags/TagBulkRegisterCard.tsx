@@ -152,8 +152,8 @@ export function TagBulkRegisterCard() {
           <PlusCircle className="w-5 h-5 text-teal-500" />
           NFC 태그 대량 등록
         </h3>
-        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-relaxed">
-          모드(펫·메모리·키즈·캐리·골드)별로 탭을 선택한 뒤 UID를 입력하세요. 해당 모드가 태그에 미리 할당됩니다.
+        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+          모드 탭 선택 → UID 입력 또는 NFC 스캔
         </p>
       </div>
 
@@ -188,9 +188,7 @@ export function TagBulkRegisterCard() {
                 <Icon className="h-4 w-4" />
               </span>
               <span className="min-w-0">
-                <span className="block text-[10px] font-black uppercase tracking-tight text-slate-400">
-                  할당 모드
-                </span>
+                <span className="block text-[10px] font-black uppercase tracking-tight text-slate-400">모드</span>
                 <span className="block truncate text-xs font-black">{subjectKindMeta[kind].label}</span>
               </span>
             </button>
@@ -200,10 +198,11 @@ export function TagBulkRegisterCard() {
 
       <div className="relative z-10 space-y-2">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[10px] font-bold text-slate-500 leading-relaxed sm:max-w-[60%]">
-            Android Chrome에서 태그를 스캔하면 UID가 한 줄 추가됩니다. HTTPS·사용자 탭이 필요합니다.
+          <p className="text-[9px] font-bold leading-snug text-slate-500 sm:hidden">NFC 스캔: Chrome·도움말 참고</p>
+          <p className="hidden text-[10px] font-bold leading-relaxed text-slate-500 sm:block sm:max-w-[55%]">
+            Chrome·HTTPS·버튼 탭 후 NFC 스캔 시 UID가 한 줄씩 붙습니다. (상세: 도움말)
           </p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
             type="button"
             variant="outline"
@@ -297,8 +296,8 @@ export function TagBulkRegisterCard() {
           </div>
         </div>
         {nfcReadSupported === false && (
-          <p className="text-[10px] font-bold text-amber-700">
-            이 브라우저는 NDEFReader를 지원하지 않습니다. UID를 직접 입력하거나 Android Chrome에서 열어 주세요.
+          <p className="text-[10px] font-black text-amber-800">
+            NDEFReader 미지원 — UID는 직접 입력하거나 Chrome에서 열기 (도움말)
           </p>
         )}
         {nfcHint && (
@@ -307,7 +306,7 @@ export function TagBulkRegisterCard() {
         <textarea
           value={uids}
           onChange={(e) => setUidsForActive(e.target.value)}
-          placeholder="AA:BB:CC:DD:EE:FF 또는 UID 문자열 (쉼표·줄바꿈 구분)"
+          placeholder="UID (줄 또는 쉼표로 구분)"
           className={cn(
             "w-full h-48 bg-slate-50 border border-slate-200 rounded-[23px] p-6 text-sm font-mono text-slate-700",
             "focus:ring-4 focus:outline-none transition-all resize-none shadow-inner",

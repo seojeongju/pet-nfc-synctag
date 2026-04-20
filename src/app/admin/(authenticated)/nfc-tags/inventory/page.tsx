@@ -15,7 +15,7 @@ export default async function AdminNfcTagsInventoryPage() {
         <div className="mb-8 space-y-6">
           <AdminPageIntro
             title="③ 태그 인벤토리"
-            subtitle="마스터 데이터 목록에서 UID·제품·할당 모드·BLE MAC을 관리합니다. 재고와 활성 연결 상태를 여기서 점검한 뒤 필요하면 URL 기록 단계로 돌아가 재기록할 수 있습니다."
+            subtitle="UID·모드·MAC·재고 등 마스터 데이터 관리. 상세는 도움말을 확인하세요."
             crumbs={[
               { label: "관리자", href: "/admin" },
               { label: "Pet-ID NFC", href: "/admin/nfc-tags" },

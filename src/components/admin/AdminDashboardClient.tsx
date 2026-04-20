@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { CardContent } from "@/components/ui/card";
 import { AdminCard } from "@/components/admin/ui/AdminCard";
@@ -16,11 +15,51 @@ import { adminUi } from "@/styles/admin/ui";
 import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
 
 const NFC_QUICK_LINKS = [
-  { href: "/admin/nfc-tags", label: "허브·개요", sub: "KPI·체크리스트", icon: LayoutGrid, accent: "text-amber-600 bg-amber-500/15 border-amber-100" },
-  { href: "/admin/nfc-tags/register", label: "① UID 등록", sub: "인벤토리 추가", icon: ListPlus, accent: "text-teal-600 bg-teal-500/10 border-teal-100" },
-  { href: "/admin/nfc-tags/write-url", label: "② URL 기록", sub: "Web NFC", icon: Smartphone, accent: "text-indigo-600 bg-indigo-500/10 border-indigo-100" },
-  { href: "/admin/nfc-tags/inventory", label: "③ 인벤토리", sub: "마스터 데이터", icon: Database, accent: "text-amber-700 bg-amber-500/10 border-amber-100" },
-  { href: "/admin/nfc-tags/history", label: "④ 연결·감사", sub: "로그·추적", icon: History, accent: "text-slate-600 bg-slate-500/10 border-slate-100" },
+  {
+    href: "/admin/nfc-tags",
+    label: "허브·개요",
+    sub: "KPI·체크리스트",
+    micro: "허브",
+    step: null as string | null,
+    icon: LayoutGrid,
+    accent: "text-amber-600 bg-amber-500/15 border-amber-100",
+  },
+  {
+    href: "/admin/nfc-tags/register",
+    label: "① UID 등록",
+    sub: "인벤토리 추가",
+    micro: "UID",
+    step: "1",
+    icon: ListPlus,
+    accent: "text-teal-600 bg-teal-500/10 border-teal-100",
+  },
+  {
+    href: "/admin/nfc-tags/write-url",
+    label: "② URL 기록",
+    sub: "Web NFC",
+    micro: "URL",
+    step: "2",
+    icon: Smartphone,
+    accent: "text-indigo-600 bg-indigo-500/10 border-indigo-100",
+  },
+  {
+    href: "/admin/nfc-tags/inventory",
+    label: "③ 인벤토리",
+    sub: "마스터 데이터",
+    micro: "재고",
+    step: "3",
+    icon: Database,
+    accent: "text-amber-700 bg-amber-500/10 border-amber-100",
+  },
+  {
+    href: "/admin/nfc-tags/history",
+    label: "④ 연결·감사",
+    sub: "로그·추적",
+    micro: "감사",
+    step: "4",
+    icon: History,
+    accent: "text-slate-600 bg-slate-500/10 border-slate-100",
+  },
 ] as const;
 
 interface AdminDashboardClientProps {
@@ -48,7 +87,6 @@ export default function AdminDashboardClient({
   failureTop,
   petsBySubjectKind,
 }: AdminDashboardClientProps) {
-  const router = useRouter();
   const [unsoldThreshold, setUnsoldThreshold] = useState(100);
   const [activationThreshold, setActivationThreshold] = useState(40);
   const [failedThreshold, setFailedThreshold] = useState(1);
@@ -189,7 +227,7 @@ export default function AdminDashboardClient({
                     사이드 메뉴와 동일한 단계입니다. 표준 순서는 <span className="text-slate-800 font-black">UID 등록 → URL 기록 → 인벤토리 → 감사</span> 입니다.
                   </p>
                   <p className="text-[11px] font-bold leading-snug text-slate-500 md:hidden">
-                    아래 간편 메뉴에서 단계를 선택해 이동하세요.
+                    아이콘을 탭하면 해당 단계로 이동합니다.
                   </p>
                 </div>
                 <Link
@@ -202,37 +240,43 @@ export default function AdminDashboardClient({
                 </Link>
               </div>
 
-              {/* 모바일: 한 줄 드롭다운으로 스크롤 절약 */}
-              <div className="md:hidden space-y-2">
-                <label htmlFor="admin-nfc-quick" className="sr-only">
-                  Pet-ID NFC 기능별 바로가기
-                </label>
-                <select
-                  id="admin-nfc-quick"
-                  defaultValue=""
-                  className={cn(
-                    "w-full appearance-none rounded-2xl border border-amber-200/90 bg-white bg-[length:1rem] bg-[right_0.75rem_center] bg-no-repeat px-4 py-3.5 pr-10 text-sm font-black text-slate-800 shadow-sm outline-none",
-                    "focus-visible:border-teal-300 focus-visible:ring-2 focus-visible:ring-teal-500/20"
-                  )}
-                  style={{
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
-                  }}
-                  onChange={(e) => {
-                    const href = e.currentTarget.value;
-                    if (href) {
-                      router.push(href);
-                      e.currentTarget.selectedIndex = 0;
-                    }
-                  }}
-                >
-                  <option value="">간편 메뉴 — 이동할 단계 선택</option>
-                  {NFC_QUICK_LINKS.map((item) => (
-                    <option key={item.href} value={item.href}>
-                      {item.label} · {item.sub}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* 모바일: 아이콘 가로 스크롤 (한 화면에 밀집 최소화) */}
+              <nav className="md:hidden" aria-label="Pet-ID NFC 단계 바로가기">
+                <ul className="-mx-0.5 flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 pt-0.5 [scrollbar-width:none] sm:-mx-1 [&::-webkit-scrollbar]:hidden">
+                  {NFC_QUICK_LINKS.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <li key={item.href} className="snap-start shrink-0">
+                        <Link
+                          href={item.href}
+                          prefetch={false}
+                          aria-label={`${item.label}, ${item.sub}`}
+                          className={cn(
+                            "flex w-[4.85rem] flex-col items-center gap-1 rounded-2xl border border-slate-100/90 bg-white px-2 py-2.5 text-center shadow-sm transition",
+                            "active:scale-[0.97] active:bg-slate-50",
+                            "hover:border-amber-200 hover:shadow-md"
+                          )}
+                        >
+                          {item.step ? (
+                            <span className="text-[8px] font-black uppercase tracking-wide text-teal-600">{item.step}</span>
+                          ) : (
+                            <span className="h-2.5" aria-hidden />
+                          )}
+                          <div
+                            className={cn(
+                              "flex h-11 w-11 items-center justify-center rounded-xl border shadow-sm transition-transform",
+                              item.accent
+                            )}
+                          >
+                            <Icon className="h-5 w-5 shrink-0" aria-hidden />
+                          </div>
+                          <span className="line-clamp-2 min-h-[2rem] px-0.5 text-[9px] font-black leading-tight text-slate-800">{item.micro}</span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </nav>
 
               <div className="hidden gap-3 md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                 {NFC_QUICK_LINKS.map((item) => {

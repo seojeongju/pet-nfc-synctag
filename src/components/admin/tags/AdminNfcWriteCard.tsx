@@ -38,9 +38,7 @@ export function AdminNfcWriteCard() {
     setHint(null);
     const Writer = getNdefWriterClass();
     if (!Writer) {
-      setHint(
-        "현재 브라우저에서는 Web NFC(NDEFWriter)를 사용할 수 없습니다. Android Chrome(HTTPS)에서 실행하거나, 데스크톱 NFC 도구로 동일한 URL을 기록해 주세요. 자세한 내용은 docs/NFC_BLE_WEB_WRITING.md를 확인하세요."
-      );
+      setHint("NDEFWriter 미지원 — Chrome(HTTPS) 또는 외부 기록. 상단 도움말·docs/NFC_BLE_WEB_WRITING.md");
       return;
     }
     const trimmed = tagId.trim();
@@ -89,24 +87,24 @@ export function AdminNfcWriteCard() {
       {nfcSupported === false && (
         <div
           className={cn(
-            "flex items-start gap-2 rounded-2xl border px-4 py-3 text-[11px] font-bold",
+            "flex items-start gap-2 rounded-2xl border px-3 py-2.5 text-[10px] font-black",
             "border-amber-200 bg-amber-50 text-amber-900"
           )}
         >
-          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-          <span>이 브라우저는 NDEFWriter를 지원하지 않습니다.</span>
+          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden />
+          <span>NDEFWriter 없음 — Chrome(HTTPS) 또는 도움말</span>
         </div>
       )}
 
       {nfcReadSupported === false && nfcSupported !== false && (
         <div
           className={cn(
-            "flex items-start gap-2 rounded-2xl border px-4 py-3 text-[11px] font-bold",
+            "flex items-start gap-2 rounded-2xl border px-3 py-2.5 text-[10px] font-black",
             "border-slate-200 bg-slate-50 text-slate-700"
           )}
         >
-          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-          <span>NDEFReader(UID 읽기)는 이 환경에서 쓸 수 없습니다. UID는 수동 입력하세요.</span>
+          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden />
+          <span>NDEFReader 없음 — UID 수동 입력·도움말</span>
         </div>
       )}
 

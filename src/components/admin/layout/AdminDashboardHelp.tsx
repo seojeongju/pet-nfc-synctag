@@ -26,8 +26,20 @@ function helpContentForPath(p: string): { title: string; body: ReactNode } {
       title: "URL 기록 (Web NFC)",
       body: (
         <>
-          <p><strong>환경:</strong> Android Chrome에서 HTTPS와 사용자 제스처(버튼 탭 등)가 필요합니다. iOS Safari는 Web NFC를 지원하지 않습니다.</p>
-          <p>등록된 UID에만 NDEF URL을 태그에 기록합니다. 자세한 규칙은 저장소 문서 docs/NFC_BLE_WEB_WRITING.md를 참고하세요.</p>
+          <p>
+            <strong>대상:</strong> 인벤토리에 이미 등록된 UID만 NDEF URL(<code className="rounded bg-slate-100 px-1 font-mono text-[11px]">앱주소/t/UID</code>)로 기록됩니다. 미등록 UID는 거절됩니다.
+          </p>
+          <p>
+            <strong>환경:</strong> Android Chrome·HTTPS·화면 탭(제스처)이 필요합니다. iOS Safari는 Web NFC를 지원하지 않습니다.
+          </p>
+          <p>
+            <strong>NDEFWriter:</strong> 이 API가 없으면 이 브라우저에서는 기록할 수 없습니다. Chrome에서 열거나 외부 NFC 기록 도구를 사용하세요.
+          </p>
+          <p>
+            <strong>NDEFReader(UID 읽기):</strong> 없으면 NFC로 UID를 읽을 수 없고 수동 입력만 가능합니다.
+          </p>
+          <p>성공·실패는 감사 로그에 남습니다. 완료 후 인벤토리·연결·감사에서 상태를 확인하세요.</p>
+          <p className="text-[12px] text-slate-500">규칙·예외: docs/NFC_BLE_WEB_WRITING.md</p>
           <p><Link href="/admin/monitoring" className="font-black text-teal-700 underline-offset-2 hover:underline">NFC/BLE 모니터링</Link></p>
         </>
       ),
@@ -39,8 +51,24 @@ function helpContentForPath(p: string): { title: string; body: ReactNode } {
       title: "태그 UID 등록",
       body: (
         <>
-          <p>모드별로 UID를 줄 단위로 입력해 인벤토리에 추가합니다. 이미 DB에 있는 UID는 건너뜁니다.</p>
-          <p>등록 후 <strong>URL 기록</strong> 화면에서 Web NFC로 실물 태그에 기록하세요.</p>
+          <p>
+            <strong>모드 탭:</strong> 펫·메모리·키즈·캐리·골드 중 할당 모드를 고른 뒤 UID를 입력합니다. 선택한 모드가 인벤토리에 미리 연결됩니다.
+          </p>
+          <p>
+            <strong>입력 형식:</strong> 한 줄에 하나, 또는 쉼표로 구분합니다. <code className="rounded bg-slate-100 px-1 font-mono text-[11px]">AA:BB:CC:DD:EE:FF</code> 등 허용 형식을 따르세요. DB에 이미 있는 UID는 건너뜁니다.
+          </p>
+          <p>
+            <strong>NFC로 한 줄 추가:</strong> Android Chrome, HTTPS, 사용자 제스처(버튼 탭)가 필요합니다. 태그를 스캔하면 UID 한 줄이 붙습니다.
+          </p>
+          <p>
+            <strong>연속 스캔:</strong> 여러 태그를 연속으로 읽어 목록에 추가합니다. 중지할 때까지 유지됩니다.
+          </p>
+          <p>
+            <strong>NDEFReader 미지원:</strong> 이 브라우저에서는 NFC 읽기 버튼을 쓸 수 없습니다. 직접 입력하거나 Android Chrome에서 여세요.
+          </p>
+          <p>
+            등록 후 <strong>URL 기록</strong> 화면에서 Web NFC로 실물 태그에 URL을 씁니다.
+          </p>
         </>
       ),
     };
@@ -51,8 +79,8 @@ function helpContentForPath(p: string): { title: string; body: ReactNode } {
       title: "태그 인벤토리",
       body: (
         <>
-          <p>마스터 데이터에서 UID·제품·모드·BLE MAC 등을 관리하고 재고·연결 상태를 점검합니다.</p>
-          <p>필요하면 URL 기록 단계로 돌아가 재기록할 수 있습니다.</p>
+          <p>마스터 데이터에서 UID·제품·할당 모드·BLE MAC 등을 관리합니다.</p>
+          <p>재고·활성·연결 상태를 점검하고, 필요하면 URL 기록 단계로 돌아가 태그를 재기록할 수 있습니다.</p>
         </>
       ),
     };
@@ -62,7 +90,10 @@ function helpContentForPath(p: string): { title: string; body: ReactNode } {
     return {
       title: "연결과 감사 이력",
       body: (
-        <p>보호자 연결 로그와 관리자 NFC 기록 감사를 조회·필터링합니다.</p>
+        <>
+          <p>보호자·대상 연결 로그와 관리자 NFC URL 기록 등 감사 로그를 조회합니다.</p>
+          <p>필터·정렬·기간은 아래 패널에서 조정합니다.</p>
+        </>
       ),
     };
   }

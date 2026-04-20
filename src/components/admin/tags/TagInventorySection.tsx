@@ -33,7 +33,7 @@ export function TagInventorySection({ tags, opsStats }: { tags: AdminTag[]; opsS
             <Database className="w-5 h-5 text-teal-400" />
             자산 목록 ({filteredTags.length})
           </h3>
-          <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">마스터 데이터 목록</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">검색·편집</p>
         </div>
         <div className="relative group w-full sm:w-auto sm:min-w-[240px]">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-teal-400 transition-colors" />

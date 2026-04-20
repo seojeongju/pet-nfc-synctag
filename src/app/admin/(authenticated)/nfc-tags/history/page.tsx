@@ -45,7 +45,7 @@ export default async function AdminNfcTagsHistoryPage({
           <div className="mb-8 space-y-6">
             <AdminPageIntro
               title="④ 연결·감사 이력"
-              subtitle="보호자·대상 연결 로그와 관리자 NFC URL 기록 등 감사 로그를 조회합니다. 필터와 정렬은 아래 패널에서 조정합니다."
+              subtitle="연결 로그·감사 로그 조회. 필터·정렬은 아래 패널·도움말을 참고하세요."
               crumbs={[
                 { label: "관리자", href: "/admin" },
                 { label: "Pet-ID NFC", href: "/admin/nfc-tags" },
