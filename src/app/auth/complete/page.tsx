@@ -14,6 +14,8 @@
 import { Suspense } from "react";
 import { AuthCompleteBridge } from "./auth-complete-bridge";
 
+export const runtime = "edge";
+
 interface Props {
   searchParams: Promise<{ next?: string }>;
 }
