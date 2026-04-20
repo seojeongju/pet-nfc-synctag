@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -10,6 +11,7 @@ import {
   History,
   ChevronRight,
   ArrowRight,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { adminUi } from "@/styles/admin/ui";
@@ -66,30 +68,46 @@ function isActive(pathname: string, href: string, match: "exact" | "prefix") {
 
 export function NfcTagsSubNav() {
   const pathname = usePathname() || "";
+  const [mobileStepsOpen, setMobileStepsOpen] = useState(false);
+
+  const current =
+    items.find((it) => isActive(pathname, it.href, it.match)) ?? items[0];
+  const CurrentIcon = current.icon;
+
+  useEffect(() => {
+    setMobileStepsOpen(false);
+  }, [pathname]);
 
   return (
     <div
       className={cn(
         "border-b border-slate-200/80 bg-white shadow-sm",
-        /* 모바일: 일반 흐름(겹침 방지). md 이상: 헤더 아래 고정 */
         "relative z-10",
         "md:sticky md:top-16 lg:top-20"
       )}
     >
-      <div className={cn(adminUi.pageContainer, "py-4 pb-5 lg:py-5 lg:pb-6 space-y-4")}>
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div className={cn(adminUi.pageContainer, "py-3 pb-4 md:py-4 md:pb-5 lg:py-5 lg:pb-6 space-y-3 md:space-y-4")}>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0 flex-1 space-y-2">
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-teal-600">Pet-ID NFC 운영</p>
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:gap-3">
+            <div className="flex flex-wrap items-end gap-2 sm:flex-row sm:gap-3">
               <h2 className="text-base font-black text-slate-900 sm:text-lg">표준 워크플로</h2>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-wide text-slate-500 shadow-sm">
                 등록 → 기록 → 점검 → 감사
                 <ArrowRight className="h-3 w-3 text-teal-500" aria-hidden />
               </span>
             </div>
-            <p className="text-xs font-bold leading-relaxed text-slate-500 max-w-2xl">
+            <p className="hidden md:block text-xs font-bold leading-relaxed text-slate-500 max-w-2xl">
               Android Chrome에서 URL 기록 시 HTTPS·사용자 제스처가 필요합니다. iOS Safari는 Web NFC를 지원하지 않습니다.
             </p>
+            <details className="md:hidden rounded-xl border border-slate-100 bg-slate-50/90 px-3 py-2">
+              <summary className="cursor-pointer text-[11px] font-black text-slate-600 outline-none marker:text-teal-600">
+                Web NFC 환경 안내
+              </summary>
+              <p className="mt-2 text-[11px] font-bold leading-relaxed text-slate-500">
+                Android Chrome에서 URL 기록 시 HTTPS·사용자 제스처가 필요합니다. iOS Safari는 Web NFC를 지원하지 않습니다.
+              </p>
+            </details>
           </div>
           <Link
             href="/admin"
@@ -101,7 +119,92 @@ export function NfcTagsSubNav() {
           </Link>
         </div>
 
-        <nav className="flex gap-2 overflow-x-auto pb-1 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="NFC 태그 하위 메뉴">
+        {/* 모바일: 접었다 펼치는 단계 메뉴 */}
+        <div className="md:hidden">
+          <button
+            type="button"
+            onClick={() => setMobileStepsOpen((v) => !v)}
+            aria-expanded={mobileStepsOpen}
+            className={cn(
+              "flex w-full items-center justify-between gap-3 rounded-2xl border px-3 py-2.5 text-left transition-all",
+              "border-teal-200 bg-teal-50/80 shadow-sm ring-1 ring-teal-500/10"
+            )}
+          >
+            <span className="flex min-w-0 items-center gap-2">
+              {current.step ? (
+                <span className="flex h-6 min-w-[1.25rem] items-center justify-center rounded-md bg-teal-600 px-1 text-[10px] font-black text-white">
+                  {current.step}
+                </span>
+              ) : null}
+              <CurrentIcon className="h-4 w-4 shrink-0 text-teal-600" aria-hidden />
+              <span className="min-w-0">
+                <span className="block text-xs font-black text-slate-900">{current.label}</span>
+                <span className="block text-[10px] font-bold text-slate-500">{current.hint}</span>
+              </span>
+            </span>
+            <span className="flex shrink-0 items-center gap-1.5">
+              <span className="text-[11px] font-black text-teal-700">
+                {mobileStepsOpen ? "접기" : "단계 이동"}
+              </span>
+              <ChevronDown
+                className={cn("h-4 w-4 text-teal-600 transition-transform", mobileStepsOpen && "rotate-180")}
+                aria-hidden
+              />
+            </span>
+          </button>
+
+          {mobileStepsOpen ? (
+            <nav
+              className="mt-2 space-y-1.5 rounded-2xl border border-slate-100 bg-white p-2 shadow-sm"
+              aria-label="NFC 태그 하위 메뉴"
+            >
+              {items.map(({ href, label, hint, icon: Icon, match, step }) => {
+                const active = isActive(pathname, href, match);
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    prefetch={false}
+                    onClick={() => setMobileStepsOpen(false)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors",
+                      active
+                        ? "border-teal-300 bg-teal-50 text-teal-950"
+                        : "border-transparent bg-slate-50/80 hover:bg-teal-50/60"
+                    )}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    {step ? (
+                      <span
+                        className={cn(
+                          "flex h-6 min-w-[1.25rem] items-center justify-center rounded-md px-1 text-[10px] font-black",
+                          active ? "bg-teal-600 text-white" : "bg-slate-200 text-slate-600"
+                        )}
+                      >
+                        {step}
+                      </span>
+                    ) : (
+                      <span className="w-6 shrink-0" aria-hidden />
+                    )}
+                    <Icon className={cn("h-4 w-4 shrink-0", active ? "text-teal-700" : "text-slate-400")} aria-hidden />
+                    <span className="min-w-0 flex-1">
+                      <span className={cn("block text-xs font-black", active ? "text-teal-900" : "text-slate-800")}>
+                        {label}
+                      </span>
+                      <span className="block text-[10px] font-bold text-slate-500">{hint}</span>
+                    </span>
+                  </Link>
+                );
+              })}
+            </nav>
+          ) : null}
+        </div>
+
+        {/* 태블릿·데스크톱: 기존 가로 탭 */}
+        <nav
+          className="hidden md:flex gap-2 overflow-x-auto pb-1 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          aria-label="NFC 태그 하위 메뉴"
+        >
           {items.map(({ href, label, hint, icon: Icon, match, step }) => {
             const active = isActive(pathname, href, match);
             return (
