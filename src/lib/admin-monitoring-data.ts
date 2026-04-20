@@ -17,6 +17,8 @@ export async function getMonitoringSummary() {
     nativeWriteFail24h,
     nativeWriteFail7d,
     nativeHandoff7d,
+    nativeRejected24h,
+    nativeRejected7d,
   ] = await Promise.all([
     db
       .prepare(
@@ -91,6 +93,20 @@ export async function getMonitoringSummary() {
       )
       .first<{ c: number }>()
       .catch(() => ({ c: 0 })),
+    db
+      .prepare(
+        "SELECT COUNT(*) AS c FROM admin_action_logs " +
+          "WHERE action = 'nfc_native_write_rejected' AND created_at >= datetime('now', '-1 day')"
+      )
+      .first<{ c: number }>()
+      .catch(() => ({ c: 0 })),
+    db
+      .prepare(
+        "SELECT COUNT(*) AS c FROM admin_action_logs " +
+          "WHERE action = 'nfc_native_write_rejected' AND created_at >= datetime('now', '-7 days')"
+      )
+      .first<{ c: number }>()
+      .catch(() => ({ c: 0 })),
   ]);
 
   const ops = await db
@@ -115,6 +131,8 @@ export async function getMonitoringSummary() {
     nativeWriteFail24h: nativeWriteFail24h?.c ?? 0,
     nativeWriteFail7d: nativeWriteFail7d?.c ?? 0,
     nativeHandoff7d: nativeHandoff7d?.c ?? 0,
+    nativeRejected24h: nativeRejected24h?.c ?? 0,
+    nativeRejected7d: nativeRejected7d?.c ?? 0,
     tagsTotal: ops?.total ?? 0,
     tagsActive: ops?.active ?? 0,
     tagsUnsold: ops?.unsold ?? 0,

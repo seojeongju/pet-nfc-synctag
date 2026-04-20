@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { getDB } from "@/lib/db";
 import { isValidTagUidFormat, normalizeTagUid } from "@/lib/tag-uid-format";
 import { verifyNativeHandoffToken, verifyWithSecret } from "@/lib/nfc-native-security";
@@ -14,6 +14,31 @@ type NativeWriteBody = {
   writtenAt?: unknown;
   handoffToken?: unknown;
 };
+
+async function logNativeReject(reason: string, payload: Record<string, unknown>) {
+  const db = getDB();
+  await db.prepare(`
+      CREATE TABLE IF NOT EXISTS admin_action_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        action TEXT NOT NULL,
+        actor_email TEXT,
+        success BOOLEAN NOT NULL DEFAULT 1,
+        payload TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run();
+  await db
+    .prepare("INSERT INTO admin_action_logs (action, actor_email, success, payload) VALUES (?, ?, 0, ?)")
+    .bind(
+      "nfc_native_write_rejected",
+      "native-callback",
+      JSON.stringify({
+        reason,
+        ...payload,
+      })
+    )
+    .run();
+}
 
 function getBearerToken(request: Request): string | null {
   const header = request.headers.get("authorization") || "";
@@ -56,12 +81,16 @@ export async function POST(request: Request) {
   }
   const token = getBearerToken(request);
   if (!token || token !== expectedToken) {
+    await logNativeReject("unauthorized_bearer", {});
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const rawBody = await request.text();
   const signatureOk = await verifyNativeSignature(request, rawBody);
   if (!signatureOk) {
+    await logNativeReject("invalid_signature", {
+      keyId: request.headers.get("x-native-key-id")?.trim() || "current",
+    });
     return NextResponse.json({ error: "Invalid native signature" }, { status: 401 });
   }
 
@@ -69,6 +98,7 @@ export async function POST(request: Request) {
   try {
     body = JSON.parse(rawBody) as NativeWriteBody;
   } catch {
+    await logNativeReject("invalid_json", {});
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
@@ -81,11 +111,18 @@ export async function POST(request: Request) {
   const handoffToken = getStringOrNull(body.handoffToken);
 
   if (!tagIdRaw || !url || success === null || !handoffToken) {
+    await logNativeReject("missing_required_fields", {
+      hasTagId: Boolean(tagIdRaw),
+      hasUrl: Boolean(url),
+      hasSuccess: success !== null,
+      hasHandoffToken: Boolean(handoffToken),
+    });
     return NextResponse.json({ error: "tagId, url, success, handoffToken are required" }, { status: 400 });
   }
 
   const tagId = normalizeTagUid(tagIdRaw);
   if (!isValidTagUidFormat(tagId)) {
+    await logNativeReject("invalid_tag_id_format", { tagIdRaw });
     return NextResponse.json({ error: "Invalid tagId format" }, { status: 400 });
   }
 
@@ -100,12 +137,14 @@ export async function POST(request: Request) {
     secret: handoffSecret,
   });
   if (!handoffVerified.ok) {
+    await logNativeReject("invalid_handoff_token", { tagId, tokenError: handoffVerified.error });
     return NextResponse.json({ error: `Invalid handoff token: ${handoffVerified.error}` }, { status: 401 });
   }
 
   const db = getDB();
   const tag = await db.prepare("SELECT id FROM tags WHERE id = ?").bind(tagId).first<{ id: string }>();
   if (!tag) {
+    await logNativeReject("unknown_tag_id", { tagId });
     return NextResponse.json({ error: "Unknown tagId" }, { status: 404 });
   }
 
@@ -132,6 +171,10 @@ export async function POST(request: Request) {
     .run();
   const consumedChanges = Number((consumeResult as { meta?: { changes?: number } }).meta?.changes ?? 0);
   if (consumedChanges !== 1) {
+    await logNativeReject("handoff_token_replay_or_expired", {
+      tagId,
+      handoffJti: handoffVerified.payload.jti,
+    });
     return NextResponse.json({ error: "Handoff token already used or expired" }, { status: 409 });
   }
 

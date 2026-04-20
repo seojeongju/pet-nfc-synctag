@@ -57,6 +57,8 @@ type Summary = {
   nativeWriteFail24h: number;
   nativeWriteFail7d: number;
   nativeHandoff7d: number;
+  nativeRejected24h: number;
+  nativeRejected7d: number;
   tagsTotal: number;
   tagsActive: number;
   tagsUnsold: number;
@@ -247,6 +249,13 @@ export default function AdminMonitoringClient({
           label="네이티브 기록 실패 (24h / 7d)"
           value={`${summary.nativeWriteFail24h} / ${summary.nativeWriteFail7d}`}
           sub={`핸드오프 ${summary.nativeHandoff7d}건 (7d)`}
+          tone="rose"
+        />
+        <Kpi
+          icon={ShieldAlert}
+          label="네이티브 콜백 거절 (24h / 7d)"
+          value={`${summary.nativeRejected24h} / ${summary.nativeRejected7d}`}
+          sub="서명·토큰·리플레이 차단"
           tone="rose"
         />
       </div>

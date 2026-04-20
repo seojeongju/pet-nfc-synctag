@@ -36,6 +36,8 @@ export default async function AdminMonitoringPage({
       nativeWriteFail24h: 0,
       nativeWriteFail7d: 0,
       nativeHandoff7d: 0,
+      nativeRejected24h: 0,
+      nativeRejected7d: 0,
       tagsTotal: 0,
       tagsActive: 0,
       tagsUnsold: 0,
