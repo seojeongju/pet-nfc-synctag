@@ -6,8 +6,8 @@ import { CardContent } from "@/components/ui/card";
 import { AdminCard } from "@/components/admin/ui/AdminCard";
 import { 
   Users, Package, CheckCircle, ArrowUpRight, 
-  Shield, Layers, Activity, Database,
-  LayoutGrid, ListPlus, Smartphone, History, ArrowRight
+  Shield, Layers, Activity, Database, AlertTriangle, CheckCircle2,
+  LayoutGrid, ListPlus, Smartphone, History, ArrowRight, Siren
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -169,6 +169,39 @@ export default function AdminDashboardClient({
       ops.nativeRecoveryRate7d,
     ]
   );
+  const riskLevel: "danger" | "warning" | "ok" =
+    anomalies.length >= 2 ? "danger" : anomalies.length === 1 ? "warning" : "ok";
+  const riskLabel =
+    riskLevel === "danger" ? "위험" : riskLevel === "warning" ? "주의" : "정상";
+  const riskClass =
+    riskLevel === "danger"
+      ? "bg-rose-50 border-rose-200 text-rose-700"
+      : riskLevel === "warning"
+        ? "bg-amber-50 border-amber-200 text-amber-700"
+        : "bg-teal-50 border-teal-200 text-teal-700";
+  const primaryActions = useMemo(() => {
+    const items: Array<{ label: string; href: string; icon: typeof Activity }> = [];
+    if (ops.failedRegistrations7d >= failedThreshold) {
+      items.push({ label: "등록 실패 로그 확인", href: "/admin/nfc-tags/history?action=register_bulk_tags", icon: AlertTriangle });
+    }
+    if (stats.unsoldTags >= unsoldThreshold) {
+      items.push({ label: "미판매 재고 점검", href: "/admin/nfc-tags/inventory", icon: Package });
+    }
+    if (ops.webWriteFailures7d > 0 && ops.nativeRecoveryRate7d < 50) {
+      items.push({ label: "복구율 저하 원인 보기", href: "/admin/monitoring", icon: Siren });
+    }
+    if (items.length === 0) {
+      items.push({ label: "전체 운영 모니터링", href: "/admin/monitoring", icon: CheckCircle2 });
+    }
+    return items.slice(0, 3);
+  }, [
+    failedThreshold,
+    ops.failedRegistrations7d,
+    ops.nativeRecoveryRate7d,
+    ops.webWriteFailures7d,
+    stats.unsoldTags,
+    unsoldThreshold,
+  ]);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-outfit pb-20 relative overflow-hidden">
@@ -176,14 +209,14 @@ export default function AdminDashboardClient({
       <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-teal-500/10 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-indigo-500/10 blur-[120px] rounded-full pointer-events-none" />
 
-      <motion.div 
+      <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="visible"
         className={adminUi.pageContainer}
       >
         {/* Header Section */}
-        <motion.div variants={itemVariants} className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <motion.div variants={itemVariants} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
              <div className="flex items-center gap-2 text-teal-500 font-black text-[10px] uppercase tracking-[0.2em]">
                 <Activity className="w-3.5 h-3.5" />
@@ -193,33 +226,58 @@ export default function AdminDashboardClient({
              <p className="text-slate-500 text-sm font-bold">핵심 운영 지표 요약</p>
           </div>
           
-          <div className="flex items-center gap-4">
-             <div className="px-5 py-3 bg-white rounded-2xl flex items-center gap-3 border border-slate-100 shadow-sm">
+          <div className="flex items-center gap-3">
+             <div className="px-4 py-2.5 bg-white rounded-2xl flex items-center gap-2.5 border border-slate-100 shadow-sm">
                 <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
-                <span className="text-xs font-bold text-slate-600">실시간 상태: 정상</span>
+                <span className="text-[11px] font-bold text-slate-600">실시간 상태: 정상</span>
              </div>
           </div>
         </motion.div>
 
+        <motion.div variants={itemVariants}>
+          <AdminCard variant="subtle" className="rounded-3xl">
+            <CardContent className="p-4 sm:p-5">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 items-stretch">
+                <div className={cn("rounded-2xl border px-4 py-3 col-span-2 sm:col-span-1", riskClass)}>
+                  <p className="text-[10px] font-black uppercase tracking-widest">운영 상태</p>
+                  <p className="mt-1 text-xl font-black">{riskLabel}</p>
+                </div>
+                <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">활성화율</p>
+                  <p className="mt-1 text-xl font-black text-slate-900">{ops.activationRate}%</p>
+                </div>
+                <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">7일 연결</p>
+                  <p className="mt-1 text-xl font-black text-slate-900">{ops.recentLinks}</p>
+                </div>
+                <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">복구율(7일)</p>
+                  <p className="mt-1 text-xl font-black text-slate-900">{ops.nativeRecoveryRate7d}%</p>
+                </div>
+              </div>
+            </CardContent>
+          </AdminCard>
+        </motion.div>
+
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 lg:gap-6">
           {statCards.map((card, idx) => {
             const StatIcon = card.icon;
             return (
             <motion.div key={idx} variants={itemVariants}>
               <AdminCard variant="kpi" className="shadow-xl rounded-[32px] overflow-hidden group hover:bg-slate-50 transition-all duration-500 hover:-translate-y-1">
-                <CardContent className="p-7">
-                  <div className="flex items-center justify-between mb-6">
-                    <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-500 group-hover:scale-110", card.glowColor, card.color)}>
-                       <StatIcon className="w-7 h-7" />
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex items-center justify-between mb-3 sm:mb-5">
+                    <div className={cn("w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center transition-all duration-500 group-hover:scale-110", card.glowColor, card.color)}>
+                       <StatIcon className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
-                    <div className="h-8 w-8 rounded-full border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-teal-500 transition-colors">
+                    <div className="h-7 w-7 rounded-full border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-teal-500 transition-colors">
                        <ArrowUpRight className="w-4 h-4" />
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{card.title}</p>
-                    <h2 className="text-3xl font-black text-slate-900 tracking-tighter tabular-nums">{card.value.toLocaleString()}</h2>
+                    <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-tight sm:tracking-widest leading-tight">{card.title}</p>
+                    <h2 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tighter tabular-nums">{card.value.toLocaleString()}</h2>
                   </div>
                 </CardContent>
               </AdminCard>
@@ -227,6 +285,30 @@ export default function AdminDashboardClient({
             );
           })}
         </div>
+
+        <motion.div variants={itemVariants}>
+          <AdminCard variant="section" className="rounded-[28px] border border-slate-200/80 bg-white">
+            <CardContent className="p-5 sm:p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-black text-slate-900">즉시 조치</h3>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Action</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
+                {primaryActions.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Link key={item.label} href={item.href} className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 hover:border-teal-200 hover:bg-teal-50/70 transition">
+                      <div className="flex items-center gap-2">
+                        <Icon className="h-4 w-4 text-teal-600" />
+                        <p className="text-xs font-black text-slate-800 leading-snug break-keep">{item.label}</p>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </AdminCard>
+        </motion.div>
 
         <motion.div variants={itemVariants}>
           <AdminCard variant="section" className="rounded-[28px] border border-amber-100/80 bg-gradient-to-br from-amber-50/50 to-white">
@@ -341,44 +423,14 @@ export default function AdminDashboardClient({
           </AdminCard>
         </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-          <AdminCard variant="subtle">
-            <CardContent className="p-5">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">활성화율</p>
-              <p className="text-2xl font-black text-indigo-500 mt-2">{ops.activationRate}%</p>
-            </CardContent>
-          </AdminCard>
-          <AdminCard variant="subtle">
-            <CardContent className="p-5">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">최근 7일 연결</p>
-              <p className="text-2xl font-black text-teal-500 mt-2">{ops.recentLinks}</p>
-            </CardContent>
-          </AdminCard>
-          <AdminCard variant="subtle">
-            <CardContent className="p-5">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">최근 7일 실패 등록</p>
-              <p className="text-2xl font-black text-rose-500 mt-2">{ops.failedRegistrations7d}</p>
-            </CardContent>
-          </AdminCard>
-          <AdminCard variant="subtle">
-            <CardContent className="p-5">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">웹실패→네이티브 복구율(7일)</p>
-              <p className="text-2xl font-black text-violet-500 mt-2">{ops.nativeRecoveryRate7d}%</p>
-              <p className="text-[10px] font-bold text-slate-500 mt-2">
-                {ops.nativeWriteSuccessFromWebFail7d}/{ops.webWriteFailures7d}
-              </p>
-            </CardContent>
-          </AdminCard>
-        </div>
-
         <motion.div variants={itemVariants}>
-          <AdminCard variant="subtle">
+          <AdminCard variant="subtle" className="rounded-3xl">
             <CardContent className="p-5">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">최근 이상 이벤트</p>
               {anomalies.length > 0 ? (
                 <ul className="space-y-2">
                   {anomalies.map((item) => (
-                    <li key={item} className="text-sm font-bold text-rose-500">{item}</li>
+                    <li key={item} className="text-sm font-bold text-rose-500 leading-snug break-keep">{item}</li>
                   ))}
                 </ul>
               ) : (
