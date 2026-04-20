@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { adminUi } from "@/styles/admin/ui";
 import { AdminHeaderUser, type SessionUser } from "@/components/admin/layout/AdminHeaderUser";
 import { AdminMobileDrawer } from "@/components/admin/layout/AdminMobileDrawer";
+import { AdminDashboardHelp } from "@/components/admin/layout/AdminDashboardHelp";
 
 export function AdminHeaderBar({ user }: { user?: SessionUser }) {
   const pathname = usePathname() || "";
@@ -43,6 +44,7 @@ export function AdminHeaderBar({ user }: { user?: SessionUser }) {
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2 lg:gap-8">
+          <AdminDashboardHelp />
           <form action="/logout" method="post" className="flex items-center">
             <button
               type="submit"

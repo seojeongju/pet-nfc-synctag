@@ -15,8 +15,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { adminUi } from "@/styles/admin/ui";
-import { NfcWebNfcEnvironmentHelp } from "@/components/admin/nfc-tags/NfcAdminHelpDialogs";
-
 const items = [
   {
     href: "/admin/nfc-tags",
@@ -97,7 +95,6 @@ export function NfcTagsSubNav() {
                 등록 → 기록 → 점검 → 감사
                 <ArrowRight className="h-3 w-3 text-teal-500" aria-hidden />
               </span>
-              <NfcWebNfcEnvironmentHelp />
             </div>
           </div>
           <Link

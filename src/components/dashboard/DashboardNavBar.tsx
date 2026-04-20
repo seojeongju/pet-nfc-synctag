@@ -5,6 +5,7 @@ import { PawPrint, MapPin } from "lucide-react";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
 import { FlowTopNavContent, type FlowTopNavSession } from "@/components/layout/FlowTopNav";
 import { DashboardAnnouncementBell } from "@/components/dashboard/DashboardAnnouncementBell";
+import { DashboardContextualHelp } from "@/components/dashboard/DashboardContextualHelp";
 import { dashboardTopNavLinkClass } from "@/lib/dashboard-nav-styles";
 import {
   isDashboardGeofences,
@@ -81,6 +82,7 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
               <span className="truncate">링크유 Link-U</span>
             </a>
             <div className="flex shrink-0 items-center gap-2">
+              <DashboardContextualHelp />
               <DashboardAnnouncementBell />
               {session?.user?.name ? (
                 <span className="truncate text-xs font-bold text-slate-400 xl:hidden">{session.user.name}</span>

@@ -7,7 +7,6 @@ import {
   AdminNfcWorkflowColumn,
   AdminNfcQuickLinkGrid,
 } from "@/components/admin/nfc-tags/AdminNfcHubPanels";
-import { NfcHubOverviewHelp } from "@/components/admin/nfc-tags/NfcAdminHelpDialogs";
 
 export const runtime = "edge";
 
@@ -24,7 +23,6 @@ export default async function AdminNfcTagsOverviewPage() {
           title="Pet-ID NFC 허브"
           subtitle="요약 지표와 빠른 이동, 표준 순서 체크리스트가 한 화면에 모입니다."
           crumbs={[{ label: "관리자", href: "/admin" }, { label: "Pet-ID NFC" }]}
-          aside={<NfcHubOverviewHelp />}
         />
 
         <TagOpsKpiCards opsStats={opsStats} />

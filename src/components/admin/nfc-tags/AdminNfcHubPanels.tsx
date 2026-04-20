@@ -11,7 +11,6 @@ import {
 import { cn } from "@/lib/utils";
 import { AdminCard } from "@/components/admin/ui/AdminCard";
 import { CardContent } from "@/components/ui/card";
-import { NfcQuickLinksHelp, NfcSecurityCompatHelp, NfcWorkflowStepsHelp } from "@/components/admin/nfc-tags/NfcAdminHelpDialogs";
 
 const workflowSteps = [
   {
@@ -96,10 +95,7 @@ export function AdminNfcWorkflowColumn() {
             <BookOpenCheck className="h-5 w-5" aria-hidden />
           </div>
           <div className="min-w-0 flex-1 space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-600">권장 순서</p>
-              <NfcWorkflowStepsHelp />
-            </div>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-600">권장 순서</p>
             <h3 className="text-lg font-black text-slate-900">운영 체크리스트</h3>
             <p className="text-xs font-bold leading-relaxed text-slate-500">단계별 이동은 오른쪽 링크로, 설명은 상세에서 확인하세요.</p>
           </div>
@@ -146,12 +142,7 @@ export function AdminNfcWorkflowColumn() {
 
 export function AdminNfcQuickLinkGrid() {
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2 px-0.5">
-        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">빠른 이동</p>
-        <NfcQuickLinksHelp />
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+    <div className="grid gap-4 sm:grid-cols-2">
         {quickLinks.map(({ href, title, icon: Icon, chip, color, iconWrap }) => (
           <Link
             key={href}
@@ -177,7 +168,6 @@ export function AdminNfcQuickLinkGrid() {
           </Link>
         ))}
       </div>
-    </div>
   );
 }
 
@@ -190,10 +180,7 @@ export function AdminNfcHelpCallout() {
             <ShieldCheck className="h-5 w-5" aria-hidden />
           </div>
           <div className="min-w-0 space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-teal-700">보안·호환성</p>
-              <NfcSecurityCompatHelp />
-            </div>
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-teal-700">보안·호환성</p>
             <p className="text-sm font-black text-slate-900">Web NFC와 동일한 규칙</p>
             <p className="text-xs font-bold text-slate-600">등록된 UID만 기록 가능 · 상세는 자세히</p>
           </div>
