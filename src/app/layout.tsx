@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
+import { ViewportFix } from "@/components/viewport-fix";
 
 export const metadata: Metadata = {
   title: "링크유 Link-U | NFC로 연결하는 안심 플랫폼",
@@ -43,6 +44,8 @@ export default function RootLayout({
         {/* eslint-enable @next/next/no-page-custom-font */}
       </head>
       <body className="min-h-dvh min-h-[100svh] antialiased font-outfit">
+        {/* Google OAuth 복귀 시 viewport 오염 자동 복구 */}
+        <ViewportFix />
         {children}
         <PwaInstallPrompt />
       </body>

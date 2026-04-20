@@ -123,16 +123,27 @@ export function LoginForm() {
 
   /**
    * 통합 소셜 로그인 핸들러.
-   * 구글·카카오 모두 동일하게 signIn.social()을 사용합니다.
-   * 서버 auth.ts에서 google: { display: "touch" }가 설정되어,
-   * 모바일 환경에서 구글 계정 UI가 터치 UI로 렌더링됩니다.
-   * (이전에는 구글만 수동 fetch + URL 보강 방식을 썼지만,
-   *  이 방식은 better-auth redirectPlugin을 우회하여 viewport 불일치 발생)
+   *
+   * [구글]
+   *   accounts.google.com → /api/auth/callback/google(302) → /auth/complete → 최종 목적지
+   *   중간 /auth/complete 페이지를 거쳐 viewport 메타를 재설정한 뒤 이동합니다.
+   *   이유: 외부 도메인(Google)에서 연속 302로 복귀 시 일부 모바일 브라우저가
+   *         viewport 컨텍스트를 외부 도메인 값으로 승계하는 버그가 존재하기 때문입니다.
+   *
+   * [카카오]
+   *   카카오톡 딥링크로 처리되어 브라우저 viewport 히스토리 오염이 없으므로
+   *   callbackURL을 직접 최종 목적지로 설정합니다.
    */
   const handleLogin = async (provider: "google" | "kakao") => {
+    // 구글만 /auth/complete 브리지를 경유 (카카오는 기존 방식 유지)
+    const resolvedCallbackURL =
+      provider === "google"
+        ? `/auth/complete?next=${encodeURIComponent(callbackURL)}`
+        : callbackURL;
+
     await signIn.social({
       provider,
-      callbackURL,
+      callbackURL: resolvedCallbackURL,
     });
   };
 
