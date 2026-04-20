@@ -36,6 +36,9 @@ function helpContentForPath(p: string): { title: string; body: ReactNode } {
             <strong>NDEFWriter:</strong> 이 API가 없으면 이 브라우저에서는 기록할 수 없습니다. Chrome에서 열거나 외부 NFC 기록 도구를 사용하세요.
           </p>
           <p>
+            <strong>하이브리드 우회:</strong> Web NFC가 막히면 <code className="rounded bg-slate-100 px-1 font-mono text-[11px]">전용앱에서 쓰기 열기</code> 버튼으로 안드로이드 전용앱에 작업을 전달할 수 있습니다.
+          </p>
+          <p>
             <strong>NDEFReader(UID 읽기):</strong> 없으면 NFC로 UID를 읽을 수 없고 수동 입력만 가능합니다.
           </p>
           <p>성공·실패는 감사 로그에 남습니다. 완료 후 인벤토리·연결·감사에서 상태를 확인하세요.</p>

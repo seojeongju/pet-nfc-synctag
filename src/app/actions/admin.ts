@@ -434,6 +434,7 @@ export async function updateTagProductProfile(
 
 const NFC_WRITE_ACTION = "nfc_web_write";
 const NFC_READ_ACTION = "nfc_web_read";
+const NFC_NATIVE_HANDOFF_ACTION = "nfc_native_handoff";
 
 /**
  * Web NFC로 기록할 공개 URL을 반환합니다. 태그가 DB에 등록된 경우에만 허용합니다.
@@ -544,4 +545,63 @@ export async function recordNfcWebReadAudit(input: {
         .run();
     revalidatePath("/admin/tags");
     revalidatePath("/admin/nfc-tags");
+}
+
+export type PrepareNfcNativeHandoffResult =
+    | {
+        ok: true;
+        tagId: string;
+        url: string;
+        appLink: string;
+    }
+    | { ok: false; error: string };
+
+/**
+ * 전용 안드로이드 앱으로 URL 기록 작업을 전달할 수 있는 딥링크를 생성합니다.
+ * 앱 스킴 예시: petidconnect://nfc/write?uid=...&url=...
+ */
+export async function prepareNfcNativeHandoff(tagIdRaw: string): Promise<PrepareNfcNativeHandoffResult> {
+    const prep = await prepareNfcTagWrite(tagIdRaw);
+    if (!prep.ok) return prep;
+
+    const params = new URLSearchParams({
+        uid: prep.tagId,
+        url: prep.url,
+    });
+    const appLink = `petidconnect://nfc/write?${params.toString()}`;
+    const payload = JSON.stringify({
+        tagId: prep.tagId,
+        url: prep.url,
+        appLink,
+        source: "admin_write_card",
+    });
+
+    const db = getDB();
+    await db.prepare(`
+            CREATE TABLE IF NOT EXISTS admin_action_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                action TEXT NOT NULL,
+                actor_email TEXT,
+                success BOOLEAN NOT NULL DEFAULT 1,
+                payload TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `).run();
+    await db
+        .prepare(
+            "INSERT INTO admin_action_logs (action, actor_email, success, payload) VALUES (?, ?, 1, ?)"
+        )
+        .bind(
+            NFC_NATIVE_HANDOFF_ACTION,
+            await getActorEmailSafe(),
+            payload
+        )
+        .run();
+
+    return {
+        ok: true,
+        tagId: prep.tagId,
+        url: prep.url,
+        appLink,
+    };
 }

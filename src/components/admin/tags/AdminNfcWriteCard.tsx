@@ -1,7 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { prepareNfcTagWrite, recordNfcWebReadAudit, recordNfcWebWriteAudit } from "@/app/actions/admin";
+import {
+  prepareNfcNativeHandoff,
+  prepareNfcTagWrite,
+  recordNfcWebReadAudit,
+  recordNfcWebWriteAudit,
+} from "@/app/actions/admin";
 import { AdminCard } from "@/components/admin/ui/AdminCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +33,7 @@ export function AdminNfcWriteCard() {
   const [nfcSupported, setNfcSupported] = useState<boolean | null>(null);
   const [nfcReadSupported, setNfcReadSupported] = useState<boolean | null>(null);
   const [readBusy, setReadBusy] = useState(false);
+  const [nativeBusy, setNativeBusy] = useState(false);
 
   useEffect(() => {
     setNfcSupported(!!getNdefWriterClass());
@@ -76,6 +82,29 @@ export function AdminNfcWriteCard() {
       }
     } finally {
       setBusy(false);
+    }
+  }, [tagId]);
+
+  const onOpenNativeApp = useCallback(async () => {
+    setHint(null);
+    const trimmed = tagId.trim();
+    if (!trimmed) {
+      setHint("태그 UID를 입력해 주세요.");
+      return;
+    }
+    setNativeBusy(true);
+    try {
+      const handoff = await prepareNfcNativeHandoff(trimmed);
+      if (!handoff.ok) {
+        setHint(handoff.error);
+        return;
+      }
+      if (typeof window !== "undefined") {
+        window.location.href = handoff.appLink;
+      }
+      setHint("전용 앱 실행을 시도했습니다. 앱에서 기록 후 이력 화면에서 결과를 확인하세요.");
+    } finally {
+      setNativeBusy(false);
     }
   }, [tagId]);
 
@@ -172,6 +201,23 @@ export function AdminNfcWriteCard() {
           )}
         </Button>
       </div>
+
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => void onOpenNativeApp()}
+        disabled={nativeBusy || busy}
+        className="h-11 rounded-2xl border-slate-200 font-black text-xs"
+      >
+        {nativeBusy ? (
+          <>
+            <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+            앱 실행 준비 중...
+          </>
+        ) : (
+          "전용앱에서 쓰기 열기 (하이브리드)"
+        )}
+      </Button>
 
       {hint && (
         <p className="text-[11px] font-bold text-slate-600 whitespace-pre-wrap leading-relaxed">{hint}</p>

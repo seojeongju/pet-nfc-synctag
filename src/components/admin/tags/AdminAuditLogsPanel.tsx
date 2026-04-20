@@ -25,6 +25,15 @@ function summarizePayload(payloadRaw?: string | null) {
     if (payload?.registeredCount !== undefined) {
       return `등록 ${payload.registeredCount} / 실패 ${payload.failedCount ?? 0}`;
     }
+    if (payload?.source === "admin_write_card" && payload?.tagId && payload?.url) {
+      return `handoff tagId=${payload.tagId}`;
+    }
+    if (payload?.source === "native_app" && payload?.tagId && payload?.clientError === undefined) {
+      return `native_write tagId=${payload.tagId}, device=${payload.deviceId ?? "-"}`;
+    }
+    if (payload?.source === "native_app" && payload?.clientError) {
+      return `native_write err=${String(payload.clientError).slice(0, 40)}`;
+    }
     if (payload?.tagId && payload?.url && payload?.clientError === undefined) {
       return `tagId=${payload.tagId}, url=${String(payload.url).slice(0, 48)}…`;
     }
@@ -167,6 +176,8 @@ export function AdminAuditLogsPanel({
               <option value="tag_unlink">tag_unlink</option>
               <option value="nfc_web_read">nfc_web_read</option>
               <option value="nfc_web_write">nfc_web_write</option>
+              <option value="nfc_native_handoff">nfc_native_handoff</option>
+              <option value="nfc_native_write">nfc_native_write</option>
             </select>
             <div className="flex gap-2">
               <select
