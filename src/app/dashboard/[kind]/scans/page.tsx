@@ -18,6 +18,7 @@ export const dynamic = "force-dynamic";
 
 type ScanLog = {
     id: string;
+    pet_id?: string | null;
     pet_photo?: string | null;
     pet_name: string;
     scanned_at: string;
@@ -168,6 +169,15 @@ export default async function ScansPage({
                 </p>
             </div>
 
+            <div className="px-2">
+                <div className="rounded-3xl border border-teal-100 bg-teal-50 px-4 py-3">
+                    <p className="text-xs font-black text-teal-800">빠른 대응 가이드</p>
+                    <p className="mt-1 text-[11px] font-bold text-teal-700">
+                        스캔이 발생하면 프로필/분실모드를 점검하고, 필요 시 보호자 연락 정보가 최신인지 확인해 주세요.
+                    </p>
+                </div>
+            </div>
+
             <div className="space-y-6 px-2">
                 {logs.length > 0 ? (
                     logs.map((log: ScanLog, idx: number) => (
@@ -212,6 +222,16 @@ export default async function ScansPage({
                                                 {new Date(log.scanned_at).toLocaleString('ko-KR')}
                                             </div>
                                         </div>
+                                        <a
+                                            href={`/dashboard/${subjectKind}/pets/${log.pet_id ?? ""}${tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : ""}`}
+                                            className={cn(
+                                                "rounded-full px-3 py-1 text-[10px] font-black",
+                                                log.pet_id ? "bg-teal-50 text-teal-700 hover:bg-teal-100" : "pointer-events-none bg-slate-100 text-slate-400"
+                                            )}
+                                            aria-disabled={!log.pet_id}
+                                        >
+                                            프로필 보기
+                                        </a>
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-3 text-xs">

@@ -17,6 +17,7 @@ export async function getScanLogsWithDb(
       sl.*, 
       p.name as pet_name, 
       p.photo_url as pet_photo,
+      p.id as pet_id,
       t.id as tag_id
     FROM scan_logs sl
     JOIN tags t ON sl.tag_id = t.id
@@ -32,6 +33,7 @@ export async function getScanLogsWithDb(
       sl.*, 
       p.name as pet_name, 
       p.photo_url as pet_photo,
+      p.id as pet_id,
       t.id as tag_id
     FROM scan_logs sl
     JOIN tags t ON sl.tag_id = t.id

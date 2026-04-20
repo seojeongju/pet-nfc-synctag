@@ -21,12 +21,12 @@ export function LostModeToggle({
   const [isLost, setIsLost] = useState(initialIsLost);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingNext, setPendingNext] = useState<boolean | null>(null);
 
-  const handleToggle = () => {
+  const runToggle = (next: boolean) => {
     if (writeLocked || isPending) return;
     setError(null);
-    // 낙관적 업데이트
-    const next = !isLost;
     setIsLost(next);
     startTransition(async () => {
       try {
@@ -37,6 +37,12 @@ export function LostModeToggle({
         setError(e instanceof Error ? e.message : "상태 변경에 실패했습니다.");
       }
     });
+  };
+  const handleToggle = () => {
+    if (writeLocked || isPending) return;
+    const next = !isLost;
+    setPendingNext(next);
+    setConfirmOpen(true);
   };
 
   return (
@@ -110,6 +116,48 @@ export function LostModeToggle({
 
       {error && (
         <p className="text-[11px] font-bold text-rose-500 px-1">{error}</p>
+      )}
+
+      {confirmOpen && pendingNext !== null && (
+        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40 p-4 sm:items-center">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-5 shadow-2xl">
+            <p className="text-sm font-black text-slate-900">
+              {pendingNext ? "실종 모드를 켤까요?" : "안전 상태로 전환할까요?"}
+            </p>
+            <p className="mt-1 text-[11px] font-bold text-slate-500 leading-relaxed">
+              {pendingNext
+                ? `${petName}의 공개 프로필에 긴급 배너가 노출됩니다.`
+                : "실종 경고 배너가 비활성화됩니다."}
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                className="h-11 rounded-2xl border border-slate-200 bg-white text-xs font-black text-slate-700"
+                onClick={() => {
+                  setConfirmOpen(false);
+                  setPendingNext(null);
+                }}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  "h-11 rounded-2xl text-xs font-black text-white",
+                  pendingNext ? "bg-rose-500 hover:bg-rose-600" : "bg-teal-600 hover:bg-teal-700"
+                )}
+                onClick={() => {
+                  setConfirmOpen(false);
+                  const next = pendingNext;
+                  setPendingNext(null);
+                  runToggle(next);
+                }}
+              >
+                {pendingNext ? "실종모드 ON" : "안전상태 전환"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

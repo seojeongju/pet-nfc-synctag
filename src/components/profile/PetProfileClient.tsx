@@ -3,8 +3,8 @@
 import { motion, useMotionValueEvent, useScroll, useTransform } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { 
-  Phone, AlertTriangle, Heart, Share2, 
+import {
+  Phone, MessageCircle, AlertTriangle, Heart, Share2,
   ArrowLeft, ShieldCheck, PawPrint, Home, 
   Settings, Activity,
   Calendar, Fingerprint, MapPin,
@@ -367,12 +367,25 @@ export default function PetProfileClient({
               {/* Action Buttons */}
               <div className="grid gap-4 mt-2 focus-within:ring-0">
                  {pet.emergency_contact ? (
-                 <a href={`tel:${pet.emergency_contact}`} className="group">
-                    <Button className="w-full h-20 rounded-[28px] bg-teal-500 hover:bg-teal-600 text-white font-black text-lg shadow-xl shadow-teal-500/20 transition-all active:scale-[0.97] flex items-center justify-center gap-4 border-b-4 border-teal-700">
-                       <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center"><Phone className="w-6 h-6 animate-pulse" /></div>
-                       {treatAsPublicVisitor ? nfc.callCta : "보호자님 호출하기"}
-                    </Button>
-                 </a>
+                 <>
+                   <a href={`tel:${pet.emergency_contact}`} className="group">
+                      <Button className="w-full h-20 rounded-[28px] bg-teal-500 hover:bg-teal-600 text-white font-black text-lg shadow-xl shadow-teal-500/20 transition-all active:scale-[0.97] flex items-center justify-center gap-4 border-b-4 border-teal-700">
+                         <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center"><Phone className="w-6 h-6 animate-pulse" /></div>
+                         {treatAsPublicVisitor ? nfc.callCta : "보호자님 호출하기"}
+                      </Button>
+                   </a>
+                   {treatAsPublicVisitor ? (
+                     <a href={`sms:${pet.emergency_contact}`} className="group">
+                       <Button
+                         variant="outline"
+                         className="w-full h-12 rounded-2xl border-slate-200 bg-white text-slate-700 font-black text-sm hover:bg-slate-50 flex items-center justify-center gap-2"
+                       >
+                         <MessageCircle className="w-4 h-4 text-teal-600" />
+                         문자로도 알리기
+                       </Button>
+                     </a>
+                   ) : null}
+                 </>
                  ) : (
                     <Button disabled className="w-full h-16 rounded-[28px] text-slate-400 font-bold">
                       등록된 연락처가 없습니다
