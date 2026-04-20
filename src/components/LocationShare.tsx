@@ -3,16 +3,18 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MapPin, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
-import { updateScanLocation } from "@/app/actions/scan";
+import { logFinderAction, updateScanLocation } from "@/app/actions/scan";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 
 export function LocationShare({
   tagId,
+  petId,
   enabled = true,
   onStatusChange,
 }: {
   tagId: string | null;
+  petId?: string | null;
   enabled?: boolean;
   onStatusChange?: (status: "idle" | "loading" | "success" | "error") => void;
 }) {
@@ -38,9 +40,23 @@ export function LocationShare({
 
   const handleShare = async () => {
     if (!canSend) return;
+    const ua = typeof navigator !== "undefined" ? navigator.userAgent : null;
+    void logFinderAction({
+      action: "location_share_click",
+      tagId: activeTag,
+      petId: petId ?? null,
+      userAgent: ua,
+    });
     if (!navigator.geolocation) {
       setStatus("error");
       onStatusChange?.("error");
+      void logFinderAction({
+        action: "location_share_error",
+        tagId: activeTag,
+        petId: petId ?? null,
+        detail: "geolocation_not_supported",
+        userAgent: ua,
+      });
       return;
     }
 
@@ -56,10 +72,23 @@ export function LocationShare({
           if (!res.success) {
             setStatus("error");
             onStatusChange?.("error");
+            void logFinderAction({
+              action: "location_share_error",
+              tagId: activeTag,
+              petId: petId ?? null,
+              detail: res.error,
+              userAgent: ua,
+            });
             return;
           }
           setStatus("success");
           onStatusChange?.("success");
+          void logFinderAction({
+            action: "location_share_success",
+            tagId: activeTag,
+            petId: petId ?? null,
+            userAgent: ua,
+          });
           if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
             navigator.vibrate(getHapticPattern());
           }
@@ -67,12 +96,26 @@ export function LocationShare({
           console.error(e);
           setStatus("error");
           onStatusChange?.("error");
+          void logFinderAction({
+            action: "location_share_error",
+            tagId: activeTag,
+            petId: petId ?? null,
+            detail: "update_failed",
+            userAgent: ua,
+          });
         }
       },
       (error) => {
         console.error(error);
         setStatus("error");
         onStatusChange?.("error");
+        void logFinderAction({
+          action: "location_share_error",
+          tagId: activeTag,
+          petId: petId ?? null,
+          detail: error?.code ? `geo_error_${error.code}` : "geo_error",
+          userAgent: ua,
+        });
       }
     );
   };

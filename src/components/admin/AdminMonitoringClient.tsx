@@ -60,6 +60,12 @@ type Summary = {
   nativeHandoff7d: number;
   nativeRejected24h: number;
   nativeRejected7d: number;
+  finderCall24h: number;
+  finderSms24h: number;
+  finderLocationClick24h: number;
+  finderLocationSuccess24h: number;
+  finderLocationClick7d: number;
+  finderLocationSuccess7d: number;
   tagsTotal: number;
   tagsActive: number;
   tagsUnsold: number;
@@ -176,6 +182,10 @@ export default function AdminMonitoringClient({
   const ackActive = Boolean(ackUntilTs && !Number.isNaN(ackUntilTs) && Date.now() < ackUntilTs);
   const showDangerBanner = healthTone === "danger" && !ackActive;
   const showNativeRejectBanner = summary.nativeRejected24h > 0;
+  const finderLocationSuccessRate24h =
+    summary.finderLocationClick24h > 0
+      ? Math.round((summary.finderLocationSuccess24h / summary.finderLocationClick24h) * 100)
+      : 0;
 
   const saveThresholds = () => {
     startThresholdTransition(async () => {
@@ -261,6 +271,20 @@ export default function AdminMonitoringClient({
           value={`${summary.nativeRejected24h} / ${summary.nativeRejected7d}`}
           sub="서명·토큰·리플레이 차단"
           tone="rose"
+        />
+        <Kpi
+          icon={Activity}
+          label="발견자 연락 클릭 (24h)"
+          value={`${summary.finderCall24h} / ${summary.finderSms24h}`}
+          sub="전화 클릭 / 문자 클릭"
+          tone="teal"
+        />
+        <Kpi
+          icon={MapPin}
+          label="위치 공유 전환율 (24h)"
+          value={`${finderLocationSuccessRate24h}%`}
+          sub={`${summary.finderLocationSuccess24h}/${summary.finderLocationClick24h} (7d: ${summary.finderLocationSuccess7d}/${summary.finderLocationClick7d})`}
+          tone="amber"
         />
       </div>
 

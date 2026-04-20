@@ -32,3 +32,46 @@ export async function updateScanLocation(tagId: string, lat: number, lng: number
 
   return { success: true as const };
 }
+
+type FinderAction =
+  | "call_click"
+  | "sms_click"
+  | "location_share_click"
+  | "location_share_success"
+  | "location_share_error";
+
+export async function logFinderAction(input: {
+  action: FinderAction;
+  tagId?: string | null;
+  petId?: string | null;
+  detail?: string | null;
+  userAgent?: string | null;
+}) {
+  const db = getDB();
+  await db.prepare(
+    "CREATE TABLE IF NOT EXISTS finder_action_logs (" +
+      "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+      "action TEXT NOT NULL, " +
+      "tag_id TEXT, " +
+      "pet_id TEXT, " +
+      "detail TEXT, " +
+      "user_agent TEXT, " +
+      "created_at DATETIME DEFAULT CURRENT_TIMESTAMP" +
+      ")"
+  ).run();
+
+  await db
+    .prepare(
+      "INSERT INTO finder_action_logs (action, tag_id, pet_id, detail, user_agent) VALUES (?, ?, ?, ?, ?)"
+    )
+    .bind(
+      input.action,
+      input.tagId ?? null,
+      input.petId ?? null,
+      input.detail ?? null,
+      input.userAgent ?? null
+    )
+    .run();
+
+  return { ok: true as const };
+}

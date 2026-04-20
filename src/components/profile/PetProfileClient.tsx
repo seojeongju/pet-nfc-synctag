@@ -25,6 +25,7 @@ import {
   nfcPublicEmergencyBadge,
 } from "@/lib/nfc-public-display";
 import { verifyOwnerAndLoadPetTags } from "@/app/actions/tag";
+import { logFinderAction } from "@/app/actions/scan";
 import { cn } from "@/lib/utils";
 
 const heroIcons: Record<SubjectKind, LucideIcon> = {
@@ -141,6 +142,16 @@ export default function PetProfileClient({
           ? maskBreedFieldForPublic(pet.breed, subjectKind, true, "")
           : null
         : pet.breed?.trim() || null;
+  const logFinderClick = (action: "call_click" | "sms_click") => {
+    if (!treatAsPublicVisitor) return;
+    const ua = typeof navigator !== "undefined" ? navigator.userAgent : null;
+    void logFinderAction({
+      action,
+      tagId,
+      petId: pet.id,
+      userAgent: ua,
+    });
+  };
 
   useEffect(() => {
     if (locationShareStatus !== "success") return;
@@ -368,14 +379,14 @@ export default function PetProfileClient({
               <div className="grid gap-4 mt-2 focus-within:ring-0">
                  {pet.emergency_contact ? (
                  <>
-                   <a href={`tel:${pet.emergency_contact}`} className="group">
+                   <a href={`tel:${pet.emergency_contact}`} className="group" onClick={() => logFinderClick("call_click")}>
                       <Button className="w-full h-20 rounded-[28px] bg-teal-500 hover:bg-teal-600 text-white font-black text-lg shadow-xl shadow-teal-500/20 transition-all active:scale-[0.97] flex items-center justify-center gap-4 border-b-4 border-teal-700">
                          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center"><Phone className="w-6 h-6 animate-pulse" /></div>
                          {treatAsPublicVisitor ? nfc.callCta : "보호자님 호출하기"}
                       </Button>
                    </a>
                    {treatAsPublicVisitor ? (
-                     <a href={`sms:${pet.emergency_contact}`} className="group">
+                     <a href={`sms:${pet.emergency_contact}`} className="group" onClick={() => logFinderClick("sms_click")}>
                        <Button
                          variant="outline"
                          className="w-full h-12 rounded-2xl border-slate-200 bg-white text-slate-700 font-black text-sm hover:bg-slate-50 flex items-center justify-center gap-2"
@@ -399,6 +410,7 @@ export default function PetProfileClient({
                  <div id="finder-location-share">
                    <LocationShare
                      tagId={tagId}
+                    petId={pet.id}
                      enabled={treatAsPublicVisitor}
                      onStatusChange={setLocationShareStatus}
                    />

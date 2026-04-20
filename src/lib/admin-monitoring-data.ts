@@ -19,6 +19,12 @@ export async function getMonitoringSummary() {
     nativeHandoff7d,
     nativeRejected24h,
     nativeRejected7d,
+    finderCall24h,
+    finderSms24h,
+    finderLocationClick24h,
+    finderLocationSuccess24h,
+    finderLocationClick7d,
+    finderLocationSuccess7d,
   ] = await Promise.all([
     db
       .prepare(
@@ -107,6 +113,48 @@ export async function getMonitoringSummary() {
       )
       .first<{ c: number }>()
       .catch(() => ({ c: 0 })),
+    db
+      .prepare(
+        "SELECT COUNT(*) AS c FROM finder_action_logs " +
+          "WHERE action = 'call_click' AND created_at >= datetime('now', '-1 day')"
+      )
+      .first<{ c: number }>()
+      .catch(() => ({ c: 0 })),
+    db
+      .prepare(
+        "SELECT COUNT(*) AS c FROM finder_action_logs " +
+          "WHERE action = 'sms_click' AND created_at >= datetime('now', '-1 day')"
+      )
+      .first<{ c: number }>()
+      .catch(() => ({ c: 0 })),
+    db
+      .prepare(
+        "SELECT COUNT(*) AS c FROM finder_action_logs " +
+          "WHERE action = 'location_share_click' AND created_at >= datetime('now', '-1 day')"
+      )
+      .first<{ c: number }>()
+      .catch(() => ({ c: 0 })),
+    db
+      .prepare(
+        "SELECT COUNT(*) AS c FROM finder_action_logs " +
+          "WHERE action = 'location_share_success' AND created_at >= datetime('now', '-1 day')"
+      )
+      .first<{ c: number }>()
+      .catch(() => ({ c: 0 })),
+    db
+      .prepare(
+        "SELECT COUNT(*) AS c FROM finder_action_logs " +
+          "WHERE action = 'location_share_click' AND created_at >= datetime('now', '-7 days')"
+      )
+      .first<{ c: number }>()
+      .catch(() => ({ c: 0 })),
+    db
+      .prepare(
+        "SELECT COUNT(*) AS c FROM finder_action_logs " +
+          "WHERE action = 'location_share_success' AND created_at >= datetime('now', '-7 days')"
+      )
+      .first<{ c: number }>()
+      .catch(() => ({ c: 0 })),
   ]);
 
   const ops = await db
@@ -133,6 +181,12 @@ export async function getMonitoringSummary() {
     nativeHandoff7d: nativeHandoff7d?.c ?? 0,
     nativeRejected24h: nativeRejected24h?.c ?? 0,
     nativeRejected7d: nativeRejected7d?.c ?? 0,
+    finderCall24h: finderCall24h?.c ?? 0,
+    finderSms24h: finderSms24h?.c ?? 0,
+    finderLocationClick24h: finderLocationClick24h?.c ?? 0,
+    finderLocationSuccess24h: finderLocationSuccess24h?.c ?? 0,
+    finderLocationClick7d: finderLocationClick7d?.c ?? 0,
+    finderLocationSuccess7d: finderLocationSuccess7d?.c ?? 0,
     tagsTotal: ops?.total ?? 0,
     tagsActive: ops?.active ?? 0,
     tagsUnsold: ops?.unsold ?? 0,
