@@ -25,6 +25,8 @@ export async function getMonitoringSummary() {
     finderLocationSuccess24h,
     finderLocationClick7d,
     finderLocationSuccess7d,
+    guardianAlerts24h,
+    guardianAlerts7d,
   ] = await Promise.all([
     db
       .prepare(
@@ -155,6 +157,20 @@ export async function getMonitoringSummary() {
       )
       .first<{ c: number }>()
       .catch(() => ({ c: 0 })),
+    db
+      .prepare(
+        "SELECT COUNT(*) AS c FROM guardian_alert_state " +
+          "WHERE last_sent_at >= datetime('now', '-1 day')"
+      )
+      .first<{ c: number }>()
+      .catch(() => ({ c: 0 })),
+    db
+      .prepare(
+        "SELECT COUNT(*) AS c FROM guardian_alert_state " +
+          "WHERE last_sent_at >= datetime('now', '-7 days')"
+      )
+      .first<{ c: number }>()
+      .catch(() => ({ c: 0 })),
   ]);
 
   const ops = await db
@@ -187,6 +203,8 @@ export async function getMonitoringSummary() {
     finderLocationSuccess24h: finderLocationSuccess24h?.c ?? 0,
     finderLocationClick7d: finderLocationClick7d?.c ?? 0,
     finderLocationSuccess7d: finderLocationSuccess7d?.c ?? 0,
+    guardianAlerts24h: guardianAlerts24h?.c ?? 0,
+    guardianAlerts7d: guardianAlerts7d?.c ?? 0,
     tagsTotal: ops?.total ?? 0,
     tagsActive: ops?.active ?? 0,
     tagsUnsold: ops?.unsold ?? 0,

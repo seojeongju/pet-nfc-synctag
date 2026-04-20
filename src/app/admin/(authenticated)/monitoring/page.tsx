@@ -45,6 +45,8 @@ export default async function AdminMonitoringPage({
       finderLocationSuccess24h: 0,
       finderLocationClick7d: 0,
       finderLocationSuccess7d: 0,
+      guardianAlerts24h: 0,
+      guardianAlerts7d: 0,
       tagsTotal: 0,
       tagsActive: 0,
       tagsUnsold: 0,

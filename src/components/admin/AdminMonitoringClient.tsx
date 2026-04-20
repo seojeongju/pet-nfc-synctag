@@ -66,6 +66,8 @@ type Summary = {
   finderLocationSuccess24h: number;
   finderLocationClick7d: number;
   finderLocationSuccess7d: number;
+  guardianAlerts24h: number;
+  guardianAlerts7d: number;
   tagsTotal: number;
   tagsActive: number;
   tagsUnsold: number;
@@ -285,6 +287,13 @@ export default function AdminMonitoringClient({
           value={`${finderLocationSuccessRate24h}%`}
           sub={`${summary.finderLocationSuccess24h}/${summary.finderLocationClick24h} (7d: ${summary.finderLocationSuccess7d}/${summary.finderLocationClick7d})`}
           tone="amber"
+        />
+        <Kpi
+          icon={ShieldAlert}
+          label="보호자 실시간 알림 발송"
+          value={`${summary.guardianAlerts24h} / ${summary.guardianAlerts7d}`}
+          sub="24h / 7d 웹훅 발송 건수"
+          tone="rose"
         />
       </div>
 
