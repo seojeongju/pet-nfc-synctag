@@ -8,6 +8,7 @@ import { parseSubjectKind, SUBJECT_KINDS, type SubjectKind } from "@/lib/subject
 import { normalizeBleMac } from "@/lib/device-mode";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
 import { isValidTagUidFormat, normalizeTagUid } from "@/lib/tag-uid-format";
+import { mintNativeHandoffToken } from "@/lib/nfc-native-security";
 
 function chunkArray<T>(arr: T[], size: number): T[][] {
     const chunks: T[][] = [];
@@ -204,6 +205,28 @@ export async function getTagOpsStats() {
         .prepare("SELECT COALESCE(SUM(CAST(json_extract(payload, '$.failedCount') AS INTEGER)), 0) AS value FROM admin_action_logs WHERE action='bulk_register' AND created_at >= datetime('now', '-7 days')")
         .first<{ value: number }>()
         .catch(() => ({ value: 0 }));
+    const webWriteFailures7d = await db
+        .prepare("SELECT COUNT(*) AS value FROM admin_action_logs WHERE action='nfc_web_write' AND success = 0 AND created_at >= datetime('now', '-7 days')")
+        .first<{ value: number }>()
+        .catch(() => ({ value: 0 }));
+    const nativeWriteSuccessFromWebFail7d = await db
+        .prepare(`
+            SELECT COUNT(*) AS value
+            FROM admin_action_logs n
+            WHERE n.action='nfc_native_write'
+              AND n.success=1
+              AND n.created_at >= datetime('now', '-7 days')
+              AND EXISTS (
+                SELECT 1
+                FROM admin_action_logs w
+                WHERE w.action='nfc_web_write'
+                  AND w.success=0
+                  AND w.created_at >= datetime('now', '-7 days')
+                  AND json_extract(w.payload, '$.tagId') = json_extract(n.payload, '$.tagId')
+              )
+        `)
+        .first<{ value: number }>()
+        .catch(() => ({ value: 0 }));
 
     const batchRows = await db.prepare(`
         SELECT 
@@ -229,6 +252,10 @@ export async function getTagOpsStats() {
     const activeCount = active?.value ?? 0;
     const unsoldCount = unsold?.value ?? 0;
     const activationRate = totalCount > 0 ? Number(((activeCount / totalCount) * 100).toFixed(1)) : 0;
+    const webFailCount = webWriteFailures7d?.value ?? 0;
+    const nativeRecoveredCount = nativeWriteSuccessFromWebFail7d?.value ?? 0;
+    const nativeRecoveryRate7d =
+        webFailCount > 0 ? Number(((nativeRecoveredCount / webFailCount) * 100).toFixed(1)) : 0;
 
     return {
         totalCount,
@@ -237,6 +264,9 @@ export async function getTagOpsStats() {
         activationRate,
         recentLinks: recentLinks?.value ?? 0,
         failedRegistrations7d: failedRegistrations7d?.value ?? 0,
+        webWriteFailures7d: webFailCount,
+        nativeWriteSuccessFromWebFail7d: nativeRecoveredCount,
+        nativeRecoveryRate7d,
         batches: batchRows.results,
     };
 }
@@ -553,6 +583,8 @@ export type PrepareNfcNativeHandoffResult =
         tagId: string;
         url: string;
         appLink: string;
+        handoffToken: string;
+        expiresAt: number;
     }
     | { ok: false; error: string };
 
@@ -563,16 +595,29 @@ export type PrepareNfcNativeHandoffResult =
 export async function prepareNfcNativeHandoff(tagIdRaw: string): Promise<PrepareNfcNativeHandoffResult> {
     const prep = await prepareNfcTagWrite(tagIdRaw);
     if (!prep.ok) return prep;
+    const handoffSecret = process.env.NFC_NATIVE_HANDOFF_SECRET?.trim();
+    if (!handoffSecret) {
+        return { ok: false, error: "NFC_NATIVE_HANDOFF_SECRET이 설정되지 않았습니다." };
+    }
+    const { token, expiresAt } = await mintNativeHandoffToken({
+        uid: prep.tagId,
+        url: prep.url,
+        expiresInSec: 10 * 60,
+        secret: handoffSecret,
+    });
 
     const params = new URLSearchParams({
         uid: prep.tagId,
         url: prep.url,
+        handoffToken: token,
+        exp: String(expiresAt),
     });
     const appLink = `petidconnect://nfc/write?${params.toString()}`;
     const payload = JSON.stringify({
         tagId: prep.tagId,
         url: prep.url,
         appLink,
+        expiresAt,
         source: "admin_write_card",
     });
 
@@ -603,5 +648,7 @@ export async function prepareNfcNativeHandoff(tagIdRaw: string): Promise<Prepare
         tagId: prep.tagId,
         url: prep.url,
         appLink,
+        handoffToken: token,
+        expiresAt,
     };
 }

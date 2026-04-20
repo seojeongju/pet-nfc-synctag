@@ -73,6 +73,9 @@ interface AdminDashboardClientProps {
     activationRate: number;
     recentLinks: number;
     failedRegistrations7d: number;
+    webWriteFailures7d: number;
+    nativeWriteSuccessFromWebFail7d: number;
+    nativeRecoveryRate7d: number;
   };
   failureTop: Array<{
     action: string;
@@ -145,6 +148,9 @@ export default function AdminDashboardClient({
         ops.failedRegistrations7d >= failedThreshold
           ? `최근 7일 등록 실패 ${ops.failedRegistrations7d}건 발생`
           : null,
+        ops.webWriteFailures7d > 0 && ops.nativeRecoveryRate7d < 50
+          ? `웹 기록 실패 대비 네이티브 복구율 ${ops.nativeRecoveryRate7d}% (개선 필요)`
+          : null,
         stats.unsoldTags >= unsoldThreshold
           ? `미판매 재고 ${stats.unsoldTags}개로 재고 과다 상태`
           : null,
@@ -152,7 +158,16 @@ export default function AdminDashboardClient({
           ? `활성화율 ${ops.activationRate}%로 전환율 점검 필요`
           : null,
       ].filter(Boolean) as string[],
-    [failedThreshold, stats.unsoldTags, unsoldThreshold, ops.activationRate, activationThreshold, ops.failedRegistrations7d]
+    [
+      failedThreshold,
+      stats.unsoldTags,
+      unsoldThreshold,
+      ops.activationRate,
+      activationThreshold,
+      ops.failedRegistrations7d,
+      ops.webWriteFailures7d,
+      ops.nativeRecoveryRate7d,
+    ]
   );
 
   return (
@@ -329,7 +344,7 @@ export default function AdminDashboardClient({
           </AdminCard>
         </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
           <AdminCard variant="subtle">
             <CardContent className="p-5">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">활성화율</p>
@@ -346,6 +361,15 @@ export default function AdminDashboardClient({
             <CardContent className="p-5">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">최근 7일 실패 등록</p>
               <p className="text-2xl font-black text-rose-500 mt-2">{ops.failedRegistrations7d}</p>
+            </CardContent>
+          </AdminCard>
+          <AdminCard variant="subtle">
+            <CardContent className="p-5">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">웹실패→네이티브 복구율(7일)</p>
+              <p className="text-2xl font-black text-violet-500 mt-2">{ops.nativeRecoveryRate7d}%</p>
+              <p className="text-[10px] font-bold text-slate-500 mt-2">
+                {ops.nativeWriteSuccessFromWebFail7d}/{ops.webWriteFailures7d}
+              </p>
             </CardContent>
           </AdminCard>
         </div>

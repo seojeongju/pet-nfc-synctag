@@ -1,6 +1,7 @@
 ﻿import { NextResponse } from "next/server";
 import { getDB } from "@/lib/db";
 import { isValidTagUidFormat, normalizeTagUid } from "@/lib/tag-uid-format";
+import { verifyNativeHandoffToken, verifyWithSecret } from "@/lib/nfc-native-security";
 
 export const runtime = "edge";
 
@@ -11,6 +12,7 @@ type NativeWriteBody = {
   success?: unknown;
   clientError?: unknown;
   writtenAt?: unknown;
+  handoffToken?: unknown;
 };
 
 function getBearerToken(request: Request): string | null {
@@ -25,20 +27,42 @@ function getStringOrNull(v: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+async function verifyNativeSignature(request: Request, rawBody: string): Promise<boolean> {
+  const hmacSecret = process.env.NFC_NATIVE_APP_HMAC_SECRET?.trim();
+  // Rolling migration: if no HMAC secret, keep bearer-only mode.
+  if (!hmacSecret) return true;
+
+  const ts = request.headers.get("x-native-timestamp")?.trim() || "";
+  const signature = request.headers.get("x-native-signature")?.trim() || "";
+  if (!ts || !signature) return false;
+
+  const timestampMs = Number(ts);
+  if (!Number.isFinite(timestampMs)) return false;
+  const maxSkewMs = 5 * 60 * 1000;
+  if (Math.abs(Date.now() - timestampMs) > maxSkewMs) return false;
+
+  return verifyWithSecret(hmacSecret, `${ts}.${rawBody}`, signature);
+}
+
 export async function POST(request: Request) {
   const expectedToken = process.env.NFC_NATIVE_APP_API_KEY?.trim();
   if (!expectedToken) {
     return NextResponse.json({ error: "NFC_NATIVE_APP_API_KEY not configured" }, { status: 503 });
   }
-
   const token = getBearerToken(request);
   if (!token || token !== expectedToken) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const rawBody = await request.text();
+  const signatureOk = await verifyNativeSignature(request, rawBody);
+  if (!signatureOk) {
+    return NextResponse.json({ error: "Invalid native signature" }, { status: 401 });
+  }
+
   let body: NativeWriteBody;
   try {
-    body = (await request.json()) as NativeWriteBody;
+    body = JSON.parse(rawBody) as NativeWriteBody;
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -49,14 +73,29 @@ export async function POST(request: Request) {
   const success = typeof body.success === "boolean" ? body.success : null;
   const clientError = getStringOrNull(body.clientError);
   const writtenAt = getStringOrNull(body.writtenAt);
+  const handoffToken = getStringOrNull(body.handoffToken);
 
-  if (!tagIdRaw || !url || success === null) {
-    return NextResponse.json({ error: "tagId, url, success are required" }, { status: 400 });
+  if (!tagIdRaw || !url || success === null || !handoffToken) {
+    return NextResponse.json({ error: "tagId, url, success, handoffToken are required" }, { status: 400 });
   }
 
   const tagId = normalizeTagUid(tagIdRaw);
   if (!isValidTagUidFormat(tagId)) {
     return NextResponse.json({ error: "Invalid tagId format" }, { status: 400 });
+  }
+
+  const handoffSecret = process.env.NFC_NATIVE_HANDOFF_SECRET?.trim();
+  if (!handoffSecret) {
+    return NextResponse.json({ error: "NFC_NATIVE_HANDOFF_SECRET not configured" }, { status: 503 });
+  }
+  const handoffVerified = await verifyNativeHandoffToken({
+    token: handoffToken,
+    uid: tagId,
+    url,
+    secret: handoffSecret,
+  });
+  if (!handoffVerified.ok) {
+    return NextResponse.json({ error: `Invalid handoff token: ${handoffVerified.error}` }, { status: 401 });
   }
 
   const db = getDB();
@@ -70,6 +109,7 @@ export async function POST(request: Request) {
     url,
     deviceId,
     source: "native_app",
+    handoffExp: handoffVerified.payload.exp,
     ...(clientError ? { clientError } : {}),
     ...(writtenAt ? { writtenAt } : {}),
   });

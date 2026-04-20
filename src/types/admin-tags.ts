@@ -18,6 +18,9 @@ export type TagOpsStats = {
   activationRate: number;
   recentLinks: number;
   failedRegistrations7d: number;
+  webWriteFailures7d: number;
+  nativeWriteSuccessFromWebFail7d: number;
+  nativeRecoveryRate7d: number;
   batches: Array<{
     batch_id: string;
     total_count: number;
