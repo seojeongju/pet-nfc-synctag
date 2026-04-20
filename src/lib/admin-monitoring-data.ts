@@ -14,6 +14,9 @@ export async function getMonitoringSummary() {
     ble7d,
     bleLost7d,
     batteryLow30d,
+    nativeWriteFail24h,
+    nativeWriteFail7d,
+    nativeHandoff7d,
   ] = await Promise.all([
     db
       .prepare(
@@ -67,6 +70,27 @@ export async function getMonitoringSummary() {
           "AND (event_type = 'battery_low' OR event_type LIKE '%battery%low%')"
       )
       .first<{ c: number }>(),
+    db
+      .prepare(
+        "SELECT COUNT(*) AS c FROM admin_action_logs " +
+          "WHERE action = 'nfc_native_write' AND success = 0 AND created_at >= datetime('now', '-1 day')"
+      )
+      .first<{ c: number }>()
+      .catch(() => ({ c: 0 })),
+    db
+      .prepare(
+        "SELECT COUNT(*) AS c FROM admin_action_logs " +
+          "WHERE action = 'nfc_native_write' AND success = 0 AND created_at >= datetime('now', '-7 days')"
+      )
+      .first<{ c: number }>()
+      .catch(() => ({ c: 0 })),
+    db
+      .prepare(
+        "SELECT COUNT(*) AS c FROM admin_action_logs " +
+          "WHERE action = 'nfc_native_handoff' AND created_at >= datetime('now', '-7 days')"
+      )
+      .first<{ c: number }>()
+      .catch(() => ({ c: 0 })),
   ]);
 
   const ops = await db
@@ -88,6 +112,9 @@ export async function getMonitoringSummary() {
     bleEvents7d: ble7d?.c ?? 0,
     bleLostEvents7d: bleLost7d?.c ?? 0,
     distinctPetsBatteryLow30d: batteryLow30d?.c ?? 0,
+    nativeWriteFail24h: nativeWriteFail24h?.c ?? 0,
+    nativeWriteFail7d: nativeWriteFail7d?.c ?? 0,
+    nativeHandoff7d: nativeHandoff7d?.c ?? 0,
     tagsTotal: ops?.total ?? 0,
     tagsActive: ops?.active ?? 0,
     tagsUnsold: ops?.unsold ?? 0,

@@ -54,6 +54,9 @@ type Summary = {
   bleEvents7d: number;
   bleLostEvents7d: number;
   distinctPetsBatteryLow30d: number;
+  nativeWriteFail24h: number;
+  nativeWriteFail7d: number;
+  nativeHandoff7d: number;
   tagsTotal: number;
   tagsActive: number;
   tagsUnsold: number;
@@ -238,6 +241,13 @@ export default function AdminMonitoringClient({
           value={String(summary.landingAutoRoutes7d)}
           sub="UID/BLE 기반 모드 자동 라우팅"
           tone="teal"
+        />
+        <Kpi
+          icon={ShieldAlert}
+          label="네이티브 기록 실패 (24h / 7d)"
+          value={`${summary.nativeWriteFail24h} / ${summary.nativeWriteFail7d}`}
+          sub={`핸드오프 ${summary.nativeHandoff7d}건 (7d)`}
+          tone="rose"
         />
       </div>
 
