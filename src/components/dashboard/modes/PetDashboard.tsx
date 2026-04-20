@@ -7,7 +7,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Plus, MapPin, PawPrint, Search, Bell,
   ShieldCheck, Activity, Smartphone, CheckCircle, AlertCircle,
-  AlertTriangle,
+  AlertTriangle, Link2, ScanLine, Siren,
 } from "lucide-react";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
@@ -65,6 +65,7 @@ export default function PetDashboard({
   const [tagMessage, setTagMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [subjectsWithLocation, setSubjectsWithLocation] = useState<SubjectWithLocation[]>([]);
   const [isMapRefreshing, setIsMapRefreshing] = useState(false);
+  const [tagLinkedInSession, setTagLinkedInSession] = useState(false);
   const router = useRouter();
   
   const subjectKind = "pet";
@@ -105,6 +106,7 @@ export default function PetDashboard({
       try {
         await linkTag(selectedPetId, tagId.trim());
         setTagMessage({ type: "success", text: "NFC 태그가 반려동물에 연결되었습니다." });
+        setTagLinkedInSession(true);
         setTagId("");
         router.refresh();
       } catch (e: unknown) {
@@ -123,6 +125,31 @@ export default function PetDashboard({
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] as const } }
   };
+  const lostCount = pets.filter((p) => p.is_lost).length;
+  const onboardingSteps = [
+    {
+      id: "pet",
+      title: "반려동물 등록",
+      done: pets.length > 0,
+      href: `/dashboard/${subjectKind}/pets/new${kindQs}`,
+      cta: "등록하기",
+    },
+    {
+      id: "tag",
+      title: "NFC 태그 연결",
+      done: tagLinkedInSession,
+      href: "#quick-nfc-register",
+      cta: "바로 연결",
+    },
+    {
+      id: "scan",
+      title: "테스트 스캔 확인",
+      done: false,
+      href: `/dashboard/${subjectKind}/scans${kindQs}`,
+      cta: "스캔 보기",
+    },
+  ] as const;
+  const onboardingDoneCount = onboardingSteps.filter((step) => step.done).length;
 
   return (
     <div className="relative min-h-0 w-full min-w-0 overflow-x-hidden bg-[#F8FAFC] pb-6 font-outfit">
@@ -255,6 +282,75 @@ export default function PetDashboard({
 
         <motion.section variants={itemVariants}>
           <Card className="rounded-[32px] border-none shadow-app bg-white">
+            <CardContent className="p-6 space-y-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-black text-slate-900">원탭 시작 가이드</h3>
+                  <p className="text-[11px] text-slate-500 font-bold">
+                    등록 → 태그 연결 → 스캔 확인까지 3단계로 빠르게 시작하세요.
+                  </p>
+                </div>
+                <span className="inline-flex rounded-full bg-teal-50 px-3 py-1 text-[10px] font-black text-teal-700">
+                  {onboardingDoneCount}/3 완료
+                </span>
+              </div>
+              <div className="space-y-2">
+                {onboardingSteps.map((step) => (
+                  <div
+                    key={step.id}
+                    className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3"
+                  >
+                    <div className="flex items-center gap-2">
+                      {step.done ? (
+                        <CheckCircle className="h-4 w-4 text-teal-600" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4 text-slate-400" />
+                      )}
+                      <span className={`text-xs font-black ${step.done ? "text-teal-700" : "text-slate-700"}`}>
+                        {step.title}
+                      </span>
+                    </div>
+                    <a
+                      href={step.href}
+                      className="text-[11px] font-black text-teal-600 underline underline-offset-2"
+                    >
+                      {step.cta}
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.section>
+
+        <motion.section variants={itemVariants}>
+          <div className="grid grid-cols-3 gap-2">
+            <a
+              href="#quick-nfc-register"
+              className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-center shadow-sm"
+            >
+              <Link2 className="mx-auto h-4 w-4 text-teal-600" />
+              <p className="mt-1 text-[10px] font-black text-slate-700">태그 연결</p>
+            </a>
+            <a
+              href={`/dashboard/${subjectKind}/scans${kindQs}`}
+              className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-center shadow-sm"
+            >
+              <ScanLine className="mx-auto h-4 w-4 text-indigo-600" />
+              <p className="mt-1 text-[10px] font-black text-slate-700">스캔 히스토리</p>
+            </a>
+            <a
+              href={`/dashboard/${subjectKind}/pets${kindQs}`}
+              className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-center shadow-sm"
+            >
+              <Siren className="mx-auto h-4 w-4 text-rose-600" />
+              <p className="mt-1 text-[10px] font-black text-slate-700">분실모드 관리</p>
+            </a>
+          </div>
+        </motion.section>
+
+        <motion.section variants={itemVariants}>
+          <Card id="quick-nfc-register" className="rounded-[32px] border-none shadow-app bg-white">
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 rounded-2xl bg-teal-50 text-teal-500 flex items-center justify-center">
@@ -407,15 +503,37 @@ export default function PetDashboard({
               <Activity className="w-5 h-5 text-slate-300" />
            </div>
 
-           <Card className="rounded-[32px] border-none shadow-app p-6 bg-white relative overflow-hidden group hover:bg-slate-50 transition-colors">
+          <Card className="rounded-[32px] border-none shadow-app p-6 bg-white relative overflow-hidden group hover:bg-slate-50 transition-colors">
               <div className="flex items-center gap-4 relative z-10">
-                 <div className="w-14 h-14 rounded-[20px] bg-rose-50 flex items-center justify-center text-rose-500 shadow-sm shadow-rose-100">
-                    <Bell className="w-6 h-6 animate-pulse" />
+                 <div className={`w-14 h-14 rounded-[20px] flex items-center justify-center shadow-sm ${
+                   lostCount > 0 ? "bg-rose-50 text-rose-500 shadow-rose-100" : "bg-teal-50 text-teal-600 shadow-teal-100"
+                 }`}>
+                    {lostCount > 0 ? <AlertTriangle className="w-6 h-6 animate-pulse" /> : <Bell className="w-6 h-6" />}
                  </div>
                  <div className="space-y-0.5">
-                    <h4 className="font-black text-slate-800 text-sm">최근 스캔 내역이 없습니다</h4>
-                    <p className="text-[10px] text-slate-400 font-bold leading-relaxed">우리 아이들의 인식표가 모두 안전한 상태입니다.</p>
+                    <h4 className="font-black text-slate-800 text-sm">
+                      {lostCount > 0 ? `주의가 필요한 아이 ${lostCount}명` : "최근 보호 활동 요약"}
+                    </h4>
+                    <p className="text-[10px] text-slate-500 font-bold leading-relaxed">
+                      {lostCount > 0
+                        ? "분실모드 상태와 공개 프로필 긴급 연락 정보를 다시 확인해 주세요."
+                        : "스캔 히스토리와 위치 이력을 주기적으로 확인하면 더 안심할 수 있어요."}
+                    </p>
                  </div>
+              </div>
+              <div className="relative z-10 mt-4 flex gap-2">
+                <a
+                  href={`/dashboard/${subjectKind}/scans${kindQs}`}
+                  className="rounded-xl bg-slate-900 px-3 py-2 text-[10px] font-black text-white hover:bg-teal-600"
+                >
+                  스캔 기록 보기
+                </a>
+                <a
+                  href={`/dashboard/${subjectKind}/pets${kindQs}`}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black text-slate-700 hover:bg-slate-50"
+                >
+                  분실모드/프로필 관리
+                </a>
               </div>
               <div className="absolute bottom-[-20%] right-[-10%] w-32 h-32 bg-slate-50 rounded-full group-hover:bg-teal-50 transition-colors" />
            </Card>
