@@ -52,7 +52,7 @@ export async function linkTag(petId: string, tagId: string) {
         throw new Error("등록되지 않은 정품 NFC 태그가 아닙니다. 관리자에게 문의하세요.");
     }
 
-    if (existingTag.status === "active" && existingTag.pet_id) {
+    if (existingTag.status === "active" && existingTag.pet_id && existingTag.pet_id !== petId) {
         throw new Error("이미 다른 반려동물에게 연결된 태그입니다.");
     }
 
@@ -74,6 +74,7 @@ export async function linkTag(petId: string, tagId: string) {
         throw new Error("해당 관리 대상에 연결할 권한이 없습니다.");
     }
 
+    // 같은 관리 대상에 이미 연결된 태그를 다시 스캔한 경우도 idempotent 하게 성공 처리합니다.
     await db.prepare(`
         UPDATE tags
         SET pet_id = ?, tenant_id = ?, status = 'active', is_active = 1, updated_at = CURRENT_TIMESTAMP
