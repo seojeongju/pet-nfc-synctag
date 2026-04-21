@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
-import { linkTag } from "@/app/actions/tag";
+import { linkTagSafe } from "@/app/actions/tag";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { subjectKindMeta } from "@/lib/subject-kind";
@@ -93,7 +93,11 @@ export default function PetDashboard({
     setTagMessage(null);
     startTransition(async () => {
       try {
-        await linkTag(selectedPetId, uid.trim());
+        const result = await linkTagSafe(selectedPetId, uid.trim());
+        if (!result.ok) {
+          setTagMessage({ type: "error", text: result.error });
+          return;
+        }
         setTagMessage({ type: "success", text: "NFC 태그가 반려동물에 연결되었습니다." });
         setTagLinkedInSession(true);
         setTagId("");

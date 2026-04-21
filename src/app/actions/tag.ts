@@ -11,6 +11,10 @@ import { assertMigration0008Applied } from "@/lib/db-migration-0008";
 import { assertTenantActive } from "@/lib/tenant-status";
 import { isValidTagUidFormat, normalizeTagUid } from "@/lib/tag-uid-format";
 
+export type TagActionResult =
+    | { ok: true }
+    | { ok: false; error: string };
+
 async function requireActor(): Promise<{ userId: string; email: string | null }> {
     const context = getCfRequestContext();
     const auth = getAuth(context.env);
@@ -122,6 +126,20 @@ export async function linkTag(petId: string, tagId: string) {
     revalidatePath(`/dashboard`);
     revalidatePath(`/admin/tags`);
     revalidatePath(`/admin/nfc-tags`);
+}
+
+export async function linkTagSafe(petId: string, tagId: string): Promise<TagActionResult> {
+    try {
+        await linkTag(petId, tagId);
+        return { ok: true };
+    } catch (error: unknown) {
+        const message =
+            error instanceof Error && error.message
+                ? error.message
+                : "NFC 태그 등록에 실패했습니다. 잠시 후 다시 시도해 주세요.";
+        console.error("[linkTagSafe] failed:", error);
+        return { ok: false, error: message };
+    }
 }
 
 export async function unlinkTag(tagId: string) {
