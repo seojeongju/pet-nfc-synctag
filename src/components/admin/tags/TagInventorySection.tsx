@@ -1,92 +1,182 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Database, BarChart3, ChevronLeft, ChevronRight } from "lucide-react";
 import { AdminCard } from "@/components/admin/ui/AdminCard";
 import { AdminTableHeadCell, AdminTableHeadRow } from "@/components/admin/ui/AdminTable";
-import { Database, BarChart3, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
-import type { AdminTag, TagOpsStats } from "@/types/admin-tags";
+import type { AdminTag, TagOpsStats, TagsInventoryStatusFilter } from "@/types/admin-tags";
 import { TagProductRow } from "./TagProductRow";
 
-export function TagInventorySection({ tags, opsStats }: { tags: AdminTag[]; opsStats: TagOpsStats }) {
-  const router = useRouter();
-  const [searchTerm, setSearchTerm] = useState("");
+function buildInventoryHref(vars: {
+  q: string;
+  status: TagsInventoryStatusFilter;
+  batch: string;
+  page: number;
+  pageSize: number;
+}) {
+  const p = new URLSearchParams();
+  if (vars.q.trim()) p.set("q", vars.q.trim());
+  if (vars.status !== "all") p.set("status", vars.status);
+  if (vars.batch.trim()) p.set("batch", vars.batch.trim());
+  if (vars.pageSize !== 20) p.set("pageSize", String(vars.pageSize));
+  if (vars.page > 1) p.set("page", String(vars.page));
+  const qs = p.toString();
+  return qs ? `/admin/nfc-tags/inventory?${qs}` : "/admin/nfc-tags/inventory";
+}
 
-  const filteredTags = useMemo(
-    () =>
-      tags.filter(
-        (tag) =>
-          tag.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (tag.pet_name && tag.pet_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-          (tag.product_name && tag.product_name.toLowerCase().includes(searchTerm.toLowerCase()))
-      ),
-    [tags, searchTerm]
-  );
+export function TagInventorySection({
+  tags,
+  total,
+  page,
+  pageSize,
+  initialQ,
+  initialStatus,
+  initialBatch,
+  batchOptions,
+  opsStats,
+}: {
+  tags: AdminTag[];
+  total: number;
+  page: number;
+  pageSize: number;
+  initialQ: string;
+  initialStatus: TagsInventoryStatusFilter;
+  initialBatch: string;
+  batchOptions: string[];
+  opsStats: TagOpsStats;
+}) {
+  const router = useRouter();
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const rangeEnd = Math.min(page * pageSize, total);
 
   return (
-    <AdminCard variant="section" className="space-y-8 h-full">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 px-2">
-        <div className="space-y-1">
-          <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
-            <Database className="w-5 h-5 text-teal-400" />
-            자산 목록 ({filteredTags.length})
-          </h3>
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">검색·편집</p>
+    <AdminCard variant="section" className="h-full space-y-6">
+      <form
+        method="get"
+        action="/admin/nfc-tags/inventory"
+        className="space-y-4 border-b border-slate-100 pb-6"
+      >
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end sm:gap-6">
+          <div className="space-y-1">
+            <h3 className="flex items-center gap-2 text-xl font-black text-slate-900">
+              <Database className="h-5 w-5 text-teal-400" />
+              자산 목록
+            </h3>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+              검색·필터·페이지 (총 {total.toLocaleString()}건 · {rangeStart}–{rangeEnd} 표시)
+            </p>
+          </div>
+          <div className="flex flex-wrap items-end gap-2 sm:justify-end">
+            <label className="flex min-w-[100px] flex-col gap-1">
+              <span className="text-[10px] font-black uppercase text-slate-400">페이지당</span>
+              <select
+                name="pageSize"
+                defaultValue={String(pageSize)}
+                className={cn(adminUi.input, "h-10 min-w-[88px] rounded-xl text-xs font-bold")}
+              >
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </label>
+            <Button type="submit" className={cn("h-10 rounded-xl px-4 text-xs font-black", adminUi.darkButton)}>
+              적용
+            </Button>
+          </div>
         </div>
-        <div className="relative group w-full sm:w-auto sm:min-w-[240px]">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-teal-400 transition-colors" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="UID · 제품명 · 펫 이름 검색..."
-            className={cn(
-              adminUi.searchInput,
-              "min-h-[48px] w-full text-base font-semibold sm:min-h-0 sm:text-xs sm:font-bold"
-            )}
-          />
-        </div>
-      </div>
 
-      <div className="md:hidden space-y-3">
-        {filteredTags.length > 0 ? (
-          filteredTags.map((tag) => (
-            <TagProductRow key={tag.id} tag={tag} onAfterSave={() => router.refresh()} mobile />
-          ))
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12 lg:gap-3">
+          <label className="space-y-1 lg:col-span-4">
+            <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">검색</span>
+            <input
+              type="search"
+              name="q"
+              defaultValue={initialQ}
+              placeholder="UID · 제품명 · 펫 · 소유자 이메일"
+              maxLength={120}
+              className={cn(
+                adminUi.searchInput,
+                "min-h-[44px] w-full rounded-xl text-sm font-semibold sm:min-h-10 sm:text-xs sm:font-bold"
+              )}
+            />
+          </label>
+          <label className="space-y-1 lg:col-span-3">
+            <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">상태</span>
+            <select
+              name="status"
+              defaultValue={initialStatus}
+              className={cn(adminUi.input, "min-h-[44px] w-full rounded-xl text-sm font-bold sm:min-h-10 sm:text-xs")}
+            >
+              <option value="all">전체</option>
+              <option value="unsold">미판매</option>
+              <option value="active">활성</option>
+              <option value="inactive">비활성</option>
+            </select>
+          </label>
+          <label className="space-y-1 lg:col-span-4">
+            <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">배치 ID</span>
+            <select
+              name="batch"
+              defaultValue={initialBatch}
+              className={cn(adminUi.input, "min-h-[44px] w-full rounded-xl text-sm font-bold sm:min-h-10 sm:text-xs")}
+            >
+              <option value="">전체 배치</option>
+              {initialBatch && !batchOptions.includes(initialBatch) ? (
+                <option value={initialBatch}>
+                  {initialBatch} (목록 외)
+                </option>
+              ) : null}
+              {batchOptions.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </form>
+
+      <div className="space-y-3 md:hidden">
+        {tags.length > 0 ? (
+          tags.map((tag) => <TagProductRow key={tag.id} tag={tag} onAfterSave={() => router.refresh()} mobile />)
         ) : (
-          <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-xs text-slate-500 font-bold">
-            등록된 인벤토리가 없습니다.
+          <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-xs font-bold text-slate-500">
+            조건에 맞는 태그가 없습니다. 필터를 바꿔 보세요.
           </div>
         )}
       </div>
 
-      <div className="hidden md:block overflow-x-auto custom-scrollbar">
+      <div className="custom-scrollbar hidden overflow-x-auto md:block">
         <table className="w-full text-left">
           <thead>
             <AdminTableHeadRow>
-              <AdminTableHeadCell className="py-5 px-4 min-w-[140px]">태그 UID</AdminTableHeadCell>
-              <AdminTableHeadCell className="py-5 px-4 min-w-[100px]">제품명</AdminTableHeadCell>
-              <AdminTableHeadCell className="py-5 px-4 min-w-[120px]">할당 모드</AdminTableHeadCell>
-              <AdminTableHeadCell className="py-5 px-4 min-w-[120px]">BLE MAC</AdminTableHeadCell>
-              <AdminTableHeadCell className="py-5 px-4">상태</AdminTableHeadCell>
-              <AdminTableHeadCell className="py-5 px-4">연결</AdminTableHeadCell>
-              <AdminTableHeadCell className="py-5 px-4">등록일</AdminTableHeadCell>
-              <AdminTableHeadCell className="py-5 px-4 w-[72px]">저장</AdminTableHeadCell>
+              <AdminTableHeadCell className="min-w-[140px] px-4 py-5">태그 UID</AdminTableHeadCell>
+              <AdminTableHeadCell className="min-w-[100px] px-4 py-5">제품명</AdminTableHeadCell>
+              <AdminTableHeadCell className="min-w-[120px] px-4 py-5">할당 모드</AdminTableHeadCell>
+              <AdminTableHeadCell className="min-w-[120px] px-4 py-5">BLE MAC</AdminTableHeadCell>
+              <AdminTableHeadCell className="px-4 py-5">상태</AdminTableHeadCell>
+              <AdminTableHeadCell className="px-4 py-5">연결</AdminTableHeadCell>
+              <AdminTableHeadCell className="px-4 py-5">등록일</AdminTableHeadCell>
+              <AdminTableHeadCell className="w-[72px] px-4 py-5">저장</AdminTableHeadCell>
             </AdminTableHeadRow>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filteredTags.length > 0 ? (
-              filteredTags.map((tag) => (
-                <TagProductRow key={tag.id} tag={tag} onAfterSave={() => router.refresh()} />
-              ))
+            {tags.length > 0 ? (
+              tags.map((tag) => <TagProductRow key={tag.id} tag={tag} onAfterSave={() => router.refresh()} />)
             ) : (
               <tr>
                 <td colSpan={8} className="py-24 text-center">
                   <div className="flex flex-col items-center gap-3 opacity-20">
-                    <Database className="w-12 h-12 text-slate-400" />
-                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">등록된 인벤토리가 없습니다</p>
+                    <Database className="h-12 w-12 text-slate-400" />
+                    <p className="text-xs font-black uppercase tracking-widest text-slate-400">
+                      조건에 맞는 태그가 없습니다
+                    </p>
                   </div>
                 </td>
               </tr>
@@ -95,9 +185,51 @@ export function TagInventorySection({ tags, opsStats }: { tags: AdminTag[]; opsS
         </table>
       </div>
 
-      <div className="space-y-4 pt-4 border-t border-slate-100">
+      {totalPages > 1 && (
+        <div className="flex flex-col items-center justify-between gap-3 border-t border-slate-100 pt-4 sm:flex-row">
+          <Link
+            href={buildInventoryHref({
+              q: initialQ,
+              status: initialStatus,
+              batch: initialBatch,
+              page: Math.max(1, page - 1),
+              pageSize,
+            })}
+            className={cn(
+              "inline-flex min-h-11 items-center gap-1 rounded-2xl border border-slate-200 bg-white px-4 text-xs font-black touch-manipulation hover:bg-slate-50",
+              page <= 1 && "pointer-events-none opacity-40"
+            )}
+            aria-disabled={page <= 1}
+          >
+            <ChevronLeft className="h-4 w-4" aria-hidden />
+            이전
+          </Link>
+          <span className="text-xs font-black tabular-nums text-slate-600">
+            {page} / {totalPages}
+          </span>
+          <Link
+            href={buildInventoryHref({
+              q: initialQ,
+              status: initialStatus,
+              batch: initialBatch,
+              page: Math.min(totalPages, page + 1),
+              pageSize,
+            })}
+            className={cn(
+              "inline-flex min-h-11 items-center gap-1 rounded-2xl border border-slate-200 bg-white px-4 text-xs font-black touch-manipulation hover:bg-slate-50",
+              page >= totalPages && "pointer-events-none opacity-40"
+            )}
+            aria-disabled={page >= totalPages}
+          >
+            다음
+            <ChevronRight className="h-4 w-4" aria-hidden />
+          </Link>
+        </div>
+      )}
+
+      <div className="space-y-4 border-t border-slate-100 pt-4">
         <div className="flex items-center gap-2 text-slate-700">
-          <BarChart3 className="w-4 h-4 text-teal-400" />
+          <BarChart3 className="h-4 w-4 text-teal-400" />
           <h4 className="text-sm font-black">최근 배치 등록 통계</h4>
         </div>
         <div className="space-y-2">
@@ -105,21 +237,35 @@ export function TagInventorySection({ tags, opsStats }: { tags: AdminTag[]; opsS
             (opsStats?.batches ?? []).map((batch) => (
               <div
                 key={batch.batch_id}
-                className="rounded-2xl border border-slate-100 bg-slate-50 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4"
+                className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 sm:flex-row sm:items-center sm:gap-4"
               >
                 <div>
                   <p className="text-xs font-black text-slate-900">{batch.batch_id}</p>
-                  <p className="text-[10px] text-slate-500 font-bold">{new Date(batch.latest_created_at).toLocaleString()}</p>
+                  <p className="text-[10px] font-bold text-slate-500">
+                    {new Date(batch.latest_created_at).toLocaleString()}
+                  </p>
                 </div>
-                <div className="flex items-center gap-3 sm:gap-4 text-[10px] font-black uppercase flex-wrap">
+                <div className="flex flex-wrap items-center gap-3 text-[10px] font-black uppercase sm:gap-4">
                   <span className="text-slate-300">총 {batch.total_count}</span>
                   <span className="text-teal-400">활성 {batch.active_count}</span>
                   <span className="text-amber-400">미판매 {batch.unsold_count}</span>
+                  <Link
+                    href={buildInventoryHref({
+                      q: initialQ,
+                      status: initialStatus,
+                      batch: batch.batch_id,
+                      page: 1,
+                      pageSize,
+                    })}
+                    className="rounded-lg border border-teal-200 bg-white px-2 py-1 text-teal-700 hover:bg-teal-50"
+                  >
+                    이 배치만 보기
+                  </Link>
                 </div>
               </div>
             ))
           ) : (
-            <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-xs text-slate-500 font-bold">
+            <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-xs font-bold text-slate-500">
               표시할 배치 통계가 없습니다.
             </div>
           )}

@@ -2,12 +2,13 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { updateTagProductProfile } from "@/app/actions/admin";
-import { SUBJECT_KINDS, subjectKindMeta } from "@/lib/subject-kind";
+import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
 import { Button } from "@/components/ui/button";
 import { AdminTableRow } from "@/components/admin/ui/AdminTable";
 import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
 import type { AdminTag } from "@/types/admin-tags";
+import { ChevronDown } from "lucide-react";
 
 function getStatusLabel(status: string) {
   if (status === "active") return "활성";
@@ -29,11 +30,13 @@ export function TagProductRow({
   const [mode, setMode] = useState(tag.assigned_subject_kind ?? "");
   const [ble, setBle] = useState(tag.ble_mac ?? "");
   const [pending, startTransition] = useTransition();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     setProductName(tag.product_name ?? "");
     setMode(tag.assigned_subject_kind ?? "");
     setBle(tag.ble_mac ?? "");
+    setMobileOpen(false);
   }, [tag.product_name, tag.assigned_subject_kind, tag.ble_mac, tag.id]);
 
   const save = () => {
@@ -52,64 +55,104 @@ export function TagProductRow({
   };
 
   if (mobile) {
+    const modeLabel =
+      mode && (SUBJECT_KINDS as readonly string[]).includes(mode)
+        ? subjectKindMeta[mode as SubjectKind].label
+        : "모드 미지정";
     return (
-      <div className={cn(adminUi.subtleCard, "rounded-2xl p-4 space-y-3 border border-slate-100")}>
-        <div className="space-y-1">
-          <p className="font-mono text-[11px] font-bold text-slate-700 break-all">{tag.id}</p>
-          {tag.batch_id && <p className="text-[10px] text-slate-500 font-black">배치: {tag.batch_id}</p>}
-        </div>
-
-        <div className="grid grid-cols-1 gap-2">
-          <input
-            value={productName}
-            onChange={(e) => setProductName(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium"
-            placeholder="제품명"
-          />
-          <select
-            value={mode}
-            onChange={(e) => setMode(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold bg-white"
-          >
-            <option value="">미지정 (허브 선택)</option>
-            {SUBJECT_KINDS.map((k) => (
-              <option key={k} value={k}>
-                {subjectKindMeta[k].label}
-              </option>
-            ))}
-          </select>
-          <input
-            value={ble}
-            onChange={(e) => setBle(e.target.value)}
-            className="w-full font-mono rounded-lg border border-slate-200 px-3 py-2 text-[11px]"
-            placeholder="AA:BB:…"
-          />
-        </div>
-
-        <div className="flex items-center justify-between gap-3">
-          <span
-            className={cn(
-              "inline-flex px-2.5 py-1 rounded-lg text-[10px] font-black tracking-wide border",
-              tag.status === "active"
-                ? adminUi.successBadge
-                : tag.status === "unsold"
-                  ? adminUi.warningBadge
-                  : adminUi.neutralBadge
+      <div className={cn(adminUi.subtleCard, "overflow-hidden rounded-2xl border border-slate-100")}>
+        <button
+          type="button"
+          onClick={() => setMobileOpen((o) => !o)}
+          className="flex w-full items-start gap-2 p-3 text-left touch-manipulation hover:bg-slate-50/80"
+        >
+          <div className="min-w-0 flex-1 space-y-1">
+            <p className="break-all font-mono text-[10px] font-bold leading-snug text-slate-800">{tag.id}</p>
+            {tag.batch_id && (
+              <p className="text-[9px] font-black uppercase tracking-tight text-slate-500">배치: {tag.batch_id}</p>
             )}
-          >
-            {getStatusLabel(tag.status)}
-          </span>
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            className="h-9 text-[11px] font-black px-3"
-            disabled={pending}
-            onClick={save}
-          >
-            저장
-          </Button>
-        </div>
+            {!mobileOpen && (
+              <p className="line-clamp-2 text-[10px] font-semibold text-slate-600">
+                {productName.trim() ? productName : "제품명 없음"} · {modeLabel} ·{" "}
+                <span
+                  className={cn(
+                    tag.status === "active"
+                      ? "text-teal-700"
+                      : tag.status === "unsold"
+                        ? "text-amber-800"
+                        : "text-slate-600"
+                  )}
+                >
+                  {getStatusLabel(tag.status)}
+                </span>
+                {tag.pet_name ? ` · ${tag.pet_name}` : ""}
+              </p>
+            )}
+            {!mobileOpen && (
+              <p className="text-[9px] font-bold text-teal-700">탭하여 편집 폼 펼치기</p>
+            )}
+          </div>
+          <ChevronDown
+            className={cn("mt-0.5 h-4 w-4 shrink-0 text-slate-500 transition-transform", mobileOpen && "rotate-180")}
+            aria-hidden
+          />
+        </button>
+
+        {mobileOpen && (
+          <div className="space-y-3 border-t border-slate-100 p-3">
+            <div className="grid grid-cols-1 gap-2">
+              <input
+                value={productName}
+                onChange={(e) => setProductName(e.target.value)}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium"
+                placeholder="제품명"
+              />
+              <select
+                value={mode}
+                onChange={(e) => setMode(e.target.value)}
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold"
+              >
+                <option value="">미지정 (허브 선택)</option>
+                {SUBJECT_KINDS.map((k) => (
+                  <option key={k} value={k}>
+                    {subjectKindMeta[k].label}
+                  </option>
+                ))}
+              </select>
+              <input
+                value={ble}
+                onChange={(e) => setBle(e.target.value)}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 font-mono text-[11px]"
+                placeholder="AA:BB:…"
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-3">
+              <span
+                className={cn(
+                  "inline-flex rounded-lg border px-2.5 py-1 text-[10px] font-black tracking-wide",
+                  tag.status === "active"
+                    ? adminUi.successBadge
+                    : tag.status === "unsold"
+                      ? adminUi.warningBadge
+                      : adminUi.neutralBadge
+                )}
+              >
+                {getStatusLabel(tag.status)}
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                className="h-9 px-3 text-[11px] font-black"
+                disabled={pending}
+                onClick={save}
+              >
+                저장
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

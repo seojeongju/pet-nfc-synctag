@@ -83,7 +83,14 @@ function helpContentForPath(p: string): { title: string; body: ReactNode } {
       body: (
         <>
           <p>마스터 데이터에서 UID·제품·할당 모드·BLE MAC 등을 관리합니다.</p>
-          <p>재고·활성·연결 상태를 점검하고, 필요하면 URL 기록 단계로 돌아가 태그를 재기록할 수 있습니다.</p>
+          <p>
+            <strong>검색·필터:</strong> 주소창 쿼리로 동작합니다. 검색(UID·제품명·펫·이메일), 상태(미판매 등), 배치 ID를
+            조합한 뒤 <strong>적용</strong>을 누르세요. 목록은 서버에서 페이지 단위로 불러옵니다.
+          </p>
+          <p>
+            <strong>모바일:</strong> 카드 한 줄을 탭하면 편집 폼이 펼쳐집니다. 배치 통계의「이 배치만 보기」로 같은
+            필터를 바로 걸 수 있습니다.
+          </p>
         </>
       ),
     };

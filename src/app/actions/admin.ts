@@ -9,6 +9,12 @@ import { normalizeBleMac } from "@/lib/device-mode";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
 import { isValidTagUidFormat, normalizeTagUid } from "@/lib/tag-uid-format";
 import { mintNativeHandoffToken } from "@/lib/nfc-native-security";
+import type {
+    AdminTag,
+    TagsInventoryPageParams,
+    TagsInventoryPageResult,
+    TagsInventoryStatusFilter,
+} from "@/types/admin-tags";
 
 function chunkArray<T>(arr: T[], size: number): T[][] {
     const chunks: T[][] = [];
@@ -149,6 +155,7 @@ export async function registerBulkTags(uids: string[], options?: RegisterBulkTag
         
         revalidatePath("/admin/tags");
         revalidatePath("/admin/nfc-tags");
+        revalidatePath("/admin/nfc-tags/inventory");
         return result;
     } catch (error) {
         await db.prepare(`
@@ -168,20 +175,104 @@ export async function registerBulkTags(uids: string[], options?: RegisterBulkTag
     }
 }
 
+const INVENTORY_PAGE_DEFAULT = 20;
+const INVENTORY_PAGE_MAX = 100;
+
+function parseInventoryStatus(raw: string | undefined): TagsInventoryStatusFilter {
+    if (raw === "active" || raw === "unsold" || raw === "inactive") return raw;
+    return "all";
+}
+
 /**
- * 시스템의 모든 태그 현황을 조회합니다
+ * 태그 인벤토리 목록(페이지네이션·검색·상태·배치 필터). 관리자 전용.
  */
-export async function getAllTags() {
+export async function getTagsInventoryPage(
+    params: TagsInventoryPageParams = {}
+): Promise<TagsInventoryPageResult> {
+    await assertAdminRole();
     const db = getDB();
-    const { results } = await db.prepare(`
-        SELECT t.*, p.name as pet_name, u.email as owner_email
+
+    const qRaw = (params.q ?? "").trim().slice(0, 120);
+    const status = parseInventoryStatus(params.status);
+    const batchTrim = (params.batch ?? "").trim().slice(0, 200);
+
+    let page = Number(params.page) || 1;
+    if (!Number.isFinite(page) || page < 1) page = 1;
+    let pageSize = Number(params.pageSize) || INVENTORY_PAGE_DEFAULT;
+    if (!Number.isFinite(pageSize) || pageSize < 1) pageSize = INVENTORY_PAGE_DEFAULT;
+    pageSize = Math.min(INVENTORY_PAGE_MAX, Math.max(10, Math.floor(pageSize)));
+
+    const conditions: string[] = [];
+    const binds: unknown[] = [];
+
+    if (qRaw.length > 0) {
+        const pat = `%${qRaw.toLowerCase()}%`;
+        conditions.push(
+            `(LOWER(t.id) LIKE ? OR LOWER(COALESCE(p.name,'')) LIKE ? OR LOWER(COALESCE(t.product_name,'')) LIKE ? OR LOWER(COALESCE(u.email,'')) LIKE ?)`
+        );
+        binds.push(pat, pat, pat, pat);
+    }
+    if (status !== "all") {
+        conditions.push(`t.status = ?`);
+        binds.push(status);
+    }
+    if (batchTrim.length > 0) {
+        conditions.push(`t.batch_id = ?`);
+        binds.push(batchTrim);
+    }
+
+    const whereSql = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+    const baseFrom = `
         FROM tags t
         LEFT JOIN pets p ON t.pet_id = p.id
         LEFT JOIN user u ON p.owner_id = u.id
-        ORDER BY t.created_at DESC
-    `).all();
-    
-    return results;
+        ${whereSql}
+    `;
+
+    const countRow = await db
+        .prepare(`SELECT COUNT(*) AS c ${baseFrom}`)
+        .bind(...binds)
+        .first<{ c: number }>();
+    const total = Number(countRow?.c ?? 0);
+
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    let safePage = page;
+    if (safePage > totalPages) safePage = totalPages;
+    const offset = (safePage - 1) * pageSize;
+    const listBinds = [...binds, pageSize, offset];
+    const { results } = await db
+        .prepare(
+            `SELECT t.*, p.name as pet_name, u.email as owner_email
+             ${baseFrom}
+             ORDER BY t.created_at DESC
+             LIMIT ? OFFSET ?`
+        )
+        .bind(...listBinds)
+        .all();
+
+    return {
+        rows: (results ?? []) as AdminTag[],
+        total,
+        page: safePage,
+        pageSize,
+    };
+}
+
+/**
+ * 인벤토리 배치 필터용 batch_id 목록(최근 순, 상한).
+ */
+export async function getTagInventoryBatchOptions(): Promise<string[]> {
+    await assertAdminRole();
+    const db = getDB();
+    const { results } = await db
+        .prepare(
+            `SELECT DISTINCT batch_id AS batch_id FROM tags
+             WHERE batch_id IS NOT NULL AND trim(batch_id) != ''
+             ORDER BY batch_id DESC
+             LIMIT 200`
+        )
+        .all<{ batch_id: string }>();
+    return (results ?? []).map((r) => r.batch_id).filter(Boolean);
 }
 
 /**
@@ -493,6 +584,7 @@ export async function updateTagProductProfile(
 
     revalidatePath("/admin/tags");
     revalidatePath("/admin/nfc-tags");
+    revalidatePath("/admin/nfc-tags/inventory");
     revalidatePath("/admin/monitoring");
 }
 
