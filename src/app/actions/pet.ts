@@ -43,6 +43,19 @@ function isSafeSqlIdent(input: string): boolean {
     return /^[A-Za-z_][A-Za-z0-9_]*$/.test(input);
 }
 
+type PetOwnerRef = { table: string; column: string };
+
+async function resolvePetOwnerReference(db: D1Database): Promise<PetOwnerRef> {
+    const { results } = await db
+        .prepare("PRAGMA foreign_key_list(pets)")
+        .all<ForeignKeyInfoRow>()
+        .catch(() => ({ results: [] as ForeignKeyInfoRow[] }));
+    const fk = (results ?? []).find((r) => (r.from ?? "").trim() === "owner_id");
+    const table = (fk?.table ?? "user").trim() || "user";
+    const column = (fk?.to ?? "id").trim() || "id";
+    return { table, column };
+}
+
 async function requireActorUserId(): Promise<string> {
     const context = getCfRequestContext();
     const auth = getAuth(context.env);
@@ -65,30 +78,66 @@ async function requireActorUser(): Promise<ActorUser> {
  * 운영 중 user 레코드가 누락된 계정을 자동 복구합니다.
  * (세션은 유효하지만 user FK 대상이 없어 pets INSERT가 실패하는 경우 대응)
  */
-async function ensureActorUserRow(db: D1Database, actor: ActorUser): Promise<void> {
+async function ensureActorUserRow(
+    db: D1Database,
+    actor: ActorUser,
+    ownerRef: PetOwnerRef
+): Promise<void> {
+    const table = ownerRef.table;
+    const keyCol = ownerRef.column;
+    if (!isSafeSqlIdent(table) || !isSafeSqlIdent(keyCol)) {
+        throw new Error("DB 참조 스키마가 유효하지 않습니다. 관리자에게 문의해 주세요.");
+    }
+
     const exists = await db
-        .prepare("SELECT id FROM user WHERE id = ?")
+        .prepare(`SELECT 1 AS ok FROM ${table} WHERE ${keyCol} = ? LIMIT 1`)
         .bind(actor.id)
-        .first<{ id: string }>()
+        .first<{ ok: number }>()
         .catch(() => null);
-    if (exists?.id) return;
+    if (exists?.ok) return;
 
     const email = (actor.email ?? "").trim().toLowerCase();
-    if (!email) {
-        throw new Error("계정 정보(email)가 비어 있어 복구할 수 없습니다. 다시 로그인해 주세요.");
+    const { results: cols } = await db
+        .prepare(`PRAGMA table_info(${table})`)
+        .all<{ name?: string }>()
+        .catch(() => ({ results: [] as Array<{ name?: string }> }));
+    const colSet = new Set((cols ?? []).map((c) => (c.name ?? "").trim()).filter(Boolean));
+
+    const insertCols: string[] = [];
+    const insertExprs: string[] = [];
+    const insertVals: unknown[] = [];
+
+    const pushBind = (col: string, val: unknown) => {
+        if (!colSet.has(col)) return;
+        insertCols.push(col);
+        insertExprs.push("?");
+        insertVals.push(val);
+    };
+    const pushExpr = (col: string, expr: string) => {
+        if (!colSet.has(col)) return;
+        insertCols.push(col);
+        insertExprs.push(expr);
+    };
+
+    pushBind(keyCol, actor.id);
+    if (keyCol !== "id") pushBind("id", actor.id);
+    if (email) pushBind("email", email);
+    pushBind("name", actor.name ?? null);
+    pushBind("image", actor.image ?? null);
+    if (colSet.has("emailVerified")) pushBind("emailVerified", actor.emailVerified ? 1 : 0);
+    if (colSet.has("email_verified")) pushBind("email_verified", actor.emailVerified ? 1 : 0);
+    pushExpr("createdAt", "CURRENT_TIMESTAMP");
+    pushExpr("updatedAt", "CURRENT_TIMESTAMP");
+    pushExpr("created_at", "CURRENT_TIMESTAMP");
+    pushExpr("updated_at", "CURRENT_TIMESTAMP");
+
+    if (insertCols.length === 0) {
+        throw new Error(`계정 복구 실패: ${table}.${keyCol} 컬럼 구성을 확인해 주세요.`);
     }
 
     await db
-        .prepare(
-            "INSERT INTO user (id, email, name, emailVerified, image, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
-        )
-        .bind(
-            actor.id,
-            email,
-            actor.name ?? null,
-            actor.emailVerified ? 1 : 0,
-            actor.image ?? null
-        )
+        .prepare(`INSERT INTO ${table} (${insertCols.join(", ")}) VALUES (${insertExprs.join(", ")})`)
+        .bind(...insertVals)
         .run()
         .catch((e) => {
             const msg = e instanceof Error ? e.message : String(e);
@@ -119,7 +168,8 @@ export async function createPet(ownerId: string, data: PetData) {
     }
 
     const db = getDB();
-    await ensureActorUserRow(db, actor);
+    const ownerRef = await resolvePetOwnerReference(db);
+    await ensureActorUserRow(db, actor, ownerRef);
     await assertMigration0008Applied(db);
     const tenantId = (data.tenant_id ?? "").trim() || null;
     if (tenantId) {
@@ -151,12 +201,14 @@ export async function createPet(ownerId: string, data: PetData) {
         const msg = error instanceof Error ? error.message : String(error);
         if (msg.includes("FOREIGN KEY constraint failed")) {
             const ownerRow = await db
-                .prepare("SELECT id FROM user WHERE id = ?")
+                .prepare(`SELECT 1 AS ok FROM ${ownerRef.table} WHERE ${ownerRef.column} = ? LIMIT 1`)
                 .bind(ownerId)
-                .first<{ id: string }>()
+                .first<{ ok: number }>()
                 .catch(() => null);
-            if (!ownerRow?.id) {
-                throw new Error("계정 정보가 유효하지 않습니다. 다시 로그인 후 시도해 주세요.");
+            if (!ownerRow?.ok) {
+                throw new Error(
+                    `계정 정보가 유효하지 않습니다. (${ownerRef.table}.${ownerRef.column}) 다시 로그인 후 시도해 주세요.`
+                );
             }
             if (tenantId) {
                 const tenantRow = await db
