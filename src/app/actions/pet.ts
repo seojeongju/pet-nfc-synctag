@@ -24,6 +24,16 @@ export type PetActionResult =
     | { ok: true; id?: string }
     | { ok: false; error: string };
 
+type ForeignKeyInfoRow = {
+    table?: string | null;
+    from?: string | null;
+    to?: string | null;
+};
+
+function isSafeSqlIdent(input: string): boolean {
+    return /^[A-Za-z_][A-Za-z0-9_]*$/.test(input);
+}
+
 async function requireActorUserId(): Promise<string> {
     const context = getCfRequestContext();
     const auth = getAuth(context.env);
@@ -67,6 +77,10 @@ export async function createPet(ownerId: string, data: PetData) {
 
     const id = nanoid();
     const kind = parseSubjectKind(data.subject_kind);
+    const insertValues: Record<string, string | null> = {
+        owner_id: ownerId,
+        tenant_id: tenantId,
+    };
 
     try {
         await db.prepare(
@@ -95,7 +109,40 @@ export async function createPet(ownerId: string, data: PetData) {
                     throw new Error("선택한 조직 정보가 유효하지 않습니다. 조직을 다시 선택해 주세요.");
                 }
             }
-            throw new Error("저장 중 참조 무결성 오류가 발생했습니다. 새로고침 후 다시 시도해 주세요.");
+
+            // DB 스키마가 환경별로 다를 수 있어, pets의 FK 정의를 직접 읽어 누락된 부모 키를 진단합니다.
+            const { results: fkRows } = await db
+                .prepare("PRAGMA foreign_key_list(pets)")
+                .all<ForeignKeyInfoRow>()
+                .catch(() => ({ results: [] as ForeignKeyInfoRow[] }));
+
+            const missingRefs: Array<{ from: string; parent: string; parentCol: string; value: string }> = [];
+            for (const fk of fkRows ?? []) {
+                const from = (fk.from ?? "").trim();
+                const parentTable = (fk.table ?? "").trim();
+                const parentCol = (fk.to ?? "id").trim() || "id";
+                if (!from || !parentTable || !parentCol) continue;
+                if (!isSafeSqlIdent(parentTable) || !isSafeSqlIdent(parentCol)) continue;
+                const value = insertValues[from];
+                if (!value) continue;
+                const parent = await db
+                    .prepare(`SELECT 1 AS ok FROM ${parentTable} WHERE ${parentCol} = ? LIMIT 1`)
+                    .bind(value)
+                    .first<{ ok: number }>()
+                    .catch(() => null);
+                if (!parent?.ok) {
+                    missingRefs.push({ from, parent: parentTable, parentCol, value });
+                }
+            }
+
+            if (missingRefs.length > 0) {
+                const detail = missingRefs
+                    .map((v) => `${v.from} -> ${v.parent}.${v.parentCol}`)
+                    .join(", ");
+                throw new Error(`참조 데이터가 없습니다 (${detail}). 다시 로그인하거나 조직 선택을 확인해 주세요.`);
+            }
+
+            throw new Error("저장 중 참조 무결성 오류가 발생했습니다. 관리자에게 DB FK 구성을 확인해 달라고 요청해 주세요.");
         }
         throw error;
     }
