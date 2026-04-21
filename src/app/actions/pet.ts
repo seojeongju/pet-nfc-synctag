@@ -9,6 +9,7 @@ import { assertPersonalPetQuota, assertTenantPetQuota } from "@/lib/tenant-quota
 import { assertMigration0008Applied } from "@/lib/db-migration-0008";
 import { assertTenantRole } from "@/lib/tenant-membership";
 import { assertTenantActive } from "@/lib/tenant-status";
+import type { D1Database } from "@cloudflare/workers-types";
 
 interface PetData {
     name: string;
@@ -23,6 +24,14 @@ interface PetData {
 export type PetActionResult =
     | { ok: true; id?: string }
     | { ok: false; error: string };
+
+type ActorUser = {
+    id: string;
+    email?: string | null;
+    name?: string | null;
+    image?: string | null;
+    emailVerified?: boolean | number | null;
+};
 
 type ForeignKeyInfoRow = {
     table?: string | null;
@@ -43,6 +52,50 @@ async function requireActorUserId(): Promise<string> {
     return id;
 }
 
+async function requireActorUser(): Promise<ActorUser> {
+    const context = getCfRequestContext();
+    const auth = getAuth(context.env);
+    const session = await auth.api.getSession({ headers: await headers() });
+    const user = session?.user;
+    if (!user?.id) throw new Error("로그인이 필요합니다.");
+    return user as ActorUser;
+}
+
+/**
+ * 운영 중 user 레코드가 누락된 계정을 자동 복구합니다.
+ * (세션은 유효하지만 user FK 대상이 없어 pets INSERT가 실패하는 경우 대응)
+ */
+async function ensureActorUserRow(db: D1Database, actor: ActorUser): Promise<void> {
+    const exists = await db
+        .prepare("SELECT id FROM user WHERE id = ?")
+        .bind(actor.id)
+        .first<{ id: string }>()
+        .catch(() => null);
+    if (exists?.id) return;
+
+    const email = (actor.email ?? "").trim().toLowerCase();
+    if (!email) {
+        throw new Error("계정 정보(email)가 비어 있어 복구할 수 없습니다. 다시 로그인해 주세요.");
+    }
+
+    await db
+        .prepare(
+            "INSERT INTO user (id, email, name, emailVerified, image, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+        )
+        .bind(
+            actor.id,
+            email,
+            actor.name ?? null,
+            actor.emailVerified ? 1 : 0,
+            actor.image ?? null
+        )
+        .run()
+        .catch((e) => {
+            const msg = e instanceof Error ? e.message : String(e);
+            throw new Error(`계정 복구 중 오류가 발생했습니다: ${msg}`);
+        });
+}
+
 export async function uploadToR2(formData: FormData) {
     const file = formData.get("file") as File;
     if (!file) return null;
@@ -59,12 +112,14 @@ export async function uploadToR2(formData: FormData) {
 }
 
 export async function createPet(ownerId: string, data: PetData) {
-    const actorId = await requireActorUserId();
+    const actor = await requireActorUser();
+    const actorId = actor.id;
     if (actorId !== ownerId) {
         throw new Error("다른 사용자의 프로필을 등록할 수 없습니다.");
     }
 
     const db = getDB();
+    await ensureActorUserRow(db, actor);
     await assertMigration0008Applied(db);
     const tenantId = (data.tenant_id ?? "").trim() || null;
     if (tenantId) {
