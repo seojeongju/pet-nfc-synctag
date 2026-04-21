@@ -41,6 +41,64 @@ type PetFormValues = {
     emergency_contact?: string;
 };
 
+const MAX_UPLOAD_EDGE = 1280;
+const JPEG_QUALITY = 0.85;
+
+async function loadImageFromFile(file: File): Promise<HTMLImageElement> {
+    return await new Promise((resolve, reject) => {
+        const objectUrl = URL.createObjectURL(file);
+        const img = new window.Image();
+        img.onload = () => {
+            URL.revokeObjectURL(objectUrl);
+            resolve(img);
+        };
+        img.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            reject(new Error("이미지를 읽을 수 없습니다."));
+        };
+        img.src = objectUrl;
+    });
+}
+
+async function resizeImageForUpload(file: File): Promise<File> {
+    if (!file.type.startsWith("image/")) return file;
+
+    const image = await loadImageFromFile(file);
+    const srcW = image.naturalWidth || image.width;
+    const srcH = image.naturalHeight || image.height;
+    if (!srcW || !srcH) return file;
+
+    const scale = Math.min(1, MAX_UPLOAD_EDGE / Math.max(srcW, srcH));
+    const targetW = Math.max(1, Math.round(srcW * scale));
+    const targetH = Math.max(1, Math.round(srcH * scale));
+
+    // 이미 충분히 작고 jpeg/webp/png라면 재인코딩하지 않고 원본 유지
+    const isCommonType =
+        file.type === "image/jpeg" || file.type === "image/png" || file.type === "image/webp";
+    if (scale === 1 && isCommonType && file.size <= 600 * 1024) {
+        return file;
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = targetW;
+    canvas.height = targetH;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.drawImage(image, 0, 0, targetW, targetH);
+
+    const outputType = "image/jpeg";
+    const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, outputType, JPEG_QUALITY)
+    );
+    if (!blob) return file;
+
+    const normalizedName = file.name.replace(/\.[^.]+$/, "") || "pet-photo";
+    return new File([blob], `${normalizedName}.jpg`, {
+        type: outputType,
+        lastModified: Date.now(),
+    });
+}
+
 export function PetForm({ ownerId, subjectKind: kindProp, tenantId, initialData, writeLocked = false }: PetFormProps) {
     const router = useRouter();
     const subjectKind = parseSubjectKind(kindProp);
@@ -85,8 +143,14 @@ export function PetForm({ ownerId, subjectKind: kindProp, tenantId, initialData,
 
             // 이미지가 새로 선택되었을 경우 업로드를 진행합니다.
             if (selectedFile) {
+                let uploadFile = selectedFile;
+                try {
+                    uploadFile = await resizeImageForUpload(selectedFile);
+                } catch (error) {
+                    console.warn("Image resize failed, fallback to original file.", error);
+                }
                 const formData = new FormData();
-                formData.append("file", selectedFile);
+                formData.append("file", uploadFile);
                 const uploadResult = await uploadToR2(formData);
                 if (uploadResult) {
                     photoUrl = uploadResult;
