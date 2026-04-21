@@ -16,6 +16,7 @@ interface DashboardClientProps {
   tenantId?: string | null;
   tenantUsage?: TenantPlanUsageSummary | null;
   tenantSuspended?: boolean;
+  linkedTagCount?: number;
 }
 
 export default function DashboardClient({
@@ -26,7 +27,8 @@ export default function DashboardClient({
   modeAnnouncements,
   tenantId,
   tenantUsage,
-  tenantSuspended = false
+  tenantSuspended = false,
+  linkedTagCount = 0
 }: DashboardClientProps) {
   switch (subjectKind) {
     case "pet":
@@ -39,6 +41,7 @@ export default function DashboardClient({
           tenantId={tenantId}
           tenantUsage={tenantUsage}
           tenantSuspended={tenantSuspended}
+          linkedTagCount={linkedTagCount}
         />
       );
     case "elder":

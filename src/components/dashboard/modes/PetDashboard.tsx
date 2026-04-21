@@ -46,11 +46,14 @@ interface PetDashboardProps {
   tenantId?: string | null;
   tenantUsage?: TenantPlanUsageSummary | null;
   tenantSuspended?: boolean;
+  linkedTagCount?: number;
 }
 
 function limitText(used: number, limit: number | null): string {
   return `${used}/${limit == null ? "∞" : limit}`;
 }
+
+const STALE_ACTION_RELOAD_KEY = "pet-dashboard-stale-action-reload-once";
 
 export default function PetDashboard({
   session,
@@ -59,7 +62,8 @@ export default function PetDashboard({
   modeAnnouncements,
   tenantId,
   tenantUsage,
-  tenantSuspended = false
+  tenantSuspended = false,
+  linkedTagCount = 0
 }: PetDashboardProps) {
   const [isPending, startTransition] = useTransition();
   const [selectedPetId, setSelectedPetId] = useState("");
@@ -77,6 +81,26 @@ export default function PetDashboard({
   const kindQs = tenantQs;
   const AvatarIcon = PawPrint;
   const webNfcSupported = isWebNfcReadSupported();
+
+  const isStaleServerActionError = (error: unknown): boolean => {
+    const message = error instanceof Error ? error.message : String(error ?? "");
+    const lower = message.toLowerCase();
+    return lower.includes("server action") && lower.includes("was not found on the server");
+  };
+
+  const reloadOnceForStaleAction = (): boolean => {
+    if (typeof window === "undefined") return false;
+    try {
+      if (window.sessionStorage.getItem(STALE_ACTION_RELOAD_KEY) === "1") {
+        return false;
+      }
+      window.sessionStorage.setItem(STALE_ACTION_RELOAD_KEY, "1");
+      window.location.reload();
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
   const toKoreanNfcError = (message: string): string => {
     const m = message.toLowerCase();
@@ -114,8 +138,21 @@ export default function PetDashboard({
     try {
       const data = await getLatestLocations(subjectKind as SubjectKind, tenantId);
       setSubjectsWithLocation(data);
+      if (typeof window !== "undefined") {
+        window.sessionStorage.removeItem(STALE_ACTION_RELOAD_KEY);
+      }
     } catch (err) {
-      console.error("Map data refresh failed:", err);
+      if (isStaleServerActionError(err)) {
+        const reloaded = reloadOnceForStaleAction();
+        if (!reloaded) {
+          setTagMessage({
+            type: "error",
+            text: "앱이 최신 버전으로 갱신되어야 합니다. 화면을 새로고침한 뒤 다시 시도해 주세요.",
+          });
+        }
+      } else {
+        console.error("Map data refresh failed:", err);
+      }
     } finally {
       setIsMapRefreshing(false);
     }
@@ -175,6 +212,7 @@ export default function PetDashboard({
     visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] as const } }
   };
   const lostCount = pets.filter((p) => p.is_lost).length;
+  const hasLinkedTag = linkedTagCount > 0 || tagLinkedInSession;
   const onboardingSteps = [
     {
       id: "pet",
@@ -186,7 +224,7 @@ export default function PetDashboard({
     {
       id: "tag",
       title: "NFC 태그 연결",
-      done: tagLinkedInSession,
+      done: hasLinkedTag,
       href: "#quick-nfc-register",
       cta: "바로 연결",
     },
@@ -458,6 +496,11 @@ export default function PetDashboard({
                       안드로이드 Chrome에서 NFC 스캔 버튼을 누른 뒤 태그를 휴대폰 뒷면에 가까이 대주세요.
                     </p>
                   )}
+                  {linkedTagCount > 0 ? (
+                    <p className="text-[11px] font-bold text-teal-600">
+                      현재 연결된 NFC 태그: {linkedTagCount}개
+                    </p>
+                  ) : null}
                 </>
               ) : (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center space-y-2">
