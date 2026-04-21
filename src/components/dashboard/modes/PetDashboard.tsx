@@ -23,6 +23,7 @@ import LiveLocationMap from "@/components/dashboard/LiveLocationMap";
 import { type SubjectKind } from "@/lib/subject-kind";
 import SafePetImage from "@/components/pet/SafePetImage";
 import { isWebNfcReadSupported, readNfcTagUidOnce } from "@/lib/web-nfc-read-uid";
+import { normalizeTagUid } from "@/lib/tag-uid-format";
 
 interface SubjectWithLocation {
   id: string;
@@ -55,6 +56,16 @@ function limitText(used: number, limit: number | null): string {
 
 const STALE_ACTION_RELOAD_KEY = "pet-dashboard-stale-action-reload-once";
 
+type NDEFWriterCtor = new () => {
+  write(message: { records: Array<{ recordType: string; data: string }> }): Promise<void>;
+};
+
+function getNdefWriterClass(): NDEFWriterCtor | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as { NDEFWriter?: NDEFWriterCtor };
+  return w.NDEFWriter ?? null;
+}
+
 export default function PetDashboard({
   session,
   pets,
@@ -73,6 +84,7 @@ export default function PetDashboard({
   const [isMapRefreshing, setIsMapRefreshing] = useState(false);
   const [tagLinkedInSession, setTagLinkedInSession] = useState(false);
   const [isNfcScanning, setIsNfcScanning] = useState(false);
+  const [isNfcWriting, setIsNfcWriting] = useState(false);
   const router = useRouter();
   
   const subjectKind = "pet";
@@ -81,6 +93,7 @@ export default function PetDashboard({
   const kindQs = tenantQs;
   const AvatarIcon = PawPrint;
   const webNfcSupported = isWebNfcReadSupported();
+  const webNfcWriteSupported = Boolean(getNdefWriterClass());
 
   const isStaleServerActionError = (error: unknown): boolean => {
     const message = error instanceof Error ? error.message : String(error ?? "");
@@ -131,6 +144,46 @@ export default function PetDashboard({
         setTagMessage({ type: "error", text: err });
       }
     });
+  };
+
+  const writeTagUrlToNfc = async (uidRaw: string) => {
+    const Writer = getNdefWriterClass();
+    if (!Writer) {
+      setTagMessage({
+        type: "error",
+        text: "이 기기/브라우저는 NFC URL 기록(NDEFWriter)을 지원하지 않습니다. 관리자의 URL 기록 기능을 사용해 주세요.",
+      });
+      return;
+    }
+    const normalizedUid = normalizeTagUid(uidRaw);
+    const appBase =
+      (process.env.NEXT_PUBLIC_APP_URL || "").trim().replace(/\/$/, "") ||
+      (typeof window !== "undefined" ? window.location.origin : "");
+    if (!appBase) {
+      setTagMessage({ type: "error", text: "앱 주소를 확인할 수 없어 URL 기록을 진행할 수 없습니다." });
+      return;
+    }
+    const tagUrl = `${appBase}/t/${encodeURIComponent(normalizedUid)}`;
+
+    setIsNfcWriting(true);
+    try {
+      const writer = new Writer();
+      await writer.write({
+        records: [{ recordType: "url", data: tagUrl }],
+      });
+      setTagMessage({
+        type: "success",
+        text: "NFC 태그에 공개 URL 기록이 완료되었습니다. 이제 태그 스캔 시 프로필이 열립니다.",
+      });
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error.message : String(error);
+      setTagMessage({
+        type: "error",
+        text: `태그 연결은 완료됐지만 URL 기록에 실패했습니다: ${toKoreanNfcError(err)}`,
+      });
+    } finally {
+      setIsNfcWriting(false);
+    }
   };
 
   const refreshLocations = useCallback(async () => {
@@ -474,19 +527,33 @@ export default function PetDashboard({
                     />
                     <Button
                       onClick={handleReadNfcAndRegister}
-                      disabled={tenantSuspended || isPending || isNfcScanning || !selectedPetId}
+                      disabled={tenantSuspended || isPending || isNfcScanning || isNfcWriting || !selectedPetId}
                       className="h-12 rounded-2xl bg-teal-600 hover:bg-teal-500 text-white px-4 font-black"
                     >
                       {isNfcScanning ? "스캔 중..." : "NFC 스캔"}
                     </Button>
                     <Button
                       onClick={handleQuickNfcRegister}
-                      disabled={tenantSuspended || isPending || isNfcScanning || !selectedPetId || !tagId.trim()}
+                      disabled={tenantSuspended || isPending || isNfcScanning || isNfcWriting || !selectedPetId || !tagId.trim()}
                       className="h-12 rounded-2xl bg-slate-900 hover:bg-teal-500 text-white px-5 font-black"
                     >
                       등록
                     </Button>
                   </div>
+                  <Button
+                    onClick={() => void writeTagUrlToNfc(tagId)}
+                    disabled={
+                      tenantSuspended ||
+                      isPending ||
+                      isNfcScanning ||
+                      isNfcWriting ||
+                      !tagId.trim() ||
+                      !webNfcWriteSupported
+                    }
+                    className="h-11 w-full rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black"
+                  >
+                    {isNfcWriting ? "URL 기록 중..." : "태그에 프로필 URL 기록"}
+                  </Button>
                   {!webNfcSupported ? (
                     <p className="text-[11px] font-bold text-slate-400">
                       현재 기기/브라우저는 NFC 스캔을 지원하지 않아 UID 수동 입력으로 등록할 수 있습니다.
@@ -496,6 +563,11 @@ export default function PetDashboard({
                       안드로이드 Chrome에서 NFC 스캔 버튼을 누른 뒤 태그를 휴대폰 뒷면에 가까이 대주세요.
                     </p>
                   )}
+                  {!webNfcWriteSupported ? (
+                    <p className="text-[11px] font-bold text-amber-600">
+                      이 기기에서는 NFC URL 기록이 지원되지 않을 수 있습니다. 이 경우 관리자의 URL 기록 메뉴에서 기록해 주세요.
+                    </p>
+                  ) : null}
                   {linkedTagCount > 0 ? (
                     <p className="text-[11px] font-bold text-teal-600">
                       현재 연결된 NFC 태그: {linkedTagCount}개
