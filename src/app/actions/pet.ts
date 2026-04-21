@@ -68,11 +68,37 @@ export async function createPet(ownerId: string, data: PetData) {
     const id = nanoid();
     const kind = parseSubjectKind(data.subject_kind);
 
-    await db.prepare(
-        "INSERT INTO pets (id, owner_id, tenant_id, name, breed, medical_info, emergency_contact, photo_url, subject_kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-    )
-    .bind(id, ownerId, tenantId, data.name, data.breed, data.medical_info, data.emergency_contact, data.photo_url, kind)
-    .run();
+    try {
+        await db.prepare(
+            "INSERT INTO pets (id, owner_id, tenant_id, name, breed, medical_info, emergency_contact, photo_url, subject_kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        )
+        .bind(id, ownerId, tenantId, data.name, data.breed, data.medical_info, data.emergency_contact, data.photo_url, kind)
+        .run();
+    } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        if (msg.includes("FOREIGN KEY constraint failed")) {
+            const ownerRow = await db
+                .prepare("SELECT id FROM user WHERE id = ?")
+                .bind(ownerId)
+                .first<{ id: string }>()
+                .catch(() => null);
+            if (!ownerRow?.id) {
+                throw new Error("계정 정보가 유효하지 않습니다. 다시 로그인 후 시도해 주세요.");
+            }
+            if (tenantId) {
+                const tenantRow = await db
+                    .prepare("SELECT id FROM tenants WHERE id = ?")
+                    .bind(tenantId)
+                    .first<{ id: string }>()
+                    .catch(() => null);
+                if (!tenantRow?.id) {
+                    throw new Error("선택한 조직 정보가 유효하지 않습니다. 조직을 다시 선택해 주세요.");
+                }
+            }
+            throw new Error("저장 중 참조 무결성 오류가 발생했습니다. 새로고침 후 다시 시도해 주세요.");
+        }
+        throw error;
+    }
 
     return id;
 }
