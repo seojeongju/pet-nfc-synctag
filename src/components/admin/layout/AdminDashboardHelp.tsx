@@ -144,6 +144,20 @@ function helpContentForPath(p: string): { title: string; body: ReactNode } {
     };
   }
 
+  if (p.startsWith("/admin/users")) {
+    return {
+      title: "사용자 관리",
+      body: (
+        <>
+          <p>
+            가입자 목록을 검색·필터하고 <strong>플랫폼 관리자</strong>(<code className="rounded bg-slate-100 px-1 font-mono text-[11px]">platform_admin</code>) 역할을 부여하거나 해제할 수 있습니다. 마지막 한 명의 관리자는 일반 사용자로 내릴 수 없습니다.
+          </p>
+          <p>조직(B2B) 안에서의 역할(owner/admin/member)은 조직·멤버 관리 메뉴에서 다룹니다.</p>
+        </>
+      ),
+    };
+  }
+
   if (p.startsWith("/admin/tenants")) {
     return {
       title: "테넌트 관리",

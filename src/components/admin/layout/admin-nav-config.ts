@@ -9,6 +9,7 @@ import {
   Smartphone,
   Database,
   History,
+  Users,
 } from "lucide-react";
 
 export type NavLeaf = { href: string; label: string; icon: LucideIcon; color: string };
@@ -38,8 +39,11 @@ export const ADMIN_NAV_SECTIONS: NavSection[] = [
   },
   {
     id: "org",
-    title: "조직",
-    items: [{ href: "/admin/tenants", label: "조직·멤버 관리", icon: Building2, color: "text-emerald-500" }],
+    title: "조직·계정",
+    items: [
+      { href: "/admin/users", label: "사용자 관리", icon: Users, color: "text-sky-600" },
+      { href: "/admin/tenants", label: "조직·멤버 관리", icon: Building2, color: "text-emerald-500" },
+    ],
   },
 ];
 

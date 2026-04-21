@@ -18,6 +18,11 @@ const ACTION_LABELS: Record<string, string> = {
   nfc_web_write: "Web NFC URL 기록",
   nfc_native_handoff: "네이티브 앱 연결",
   nfc_native_write: "네이티브 앱 기록",
+  platform_user_role: "플랫폼 사용자 역할 변경",
+  platform_user_email: "플랫폼 사용자 이메일 변경",
+  platform_user_password_reset: "플랫폼 사용자 비밀번호 초기화",
+  platform_user_subscription: "플랫폼 사용자 개인 플랜 코드 변경",
+  platform_user_delete: "플랫폼 사용자 계정 삭제",
 };
 
 function actionDisplayName(action: string) {
@@ -36,6 +41,21 @@ function summarizePayload(payloadRaw?: string | null) {
   if (!payloadRaw) return "-";
   try {
     const payload = JSON.parse(payloadRaw);
+    if (payload?.targetEmail && (payload?.nextRole || payload?.prevRole)) {
+      return `${String(payload.targetEmail)}: ${String(payload.prevRole)} -> ${String(payload.nextRole)}`;
+    }
+    if (payload?.prevEmail !== undefined && payload?.nextEmail !== undefined) {
+      return `${String(payload.prevEmail)} -> ${String(payload.nextEmail)}`;
+    }
+    if (payload?.prevSubscriptionStatus !== undefined && payload?.nextSubscriptionStatus !== undefined) {
+      return `${String(payload.prevSubscriptionStatus)} -> ${String(payload.nextSubscriptionStatus)}`;
+    }
+    if (payload?.credentialCreated !== undefined && payload?.targetEmail !== undefined) {
+      return `${String(payload.targetEmail)} · 비밀번호 ${payload.credentialCreated ? "(credential 추가)" : "갱신"}`;
+    }
+    if (payload?.deleted === true && payload?.targetEmail) {
+      return `삭제 ${String(payload.targetEmail)}`;
+    }
     if (payload?.registeredCount !== undefined) {
       return `등록 ${payload.registeredCount} / 실패 ${payload.failedCount ?? 0}`;
     }
@@ -263,6 +283,11 @@ export function AdminAuditLogsPanel({
                   <option value="nfc_web_write">{ACTION_LABELS.nfc_web_write}</option>
                   <option value="nfc_native_handoff">{ACTION_LABELS.nfc_native_handoff}</option>
                   <option value="nfc_native_write">{ACTION_LABELS.nfc_native_write}</option>
+                  <option value="platform_user_role">{ACTION_LABELS.platform_user_role}</option>
+                  <option value="platform_user_email">{ACTION_LABELS.platform_user_email}</option>
+                  <option value="platform_user_password_reset">{ACTION_LABELS.platform_user_password_reset}</option>
+                  <option value="platform_user_subscription">{ACTION_LABELS.platform_user_subscription}</option>
+                  <option value="platform_user_delete">{ACTION_LABELS.platform_user_delete}</option>
                 </select>
               </label>
               <div className="grid grid-cols-2 gap-2 sm:col-span-2 sm:gap-3">
