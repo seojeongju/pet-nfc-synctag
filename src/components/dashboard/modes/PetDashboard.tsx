@@ -22,6 +22,7 @@ import { getLatestLocations } from "@/app/actions/pet";
 import LiveLocationMap from "@/components/dashboard/LiveLocationMap";
 import { type SubjectKind } from "@/lib/subject-kind";
 import SafePetImage from "@/components/pet/SafePetImage";
+import { isWebNfcReadSupported, readNfcTagUidOnce } from "@/lib/web-nfc-read-uid";
 
 interface SubjectWithLocation {
   id: string;
@@ -67,6 +68,7 @@ export default function PetDashboard({
   const [subjectsWithLocation, setSubjectsWithLocation] = useState<SubjectWithLocation[]>([]);
   const [isMapRefreshing, setIsMapRefreshing] = useState(false);
   const [tagLinkedInSession, setTagLinkedInSession] = useState(false);
+  const [isNfcScanning, setIsNfcScanning] = useState(false);
   const router = useRouter();
   
   const subjectKind = "pet";
@@ -74,6 +76,34 @@ export default function PetDashboard({
   const tenantQs = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : "";
   const kindQs = tenantQs;
   const AvatarIcon = PawPrint;
+  const webNfcSupported = isWebNfcReadSupported();
+
+  const toKoreanNfcError = (message: string): string => {
+    const m = message.toLowerCase();
+    if (m.includes("not supported")) return "이 브라우저/기기에서는 NFC 읽기를 지원하지 않습니다.";
+    if (m.includes("permission denied") || m.includes("notallowederror")) return "NFC 권한이 거부되었습니다. 브라우저 권한을 확인해 주세요.";
+    if (m.includes("no tag detected")) return "태그를 인식하지 못했습니다. 태그를 휴대폰 뒷면에 다시 가까이 대주세요.";
+    if (m.includes("reading error")) return "NFC 읽기 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.";
+    if (m.includes("invalid uid format")) return "인식한 태그 UID 형식이 올바르지 않습니다.";
+    if (m.includes("cancelled")) return "NFC 읽기가 취소되었습니다.";
+    return "NFC 태그를 읽지 못했습니다. 다시 시도해 주세요.";
+  };
+
+  const registerTagToSelectedPet = (uid: string) => {
+    setTagMessage(null);
+    startTransition(async () => {
+      try {
+        await linkTag(selectedPetId, uid.trim());
+        setTagMessage({ type: "success", text: "NFC 태그가 반려동물에 연결되었습니다." });
+        setTagLinkedInSession(true);
+        setTagId("");
+        router.refresh();
+      } catch (e: unknown) {
+        const err = e instanceof Error ? e.message : "NFC 태그 등록에 실패했습니다.";
+        setTagMessage({ type: "error", text: err });
+      }
+    });
+  };
 
   const refreshLocations = useCallback(async () => {
     setIsMapRefreshing(true);
@@ -102,19 +132,33 @@ export default function PetDashboard({
   const handleQuickNfcRegister = () => {
     if (tenantSuspended) return;
     if (!selectedPetId || !tagId.trim()) return;
+    registerTagToSelectedPet(tagId);
+  };
+
+  const handleReadNfcAndRegister = async () => {
+    if (tenantSuspended) return;
+    if (!selectedPetId) {
+      setTagMessage({ type: "error", text: "먼저 연결할 관리 대상을 선택해 주세요." });
+      return;
+    }
+    if (!webNfcSupported) {
+      setTagMessage({ type: "error", text: "이 브라우저/기기에서는 NFC 읽기를 지원하지 않습니다." });
+      return;
+    }
+
     setTagMessage(null);
-    startTransition(async () => {
-      try {
-        await linkTag(selectedPetId, tagId.trim());
-        setTagMessage({ type: "success", text: "NFC 태그가 반려동물에 연결되었습니다." });
-        setTagLinkedInSession(true);
-        setTagId("");
-        router.refresh();
-      } catch (e: unknown) {
-        const err = e instanceof Error ? e.message : "NFC 태그 등록에 실패했습니다.";
-        setTagMessage({ type: "error", text: err });
+    setIsNfcScanning(true);
+    try {
+      const result = await readNfcTagUidOnce({ timeoutMs: 30_000 });
+      if (!result.ok) {
+        setTagMessage({ type: "error", text: toKoreanNfcError(result.error) });
+        return;
       }
-    });
+      setTagId(result.uid);
+      registerTagToSelectedPet(result.uid);
+    } finally {
+      setIsNfcScanning(false);
+    }
   };
 
   const containerVariants = {
@@ -359,7 +403,7 @@ export default function PetDashboard({
                 </div>
                 <div>
                   <h3 className="text-base font-black text-slate-900">NFC 빠른 등록</h3>
-                  <p className="text-[11px] text-slate-400 font-bold">인식표 뒷면의 태그를 폰에 갖다 대거나 UID를 입력하세요.</p>
+                  <p className="text-[11px] text-slate-400 font-bold">NFC 스캔으로 UID를 자동 인식해 바로 등록할 수 있어요.</p>
                 </div>
               </div>
 
@@ -382,18 +426,34 @@ export default function PetDashboard({
                     <Input
                       value={tagId}
                       onChange={(e) => setTagId(e.target.value)}
-                      disabled={tenantSuspended}
+                      disabled={tenantSuspended || isPending || isNfcScanning}
                       placeholder="NFC 태그 UID 입력"
                       className="h-12 rounded-2xl border-slate-100 bg-slate-50 font-bold"
                     />
                     <Button
+                      onClick={handleReadNfcAndRegister}
+                      disabled={tenantSuspended || isPending || isNfcScanning || !selectedPetId}
+                      className="h-12 rounded-2xl bg-teal-600 hover:bg-teal-500 text-white px-4 font-black"
+                    >
+                      {isNfcScanning ? "스캔 중..." : "NFC 스캔"}
+                    </Button>
+                    <Button
                       onClick={handleQuickNfcRegister}
-                      disabled={tenantSuspended || isPending || !selectedPetId || !tagId.trim()}
+                      disabled={tenantSuspended || isPending || isNfcScanning || !selectedPetId || !tagId.trim()}
                       className="h-12 rounded-2xl bg-slate-900 hover:bg-teal-500 text-white px-5 font-black"
                     >
                       등록
                     </Button>
                   </div>
+                  {!webNfcSupported ? (
+                    <p className="text-[11px] font-bold text-slate-400">
+                      현재 기기/브라우저는 NFC 스캔을 지원하지 않아 UID 수동 입력으로 등록할 수 있습니다.
+                    </p>
+                  ) : (
+                    <p className="text-[11px] font-bold text-slate-400">
+                      안드로이드 Chrome에서 NFC 스캔 버튼을 누른 뒤 태그를 휴대폰 뒷면에 가까이 대주세요.
+                    </p>
+                  )}
                 </>
               ) : (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center space-y-2">
