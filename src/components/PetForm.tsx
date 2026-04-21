@@ -47,6 +47,7 @@ export function PetForm({ ownerId, subjectKind: kindProp, tenantId, initialData,
     const meta = subjectKindMeta[subjectKind];
     const FormIcon = formIcons[subjectKind];
     const [isLoading, setIsLoading] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(initialData?.photo_url || null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -71,6 +72,7 @@ export function PetForm({ ownerId, subjectKind: kindProp, tenantId, initialData,
 
     const onSubmit = async (data: PetFormValues) => {
         if (writeLocked) return;
+        setSubmitError(null);
         setIsLoading(true);
         try {
             let photoUrl = initialData?.photo_url;
@@ -103,6 +105,11 @@ export function PetForm({ ownerId, subjectKind: kindProp, tenantId, initialData,
             router.refresh();
         } catch (error) {
             console.error("Failed to save pet:", error);
+            setSubmitError(
+                error instanceof Error && error.message
+                    ? error.message
+                    : "저장에 실패했습니다. 잠시 후 다시 시도해 주세요."
+            );
         } finally {
             setIsLoading(false);
         }
@@ -230,6 +237,11 @@ export function PetForm({ ownerId, subjectKind: kindProp, tenantId, initialData,
                 {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : <FormIcon className="w-6 h-6" />}
                 {initialData ? "정보 수정하기" : `${meta.label} 등록 완료`}
             </button>
+            {submitError ? (
+                <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+                    {submitError}
+                </p>
+            ) : null}
             </fieldset>
         </form>
     );
