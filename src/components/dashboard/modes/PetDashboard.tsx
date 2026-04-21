@@ -66,6 +66,10 @@ function getNdefWriterClass(): NDEFWriterCtor | null {
   return w.NDEFWriter ?? null;
 }
 
+type TagUrlWriteResult =
+  | { ok: true }
+  | { ok: false; reason: "unsupported" | "app_url_missing" | "write_failed"; message: string };
+
 export default function PetDashboard({
   session,
   pets,
@@ -135,7 +139,18 @@ export default function PetDashboard({
           setTagMessage({ type: "error", text: result.error });
           return;
         }
-        setTagMessage({ type: "success", text: "NFC 태그가 반려동물에 연결되었습니다." });
+        const writeResult = await writeTagUrlToNfc(uid, { silent: true });
+        if (writeResult.ok) {
+          setTagMessage({
+            type: "success",
+            text: "NFC 태그 연결과 프로필 URL 기록이 완료되었습니다. 이제 태그 스캔 시 프로필이 열립니다.",
+          });
+        } else {
+          setTagMessage({
+            type: "success",
+            text: `NFC 태그 연결은 완료되었습니다. 다만 URL 자동 기록은 실패했습니다 (${writeResult.message}). 아래 '태그에 프로필 URL 기록' 버튼으로 다시 시도해 주세요.`,
+          });
+        }
         setTagLinkedInSession(true);
         setTagId("");
         router.refresh();
@@ -146,22 +161,31 @@ export default function PetDashboard({
     });
   };
 
-  const writeTagUrlToNfc = async (uidRaw: string) => {
+  const writeTagUrlToNfc = async (
+    uidRaw: string,
+    options?: { silent?: boolean }
+  ): Promise<TagUrlWriteResult> => {
     const Writer = getNdefWriterClass();
     if (!Writer) {
-      setTagMessage({
-        type: "error",
-        text: "이 기기/브라우저는 NFC URL 기록(NDEFWriter)을 지원하지 않습니다. 관리자의 URL 기록 기능을 사용해 주세요.",
-      });
-      return;
+      const message = "이 기기/브라우저는 NFC URL 기록(NDEFWriter)을 지원하지 않습니다.";
+      if (!options?.silent) {
+        setTagMessage({
+          type: "error",
+          text: `${message} 관리자의 URL 기록 기능을 사용해 주세요.`,
+        });
+      }
+      return { ok: false, reason: "unsupported", message };
     }
     const normalizedUid = normalizeTagUid(uidRaw);
     const appBase =
       (process.env.NEXT_PUBLIC_APP_URL || "").trim().replace(/\/$/, "") ||
       (typeof window !== "undefined" ? window.location.origin : "");
     if (!appBase) {
-      setTagMessage({ type: "error", text: "앱 주소를 확인할 수 없어 URL 기록을 진행할 수 없습니다." });
-      return;
+      const message = "앱 주소를 확인할 수 없어 URL 기록을 진행할 수 없습니다.";
+      if (!options?.silent) {
+        setTagMessage({ type: "error", text: message });
+      }
+      return { ok: false, reason: "app_url_missing", message };
     }
     const tagUrl = `${appBase}/t/${encodeURIComponent(normalizedUid)}`;
 
@@ -171,16 +195,23 @@ export default function PetDashboard({
       await writer.write({
         records: [{ recordType: "url", data: tagUrl }],
       });
-      setTagMessage({
-        type: "success",
-        text: "NFC 태그에 공개 URL 기록이 완료되었습니다. 이제 태그 스캔 시 프로필이 열립니다.",
-      });
+      if (!options?.silent) {
+        setTagMessage({
+          type: "success",
+          text: "NFC 태그에 공개 URL 기록이 완료되었습니다. 이제 태그 스캔 시 프로필이 열립니다.",
+        });
+      }
+      return { ok: true };
     } catch (error: unknown) {
       const err = error instanceof Error ? error.message : String(error);
-      setTagMessage({
-        type: "error",
-        text: `태그 연결은 완료됐지만 URL 기록에 실패했습니다: ${toKoreanNfcError(err)}`,
-      });
+      const message = toKoreanNfcError(err);
+      if (!options?.silent) {
+        setTagMessage({
+          type: "error",
+          text: `태그 URL 기록에 실패했습니다: ${message}`,
+        });
+      }
+      return { ok: false, reason: "write_failed", message };
     } finally {
       setIsNfcWriting(false);
     }
@@ -541,7 +572,9 @@ export default function PetDashboard({
                     </Button>
                   </div>
                   <Button
-                    onClick={() => void writeTagUrlToNfc(tagId)}
+                    onClick={() => {
+                      void writeTagUrlToNfc(tagId);
+                    }}
                     disabled={
                       tenantSuspended ||
                       isPending ||
@@ -552,7 +585,7 @@ export default function PetDashboard({
                     }
                     className="h-11 w-full rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black"
                   >
-                    {isNfcWriting ? "URL 기록 중..." : "태그에 프로필 URL 기록"}
+                    {isNfcWriting ? "URL 기록 중..." : "태그에 프로필 URL 기록 (수동)"}
                   </Button>
                   {!webNfcSupported ? (
                     <p className="text-[11px] font-bold text-slate-400">
