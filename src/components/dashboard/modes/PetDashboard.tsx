@@ -21,6 +21,7 @@ import type { TenantPlanUsageSummary } from "@/lib/tenant-quota";
 import { getLatestLocations } from "@/app/actions/pet";
 import LiveLocationMap from "@/components/dashboard/LiveLocationMap";
 import { type SubjectKind } from "@/lib/subject-kind";
+import SafePetImage from "@/components/pet/SafePetImage";
 
 interface SubjectWithLocation {
   id: string;
@@ -465,11 +466,13 @@ export default function PetDashboard({
                   <a href={`/profile/${pet.id}${kindQs}`}>
                     <Card className="rounded-[32px] border-none shadow-app shadow-app-hover overflow-hidden bg-white text-center p-0">
                        <div className="h-28 bg-slate-100 relative overflow-hidden">
-                          {pet.photo_url ? (
-                            <Image src={pet.photo_url} alt={pet.name} width={150} height={112} className="w-full h-full object-cover transition-transform duration-700 hover:scale-110" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-slate-300"><AvatarIcon className="w-12 h-12" /></div>
-                          )}
+                          <SafePetImage
+                            src={pet.photo_url}
+                            alt={pet.name}
+                            className="h-full w-full object-cover transition-transform duration-700 hover:scale-110"
+                            fallbackClassName="h-full w-full flex items-center justify-center bg-slate-100 text-slate-300"
+                            iconClassName="h-12 w-12"
+                          />
                        </div>
                        <CardContent className="p-4 space-y-0.5">
                           <h4 className="font-black text-slate-800 text-sm">{pet.name}</h4>

@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { createPetSafe, updatePetSafe, uploadToR2 } from "@/app/actions/pet";
+import { createPetSafe, deletePetSafe, updatePetSafe, uploadToR2 } from "@/app/actions/pet";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useState, useRef } from "react";
@@ -48,9 +48,11 @@ export function PetForm({ ownerId, subjectKind: kindProp, tenantId, initialData,
     const FormIcon = formIcons[subjectKind];
     const [isLoading, setIsLoading] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(initialData?.photo_url || null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [removeExistingPhoto, setRemoveExistingPhoto] = useState(false);
 
     const { register, handleSubmit, formState: { errors } } = useForm<PetFormValues>({
         defaultValues: initialData || {
@@ -65,6 +67,7 @@ export function PetForm({ ownerId, subjectKind: kindProp, tenantId, initialData,
         const file = e.target.files?.[0];
         if (file) {
             setSelectedFile(file);
+            setRemoveExistingPhoto(false);
             const url = URL.createObjectURL(file);
             setPreviewUrl(url);
         }
@@ -75,7 +78,10 @@ export function PetForm({ ownerId, subjectKind: kindProp, tenantId, initialData,
         setSubmitError(null);
         setIsLoading(true);
         try {
-            let photoUrl = initialData?.photo_url;
+            let photoUrl: string | null | undefined = initialData?.photo_url;
+            if (removeExistingPhoto && !selectedFile) {
+                photoUrl = null;
+            }
 
             // 이미지가 새로 선택되었을 경우 업로드를 진행합니다.
             if (selectedFile) {
@@ -123,6 +129,33 @@ export function PetForm({ ownerId, subjectKind: kindProp, tenantId, initialData,
         }
     };
 
+    const handleDeletePet = async () => {
+        if (!initialData || writeLocked || isDeleting) return;
+        const confirmed = window.confirm("정말 삭제하시겠어요? 삭제 후 복구할 수 없습니다.");
+        if (!confirmed) return;
+
+        setSubmitError(null);
+        setIsDeleting(true);
+        try {
+            const result = await deletePetSafe(initialData.id);
+            if (!result.ok) {
+                setSubmitError(result.error);
+                return;
+            }
+            const tenantQs = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : "";
+            router.push(`/dashboard/${subjectKind}/pets${tenantQs}`);
+        } catch (error) {
+            console.error("Failed to delete pet:", error);
+            setSubmitError(
+                error instanceof Error && error.message
+                    ? error.message
+                    : "삭제에 실패했습니다. 잠시 후 다시 시도해 주세요."
+            );
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     return (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {writeLocked ? (
@@ -164,6 +197,10 @@ export function PetForm({ ownerId, subjectKind: kindProp, tenantId, initialData,
                                 e.stopPropagation();
                                 setPreviewUrl(null);
                                 setSelectedFile(null);
+                                setRemoveExistingPhoto(true);
+                                if (fileInputRef.current) {
+                                    fileInputRef.current.value = "";
+                                }
                             }}
                         >
                             <X className="w-4 h-4" />
@@ -239,7 +276,7 @@ export function PetForm({ ownerId, subjectKind: kindProp, tenantId, initialData,
 
             <button 
                 type="submit" 
-                disabled={writeLocked || isLoading}
+                disabled={writeLocked || isLoading || isDeleting}
                 className="w-full h-16 rounded-[28px] bg-teal-600 hover:bg-teal-700 text-lg font-extrabold shadow-xl shadow-teal-100 transition-all active:scale-95 gap-3 text-white flex items-center justify-center"
             >
                 {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : <FormIcon className="w-6 h-6" />}
@@ -254,6 +291,16 @@ export function PetForm({ ownerId, subjectKind: kindProp, tenantId, initialData,
                     </div>
                 )}
             </button>
+            {initialData ? (
+                <button
+                    type="button"
+                    onClick={handleDeletePet}
+                    disabled={writeLocked || isLoading || isDeleting}
+                    className="w-full h-12 rounded-2xl border border-rose-200 bg-rose-50 text-sm font-black text-rose-700 hover:bg-rose-100 transition-colors disabled:opacity-50"
+                >
+                    {isDeleting ? "삭제 중..." : "등록 정보 삭제"}
+                </button>
+            ) : null}
             {submitError ? (
                 <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
                     {submitError}

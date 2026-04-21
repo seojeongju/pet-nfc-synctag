@@ -12,6 +12,7 @@ import type { LucideIcon } from "lucide-react";
 import { requireTenantMember } from "@/lib/tenant-membership";
 import { isTenantSuspendedSafe } from "@/lib/tenant-status";
 import { rethrowNextControlFlowErrors } from "@/lib/next-redirect-guard";
+import SafePetImage from "@/components/pet/SafePetImage";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -192,19 +193,15 @@ export default async function PetsPage({
                             <a href={`/dashboard/${subjectKind}/pets/${pet.id}${kindQs}`} key={pet.id} className="group">
                                 <Card className="rounded-[32px] border-none shadow-xl shadow-slate-100/50 overflow-hidden hover:scale-[1.02] transition-all duration-300">
                                     <div className="h-40 bg-teal-50 relative">
-                                        {pet.photo_url ? (
-                                            // eslint-disable-next-line @next/next/no-img-element -- Edge RSC에서 next/image 이슈 회피
-                                            <img
+                                        <div className="absolute inset-0">
+                                            <SafePetImage
                                                 src={pet.photo_url}
                                                 alt={pet.name}
-                                                className="absolute inset-0 h-full w-full object-cover"
-                                                loading="lazy"
+                                                className="h-full w-full object-cover"
+                                                fallbackClassName="h-full w-full flex items-center justify-center bg-teal-50 text-teal-200"
+                                                iconClassName="h-16 w-16 opacity-50"
                                             />
-                                        ) : (
-                                            <div className="absolute inset-0 flex items-center justify-center text-teal-200">
-                                                <ListIcon className="w-16 h-16 opacity-50" />
-                                            </div>
-                                        )}
+                                        </div>
                                         {/* 실종 뱃지 */}
                                         {pet.is_lost ? (
                                             <div className="absolute top-2 left-2 flex items-center gap-1 bg-rose-500 text-white text-[9px] font-black px-2 py-1 rounded-full shadow-lg">

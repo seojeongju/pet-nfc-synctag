@@ -16,7 +16,7 @@ interface PetData {
     breed?: string;
     medical_info?: string;
     emergency_contact?: string;
-    photo_url?: string;
+    photo_url?: string | null;
     subject_kind?: SubjectKind;
     tenant_id?: string | null;
 }
@@ -357,6 +357,68 @@ export async function updatePetSafe(petId: string, data: Partial<PetData>): Prom
             error instanceof Error && error.message
                 ? error.message
                 : "정보 수정에 실패했습니다. 잠시 후 다시 시도해 주세요.";
+        return { ok: false, error: message };
+    }
+}
+
+function extractR2KeyFromPhotoUrl(photoUrl?: string | null): string | null {
+    if (!photoUrl) return null;
+    const trimmed = photoUrl.trim();
+    if (!trimmed) return null;
+
+    const prefix = "/api/r2/";
+    if (trimmed.startsWith(prefix)) {
+        return trimmed.slice(prefix.length);
+    }
+
+    try {
+        const parsed = new URL(trimmed);
+        if (parsed.pathname.startsWith(prefix)) {
+            return parsed.pathname.slice(prefix.length);
+        }
+    } catch {
+        // URL 파싱 실패 시 R2 삭제를 생략합니다.
+    }
+    return null;
+}
+
+export async function deletePet(petId: string): Promise<void> {
+    const actorId = await requireActorUserId();
+    const db = getDB();
+    await assertMigration0008Applied(db);
+
+    const target = await db
+        .prepare("SELECT owner_id, tenant_id, photo_url FROM pets WHERE id = ?")
+        .bind(petId)
+        .first<{ owner_id: string; tenant_id: string | null; photo_url: string | null }>();
+    if (!target) {
+        throw new Error("삭제 대상이 존재하지 않습니다.");
+    }
+
+    if (target.tenant_id) {
+        await assertTenantActive(db, target.tenant_id);
+        await assertTenantRole(db, actorId, target.tenant_id, "admin");
+    } else if (target.owner_id !== actorId) {
+        throw new Error("삭제 권한이 없습니다.");
+    }
+
+    await db.prepare("DELETE FROM pets WHERE id = ?").bind(petId).run();
+
+    const photoKey = extractR2KeyFromPhotoUrl(target.photo_url);
+    if (photoKey) {
+        await getR2().delete(photoKey).catch(() => null);
+    }
+}
+
+export async function deletePetSafe(petId: string): Promise<PetActionResult> {
+    try {
+        await deletePet(petId);
+        return { ok: true };
+    } catch (error: unknown) {
+        const message =
+            error instanceof Error && error.message
+                ? error.message
+                : "삭제에 실패했습니다. 잠시 후 다시 시도해 주세요.";
         return { ok: false, error: message };
     }
 }

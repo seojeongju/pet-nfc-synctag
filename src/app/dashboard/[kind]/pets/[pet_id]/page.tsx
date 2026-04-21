@@ -10,6 +10,7 @@ import { getScanLogsWithDb } from "@/lib/scan-logs-db";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
 import { getTenantStatus } from "@/lib/tenant-status";
 import { LostModeToggle } from "@/components/pet/LostModeToggle";
+import SafePetImage from "@/components/pet/SafePetImage";
 import {
   ArrowLeft, PawPrint, Edit3, Heart, Activity,
   Nfc, Stethoscope, Clock, AlertTriangle, ChevronRight
@@ -131,14 +132,13 @@ export default async function PetDetailPage({
           <div className="flex items-center gap-5">
             <div className="relative">
               <div className="w-20 h-20 rounded-[24px] overflow-hidden bg-teal-50 border-4 border-white shadow-xl">
-                {pet.photo_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={pet.photo_url} alt={pet.name} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-teal-300">
-                    <PawPrint className="w-9 h-9" />
-                  </div>
-                )}
+                <SafePetImage
+                  src={pet.photo_url}
+                  alt={pet.name}
+                  className="h-full w-full object-cover"
+                  fallbackClassName="h-full w-full flex items-center justify-center bg-teal-50 text-teal-300"
+                  iconClassName="h-9 w-9"
+                />
               </div>
               {isLost && (
                 <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-rose-500 border-2 border-white flex items-center justify-center">
