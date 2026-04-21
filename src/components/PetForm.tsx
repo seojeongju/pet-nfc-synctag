@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { createPet, updatePet, uploadToR2 } from "@/app/actions/pet";
+import { createPetSafe, updatePetSafe, uploadToR2 } from "@/app/actions/pet";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useState, useRef } from "react";
@@ -95,9 +95,17 @@ export function PetForm({ ownerId, subjectKind: kindProp, tenantId, initialData,
             };
 
             if (initialData) {
-                await updatePet(initialData.id, petData);
+                const result = await updatePetSafe(initialData.id, petData);
+                if (!result.ok) {
+                    setSubmitError(result.error);
+                    return;
+                }
             } else {
-                await createPet(ownerId, petData);
+                const result = await createPetSafe(ownerId, petData);
+                if (!result.ok) {
+                    setSubmitError(result.error);
+                    return;
+                }
             }
             const tenantQs = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : "";
             // 중간 /dashboard 리다이렉트 체인을 거치지 않고 목적지로 바로 이동해

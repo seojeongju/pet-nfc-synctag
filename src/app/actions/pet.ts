@@ -20,6 +20,10 @@ interface PetData {
     tenant_id?: string | null;
 }
 
+export type PetActionResult =
+    | { ok: true; id?: string }
+    | { ok: false; error: string };
+
 async function requireActorUserId(): Promise<string> {
     const context = getCfRequestContext();
     const auth = getAuth(context.env);
@@ -71,6 +75,23 @@ export async function createPet(ownerId: string, data: PetData) {
     .run();
 
     return id;
+}
+
+/**
+ * 클라이언트에서 호출할 때 프로덕션에서 에러 메시지가 가려지는 문제를 피하기 위해
+ * 결과 객체를 직접 반환합니다.
+ */
+export async function createPetSafe(ownerId: string, data: PetData): Promise<PetActionResult> {
+    try {
+        const id = await createPet(ownerId, data);
+        return { ok: true, id };
+    } catch (error: unknown) {
+        const message =
+            error instanceof Error && error.message
+                ? error.message
+                : "반려동물 등록에 실패했습니다. 잠시 후 다시 시도해 주세요.";
+        return { ok: false, error: message };
+    }
 }
 
 export async function getPet(petId: string) {
@@ -141,6 +162,19 @@ export async function updatePet(petId: string, data: Partial<PetData>) {
     await db.prepare(`UPDATE pets SET ${setClause}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
         .bind(...values, petId)
         .run();
+}
+
+export async function updatePetSafe(petId: string, data: Partial<PetData>): Promise<PetActionResult> {
+    try {
+        await updatePet(petId, data);
+        return { ok: true };
+    } catch (error: unknown) {
+        const message =
+            error instanceof Error && error.message
+                ? error.message
+                : "정보 수정에 실패했습니다. 잠시 후 다시 시도해 주세요.";
+        return { ok: false, error: message };
+    }
 }
 export async function getLatestLocations(subjectKind: SubjectKind, tenantId?: string | null) {
     const actorId = await requireActorUserId();
