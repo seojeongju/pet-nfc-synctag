@@ -4,14 +4,18 @@ import { headers } from "next/headers";
 import { parseSubjectKind } from "@/lib/subject-kind";
 import { getAuth } from "@/lib/auth";
 import { getCfRequestContext } from "@/lib/cf-request-context";
+import { normalizeTagUid } from "@/lib/tag-uid-format";
 
 export const runtime = "edge";
 
 export default async function TagResolvePage({ params }: { params: Promise<{ tag_id: string }> }) {
   const db = getDB();
   const { tag_id } = await params;
+  const normalizedTagId = normalizeTagUid(tag_id);
+  const compactTagId = normalizedTagId.replace(/[^A-Z0-9]/g, "");
 
   type TagRow = {
+    id: string;
     pet_id: string;
     is_active: boolean;
     assigned_subject_kind: string | null;
@@ -23,26 +27,26 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
   try {
     tag = await db
       .prepare(
-        `SELECT t.pet_id, t.is_active, t.assigned_subject_kind,
+        `SELECT t.id, t.pet_id, t.is_active, t.assigned_subject_kind,
                 COALESCE(p.subject_kind, 'pet') AS pet_subject_kind,
                 p.tenant_id AS pet_tenant_id
          FROM tags t
          INNER JOIN pets p ON p.id = t.pet_id
-         WHERE t.id = ?`
+         WHERE UPPER(REPLACE(REPLACE(REPLACE(t.id, ':', ''), '-', ''), '_', '')) = ?`
       )
-      .bind(tag_id)
+      .bind(compactTagId)
       .first<TagRow>();
   } catch {
     tag = await db
       .prepare(
-        `SELECT t.pet_id, t.is_active, NULL AS assigned_subject_kind,
+        `SELECT t.id, t.pet_id, t.is_active, NULL AS assigned_subject_kind,
                 COALESCE(p.subject_kind, 'pet') AS pet_subject_kind,
                 p.tenant_id AS pet_tenant_id
          FROM tags t
          INNER JOIN pets p ON p.id = t.pet_id
-         WHERE t.id = ?`
+         WHERE UPPER(REPLACE(REPLACE(REPLACE(t.id, ':', ''), '-', ''), '_', '')) = ?`
       )
-      .bind(tag_id)
+      .bind(compactTagId)
       .first<TagRow>();
   }
 
@@ -54,7 +58,7 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
       .prepare(
         "INSERT INTO unknown_tag_accesses (tag_uid, ip_address, user_agent) VALUES (?, ?, ?)"
       )
-      .bind(tag_id, ip, userAgent)
+      .bind(normalizedTagId, ip, userAgent)
       .run()
       .catch(() => {});
     notFound();
@@ -72,7 +76,7 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
     .prepare(
       "INSERT INTO scan_logs (tag_id, ip_address, user_agent) VALUES (?, ?, ?)"
     )
-    .bind(tag_id, ip, userAgent)
+    .bind(tag.id, ip, userAgent)
     .run();
 
   const effectiveKind = parseSubjectKind(
@@ -97,7 +101,7 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
   }
 
   const profileQs = new URLSearchParams();
-  profileQs.set("tag", tag_id);
+  profileQs.set("tag", tag.id);
   profileQs.set("kind", effectiveKind);
   profileQs.set("from", "scan");
   if (tenantForLinks) profileQs.set("tenant", tenantForLinks);
