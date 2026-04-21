@@ -94,6 +94,9 @@ export function TagBulkRegisterCard() {
   const [nfcContinuous, setNfcContinuous] = useState(false);
   const [nfcHint, setNfcHint] = useState<string | null>(null);
   const sessionRef = useRef<NfcUidScanSession | null>(null);
+  /** NFC 읽기가 비동기라, 완료 시점의 활성 모드 기준으로 UID를 반영합니다 */
+  const activeKindRef = useRef<SubjectKind>(activeKind);
+  activeKindRef.current = activeKind;
 
   useEffect(() => {
     setNfcReadSupported(isWebNfcReadSupported());
@@ -129,6 +132,7 @@ export function TagBulkRegisterCard() {
           type: "success",
           text: `[${modeLabel}] 등록 완료: 신규 ${result.registeredCount}개 / 요청 ${result.requestedCount}개 · 무효 ${result.invalidCount}개 · 요청 내 중복 ${result.duplicateInRequest}개 · 기존 태그 ${result.duplicateExisting}개 (배치 ${result.batchId})`,
         });
+        setNfcHint(null);
         setUidsByKind((prev) => ({ ...prev, [activeKind]: "" }));
         router.refresh();
       } catch {
@@ -180,6 +184,7 @@ export function TagBulkRegisterCard() {
                 setNfcContinuous(false);
                 setActiveKind(kind);
                 setMessage(null);
+                setNfcHint(null);
               }}
               className={cn(
                 "shrink-0 flex min-w-[106px] items-center gap-2 rounded-2xl border px-3 py-2.5 text-left transition-all outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
@@ -218,16 +223,16 @@ export function TagBulkRegisterCard() {
               setNfcHint(null);
               setMessage(null);
               setNfcBusy(true);
-              const kind = activeKind;
               void readNfcTagUidOnce().then((r) => {
                 setNfcBusy(false);
                 if (r.ok) {
+                  const k = activeKindRef.current;
                   setUidsByKind((prev) => {
-                    const cur = prev[kind].trim();
+                    const cur = prev[k].trim();
                     const next = cur ? `${cur}\n${r.uid}` : r.uid;
-                    return { ...prev, [kind]: next };
+                    return { ...prev, [k]: next };
                   });
-                  setNfcHint(`UID를 추가했습니다: ${r.uid}`);
+                  setNfcHint(`[${kindShortLabel[k]}] UID를 추가했습니다: ${r.uid}`);
                   void recordNfcWebReadAudit({ success: true, source: "bulk_register", tagId: r.uid });
                 } else {
                   setNfcHint(r.error);
@@ -264,20 +269,20 @@ export function TagBulkRegisterCard() {
                 setNfcHint(null);
                 setMessage(null);
                 setNfcBusy(true);
-                const kind = activeKind;
                 void startNfcUidScanSession({
                   onUid: (uid) => {
+                    const k = activeKindRef.current;
                     setUidsByKind((prev) => {
-                      const tokens = prev[kind]
+                      const tokens = prev[k]
                         .split(/[\n,]+/)
                         .map(normalizeTagUid)
                         .filter((v) => v.length > 0);
                       if (tokens.includes(uid)) return prev;
-                      const cur = prev[kind].trim();
+                      const cur = prev[k].trim();
                       const next = cur ? `${cur}\n${uid}` : uid;
-                      return { ...prev, [kind]: next };
+                      return { ...prev, [k]: next };
                     });
-                    setNfcHint(`연속 스캔 감지: ${uid}`);
+                    setNfcHint(`[${kindShortLabel[k]}] 연속 스캔 감지: ${uid}`);
                     void recordNfcWebReadAudit({ success: true, source: "bulk_register", tagId: uid });
                   },
                   onError: (error) => {
