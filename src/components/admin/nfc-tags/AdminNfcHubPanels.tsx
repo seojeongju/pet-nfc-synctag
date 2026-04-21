@@ -149,7 +149,8 @@ export function AdminNfcQuickLinkGrid() {
             href={href}
             prefetch={false}
             className={cn(
-              "group flex flex-col rounded-3xl border p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg",
+              "group flex min-h-[112px] flex-col rounded-3xl border p-6 shadow-sm transition-all active:scale-[0.99] sm:min-h-0 sm:p-5",
+              "hover:-translate-y-0.5 hover:shadow-lg",
               color
             )}
           >
@@ -161,9 +162,9 @@ export function AdminNfcQuickLinkGrid() {
                 {chip}
               </span>
             </div>
-            <h2 className="flex items-center gap-2 text-lg font-black text-slate-900">
+            <h2 className="flex items-center gap-2 text-[1.125rem] font-black leading-snug text-slate-900 sm:text-lg">
               {title}
-              <ArrowRight className="h-4 w-4 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-teal-600" />
+              <ArrowRight className="h-4 w-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-teal-600" />
             </h2>
           </Link>
         ))}
@@ -188,7 +189,7 @@ export function AdminNfcHelpCallout() {
         <Link
           href="/admin/monitoring"
           prefetch={false}
-          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-xs font-black text-white shadow-lg transition hover:bg-teal-600"
+          className="inline-flex min-h-[48px] w-full shrink-0 touch-manipulation items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-3.5 text-[13px] font-black text-white shadow-lg transition hover:bg-teal-600 active:scale-[0.99] sm:w-auto sm:text-xs"
         >
           모니터링
           <ArrowRight className="h-4 w-4" aria-hidden />

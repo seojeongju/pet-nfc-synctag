@@ -164,7 +164,7 @@ export function TagBulkRegisterCard() {
           <PlusCircle className="w-5 h-5 text-teal-500" />
           NFC 태그 대량 등록
         </h3>
-        <p className="text-[10px] font-bold uppercase tracking-tight text-slate-500">
+        <p className="text-[11px] font-black uppercase tracking-tight text-slate-500 sm:text-[10px]">
           모드 선택 → UID 입력/스캔 → 등록
         </p>
       </div>
@@ -187,7 +187,7 @@ export function TagBulkRegisterCard() {
                 setNfcHint(null);
               }}
               className={cn(
-                "shrink-0 flex min-w-[106px] items-center gap-2 rounded-2xl border px-3 py-2.5 text-left transition-all outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+                "touch-manipulation shrink-0 flex min-h-[52px] min-w-[112px] items-center gap-2 rounded-2xl border px-3 py-3 text-left transition-all outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-[0.99] sm:min-h-0 sm:py-2.5",
                 active ? tab.active : tab.inactive,
                 active ? "ring-offset-white focus-visible:ring-teal-500/40" : "focus-visible:ring-slate-300"
               )}
@@ -211,10 +211,10 @@ export function TagBulkRegisterCard() {
 
       <div className="relative z-10 space-y-2">
         <div className="flex flex-col gap-2">
-          <p className="text-[10px] font-bold leading-snug text-slate-500">
+          <p className="text-[13px] font-semibold leading-snug text-slate-500 sm:text-[10px] sm:font-bold">
             NFC 스캔은 Android Chrome + HTTPS 환경에서 동작합니다.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-2">
             <Button
             type="button"
             variant="outline"
@@ -240,7 +240,7 @@ export function TagBulkRegisterCard() {
                 }
               });
             }}
-            className="h-11 rounded-2xl border-slate-200 font-black text-xs"
+            className="min-h-12 rounded-2xl border-slate-200 text-[14px] font-black touch-manipulation sm:h-11 sm:text-xs"
           >
             {nfcBusy ? (
               <>
@@ -301,33 +301,40 @@ export function TagBulkRegisterCard() {
                   setNfcHint("연속 스캔 시작: 태그를 가까이 대면 UID가 자동으로 추가됩니다.");
                 });
               }}
-              className="h-11 rounded-2xl border-slate-200 font-black text-xs"
+              className="min-h-12 rounded-2xl border-slate-200 text-[14px] font-black touch-manipulation sm:h-11 sm:text-xs"
             >
               {nfcContinuous ? "연속 스캔 중지" : "연속 스캔 시작"}
             </Button>
           </div>
         </div>
         {nfcReadSupported === false && (
-          <p className="text-[10px] font-black text-amber-800">
+          <p className="text-[13px] font-black text-amber-800 sm:text-[10px]">
             NDEFReader 미지원 — UID는 직접 입력하거나 Chrome에서 열기 (도움말)
           </p>
         )}
         {nfcHint && (
-          <p className="text-[10px] font-bold text-slate-600 whitespace-pre-wrap leading-relaxed">{nfcHint}</p>
+          <p className="text-[13px] font-semibold text-slate-600 whitespace-pre-wrap leading-relaxed sm:text-[10px] sm:font-bold">
+            {nfcHint}
+          </p>
         )}
         <textarea
           value={uids}
           onChange={(e) => setUidsForActive(e.target.value)}
           placeholder="UID (줄 또는 쉼표로 구분)"
           className={cn(
-            "w-full h-44 bg-slate-50 border border-slate-200 rounded-[23px] p-5 text-sm font-mono text-slate-700",
-            "focus:ring-4 focus:outline-none transition-all resize-none shadow-inner",
+            "min-h-[11rem] w-full resize-none rounded-[23px] border border-slate-200 bg-slate-50 p-5 font-mono text-base text-slate-700 shadow-inner",
+            "transition-all focus:outline-none focus:ring-4 sm:h-44 sm:text-sm",
             focusRingByKind[activeKind]
           )}
         />
       </div>
 
-      <div className={cn("rounded-xl border p-4 text-[11px] font-bold space-y-2", statsPanelByKind[activeKind])}>
+      <div
+        className={cn(
+          "space-y-2 rounded-xl border p-4 text-[13px] font-bold sm:text-[11px]",
+          statsPanelByKind[activeKind]
+        )}
+      >
         <div className="flex items-center justify-between gap-2">
           <span className="text-slate-500">유효 UID</span>
           <span className="text-slate-900 tabular-nums">{validUids.length}개</span>
@@ -374,7 +381,7 @@ export function TagBulkRegisterCard() {
         onClick={handleRegister}
         disabled={isPending || !uids.trim()}
         className={cn(
-          "w-full min-h-14 rounded-[24px] group relative overflow-hidden font-black text-sm transition-all active:scale-95 shadow-xl px-4 py-3",
+          "min-h-14 w-full touch-manipulation rounded-[24px] px-4 py-4 text-[15px] shadow-xl transition-all group relative overflow-hidden font-black active:scale-[0.98] sm:py-3 sm:text-sm",
           adminUi.darkButton
         )}
       >

@@ -5,6 +5,7 @@ import { TagLinkLogsSection } from "@/components/admin/tags/TagLinkLogsSection";
 import { AdminAuditLogsPanel } from "@/components/admin/tags/AdminAuditLogsPanel";
 import { adminUi } from "@/styles/admin/ui";
 import { AdminPageIntro } from "@/components/admin/layout/AdminPageIntro";
+import { cn } from "@/lib/utils";
 
 export const runtime = "edge";
 
@@ -40,12 +41,12 @@ export default async function AdminNfcTagsHistoryPage({
 
   return (
     <Suspense fallback={<div className="min-h-[40vh] bg-[#F8FAFC]" />}>
-      <div className="relative space-y-10 pb-20">
+      <div className={cn("relative space-y-8 sm:space-y-10", adminUi.pageBottomSafe)}>
         <div className={adminUi.nfcTagsPageBody}>
           <div className="mb-8 space-y-6">
             <AdminPageIntro
               title="④ 연결·감사 이력"
-              subtitle="연결 로그·감사 로그 조회. 필터·정렬은 아래 패널·도움말을 참고하세요."
+              subtitle="위는 태그–펫 연결 이력, 아래는 관리자 감사 로그입니다. 감사 필터는 URL과 동기화되며 모바일에서는 카드 목록으로 표시됩니다."
               crumbs={[
                 { label: "관리자", href: "/admin" },
                 { label: "Pet-ID NFC", href: "/admin/nfc-tags" },

@@ -10,6 +10,8 @@ import {
   getTenantsAdminView,
 } from "@/app/actions/admin-tenants";
 import { Building2, Search, ShieldCheck, UserPlus2, UsersRound } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { adminUi } from "@/styles/admin/ui";
 
 export const runtime = "edge";
 
@@ -57,11 +59,15 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
   const backQs = buildBackQuery({ q, email, status });
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] font-outfit p-5 lg:p-8 space-y-6">
-      <header className="space-y-2">
-        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-600">MULTI TENANCY</p>
-        <h1 className="text-2xl lg:text-3xl font-black text-slate-900">조직 · 멤버 관리</h1>
-        <p className="text-sm text-slate-500 font-medium">
+    <div className={cn(adminUi.pageContainer, adminUi.pageBottomSafe, "space-y-6 pb-12 font-outfit")}>
+      <header className="space-y-3">
+        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-teal-600 sm:text-[10px]">
+          MULTI TENANCY
+        </p>
+        <h1 className="text-[1.35rem] font-black leading-snug tracking-tight text-slate-900 sm:text-2xl lg:text-3xl">
+          조직 · 멤버 관리
+        </h1>
+        <p className="text-[15px] font-semibold leading-relaxed text-slate-600 sm:text-sm sm:font-medium sm:text-slate-500">
           조직 생성, 멤버 추가, role(owner/admin/member) 변경/삭제를 관리합니다.
         </p>
       </header>
@@ -93,18 +99,18 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
             name="q"
             defaultValue={q}
             placeholder="tenant명 또는 slug"
-            className="h-11 rounded-2xl border border-slate-200 px-4 text-sm font-semibold"
+            className="min-h-[48px] touch-manipulation rounded-2xl border border-slate-200 px-4 text-base font-semibold sm:h-11 sm:text-sm"
           />
           <input
             name="email"
             defaultValue={email}
             placeholder="멤버 이메일"
-            className="h-11 rounded-2xl border border-slate-200 px-4 text-sm font-semibold"
+            className="min-h-[48px] touch-manipulation rounded-2xl border border-slate-200 px-4 text-base font-semibold sm:h-11 sm:text-sm"
           />
           <select
             name="status"
             defaultValue={status}
-            className="h-11 rounded-2xl border border-slate-200 px-4 text-sm font-semibold"
+            className="min-h-[48px] touch-manipulation rounded-2xl border border-slate-200 px-4 text-base font-semibold sm:h-11 sm:text-sm"
           >
             <option value="all">전체 상태</option>
             <option value="active">active</option>
@@ -112,7 +118,7 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
           </select>
           <button
             type="submit"
-            className="h-11 rounded-2xl bg-slate-900 text-white text-sm font-black hover:bg-teal-600"
+            className="min-h-[48px] touch-manipulation rounded-2xl bg-slate-900 text-[15px] font-black text-white hover:bg-teal-600 sm:h-11 sm:text-sm"
           >
             필터 적용
           </button>
@@ -143,18 +149,18 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
             name="name"
             required
             placeholder="조직명"
-            className="h-11 rounded-2xl border border-slate-200 px-4 text-sm font-semibold"
+            className="min-h-[48px] touch-manipulation rounded-2xl border border-slate-200 px-4 text-base font-semibold sm:h-11 sm:text-sm"
           />
           <input
             name="owner_email"
             required
             type="email"
             placeholder="소유자 이메일"
-            className="h-11 rounded-2xl border border-slate-200 px-4 text-sm font-semibold"
+            className="min-h-[48px] touch-manipulation rounded-2xl border border-slate-200 px-4 text-base font-semibold sm:h-11 sm:text-sm"
           />
           <button
             type="submit"
-            className="h-11 rounded-2xl bg-slate-900 text-white text-sm font-black hover:bg-teal-600"
+            className="min-h-[48px] touch-manipulation rounded-2xl bg-slate-900 text-[15px] font-black text-white hover:bg-teal-600 sm:h-11 sm:text-sm"
           >
             조직 생성
           </button>
@@ -190,11 +196,11 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
                 >
                   <input type="hidden" name="tenant_id" value={tenant.id} />
                   <input type="hidden" name="return_qs" value={backQs} />
-                  <select name="status" defaultValue={tenant.status} className="h-9 rounded-xl border border-slate-200 px-3 text-xs font-bold">
+                  <select name="status" defaultValue={tenant.status} className="min-h-11 touch-manipulation rounded-xl border border-slate-200 px-3 text-sm font-bold sm:h-9 sm:text-xs">
                     <option value="active">active</option>
                     <option value="suspended">suspended</option>
                   </select>
-                  <button type="submit" className="h-9 rounded-xl bg-slate-900 px-3 text-[11px] font-black text-white">
+                  <button type="submit" className="min-h-11 touch-manipulation rounded-xl bg-slate-900 px-4 text-[12px] font-black text-white sm:h-9 sm:px-3 sm:text-[11px]">
                     상태 저장
                   </button>
                 </form>
@@ -221,9 +227,9 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
                   required
                   defaultValue={tenant.name}
                   placeholder="조직명"
-                  className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-semibold lg:col-span-3"
+                  className="min-h-12 touch-manipulation rounded-xl border border-slate-200 px-3 text-base font-semibold sm:h-10 sm:text-sm lg:col-span-3"
                 />
-                <button type="submit" className="h-10 rounded-xl bg-slate-900 text-white text-sm font-black hover:bg-teal-600">
+                <button type="submit" className="min-h-12 touch-manipulation rounded-xl bg-slate-900 text-[15px] font-black text-white hover:bg-teal-600 sm:h-10 sm:text-sm">
                   조직명 저장
                 </button>
               </form>
@@ -249,14 +255,14 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
                   required
                   type="email"
                   placeholder="멤버 이메일"
-                  className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-semibold lg:col-span-2"
+                  className="min-h-12 touch-manipulation rounded-xl border border-slate-200 px-3 text-base font-semibold sm:h-10 sm:text-sm lg:col-span-2"
                 />
-                <select name="role" defaultValue="member" className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-bold">
+                <select name="role" defaultValue="member" className="min-h-12 touch-manipulation rounded-xl border border-slate-200 px-3 text-base font-bold sm:h-10 sm:text-sm">
                   <option value="member">멤버</option>
                   <option value="admin">관리자</option>
                   <option value="owner">소유자</option>
                 </select>
-                <button type="submit" className="h-10 rounded-xl bg-teal-600 text-white text-sm font-black hover:bg-teal-700 inline-flex items-center justify-center gap-1">
+                <button type="submit" className="inline-flex min-h-12 touch-manipulation items-center justify-center gap-1 rounded-xl bg-teal-600 px-2 text-[15px] font-black text-white hover:bg-teal-700 sm:h-10 sm:text-sm">
                   <UserPlus2 className="w-4 h-4" />
                   멤버 추가/갱신
                 </button>
@@ -287,14 +293,14 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
                   required
                   type="email"
                   placeholder="미가입 사용자 이메일"
-                  className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-semibold lg:col-span-2"
+                  className="min-h-12 touch-manipulation rounded-xl border border-slate-200 px-3 text-base font-semibold sm:h-10 sm:text-sm lg:col-span-2"
                 />
-                <select name="role" defaultValue="member" className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-bold">
+                <select name="role" defaultValue="member" className="min-h-12 touch-manipulation rounded-xl border border-slate-200 px-3 text-base font-bold sm:h-10 sm:text-sm">
                   <option value="member">멤버</option>
                   <option value="admin">관리자</option>
                   <option value="owner">소유자</option>
                 </select>
-                <button type="submit" className="h-10 rounded-xl bg-indigo-600 text-white text-sm font-black hover:bg-indigo-700">
+                <button type="submit" className="min-h-12 touch-manipulation rounded-xl bg-indigo-600 px-2 text-[15px] font-black text-white hover:bg-indigo-700 sm:h-10 sm:text-sm">
                   초대 토큰 발급
                 </button>
               </form>
@@ -355,12 +361,12 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
                               <input type="hidden" name="tenant_id" value={tenant.id} />
                               <input type="hidden" name="user_id" value={m.user_id} />
                               <input type="hidden" name="return_qs" value={backQs} />
-                              <select name="role" defaultValue={m.role} className="h-8 rounded-lg border border-slate-200 px-2 text-xs font-bold">
+                              <select name="role" defaultValue={m.role} className="min-h-10 touch-manipulation rounded-lg border border-slate-200 px-2 text-[13px] font-bold sm:h-8 sm:text-xs">
                                 <option value="member">멤버</option>
                                 <option value="admin">관리자</option>
                                 <option value="owner">소유자</option>
                               </select>
-                              <button type="submit" className="h-8 rounded-lg bg-slate-800 px-2.5 text-[11px] font-black text-white hover:bg-slate-900">
+                              <button type="submit" className="min-h-10 touch-manipulation rounded-lg bg-slate-800 px-3 text-[12px] font-black text-white hover:bg-slate-900 sm:h-8 sm:px-2.5 sm:text-[11px]">
                                 저장
                               </button>
                             </form>
@@ -381,7 +387,7 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
                               <input type="hidden" name="tenant_id" value={tenant.id} />
                               <input type="hidden" name="user_id" value={m.user_id} />
                               <input type="hidden" name="return_qs" value={backQs} />
-                              <button type="submit" className="h-8 rounded-lg border border-rose-200 px-2.5 text-[11px] font-black text-rose-600 hover:bg-rose-50">
+                              <button type="submit" className="min-h-10 touch-manipulation rounded-lg border border-rose-200 px-3 text-[12px] font-black text-rose-600 hover:bg-rose-50 sm:h-8 sm:px-2.5 sm:text-[11px]">
                                 제거
                               </button>
                             </form>

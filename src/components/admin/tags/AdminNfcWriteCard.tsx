@@ -116,11 +116,11 @@ export function AdminNfcWriteCard() {
       {nfcSupported === false && (
         <div
           className={cn(
-            "flex items-start gap-2 rounded-2xl border px-3 py-2.5 text-[10px] font-black",
+            "flex items-start gap-3 rounded-2xl border px-4 py-3 text-[13px] font-black leading-snug sm:text-[10px]",
             "border-amber-200 bg-amber-50 text-amber-900"
           )}
         >
-          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden />
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
           <span>NDEFWriter 없음 — Chrome(HTTPS) 또는 도움말</span>
         </div>
       )}
@@ -128,17 +128,17 @@ export function AdminNfcWriteCard() {
       {nfcReadSupported === false && nfcSupported !== false && (
         <div
           className={cn(
-            "flex items-start gap-2 rounded-2xl border px-3 py-2.5 text-[10px] font-black",
+            "flex items-start gap-3 rounded-2xl border px-4 py-3 text-[13px] font-black leading-snug sm:text-[10px]",
             "border-slate-200 bg-slate-50 text-slate-700"
           )}
         >
-          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden />
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
           <span>NDEFReader 없음 — UID 수동 입력·도움말</span>
         </div>
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="nfc-tag-uid" className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+        <Label htmlFor="nfc-tag-uid" className="text-[11px] font-black uppercase tracking-widest text-slate-500 sm:text-[10px]">
           태그 UID
         </Label>
         <Input
@@ -147,11 +147,16 @@ export function AdminNfcWriteCard() {
           onChange={(e) => setTagId(e.target.value)}
           placeholder="태그 뒷면 UID"
           disabled={busy}
-          className={cn(adminUi.input, "h-12 rounded-2xl font-mono text-sm")}
+          autoCapitalize="characters"
+          autoCorrect="off"
+          className={cn(
+            adminUi.input,
+            "min-h-[48px] rounded-2xl font-mono text-base shadow-inner focus:border-teal-400 focus:ring-2 focus:ring-teal-500/20 sm:h-12 sm:text-sm"
+          )}
         />
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-2">
         <Button
           type="button"
           variant="outline"
@@ -171,7 +176,7 @@ export function AdminNfcWriteCard() {
               }
             });
           }}
-          className="h-12 rounded-2xl border-slate-200 font-black text-xs"
+          className="min-h-[52px] rounded-2xl border-slate-200 text-[14px] font-black touch-manipulation sm:h-12 sm:text-xs"
         >
           {readBusy ? (
             <>
@@ -189,7 +194,10 @@ export function AdminNfcWriteCard() {
           type="button"
           onClick={() => void onWrite()}
           disabled={busy || nfcSupported === false}
-          className={cn("h-12 rounded-2xl font-black", adminUi.darkButton)}
+          className={cn(
+            "min-h-[52px] rounded-2xl text-[14px] font-black touch-manipulation sm:h-12 sm:text-xs",
+            adminUi.darkButton
+          )}
         >
           {busy ? (
             <>
@@ -207,7 +215,7 @@ export function AdminNfcWriteCard() {
         variant="outline"
         onClick={() => void onOpenNativeApp()}
         disabled={nativeBusy || busy}
-        className="h-11 rounded-2xl border-slate-200 font-black text-xs"
+        className="min-h-[52px] w-full rounded-2xl border-slate-200 text-[14px] font-black touch-manipulation sm:h-11 sm:w-auto sm:text-xs"
       >
         {nativeBusy ? (
           <>
@@ -220,7 +228,9 @@ export function AdminNfcWriteCard() {
       </Button>
 
       {hint && (
-        <p className="text-[11px] font-bold text-slate-600 whitespace-pre-wrap leading-relaxed">{hint}</p>
+        <p className="text-[14px] font-semibold leading-relaxed text-slate-600 whitespace-pre-wrap sm:text-[11px] sm:font-bold">
+          {hint}
+        </p>
       )}
     </AdminCard>
   );

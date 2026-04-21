@@ -42,7 +42,10 @@ export function TagInventorySection({ tags, opsStats }: { tags: AdminTag[]; opsS
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="UID · 제품명 · 펫 이름 검색..."
-            className={cn(adminUi.searchInput, "w-full")}
+            className={cn(
+              adminUi.searchInput,
+              "min-h-[48px] w-full text-base font-semibold sm:min-h-0 sm:text-xs sm:font-bold"
+            )}
           />
         </div>
       </div>

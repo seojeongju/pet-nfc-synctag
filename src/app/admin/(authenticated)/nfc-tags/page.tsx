@@ -2,6 +2,7 @@ import { getTagOpsStats } from "@/app/actions/admin";
 import { TagOpsKpiCards } from "@/components/admin/tags/TagOpsKpiCards";
 import { adminUi } from "@/styles/admin/ui";
 import { AdminPageIntro } from "@/components/admin/layout/AdminPageIntro";
+import { cn } from "@/lib/utils";
 import {
   AdminNfcHelpCallout,
   AdminNfcWorkflowColumn,
@@ -14,7 +15,7 @@ export default async function AdminNfcTagsOverviewPage() {
   const opsStats = await getTagOpsStats();
 
   return (
-    <div className="relative overflow-hidden pb-24">
+    <div className={cn("relative overflow-hidden", adminUi.pageBottomSafe)}>
       <div className="pointer-events-none absolute right-1/4 top-0 h-[420px] w-[420px] rounded-full bg-teal-500/10 blur-[110px]" />
       <div className="pointer-events-none absolute -left-20 bottom-0 h-[320px] w-[320px] rounded-full bg-indigo-500/10 blur-[100px]" />
 

@@ -3,6 +3,7 @@ import type { AdminTag } from "@/types/admin-tags";
 import { TagInventorySection } from "@/components/admin/tags/TagInventorySection";
 import { adminUi } from "@/styles/admin/ui";
 import { AdminPageIntro } from "@/components/admin/layout/AdminPageIntro";
+import { cn } from "@/lib/utils";
 
 export const runtime = "edge";
 
@@ -10,7 +11,7 @@ export default async function AdminNfcTagsInventoryPage() {
   const [tags, opsStats] = await Promise.all([getAllTags(), getTagOpsStats()]);
 
   return (
-    <div className="relative pb-20">
+    <div className={cn("relative", adminUi.pageBottomSafe)}>
       <div className={adminUi.nfcTagsPageBody}>
         <div className="mb-8 space-y-6">
           <AdminPageIntro

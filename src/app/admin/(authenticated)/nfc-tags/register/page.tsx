@@ -1,12 +1,13 @@
 import { TagBulkRegisterCard } from "@/components/admin/tags/TagBulkRegisterCard";
 import { adminUi } from "@/styles/admin/ui";
 import { AdminPageIntro } from "@/components/admin/layout/AdminPageIntro";
+import { cn } from "@/lib/utils";
 
 export const runtime = "edge";
 
 export default function AdminNfcTagsRegisterPage() {
   return (
-    <div className="relative pb-20">
+    <div className={cn("relative", adminUi.pageBottomSafe)}>
       <div className={adminUi.nfcTagsPageBody}>
         <div className="mb-8 space-y-6">
           <AdminPageIntro

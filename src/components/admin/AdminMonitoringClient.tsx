@@ -209,16 +209,16 @@ export default function AdminMonitoringClient({
   };
 
   return (
-    <div className="p-4 lg:p-10 space-y-8 max-w-[1600px] mx-auto">
+    <div className="mx-auto max-w-[1600px] space-y-8 px-4 pb-[max(5rem,env(safe-area-inset-bottom,0px))] pt-2 lg:p-10 lg:pb-10">
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         className="space-y-2"
       >
-        <h1 className="text-2xl lg:text-3xl font-black text-slate-900 tracking-tight italic uppercase">
+        <h1 className="text-[1.35rem] font-black uppercase italic leading-tight tracking-tight text-slate-900 sm:text-2xl lg:text-3xl">
           NFC / BLE 모니터링
         </h1>
-        <p className="text-xs lg:text-sm text-slate-500 font-medium max-w-2xl leading-relaxed">
+        <p className="max-w-2xl text-[14px] font-medium leading-relaxed text-slate-500 sm:text-xs lg:text-sm">
           UID·이벤트 중심으로 기기·스캔·BLE 상태를 요약합니다. 고객 이름·이메일은 CS 조회 시에만
           보조적으로 표시됩니다.
         </p>

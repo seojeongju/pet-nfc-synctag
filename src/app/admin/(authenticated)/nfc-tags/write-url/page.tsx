@@ -1,12 +1,13 @@
 import { AdminNfcWriteCard } from "@/components/admin/tags/AdminNfcWriteCard";
 import { adminUi } from "@/styles/admin/ui";
 import { AdminPageIntro } from "@/components/admin/layout/AdminPageIntro";
+import { cn } from "@/lib/utils";
 
 export const runtime = "edge";
 
 export default function AdminNfcTagsWriteUrlPage() {
   return (
-    <div className="relative pb-20">
+    <div className={cn("relative", adminUi.pageBottomSafe)}>
       <div className={adminUi.nfcTagsPageBody}>
         <div className="mb-6 space-y-4">
           <AdminPageIntro

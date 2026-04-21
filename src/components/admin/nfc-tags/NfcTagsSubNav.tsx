@@ -85,7 +85,12 @@ export function NfcTagsSubNav() {
         "md:sticky md:top-16 lg:top-20"
       )}
     >
-      <div className={cn(adminUi.pageContainer, "py-3 pb-4 md:py-4 md:pb-5 lg:py-5 lg:pb-6 space-y-3 md:space-y-4")}>
+      <div
+        className={cn(
+          adminUi.pageContainer,
+          "py-4 pb-5 md:py-4 md:pb-5 lg:py-5 lg:pb-6 space-y-3 md:space-y-4"
+        )}
+      >
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0 flex-1 space-y-2">
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-teal-600">Pet-ID NFC 운영</p>
@@ -100,7 +105,7 @@ export function NfcTagsSubNav() {
           <Link
             href="/admin"
             prefetch={false}
-            className="inline-flex shrink-0 items-center gap-1 self-start rounded-2xl border border-slate-100 bg-white px-3 py-2 text-[11px] font-black text-slate-600 shadow-sm transition-colors hover:border-teal-200 hover:bg-teal-50 hover:text-teal-800"
+            className="touch-manipulation inline-flex min-h-11 shrink-0 items-center gap-1 self-start rounded-2xl border border-slate-100 bg-white px-4 py-2.5 text-[11px] font-black text-slate-600 shadow-sm transition-colors hover:border-teal-200 hover:bg-teal-50 hover:text-teal-800 active:scale-[0.99]"
           >
             운영 대시보드
             <ChevronRight className="h-3.5 w-3.5" aria-hidden />
@@ -114,7 +119,7 @@ export function NfcTagsSubNav() {
             onClick={() => setMobileStepsOpen((v) => !v)}
             aria-expanded={mobileStepsOpen}
             className={cn(
-              "flex w-full items-center justify-between gap-3 rounded-2xl border px-3 py-2.5 text-left transition-all",
+              "touch-manipulation flex min-h-[52px] w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition-all active:scale-[0.99]",
               "border-teal-200 bg-teal-50/80 shadow-sm ring-1 ring-teal-500/10"
             )}
           >
@@ -126,8 +131,8 @@ export function NfcTagsSubNav() {
               ) : null}
               <CurrentIcon className="h-4 w-4 shrink-0 text-teal-600" aria-hidden />
               <span className="min-w-0">
-                <span className="block text-xs font-black text-slate-900">{current.label}</span>
-                <span className="block text-[10px] font-bold text-slate-500">{current.hint}</span>
+                <span className="block text-[13px] font-black text-slate-900 sm:text-xs">{current.label}</span>
+                <span className="block text-[11px] font-bold text-slate-500 sm:text-[10px]">{current.hint}</span>
               </span>
             </span>
             <span className="flex shrink-0 items-center gap-1.5">
@@ -155,7 +160,7 @@ export function NfcTagsSubNav() {
                     prefetch={false}
                     onClick={() => setMobileStepsOpen(false)}
                     className={cn(
-                      "flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors",
+                      "touch-manipulation flex min-h-[48px] items-center gap-3 rounded-xl border px-3 py-3 transition-colors active:scale-[0.99]",
                       active
                         ? "border-teal-300 bg-teal-50 text-teal-950"
                         : "border-transparent bg-slate-50/80 hover:bg-teal-50/60"

@@ -204,7 +204,12 @@ export default function AdminDashboardClient({
   ]);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] font-outfit pb-20 relative overflow-hidden">
+    <div
+      className={cn(
+        "relative min-h-screen overflow-hidden bg-[#F8FAFC] font-outfit",
+        adminUi.pageBottomSafe
+      )}
+    >
       {/* Background Ambience */}
       <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-teal-500/10 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-indigo-500/10 blur-[120px] rounded-full pointer-events-none" />
@@ -222,8 +227,12 @@ export default function AdminDashboardClient({
                 <Activity className="w-3.5 h-3.5" />
                 시스템 관리 콘솔
              </div>
-             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">관리자 대시보드</h1>
-             <p className="text-slate-500 text-sm font-bold">핵심 운영 지표 요약</p>
+             <h1 className="text-[1.4rem] font-black leading-tight tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
+                관리자 대시보드
+              </h1>
+              <p className="text-[15px] font-semibold text-slate-600 sm:text-sm sm:font-bold sm:text-slate-500">
+                핵심 운영 지표 요약
+              </p>
           </div>
           
           <div className="flex items-center gap-3">

@@ -20,29 +20,42 @@ export function AdminPageIntro({
   aside?: ReactNode;
 }) {
   return (
-    <div className={cn("space-y-3", className)}>
+    <div className={cn("space-y-4 sm:space-y-3", className)}>
       {crumbs && crumbs.length > 0 && (
-        <nav className="flex flex-wrap items-center gap-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400" aria-label="breadcrumb">
+        <nav
+          className="flex flex-wrap items-center gap-1 text-[11px] font-black uppercase tracking-[0.12em] text-slate-400 sm:text-[10px] sm:tracking-[0.12em]"
+          aria-label="breadcrumb"
+        >
           {crumbs.map((c, i) => (
             <span key={`${c.label}-${i}`} className="flex min-w-0 items-center gap-1">
-              {i > 0 && <ChevronRight className="h-3 w-3 shrink-0 text-slate-300" aria-hidden />}
+              {i > 0 && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300" aria-hidden />}
               {c.href ? (
-                <Link href={c.href} prefetch={false} className="max-w-[12rem] truncate text-teal-600 hover:text-teal-800 sm:max-w-none">
+                <Link
+                  href={c.href}
+                  prefetch={false}
+                  className="touch-manipulation max-w-[12rem] truncate rounded-lg py-1 text-teal-600 hover:text-teal-800 active:bg-teal-50 sm:max-w-none sm:py-0"
+                >
                   {c.label}
                 </Link>
               ) : (
-                <span className="max-w-[14rem] truncate text-slate-500 sm:max-w-none">{c.label}</span>
+                <span className="max-w-[14rem] truncate py-1 text-slate-500 sm:max-w-none sm:py-0">{c.label}</span>
               )}
             </span>
           ))}
         </nav>
       )}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-1 space-y-1.5">
-          <h1 className="text-xl font-black tracking-tight text-slate-900 sm:text-2xl lg:text-3xl">{title}</h1>
-          {subtitle ? <p className="max-w-3xl text-sm font-bold leading-relaxed text-slate-500">{subtitle}</p> : null}
+      <div className="flex flex-wrap items-start justify-between gap-4 sm:gap-3">
+        <div className="min-w-0 flex-1 space-y-2 sm:space-y-1.5">
+          <h1 className="text-[1.35rem] font-black leading-snug tracking-tight text-slate-900 sm:text-2xl sm:leading-tight lg:text-3xl">
+            {title}
+          </h1>
+          {subtitle ? (
+            <p className="max-w-3xl text-[15px] font-semibold leading-relaxed text-slate-600 sm:text-sm sm:font-bold sm:text-slate-500">
+              {subtitle}
+            </p>
+          ) : null}
         </div>
-        {aside ? <div className="shrink-0 pt-0.5">{aside}</div> : null}
+        {aside ? <div className="w-full shrink-0 sm:w-auto sm:pt-0.5">{aside}</div> : null}
       </div>
     </div>
   );
