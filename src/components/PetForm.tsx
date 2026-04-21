@@ -99,10 +99,10 @@ export function PetForm({ ownerId, subjectKind: kindProp, tenantId, initialData,
             } else {
                 await createPet(ownerId, petData);
             }
-            const qs = new URLSearchParams({ kind: subjectKind });
-            if (tenantId) qs.set("tenant", tenantId);
-            router.push(`/dashboard?${qs.toString()}`);
-            router.refresh();
+            const tenantQs = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : "";
+            // 중간 /dashboard 리다이렉트 체인을 거치지 않고 목적지로 바로 이동해
+            // 등록 직후 RSC 재렌더 실패 가능성을 줄입니다.
+            router.push(`/dashboard/${subjectKind}${tenantQs}`);
         } catch (error) {
             console.error("Failed to save pet:", error);
             setSubmitError(
