@@ -77,6 +77,10 @@ export async function createPet(ownerId: string, data: PetData) {
 
     const id = nanoid();
     const kind = parseSubjectKind(data.subject_kind);
+    const breed = data.breed ?? null;
+    const medicalInfo = data.medical_info ?? null;
+    const emergencyContact = data.emergency_contact ?? null;
+    const photoUrl = data.photo_url ?? null;
     const insertValues: Record<string, string | null> = {
         owner_id: ownerId,
         tenant_id: tenantId,
@@ -86,7 +90,7 @@ export async function createPet(ownerId: string, data: PetData) {
         await db.prepare(
             "INSERT INTO pets (id, owner_id, tenant_id, name, breed, medical_info, emergency_contact, photo_url, subject_kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
-        .bind(id, ownerId, tenantId, data.name, data.breed, data.medical_info, data.emergency_contact, data.photo_url, kind)
+        .bind(id, ownerId, tenantId, data.name, breed, medicalInfo, emergencyContact, photoUrl, kind)
         .run();
     } catch (error: unknown) {
         const msg = error instanceof Error ? error.message : String(error);
