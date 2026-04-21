@@ -246,10 +246,12 @@ export function PetForm({ ownerId, subjectKind: kindProp, tenantId, initialData,
                 {initialData ? (
                     "정보 수정하기"
                 ) : (
-                    <span className="text-center leading-tight">
-                        <span className="block">{meta.label} 등록</span>
-                        <span className="block">완료</span>
-                    </span>
+                    <div className="flex flex-col items-center text-center leading-none">
+                        <span className="text-[10px] font-bold opacity-70 uppercase mb-1 tracking-tighter">
+                            {meta.label}
+                        </span>
+                        <span className="text-xl font-black">등록 완료</span>
+                    </div>
                 )}
             </button>
             {submitError ? (

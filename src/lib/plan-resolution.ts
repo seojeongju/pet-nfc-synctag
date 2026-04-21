@@ -53,10 +53,19 @@ export async function resolvePersonalPlan(
     if (plan) return { plan, source: "subscription", subscription: sub };
   }
 
-  const userRow = await db
-    .prepare("SELECT subscriptionStatus FROM user WHERE id = ?")
-    .bind(userId)
-    .first<{ subscriptionStatus?: string | null }>();
+  let userRow: { subscriptionStatus?: string | null } | null = null;
+  try {
+    userRow = await db
+      .prepare("SELECT subscriptionStatus FROM user WHERE id = ?")
+      .bind(userId)
+      .first<{ subscriptionStatus?: string | null }>();
+  } catch (error) {
+    // 레거시 DB(user.subscriptionStatus 컬럼 없음)에서는 free로 폴백해 가입/등록 플로우를 막지 않습니다.
+    const msg = error instanceof Error ? error.message : String(error);
+    if (!msg.toLowerCase().includes("no such column")) {
+      throw error;
+    }
+  }
 
   const code = (userRow?.subscriptionStatus ?? "free").trim() || "free";
   const plan = await getPlanByCode(db, code);
