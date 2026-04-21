@@ -7,28 +7,35 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ key: string[] }> }
 ) {
-  const { key } = await params;
-  const fullKey = key.join("/");
+  try {
+    const { key } = await params;
+    const fullKey = key.join("/");
 
-  const context = getCfRequestContext();
-  const r2 = context.env.R2;
+    if (!fullKey) {
+      return new NextResponse("Invalid object key", { status: 400 });
+    }
 
-  const object = await r2.get(fullKey);
+    const context = getCfRequestContext();
+    const r2 = context.env.R2;
 
-  if (!object) {
-    return new NextResponse("Object Not Found", { status: 404 });
+    const object = await r2.get(fullKey);
+    if (!object || !object.body) {
+      return new NextResponse("Object Not Found", { status: 404 });
+    }
+
+    const resHeaders = new Headers();
+    const contentType = object.httpMetadata?.contentType ?? "application/octet-stream";
+    resHeaders.set("Content-Type", contentType);
+    if (object.httpEtag) {
+      resHeaders.set("ETag", object.httpEtag);
+    }
+    resHeaders.set("Cache-Control", "public, max-age=31536000, immutable");
+
+    return new NextResponse(object.body as unknown as BodyInit, {
+      headers: resHeaders,
+    });
+  } catch (error) {
+    console.error("[api/r2] failed to read object:", error);
+    return new NextResponse("Failed to read object", { status: 500 });
   }
-
-  const resHeaders = new Headers();
-  const body = object.body;
-  const writeMeta = (object as unknown as { writeHttpMetadata?: (h: unknown) => void }).writeHttpMetadata;
-  if (body && typeof writeMeta === "function") {
-    writeMeta(resHeaders);
-  }
-  resHeaders.set("etag", object.httpEtag);
-  resHeaders.set("Cache-Control", "public, max-age=31536000, immutable");
-
-  return new NextResponse(body as unknown as BodyInit, {
-    headers: resHeaders,
-  });
 }
