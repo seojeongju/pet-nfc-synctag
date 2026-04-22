@@ -1,36 +1,35 @@
-# NFC/BLE web URL write (policy, matrix, BLE contract)
+## NFC/BLE web URL write (policy, matrix, BLE contract)
 
-## 1. Policy (canonical path)
+### 1) Policy (canonical path)
 
-- **Official URL write path**: **Android Chrome + HTTPS + Web NFC** (`NDEFWriter`), using an NDEF URL record. Users do **not** type URLs; the app supplies `https://{app host}/t/{tagId}`.
-- **Who uses Web NFC**
-  - **Platform admins**: `/admin/nfc-tags` (UID 뿯嶽뿯ⲽ 唀刀䰀 　뿯嶽뿯₽붿).
-  - **Guardians (owners)**: pet (and similar) dashboard — NFC quick connect writes the same URL shape after linking; no URL input field for end users.
-- **NFC payload**: NDEF URL record = configured public app base (`NEXT_PUBLIC_APP_URL`, no trailing slash) + `/t/{tagId}`. If `NEXT_PUBLIC_APP_URL` is unset at build, the client may fall back to `window.location.origin` for guardian-side writes; production should set the variable consistently with the canonical host.
-- **BLE**: No Web Bluetooth URL programming in this app; use firmware/companion per `docs/H1_BLE_INTEGRATION.md`.
+- Official URL write path: **Android Chrome + HTTPS + Web NFC** (`NDEFWriter`).
+- Users do not type URLs manually. The app writes `https://{app-host}/t/{tagId}`.
+- `prepareNfcTagWrite` only returns URL for registered tag IDs.
+- Guardian dashboard can fall back to native app handoff when Web NFC write is unavailable.
 
-**Rule**: `prepareNfcTagWrite` returns a URL only if `tags.id` exists (prevents spoofing unregistered UIDs).
+### 2) Native fallback switch
 
-### Origin guard (`src/lib/nfc-app-origin-guard.ts`)
+- Enable native handoff UI in web:
+  - `NEXT_PUBLIC_NFC_NATIVE_HANDOFF_ENABLED=true`
+- Optional install CTA:
+  - `NEXT_PUBLIC_NFC_NATIVE_APP_STORE_URL=https://play.google.com/store/apps/details?id=com.petidconnect.nfcwriter`
 
-- When `NEXT_PUBLIC_APP_URL` is **non-empty**, the **guardian** dashboard **blocks** NFC URL writes if `new URL(NEXT_PUBLIC_APP_URL).origin !== window.location.origin`, so tags are not written with the wrong host (e.g. staging vs production).
-- **Admin** URL write shows an **advisory** banner when origins differ; the written URL still comes from the server (`prepareNfcTagWrite`), but operators should prefer opening the admin UI on the canonical host.
+Server secrets:
 
-### Optional native handoff (off by default)
+- `NFC_NATIVE_HANDOFF_SECRET`
+- `NFC_NATIVE_APP_API_KEY`
+- optional HMAC keys (`NFC_NATIVE_APP_HMAC_SECRET_CURRENT`, `_NEXT`)
 
-- UI button **“전붿 붿뿯붿붿 뿯붿붿 뿯붿붿”** is shown only when **`NEXT_PUBLIC_NFC_NATIVE_HANDOFF_ENABLED=true`** at build time. Server secrets for native callback remain separate (`NFC_NATIVE_*`). See `docs/NFC_HYBRID_IMPLEMENTATION_PLAN.md` and `docs/NFC_NATIVE_E2E_CHECKLIST.md`.
+### 3) Browser matrix (summary)
 
-## 2. Browser matrix
+- Android Chrome (HTTPS): Web NFC read/write supported on compatible devices.
+- Samsung Internet / in-app browsers: read may work, write may fail by policy/API availability.
+- iOS Safari: Web NFC write unavailable.
 
-| Environment | Web NFC `NDEFWriter` (URL 붿붿) | Web NFC `NDEFReader` (UID 붿붿) |
-|-------------|--------------------------------|----------------------------------|
-| Android Chrome (HTTPS) | Yes (user gesture) | Yes (user gesture; `reading.serialNumber`) |
-| iOS Safari | No | No |
-| Desktop | Usually no NFC hardware | Usually no |
+### 4) Code map
 
-Fallback copy is shown in `AdminNfcWriteCard`, `TagBulkRegisterCard`, and guardian dashboards when the API is missing.
-
-### UID 뿯붿동 뿯붿붿 (`NDEFReader`)
-
-- **붿드**: `readNfcTagUidOnce`, `startNfcUidScanSession`, `isWebNfcReadSupported` in `src/lib/web-nfc-read-uid.ts`; UI뿯붿 `TagBulkRegisterCard`(뿯璽뿯₽붿뿯½뿯₽⬀ 붿跅뿯₽붿铂뿯⦽Ⰰ 怀䄀搀洀椀渀一昀挀圀爀椀琀攀䌀愀爀搀怀⠀붿붿 뿯붿붿뿯붿 붿뿯붿), `PetDashboard` 뿯⺽਀ⴀ ⨀⨀�붿뿯⪽⨀㨀 붿뿯₽怀爀攀愀搀椀渀最怀 琀꓇뿯붿뿯墽뿯₽怀猀攀爀椀愀氀一甀洀戀攀爀怀簀뿯₽怀渀漀爀洀愀氀椀稀攀吀愀最唀椀搀怀 붿뿯₽怀椀猀嘀愀氀椀搀吀愀最唀椀搀䘀漀爀洀愀琀怀붿뿯₽�粳뿯₽�妭뿯㲽뿯岽뿯₽붿뿯붿뿯₽⠀怀猀爀挀⼀氀椀戀⼀琀愀最ⴀ甀椀搀ⴀ昀漀爀洀愀琀⸀琀猀怀⤀⸀਀ⴀ ⨀⨀ᰀ뿯岽뿯⪽⨀㨀 붿뿯붿뿯⾽椀뿯붿뿯₽　뿯粽뿯₽怀猀攀爀椀愀氀一甀洀戀攀爀怀뿯₽䐀뿯붿뿯₽붿뿯䒽뿯₽᠀뿯₽붿뿯䲽뿯₽붿‡᠀뿯�₳붿뿯▽뿯₽䠀듅뿯⺽ 붿蓐뿯䒽뿯붿뿯₽　뿯붿뿯₽㐀㔀ࠀ뿯⺽਀਀⌀⌀ ㌀⸀ 䄀甀搀椀琀਀਀匀甀挀挀攀猀猀昀甀氀 愀渀搀 昀愀椀氀攀搀 眀爀椀琀攀猀 氀漀最 琀漀 怀愀搀洀椀渀开愀挀琀椀漀渀开氀漀最猀怀 眀椀琀栀 怀愀挀琀椀漀渀 㴀 渀昀挀开眀攀戀开眀爀椀琀攀怀⸀਀匀甀挀挀攀猀猀昀甀氀 愀渀搀 昀愀椀氀攀搀 唀䤀䐀 爀攀愀搀 愀琀琀攀洀瀀琀猀 氀漀最 眀椀琀栀 怀愀挀琀椀漀渀 㴀 渀昀挀开眀攀戀开爀攀愀搀怀⸀਀਀⌀⌀ 㐀⸀ 䈀䰀䔀 䜀䄀吀吀 唀刀䰀 ⠀昀甀琀甀爀攀⤀਀਀刀攀焀甀椀爀攀猀 愀最爀攀攀搀 猀攀爀瘀椀挀攀⼀挀栀愀爀愀挀琀攀爀椀猀琀椀挀 唀唀䤀䐀猀 愀渀搀 瀀愀礀氀漀愀搀 昀漀爀洀愀琀 昀爀漀洀 栀愀爀搀眀愀爀攀⸀ 唀渀琀椀氀 琀栀攀渀Ⰰ 猀椀渀最氀攀 瀀愀琀栀 㴀 挀漀洀瀀愀渀椀漀渀 愀瀀瀀 ⼀ 渀刀䘀 昀椀爀洀眀愀爀攀Ⰰ 渀漀琀 琀栀攀 眀攀戀 愀瀀瀀⸀਀਀⌀⌀ 㔀⸀ 䌀漀搀攀਀਀ⴀ 怀猀爀挀⼀氀椀戀⼀渀昀挀ⴀ愀瀀瀀ⴀ漀爀椀最椀渀ⴀ最甀愀爀搀⸀琀猀怀਀ⴀ 怀猀爀挀⼀挀漀洀瀀漀渀攀渀琀猀⼀愀搀洀椀渀⼀琀愀最猀⼀䄀搀洀椀渀一昀挀圀爀椀琀攀䌀愀爀搀⸀琀猀砀怀਀ⴀ 怀猀爀挀⼀挀漀洀瀀漀渀攀渀琀猀⼀愀搀洀椀渀⼀琀愀最猀⼀吀愀最䈀甀氀欀刀攀最椀猀琀攀爀䌀愀爀搀⸀琀猀砀怀਀ⴀ 怀猀爀挀⼀挀漀洀瀀漀渀攀渀琀猀⼀搀愀猀栀戀漀愀爀搀⼀洀漀搀攀猀⼀倀攀琀䐀愀猀栀戀漀愀爀搀⸀琀猀砀怀਀ⴀ 怀猀爀挀⼀氀椀戀⼀眀攀戀ⴀ渀昀挀ⴀ爀攀愀搀ⴀ甀椀搀⸀琀猀怀Ⰰ 怀猀爀挀⼀氀椀戀⼀琀愀最ⴀ甀椀搀ⴀ昀漀爀洀愀琀⸀琀猀怀਀ⴀ 怀瀀爀攀瀀愀爀攀一昀挀吀愀最圀爀椀琀攀怀Ⰰ 怀爀攀挀漀爀搀一昀挀圀攀戀圀爀椀琀攀䄀甀搀椀琀怀Ⰰ 怀爀攀挀漀爀搀一昀挀圀攀戀刀攀愀搀䄀甀搀椀琀怀 椀渀 怀猀爀挀⼀愀瀀瀀⼀愀挀琀椀漀渀猀⼀愀搀洀椀渀⸀琀猀怀਀਀⌀⌀ 㘀⸀ 匀洀漀欀攀 挀栀攀挀欀氀椀猀琀 ⠀匀愀洀猀甀渀最 ⬀ 䌀栀爀漀洀攀⤀਀਀唀猀攀 ⨀⨀漀渀攀⨀⨀ 一吀䄀䜀ⴀ挀氀愀猀猀 琀愀最 爀攀最椀猀琀攀爀攀搀 椀渀 椀渀瘀攀渀琀漀爀礀 ⠀愀搀洀椀渀⤀ 愀渀搀 愀 ⨀⨀渀漀渀ⴀ瀀爀漀搀甀挀琀椀漀渀⨀⨀ 挀栀攀挀欀 椀昀 瀀漀猀猀椀戀氀攀⸀਀਀㄀⸀ 倀栀漀渀攀㨀 一䘀䌀 漀渀Ⰰ 猀挀爀攀攀渀 甀渀氀漀挀欀攀搀Ⰰ 䌀栀爀漀洀攀 甀瀀搀愀琀攀搀㬀 漀瀀攀渀 琀栀攀 猀椀琀攀 漀瘀攀爀 ⨀⨀䠀吀吀倀匀⨀⨀⸀਀㈀⸀ ⨀⨀䄀搀洀椀渀 唀刀䰀 眀爀椀琀攀⨀⨀㨀 怀⼀愀搀洀椀渀⼀渀昀挀ⴀ琀愀最猀⼀眀爀椀琀攀ⴀ甀爀氀怀 ᐀†唀䤀䐀 昀椀氀氀攀搀 붿‡ᰀ丠䘀䌀 붿뿯붿뿯붿뿯₽唀刀䰀 　뿯嶽뿯ᶽ†᐀†栀漀氀搀 琀愀最 漀渀 瀀栀漀渀攀 一䘀䌀 愀渀琀攀渀渀愀 甀渀琀椀氀 猀甀挀挀攀猀猀⸀਀㌀⸀ ⨀⨀䜀甀愀爀搀椀愀渀⨀⨀ ⠀漀瀀琀椀漀渀愀氀⤀㨀 搀愀猀栀戀漀愀爀搀 一䘀䌀 猀攀挀琀椀漀渀 ᐀†氀椀渀欀 琀愀最 붿‡挀漀渀昀椀爀洀 愀甀琀漀ⴀ眀爀椀琀攀 漀爀 最爀攀攀渀 ᰀ붿뿯붿뿯붿뿯₽Ѐ뿯岽뿯䒽뿯₽붿賈뿯₽　뿯嶽뿯ᶽ†瀀愀琀栀⸀਀㐀⸀ 匀挀愀渀 琀愀最 眀椀琀栀 愀渀漀琀栀攀爀 瀀栀漀渀攀 漀爀 一䘀䌀 吀漀漀氀猀 ᰀ爠攀愀搀ᴀ†᐀†唀刀䤀 猀栀漀甀氀搀 戀攀 怀栀琀琀瀀猀㨀⼀⼀笀攀砀瀀攀挀琀攀搀 栀漀猀琀紀⼀琀⼀笀甀椀搀紀怀 漀渀氀礀 ⠀渀漀 愀挀挀椀搀攀渀琀愀氀 猀琀愀最椀渀最 栀漀猀琀 椀昀 瀀爀漀搀甀挀琀椀漀渀 攀渀瘀 椀猀 猀攀琀⤀⸀਀਀⌀⌀ 㜀⸀ 䌀匀 ⼀ 䘀䄀儀 ⠀猀栀漀爀琀⤀਀਀ⴀ ⨀⨀ᰀ붿賈뿯粽뿯₽붿뿯▽뿯墽뿯粽뿯붿 붿 뿯붿와붿”** — 붿뿯붿뿯붿니뿯⺽ 唀刀䰀䀀뿯₽ᰀ뿯䒽뿯붿뿯½뿯₽ᔀ뿯墽뿯붿, 뿯붿뿯욽자붿 뿯붿뿯붿 뿯붿 뿯붿뿯붿만 붿붿 붿니뿯⺽਀ⴀ ⨀⨀ᰀ붿뿯ソ뿯₽붿뿯붿뿯璽뿯₽䠀뿯₽붿뿯붿뿯ᶽ⨠⨀ ᐀†䄀渀搀爀漀椀搀 ⨀⨀䌀栀爀漀洀攀⨀⨀砀뿯붿뿯ⲽ ⨀⨀䠀吀吀倀匀⨀⨀砀뿯붿뿯₽唀뿯碽뿯⺽ 椀伀匀 匀愀昀愀爀椀붿뿯₽圀攀戀 一䘀䌀 붿뿯붿뿯붿藆뿯좽붿.
-- **“붿뿯붿뿯잽붿 붿뿯붿붿 뿯붿뿯붿붿뿯붿 붿 뿯붿뿯붿”** — `NEXT_PUBLIC_APP_URL`뿯붿 뿯붿붿 접붿 뿯좽붿(www 붿붿 뿯붿붿)붿 뿯璽뿯璽뿯₽붿호붿 붿붿뿯붿붿 붿붿붿 **붿도붿붿붿 막뿯붿** 붿 뿯잽붿니뿯⺽ 尀뿯붿뿯Ჽ뿯₽挀愀渀漀渀椀挀愀氀 붿賈뿯岽뿯₽ᄀ跈뿯墽뿯㢽뿯붿뿯⺽਀
+- Guardian handoff action: `src/app/actions/tag.ts`
+- Admin handoff action: `src/app/actions/admin.ts`
+- Guardian UI: `src/components/dashboard/modes/PetDashboard.tsx`
+- Admin UI: `src/components/admin/tags/AdminNfcWriteCard.tsx`
+- Android app project: `android-native-writer`
