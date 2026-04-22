@@ -768,10 +768,21 @@ export default function PetDashboard({
                   >
                     {isNfcWriting ? "기록 중..." : "태그에 프로필 주소 기록"}
                   </Button>
-                  {!webNfcWriteSupported && SHOW_NFC_NATIVE_HANDOFF ? (
+                  {!webNfcWriteSupported ? (
                     <Button
                       onClick={() => {
-                        void openNativeAppForNfcWrite();
+                        if (SHOW_NFC_NATIVE_HANDOFF) {
+                          void openNativeAppForNfcWrite();
+                          return;
+                        }
+                        if (NFC_NATIVE_APP_STORE_URL) {
+                          window.location.href = NFC_NATIVE_APP_STORE_URL;
+                          return;
+                        }
+                        setTagMessage({
+                          type: "error",
+                          text: "전용 앱 호출이 아직 활성화되지 않았습니다. 운영자에게 NEXT_PUBLIC_NFC_NATIVE_HANDOFF_ENABLED 설정을 요청해 주세요.",
+                        });
                       }}
                       disabled={
                         tenantSuspended ||
@@ -784,7 +795,11 @@ export default function PetDashboard({
                       }
                       className="h-11 w-full rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-black"
                     >
-                      {isNativeWriteOpening ? "앱 실행 중..." : "앱으로 태그 주소 기록"}
+                      {isNativeWriteOpening
+                        ? "앱 실행 중..."
+                        : SHOW_NFC_NATIVE_HANDOFF
+                          ? "앱으로 태그 주소 기록"
+                          : "앱 설치/열기"}
                     </Button>
                   ) : null}
                   {!webNfcSupported ? (
@@ -801,14 +816,14 @@ export default function PetDashboard({
                       이 브라우저에서는 태그에 주소를 바로 쓸 수 없을 수 있어요.
                       {SHOW_NFC_NATIVE_HANDOFF
                         ? " 위의 '앱으로 태그 주소 기록' 버튼으로 전용 앱을 열어 진행해 주세요."
-                        : " 안드로이드 Chrome으로 이 화면을 연 뒤 다시 시도해 주세요."}
+                        : " 위의 '앱 설치/열기' 버튼으로 전용 앱 설치를 진행하거나, 운영자에게 앱 호출 설정을 요청해 주세요."}
                     </p>
                   ) : (
                     <p className="text-[11px] font-bold text-slate-400">
                       주소를 직접 입력하지 않아도 됩니다. 버튼을 누른 뒤 태그를 폰 뒷면에 대면 서비스가 알아서 기록해요.
                     </p>
                   )}
-                  {!webNfcWriteSupported && SHOW_NFC_NATIVE_HANDOFF && NFC_NATIVE_APP_STORE_URL ? (
+                  {!webNfcWriteSupported && NFC_NATIVE_APP_STORE_URL ? (
                     <a
                       href={NFC_NATIVE_APP_STORE_URL}
                       className="inline-flex items-center text-[11px] font-black text-indigo-700 underline underline-offset-2"
