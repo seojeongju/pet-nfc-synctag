@@ -28,6 +28,7 @@ function getNdefWriterClass(): NDEFWriterCtor | null {
 }
 
 const SHOW_NFC_NATIVE_HANDOFF = process.env.NEXT_PUBLIC_NFC_NATIVE_HANDOFF_ENABLED === "true";
+const NFC_NATIVE_APP_STORE_URL = (process.env.NEXT_PUBLIC_NFC_NATIVE_APP_STORE_URL || "").trim();
 
 export function AdminNfcWriteCard() {
   const [tagId, setTagId] = useState("");
@@ -233,22 +234,32 @@ export function AdminNfcWriteCard() {
       </div>
 
       {SHOW_NFC_NATIVE_HANDOFF ? (
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => void onOpenNativeApp()}
-          disabled={nativeBusy || busy}
-          className="min-h-[52px] w-full rounded-2xl border-slate-200 text-[14px] font-black touch-manipulation sm:h-11 sm:w-auto sm:text-xs"
-        >
-          {nativeBusy ? (
-            <>
-              <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
-              앱 실행 준비 중...
-            </>
-          ) : (
-            "전용 앱에서 쓰기 열기 (선택)"
-          )}
-        </Button>
+        <div className="space-y-1">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void onOpenNativeApp()}
+            disabled={nativeBusy || busy}
+            className="min-h-[52px] w-full rounded-2xl border-slate-200 text-[14px] font-black touch-manipulation sm:h-11 sm:w-auto sm:text-xs"
+          >
+            {nativeBusy ? (
+              <>
+                <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+                앱 실행 준비 중...
+              </>
+            ) : (
+              "전용 앱에서 쓰기 열기 (선택)"
+            )}
+          </Button>
+          {NFC_NATIVE_APP_STORE_URL ? (
+            <a
+              href={NFC_NATIVE_APP_STORE_URL}
+              className="inline-flex text-[11px] font-black text-indigo-700 underline underline-offset-2"
+            >
+              앱이 없나요? 스토어에서 설치하기
+            </a>
+          ) : null}
+        </div>
       ) : null}
 
       {hint && (

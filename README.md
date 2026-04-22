@@ -42,6 +42,21 @@ name: `NEXT_PUBLIC_KAKAO_MAP_JS_KEY`, value: your Kakao **JavaScript** key.
 
 Also register your production URL under the key’s **JavaScript SDK 도메인** in Kakao Developers.
 
+## Native NFC Writer Fallback
+
+For devices where Web NFC `NDEFWriter` is unavailable, this repo includes an Android app project at `android-native-writer`.
+
+- Enable native handoff button in web UI:
+  - `NEXT_PUBLIC_NFC_NATIVE_HANDOFF_ENABLED=true`
+- Optional Play Store link for install CTA:
+  - `NEXT_PUBLIC_NFC_NATIVE_APP_STORE_URL=https://play.google.com/store/apps/details?id=com.petidconnect.nfcwriter`
+
+Server-side secrets for callback verification remain required:
+
+- `NFC_NATIVE_HANDOFF_SECRET`
+- `NFC_NATIVE_APP_API_KEY`
+- Optional HMAC: `NFC_NATIVE_APP_HMAC_SECRET_CURRENT`, `NFC_NATIVE_APP_HMAC_SECRET_NEXT`
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

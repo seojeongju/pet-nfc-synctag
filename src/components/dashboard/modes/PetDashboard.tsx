@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
-import { linkTagSafe } from "@/app/actions/tag";
+import { linkTagSafe, prepareGuardianNfcNativeHandoff } from "@/app/actions/tag";
 import { cn } from "@/lib/utils";
 import { subjectKindMeta } from "@/lib/subject-kind";
 import ModeAnnouncementsBanner from "@/components/dashboard/ModeAnnouncementsBanner";
@@ -57,6 +57,8 @@ function limitText(used: number, limit: number | null): string {
 
 const STALE_ACTION_RELOAD_KEY = "pet-dashboard-stale-action-reload-once";
 const NFC_BANNER_DISMISS_KEY = "pet-dashboard-nfc-banner-dismissed";
+const SHOW_NFC_NATIVE_HANDOFF = process.env.NEXT_PUBLIC_NFC_NATIVE_HANDOFF_ENABLED === "true";
+const NFC_NATIVE_APP_STORE_URL = (process.env.NEXT_PUBLIC_NFC_NATIVE_APP_STORE_URL || "").trim();
 
 type NDEFWriterCtor = new () => {
   write(message: { records: Array<{ recordType: string; data: string }> }): Promise<void>;
@@ -99,6 +101,7 @@ export default function PetDashboard({
   const [tagLinkedInSession, setTagLinkedInSession] = useState(false);
   const [isNfcScanning, setIsNfcScanning] = useState(false);
   const [isNfcWriting, setIsNfcWriting] = useState(false);
+  const [isNativeWriteOpening, setIsNativeWriteOpening] = useState(false);
   const [nfcSectionHighlight, setNfcSectionHighlight] = useState(false);
   const [nfcBannerDismissed, setNfcBannerDismissed] = useState(false);
   const router = useRouter();
@@ -258,6 +261,38 @@ export default function PetDashboard({
       return { ok: false, reason: "write_failed", message };
     } finally {
       setIsNfcWriting(false);
+    }
+  };
+
+  const openNativeAppForNfcWrite = async () => {
+    if (!selectedPetId || !tagId.trim()) {
+      setTagMessage({ type: "error", text: "먼저 연결할 대상과 태그 UID를 확인해 주세요." });
+      return;
+    }
+
+    setIsNativeWriteOpening(true);
+    setTagMessage(null);
+    try {
+      const handoff = await prepareGuardianNfcNativeHandoff({
+        petId: selectedPetId,
+        tagIdRaw: tagId,
+      });
+      if (!handoff.ok) {
+        setTagMessage({ type: "error", text: handoff.error });
+        return;
+      }
+      if (typeof window !== "undefined") {
+        window.location.href = handoff.appLink;
+      }
+      setTagMessage({
+        type: "success",
+        text: "기록 앱 실행을 시도했습니다. 앱에서 태그 기록 후 다시 돌아오면 연결 상태를 확인할 수 있습니다.",
+      });
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error.message : String(error);
+      setTagMessage({ type: "error", text: `앱 실행 준비에 실패했습니다: ${err}` });
+    } finally {
+      setIsNativeWriteOpening(false);
     }
   };
 
@@ -725,6 +760,7 @@ export default function PetDashboard({
                       isPending ||
                       isNfcScanning ||
                       isNfcWriting ||
+                      isNativeWriteOpening ||
                       !tagId.trim() ||
                       !webNfcWriteSupported
                     }
@@ -732,6 +768,25 @@ export default function PetDashboard({
                   >
                     {isNfcWriting ? "기록 중..." : "태그에 프로필 주소 기록"}
                   </Button>
+                  {!webNfcWriteSupported && SHOW_NFC_NATIVE_HANDOFF ? (
+                    <Button
+                      onClick={() => {
+                        void openNativeAppForNfcWrite();
+                      }}
+                      disabled={
+                        tenantSuspended ||
+                        isPending ||
+                        isNfcScanning ||
+                        isNfcWriting ||
+                        isNativeWriteOpening ||
+                        !selectedPetId ||
+                        !tagId.trim()
+                      }
+                      className="h-11 w-full rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-black"
+                    >
+                      {isNativeWriteOpening ? "앱 실행 중..." : "앱으로 태그 주소 기록"}
+                    </Button>
+                  ) : null}
                   {!webNfcSupported ? (
                     <p className="text-[11px] font-bold text-slate-400">
                       현재 기기/브라우저는 NFC 스캔을 지원하지 않아 UID 수동 입력으로 등록할 수 있습니다.
@@ -743,13 +798,24 @@ export default function PetDashboard({
                   )}
                   {!webNfcWriteSupported ? (
                     <p className="text-[11px] font-bold text-amber-600">
-                      이 브라우저에서는 태그에 주소를 바로 쓸 수 없을 수 있어요. 안드로이드 Chrome으로 이 화면을 연 뒤 다시 시도하거나, 담당 관리자에게 태그 기록을 요청해 주세요. 주소를 직접 입력할 필요는 없습니다.
+                      이 브라우저에서는 태그에 주소를 바로 쓸 수 없을 수 있어요.
+                      {SHOW_NFC_NATIVE_HANDOFF
+                        ? " 위의 '앱으로 태그 주소 기록' 버튼으로 전용 앱을 열어 진행해 주세요."
+                        : " 안드로이드 Chrome으로 이 화면을 연 뒤 다시 시도해 주세요."}
                     </p>
                   ) : (
                     <p className="text-[11px] font-bold text-slate-400">
                       주소를 직접 입력하지 않아도 됩니다. 버튼을 누른 뒤 태그를 폰 뒷면에 대면 서비스가 알아서 기록해요.
                     </p>
                   )}
+                  {!webNfcWriteSupported && SHOW_NFC_NATIVE_HANDOFF && NFC_NATIVE_APP_STORE_URL ? (
+                    <a
+                      href={NFC_NATIVE_APP_STORE_URL}
+                      className="inline-flex items-center text-[11px] font-black text-indigo-700 underline underline-offset-2"
+                    >
+                      앱이 없나요? 스토어에서 설치하기
+                    </a>
+                  ) : null}
                   {linkedTagCount > 0 ? (
                     <p className="text-[11px] font-bold text-teal-600">
                       현재 연결된 NFC 태그: {linkedTagCount}개

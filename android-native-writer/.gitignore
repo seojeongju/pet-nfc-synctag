@@ -1,0 +1,6 @@
+﻿# Keep API keys out of git
+local.properties
+
+# Gradle caches/build outputs
+.gradle/
+**/build/

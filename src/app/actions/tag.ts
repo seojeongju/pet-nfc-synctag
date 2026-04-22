@@ -10,6 +10,7 @@ import { assertTenantTagQuota } from "@/lib/tenant-quota";
 import { assertMigration0008Applied } from "@/lib/db-migration-0008";
 import { assertTenantActive } from "@/lib/tenant-status";
 import { isValidTagUidFormat, normalizeTagUid } from "@/lib/tag-uid-format";
+import { mintNativeHandoffToken } from "@/lib/nfc-native-security";
 
 export type TagActionResult =
     | { ok: true }
@@ -141,6 +142,148 @@ export async function linkTagSafe(petId: string, tagId: string): Promise<TagActi
         console.error("[linkTagSafe] failed:", error);
         return { ok: false, error: message };
     }
+}
+
+export type PrepareGuardianNfcNativeHandoffResult =
+    | {
+        ok: true;
+        tagId: string;
+        url: string;
+        appLink: string;
+        handoffToken: string;
+        expiresAt: number;
+        jti: string;
+    }
+    | { ok: false; error: string };
+
+export async function prepareGuardianNfcNativeHandoff(input: {
+    petId: string;
+    tagIdRaw: string;
+}): Promise<PrepareGuardianNfcNativeHandoffResult> {
+    const db = getDB();
+    await assertMigration0008Applied(db);
+
+    const { userId, email } = await requireActor();
+    const petId = input.petId.trim();
+    const tagId = normalizeTagUid(input.tagIdRaw);
+    if (!petId) {
+        return { ok: false, error: "연결 대상을 먼저 선택해 주세요." };
+    }
+    if (!isValidTagUidFormat(tagId)) {
+        return { ok: false, error: "UID 형식이 올바르지 않습니다." };
+    }
+
+    const base =
+        process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "").trim() ||
+        "";
+    if (!base) {
+        return { ok: false, error: "NEXT_PUBLIC_APP_URL이 설정되지 않았습니다." };
+    }
+    const handoffSecret = process.env.NFC_NATIVE_HANDOFF_SECRET?.trim();
+    if (!handoffSecret) {
+        return { ok: false, error: "NFC_NATIVE_HANDOFF_SECRET이 설정되지 않았습니다." };
+    }
+
+    const petScope = await db
+        .prepare("SELECT owner_id, tenant_id FROM pets WHERE id = ?")
+        .bind(petId)
+        .first<{ owner_id: string; tenant_id: string | null }>();
+    if (!petScope) {
+        return { ok: false, error: "연결 대상이 존재하지 않습니다." };
+    }
+    if (petScope.tenant_id) {
+        await assertTenantActive(db, petScope.tenant_id);
+        await assertTenantRole(db, userId, petScope.tenant_id, "admin");
+    } else if (petScope.owner_id !== userId) {
+        return { ok: false, error: "해당 관리 대상에 대한 권한이 없습니다." };
+    }
+
+    const linked = await db
+        .prepare("SELECT id, pet_id FROM tags WHERE id = ?")
+        .bind(tagId)
+        .first<{ id: string; pet_id: string | null }>();
+    if (!linked) {
+        return { ok: false, error: "등록되지 않은 태그입니다. 먼저 태그를 연결해 주세요." };
+    }
+    if (linked.pet_id !== petId) {
+        return { ok: false, error: "선택한 관리 대상에 연결된 태그가 아닙니다. 먼저 태그를 연결해 주세요." };
+    }
+
+    const url = `${base}/t/${encodeURIComponent(tagId)}`;
+    const { token, expiresAt, jti } = await mintNativeHandoffToken({
+        uid: tagId,
+        url,
+        expiresInSec: 10 * 60,
+        secret: handoffSecret,
+    });
+    const params = new URLSearchParams({
+        uid: tagId,
+        url,
+        handoffToken: token,
+        exp: String(expiresAt),
+    });
+    const appLink = `petidconnect://nfc/write?${params.toString()}`;
+
+    await db.prepare(`
+            CREATE TABLE IF NOT EXISTS nfc_native_handoff_tokens (
+                jti TEXT PRIMARY KEY,
+                tag_id TEXT NOT NULL,
+                url TEXT NOT NULL,
+                expires_at DATETIME NOT NULL,
+                issued_by TEXT,
+                consumed_at DATETIME,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `).run();
+    await db
+        .prepare(
+            "INSERT OR REPLACE INTO nfc_native_handoff_tokens (jti, tag_id, url, expires_at, issued_by) VALUES (?, ?, ?, ?, ?)"
+        )
+        .bind(
+            jti,
+            tagId,
+            url,
+            new Date(expiresAt * 1000).toISOString(),
+            email ?? userId
+        )
+        .run();
+
+    await db.prepare(`
+        CREATE TABLE IF NOT EXISTS admin_action_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            action TEXT NOT NULL,
+            actor_email TEXT,
+            success BOOLEAN NOT NULL DEFAULT 1,
+            payload TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `).run();
+    await db
+        .prepare("INSERT INTO admin_action_logs (action, actor_email, success, payload) VALUES (?, ?, 1, ?)")
+        .bind(
+            "nfc_native_handoff",
+            email ?? "system",
+            JSON.stringify({
+                source: "guardian_dashboard",
+                petId,
+                tagId,
+                url,
+                appLink,
+                jti,
+                expiresAt,
+            })
+        )
+        .run();
+
+    return {
+        ok: true,
+        tagId,
+        url,
+        appLink,
+        handoffToken: token,
+        expiresAt,
+        jti,
+    };
 }
 
 export async function unlinkTag(tagId: string) {

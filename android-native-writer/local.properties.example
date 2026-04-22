@@ -1,0 +1,5 @@
+﻿# Android app local config (do not commit real values)
+NATIVE_API_BASE_URL=https://your-domain.com
+NATIVE_APP_API_KEY=replace_with_native_app_api_key
+NATIVE_HMAC_SECRET_CURRENT=
+NATIVE_HMAC_SECRET_NEXT=
