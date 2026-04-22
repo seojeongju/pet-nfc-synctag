@@ -8,7 +8,7 @@
 ## Step-by-step rollout
 
 ### Phase 1 (done)
-- Add a native app handoff button in the admin URL write card.
+- Add a native app handoff button in the admin URL write card (shown only when **`NEXT_PUBLIC_NFC_NATIVE_HANDOFF_ENABLED=true`**; default Web NFC only).
 - Validate UID/URL server-side, then issue a deep link.
 - Log handoff events as `nfc_native_handoff`.
 

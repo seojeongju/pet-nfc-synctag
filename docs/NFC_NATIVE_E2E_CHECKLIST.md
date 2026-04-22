@@ -4,6 +4,7 @@
 - 실제 안드로이드 디바이스에서 웹 handoff → 네이티브 쓰기 → 서버 callback 전 구간을 검증한다.
 
 ## 사전 준비
+- 웹 빌드에 `NEXT_PUBLIC_NFC_NATIVE_HANDOFF_ENABLED=true` (관리자 URL 기록 화면에 **전용 앱에서 쓰기 열기** 버튼 표시)
 - 등록된 테스트 태그 2개 이상
 - 테스트 관리자 계정
 - 앱 설정

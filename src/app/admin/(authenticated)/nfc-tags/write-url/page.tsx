@@ -12,7 +12,7 @@ export default function AdminNfcTagsWriteUrlPage() {
         <div className="mb-6 space-y-4">
           <AdminPageIntro
             title="② URL 기록 (Web NFC)"
-            subtitle="등록된 UID만 URL 기록 가능. 브라우저·NDEF 요건은 상단 도움말을 확인하세요."
+            subtitle="표준 경로: Android Chrome + Web NFC. 등록된 UID만 기록되며, 브라우저 요건은 도움말을 확인하세요."
             crumbs={[
               { label: "관리자", href: "/admin" },
               { label: "Pet-ID NFC", href: "/admin/nfc-tags" },

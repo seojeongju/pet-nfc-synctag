@@ -24,6 +24,7 @@ import { type SubjectKind } from "@/lib/subject-kind";
 import SafePetImage from "@/components/pet/SafePetImage";
 import { isWebNfcReadSupported, readNfcTagUidOnce } from "@/lib/web-nfc-read-uid";
 import { normalizeTagUid } from "@/lib/tag-uid-format";
+import { getNfcOriginMismatchMessage, normalizeAppBaseUrl } from "@/lib/nfc-app-origin-guard";
 
 interface SubjectWithLocation {
   id: string;
@@ -69,7 +70,15 @@ function getNdefWriterClass(): NDEFWriterCtor | null {
 
 type TagUrlWriteResult =
   | { ok: true }
-  | { ok: false; reason: "unsupported" | "app_url_missing" | "write_failed"; message: string };
+  | {
+      ok: false;
+      reason:
+        | "unsupported"
+        | "app_url_missing"
+        | "write_failed"
+        | "origin_or_config_mismatch";
+      message: string;
+    };
 
 export default function PetDashboard({
   session,
@@ -145,6 +154,16 @@ export default function PetDashboard({
     return "NFC 태그를 읽지 못했습니다. 다시 시도해 주세요.";
   };
 
+  const toKoreanNfcWriteError = (message: string): string => {
+    const m = message.toLowerCase();
+    if (m.includes("not supported")) return "이 브라우저/기기에서는 NFC URL 기록을 지원하지 않습니다.";
+    if (m.includes("permission denied") || m.includes("notallowederror")) return "NFC 기록 권한이 거부되었습니다. 브라우저 권한을 확인해 주세요.";
+    if (m.includes("no tag detected")) return "태그를 인식하지 못했습니다. 태그를 휴대폰 뒷면에 다시 가까이 대주세요.";
+    if (m.includes("format error") || m.includes("invalid")) return "태그에 기록할 수 없습니다. 다른 NFC 태그인지 확인해 주세요.";
+    if (m.includes("cancelled") || m.includes("abort")) return "NFC 기록이 취소되었습니다.";
+    return "NFC URL 기록 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.";
+  };
+
   const registerTagToSelectedPet = (uid: string) => {
     setTagMessage(null);
     startTransition(async () => {
@@ -158,12 +177,12 @@ export default function PetDashboard({
         if (writeResult.ok) {
           setTagMessage({
             type: "success",
-            text: "NFC 태그 연결과 프로필 URL 기록이 완료되었습니다. 이제 태그 스캔 시 프로필이 열립니다.",
+            text: "NFC 태그 연결과 프로필 주소 기록이 완료되었습니다. 이제 태그를 스캔하면 프로필이 열립니다.",
           });
         } else {
           setTagMessage({
             type: "success",
-            text: `NFC 태그 연결은 완료되었습니다. 다만 URL 자동 기록은 실패했습니다 (${writeResult.message}). 아래 '태그에 프로필 URL 기록' 버튼으로 다시 시도해 주세요.`,
+            text: `NFC 태그 연결은 완료되었습니다. 다만 태그에 프로필 주소 자동 기록은 되지 않았습니다 (${writeResult.message}). 아래 '태그에 프로필 주소 기록'으로 다시 시도해 주세요.`,
           });
         }
         setTagLinkedInSession(true);
@@ -182,19 +201,29 @@ export default function PetDashboard({
   ): Promise<TagUrlWriteResult> => {
     const Writer = getNdefWriterClass();
     if (!Writer) {
-      const message = "이 기기/브라우저는 NFC URL 기록(NDEFWriter)을 지원하지 않습니다.";
+      const message =
+        "이 기기/브라우저는 NFC URL 기록(NDEFWriter)을 지원하지 않습니다. 안드로이드 Chrome(HTTPS)으로 이 페이지를 연 뒤 다시 시도해 주세요.";
       if (!options?.silent) {
         setTagMessage({
           type: "error",
-          text: `${message} 관리자의 URL 기록 기능을 사용해 주세요.`,
+          text: message,
         });
       }
       return { ok: false, reason: "unsupported", message };
     }
     const normalizedUid = normalizeTagUid(uidRaw);
+    if (typeof window !== "undefined") {
+      const originGuard = getNfcOriginMismatchMessage(process.env.NEXT_PUBLIC_APP_URL, window.location.origin);
+      if (originGuard) {
+        if (!options?.silent) {
+          setTagMessage({ type: "error", text: originGuard });
+        }
+        return { ok: false, reason: "origin_or_config_mismatch", message: originGuard };
+      }
+    }
+    const envBase = normalizeAppBaseUrl(process.env.NEXT_PUBLIC_APP_URL);
     const appBase =
-      (process.env.NEXT_PUBLIC_APP_URL || "").trim().replace(/\/$/, "") ||
-      (typeof window !== "undefined" ? window.location.origin : "");
+      envBase || (typeof window !== "undefined" ? window.location.origin : "");
     if (!appBase) {
       const message = "앱 주소를 확인할 수 없어 URL 기록을 진행할 수 없습니다.";
       if (!options?.silent) {
@@ -213,17 +242,17 @@ export default function PetDashboard({
       if (!options?.silent) {
         setTagMessage({
           type: "success",
-          text: "NFC 태그에 공개 URL 기록이 완료되었습니다. 이제 태그 스캔 시 프로필이 열립니다.",
+          text: "태그에 프로필 주소 기록이 완료되었습니다. 이제 태그를 스캔하면 프로필이 열립니다.",
         });
       }
       return { ok: true };
     } catch (error: unknown) {
       const err = error instanceof Error ? error.message : String(error);
-      const message = toKoreanNfcError(err);
+      const message = toKoreanNfcWriteError(err);
       if (!options?.silent) {
         setTagMessage({
           type: "error",
-          text: `태그 URL 기록에 실패했습니다: ${message}`,
+          text: `태그에 프로필 주소 기록에 실패했습니다: ${message}`,
         });
       }
       return { ok: false, reason: "write_failed", message };
@@ -701,7 +730,7 @@ export default function PetDashboard({
                     }
                     className="h-11 w-full rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black"
                   >
-                    {isNfcWriting ? "URL 기록 중..." : "태그에 프로필 URL 기록 (수동)"}
+                    {isNfcWriting ? "기록 중..." : "태그에 프로필 주소 기록"}
                   </Button>
                   {!webNfcSupported ? (
                     <p className="text-[11px] font-bold text-slate-400">
@@ -714,9 +743,13 @@ export default function PetDashboard({
                   )}
                   {!webNfcWriteSupported ? (
                     <p className="text-[11px] font-bold text-amber-600">
-                      이 기기에서는 NFC URL 기록이 지원되지 않을 수 있습니다. 이 경우 관리자의 URL 기록 메뉴에서 기록해 주세요.
+                      이 브라우저에서는 태그에 주소를 바로 쓸 수 없을 수 있어요. 안드로이드 Chrome으로 이 화면을 연 뒤 다시 시도하거나, 담당 관리자에게 태그 기록을 요청해 주세요. 주소를 직접 입력할 필요는 없습니다.
                     </p>
-                  ) : null}
+                  ) : (
+                    <p className="text-[11px] font-bold text-slate-400">
+                      주소를 직접 입력하지 않아도 됩니다. 버튼을 누른 뒤 태그를 폰 뒷면에 대면 서비스가 알아서 기록해요.
+                    </p>
+                  )}
                   {linkedTagCount > 0 ? (
                     <p className="text-[11px] font-bold text-teal-600">
                       현재 연결된 NFC 태그: {linkedTagCount}개
