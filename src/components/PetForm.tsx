@@ -170,17 +170,22 @@ export function PetForm({ ownerId, subjectKind: kindProp, tenantId, initialData,
                     setSubmitError(result.error);
                     return;
                 }
+                const tenantQs = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : "";
+                router.push(`/dashboard/${subjectKind}${tenantQs}`);
             } else {
                 const result = await createPetSafe(ownerId, petData);
                 if (!result.ok) {
                     setSubmitError(result.error);
                     return;
                 }
+                // 신규 등록 직후 NFC 태그 연결 단계로 자연스럽게 유도
+                const params = new URLSearchParams();
+                if (tenantId) params.set("tenant", tenantId);
+                params.set("onboarding", "nfc");
+                if (result.id) params.set("pet", result.id);
+                const qs = params.toString();
+                router.push(`/dashboard/${subjectKind}?${qs}`);
             }
-            const tenantQs = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : "";
-            // 중간 /dashboard 리다이렉트 체인을 거치지 않고 목적지로 바로 이동해
-            // 등록 직후 RSC 재렌더 실패 가능성을 줄입니다.
-            router.push(`/dashboard/${subjectKind}${tenantQs}`);
         } catch (error) {
             console.error("Failed to save pet:", error);
             setSubmitError(

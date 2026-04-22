@@ -1,18 +1,18 @@
 "use client";
 
-import { useEffect, useState, useTransition, useCallback } from "react";
+import { useEffect, useState, useTransition, useCallback, useRef } from "react";
+import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Plus, MapPin, PawPrint, Search, Bell,
   ShieldCheck, Activity, Smartphone, CheckCircle, AlertCircle,
-  AlertTriangle, Link2, ScanLine, Siren,
+  AlertTriangle, Link2, ScanLine, Siren, X,
 } from "lucide-react";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
 import { linkTagSafe } from "@/app/actions/tag";
-import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { subjectKindMeta } from "@/lib/subject-kind";
 import ModeAnnouncementsBanner from "@/components/dashboard/ModeAnnouncementsBanner";
@@ -55,6 +55,7 @@ function limitText(used: number, limit: number | null): string {
 }
 
 const STALE_ACTION_RELOAD_KEY = "pet-dashboard-stale-action-reload-once";
+const NFC_BANNER_DISMISS_KEY = "pet-dashboard-nfc-banner-dismissed";
 
 type NDEFWriterCtor = new () => {
   write(message: { records: Array<{ recordType: string; data: string }> }): Promise<void>;
@@ -89,12 +90,26 @@ export default function PetDashboard({
   const [tagLinkedInSession, setTagLinkedInSession] = useState(false);
   const [isNfcScanning, setIsNfcScanning] = useState(false);
   const [isNfcWriting, setIsNfcWriting] = useState(false);
+  const [nfcSectionHighlight, setNfcSectionHighlight] = useState(false);
+  const [nfcBannerDismissed, setNfcBannerDismissed] = useState(false);
   const router = useRouter();
-  
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const onboardingNfcHandledRef = useRef(false);
+
   const subjectKind = "pet";
   const meta = subjectKindMeta[subjectKind];
   const tenantQs = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : "";
   const kindQs = tenantQs;
+  /** 원탁 가이드·태그 연결 바로가기용: 스크롤 + 테두리 강조(Onboarding=nfc) */
+  const nfcOnboardingHref = (() => {
+    const p = new URLSearchParams();
+    if (tenantId) p.set("tenant", tenantId);
+    p.set("onboarding", "nfc");
+    const pid = selectedPetId || (pets.length === 1 ? pets[0]?.id : "") || "";
+    if (pid) p.set("pet", pid);
+    return `/dashboard/${subjectKind}?${p.toString()}`;
+  })();
   const AvatarIcon = PawPrint;
   const webNfcSupported = isWebNfcReadSupported();
   const webNfcWriteSupported = Boolean(getNdefWriterClass());
@@ -249,10 +264,56 @@ export default function PetDashboard({
   }, [refreshLocations]);
 
   useEffect(() => {
-    if (pets.length > 0 && !selectedPetId) {
-      setSelectedPetId(pets[0].id);
+    try {
+      if (sessionStorage.getItem(NFC_BANNER_DISMISS_KEY) === "1") {
+        setNfcBannerDismissed(true);
+      }
+    } catch {
+      /* ignore */
     }
-  }, [pets, selectedPetId]);
+  }, []);
+
+  useEffect(() => {
+    if (pets.length === 0) return;
+    const petQ = searchParams.get("pet");
+    if (petQ && pets.some((p) => p.id === petQ)) {
+      setSelectedPetId(petQ);
+      return;
+    }
+    setSelectedPetId((prev) => prev || pets[0].id);
+  }, [pets, searchParams]);
+
+  useEffect(() => {
+    if (searchParams.get("onboarding") !== "nfc") {
+      onboardingNfcHandledRef.current = false;
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (searchParams.get("onboarding") !== "nfc") return;
+    if (onboardingNfcHandledRef.current) return;
+    onboardingNfcHandledRef.current = true;
+
+    const scrollT = window.setTimeout(() => {
+      document.getElementById("quick-nfc-register")?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 400);
+    setNfcSectionHighlight(true);
+    const hlT = window.setTimeout(() => setNfcSectionHighlight(false), 5200);
+
+    const p = new URLSearchParams(searchParams.toString());
+    p.delete("onboarding");
+    p.delete("pet");
+    const next = p.toString();
+    router.replace(`${pathname}${next ? `?${next}` : ""}`, { scroll: false });
+
+    return () => {
+      window.clearTimeout(scrollT);
+      window.clearTimeout(hlT);
+    };
+  }, [searchParams, pathname, router]);
 
   const handleQuickNfcRegister = () => {
     if (tenantSuspended) return;
@@ -297,6 +358,22 @@ export default function PetDashboard({
   };
   const lostCount = pets.filter((p) => p.is_lost).length;
   const hasLinkedTag = linkedTagCount > 0 || tagLinkedInSession;
+
+  const dismissNfcBanner = () => {
+    try {
+      sessionStorage.setItem(NFC_BANNER_DISMISS_KEY, "1");
+    } catch {
+      /* ignore */
+    }
+    setNfcBannerDismissed(true);
+  };
+
+  const showNfcSetupBanner =
+    !tenantSuspended &&
+    pets.length > 0 &&
+    linkedTagCount === 0 &&
+    !tagLinkedInSession &&
+    !nfcBannerDismissed;
   const onboardingSteps = [
     {
       id: "pet",
@@ -309,7 +386,7 @@ export default function PetDashboard({
       id: "tag",
       title: "NFC 태그 연결",
       done: hasLinkedTag,
-      href: "#quick-nfc-register",
+      href: nfcOnboardingHref,
       cta: "바로 연결",
     },
     {
@@ -335,6 +412,39 @@ export default function PetDashboard({
         <div id="mode-announcements" className="scroll-mt-28">
           <ModeAnnouncementsBanner items={modeAnnouncements} />
         </div>
+
+        {showNfcSetupBanner && (
+          <motion.section variants={itemVariants}>
+            <div className="relative overflow-hidden rounded-[28px] border border-teal-100 bg-gradient-to-br from-teal-50 via-white to-white p-4 shadow-app">
+              <button
+                type="button"
+                onClick={dismissNfcBanner}
+                className="absolute right-3 top-3 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                aria-label="배너 닫기"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <div className="pr-8">
+                <p className="text-[10px] font-black uppercase tracking-wider text-teal-600">
+                  최초 1회 · NFC 태그 연결
+                </p>
+                <p className="mt-1 text-sm font-black leading-snug text-slate-900">
+                  발견 시 공개 프로필로 연결하려면 태그를 한 번만 연결해 주세요.
+                </p>
+                <p className="mt-1 text-[11px] font-bold text-slate-500">
+                  아래 NFC 빠른 등록으로 스캔하거나 UID를 입력하면 됩니다. 별도 주소 입력은 필요 없어요.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => router.push(nfcOnboardingHref)}
+                  className="mt-4 inline-flex items-center justify-center rounded-2xl bg-teal-500 px-5 py-2.5 text-xs font-black text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-600 active:scale-[0.98]"
+                >
+                  NFC 연결하기
+                </button>
+              </div>
+            </div>
+          </motion.section>
+        )}
 
         {isAdmin && (
           <motion.section variants={itemVariants}>
@@ -497,7 +607,7 @@ export default function PetDashboard({
         <motion.section variants={itemVariants}>
           <div className="grid grid-cols-3 gap-2">
             <a
-              href="#quick-nfc-register"
+              href={nfcOnboardingHref}
               className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-center shadow-sm"
             >
               <Link2 className="mx-auto h-4 w-4 text-teal-600" />
@@ -521,7 +631,13 @@ export default function PetDashboard({
         </motion.section>
 
         <motion.section variants={itemVariants}>
-          <Card id="quick-nfc-register" className="rounded-[32px] border-none shadow-app bg-white">
+          <Card
+            id="quick-nfc-register"
+            className={cn(
+              "rounded-[32px] border-none shadow-app bg-white scroll-mt-24 transition-shadow duration-500",
+              nfcSectionHighlight && "ring-2 ring-teal-400 ring-offset-2 shadow-teal-100/80"
+            )}
+          >
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 rounded-2xl bg-teal-50 text-teal-500 flex items-center justify-center">
