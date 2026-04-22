@@ -189,7 +189,7 @@ export default function PetDashboard({
           });
         }
         setTagLinkedInSession(true);
-        setTagId("");
+        setTagId(normalizeTagUid(uid));
         router.refresh();
       } catch (e: unknown) {
         const err = e instanceof Error ? e.message : "NFC 태그 등록에 실패했습니다.";
