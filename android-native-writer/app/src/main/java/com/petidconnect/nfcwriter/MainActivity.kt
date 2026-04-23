@@ -14,29 +14,11 @@ import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.unit.dp
+import com.petidconnect.nfcwriter.ui.PetIdNfcTheme
+import com.petidconnect.nfcwriter.ui.WriterAppScreen
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -62,7 +44,7 @@ private sealed class ServerReport {
 }
 
 class MainActivity : ComponentActivity() {
-    private var statusText by mutableStateOf("딥링크를 기다리거나 아래에 값을 입력하세요.")
+    private var statusText by mutableStateOf("Link-U 웹에서 기록 흐름을 쓰면 자동으로 불러옵니다. 직접 쓸 땐 아래에 입력하세요.")
     private var draftUid by mutableStateOf("")
     private var draftUrl by mutableStateOf("")
     private var draftHandoff by mutableStateOf("")
@@ -84,10 +66,11 @@ class MainActivity : ComponentActivity() {
         nfcAdapter = NfcAdapter.getDefaultAdapter(this)
         loadServerFieldsFromPrefs()
         handleIntent(intent)
+        enableEdgeToEdge()
 
         setContent {
-            MaterialTheme {
-                WriterScreen(
+            PetIdNfcTheme {
+                WriterAppScreen(
                     status = statusText,
                     draftUid = draftUid,
                     draftUrl = draftUrl,
@@ -127,25 +110,25 @@ class MainActivity : ComponentActivity() {
         serverSettings.setApiBase(serverBaseInput)
         serverSettings.setApiKey(serverKeyInput)
         serverSettings.setProfileSiteBase(profileSiteInput)
-        statusText = "서버 보고 설정이 저장되었습니다. 기록을 다시 시도해 주세요."
+        statusText = "저장했어요. 다시 [태그에 쓰기]를 눌러 주세요."
     }
 
     private fun fillProfileUrlFromUid() {
         val u = draftUid.trim()
         if (u.isEmpty()) {
-            statusText = "UID를 먼저 입력하세요."
+            statusText = "태그·제품 ID를 먼저 넣어 주세요."
             return
         }
         val site = profileSiteInput.trim().trimEnd('/').ifEmpty {
             serverSettings.getApiBaseOrEmpty().ifEmpty { BuildConfig.NATIVE_API_BASE_URL.trim().trimEnd('/') }
         }
         if (site.isEmpty()) {
-            statusText = "프로필 사이트 URL(또는 API 기본 주소)을 서버 보고 설정에 입력하세요."
+            statusText = "아래 [Link-U 서비스에 기록]에 주소를 넣거나, 앱을 처음 빌드할 때 기본 주소를 넣어 주세요."
             return
         }
         val encoded = URLEncoder.encode(u, Charsets.UTF_8.name())
         draftUrl = "$site/t/$encoded"
-        statusText = "URL을 $site 기준으로 채웠습니다. 필요하면 수정하세요."
+        statusText = "주소를 맞게 채웠어요. 확인한 뒤 [태그에 쓰기]를 눌러 주세요."
     }
 
     private fun onUserStartWrite() {
@@ -154,12 +137,12 @@ class MainActivity : ComponentActivity() {
         val purl = draftUrl.trim()
         val tok = draftHandoff.trim()
         if (u.isEmpty() || purl.isEmpty() || tok.isEmpty()) {
-            statusText = "UID, URL, 핸드오프 토큰을 모두 입력하세요."
+            statusText = "세 칸을 모두 채워 주세요. 웹에서 복사해 붙여 넣을 수 있어요."
             return
         }
         pendingWrite = WritePayload(uid = u, url = purl, handoffToken = tok)
         awaitingTag = true
-        statusText = "태그를 휴대폰 뒷면에 대주세요."
+        statusText = "휴대폰 뒤에 태그를 가깝게 대 주세요."
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -187,7 +170,7 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         val adapter = nfcAdapter ?: return
         if (!adapter.isEnabled) {
-            statusText = "NFC가 꺼져 있습니다. 설정에서 NFC를 켠 뒤 다시 시도하세요."
+            statusText = "NFC가 꺼져 있어요. 위 버튼으로 설정을 연 뒤 켜 주세요."
             return
         }
         val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -219,7 +202,7 @@ class MainActivity : ComponentActivity() {
         val handoffToken = data.getQueryParameter("handoffToken")?.trim().orEmpty()
 
         if (uid.isBlank() || profileUrl.isBlank() || handoffToken.isBlank()) {
-            statusText = "딥링크 파라미터가 누락되었습니다(uid/url/handoffToken)."
+            statusText = "자동으로 못 가져왔어요. 웹에서 다시 열어 주시거나 아래에 직접 넣어 주세요."
             return
         }
 
@@ -228,7 +211,7 @@ class MainActivity : ComponentActivity() {
         draftHandoff = handoffToken
         pendingWrite = null
         awaitingTag = false
-        statusText = "딥링크로 값이 채워졌습니다. '기록 시작'을 누른 뒤 태그에 대주세요."
+        statusText = "웹에서 불러왔어요. [태그에 쓰기]를 누른 뒤, 휴대폰 뒤에 태그를 대 주세요."
     }
 
     private fun onTagDetected(tag: Tag) {
@@ -238,7 +221,7 @@ class MainActivity : ComponentActivity() {
         }
 
         busy = true
-        statusText = "태그에 URL을 기록 중입니다..."
+        statusText = "태그에 쓰는 중…"
 
         CoroutineScope(Dispatchers.IO).launch {
             val writeResult = writeNdefUrl(tag, current.url)
@@ -255,14 +238,14 @@ class MainActivity : ComponentActivity() {
 
                 if (writeResult.isSuccess) {
                     statusText = when (report) {
-                        is ServerReport.Ok -> "기록 완료: 태그 URL 쓰기와 서버 보고가 모두 성공했습니다."
+                        is ServerReport.Ok -> "태그에 담았고, Link-U 서비스에도 기록됐어요. 감사합니다."
                         is ServerReport.SkippedNoConfig ->
-                            "태그 URL 기록은 완료되었습니다. ${report.hint}"
+                            "태그에는 잘 담았어요. ${report.hint}"
                         is ServerReport.Fail ->
-                            "태그 URL 기록은 성공했지만 서버 보고에 실패했습니다: ${report.message}"
+                            "태그 쓰기는 됐는데 서비스 기록에 실패했어요: ${report.message}"
                     }
                 } else {
-                    statusText = "태그 URL 기록 실패: ${writeResult.exceptionOrNull()?.message ?: "알 수 없는 오류"}"
+                    statusText = "태그에 쓰지 못했어요: ${writeResult.exceptionOrNull()?.message ?: "잠시 후 다시 시도해 주세요."}"
                 }
             }
         }
@@ -277,9 +260,9 @@ class MainActivity : ComponentActivity() {
             if (ndef != null) {
                 ndef.connect()
                 try {
-                    if (!ndef.isWritable) error("이 태그는 쓰기 불가 상태입니다.")
+                    if (!ndef.isWritable) error("이 태그에는 지금 쓸 수 없어요.")
                     if (ndef.maxSize < message.toByteArray().size) {
-                        error("태그 용량이 부족합니다.")
+                        error("쓰려는 내용이 태그 용량보다 커요. 링크를 짧게 하거나 관리자에게 문의해 주세요.")
                     }
                     ndef.writeNdefMessage(message)
                 } finally {
@@ -299,7 +282,7 @@ class MainActivity : ComponentActivity() {
                 return@runCatching
             }
 
-            error("NDEF를 지원하지 않는 태그입니다.")
+            error("이 태그(제품)는 이런 방식 쓰기를 지원하지 않아요.")
         }
     }
 
@@ -324,8 +307,7 @@ class MainActivity : ComponentActivity() {
         val apiKey = getEffectiveApiKey()
         if (baseUrl.isBlank() || apiKey.isBlank()) {
             return ServerReport.SkippedNoConfig(
-                "서버 보고는 건너뜀(API 주소/키 없음). 아래 '서버 보고 설정'에 배포 URL과 " +
-                    "NFC_NATIVE_APP_API_KEY(서버와 동일)를 저장하세요."
+                "Link-U에 ‘쓰기 끝’을 남기려면, 아래 [Link-U 서비스에 기록]에 주소·암호를 넣고 저장하세요. (태그 쓰기는 이미 끝났어요.)"
             )
         }
 
@@ -396,163 +378,5 @@ class MainActivity : ComponentActivity() {
         return mac.doFinal(payload.toByteArray(Charsets.UTF_8)).joinToString("") {
             String.format(Locale.US, "%02x", it)
         }
-    }
-}
-
-@Composable
-private fun WriterScreen(
-    status: String,
-    draftUid: String,
-    draftUrl: String,
-    draftHandoff: String,
-    onDraftUid: (String) -> Unit,
-    onDraftUrl: (String) -> Unit,
-    onDraftHandoff: (String) -> Unit,
-    onFillProfileUrl: () -> Unit,
-    awaitingTag: Boolean,
-    busy: Boolean,
-    showServerFields: Boolean,
-    onToggleServerFields: (Boolean) -> Unit,
-    serverBaseInput: String,
-    serverKeyInput: String,
-    profileSiteInput: String,
-    onServerBase: (String) -> Unit,
-    onServerKey: (String) -> Unit,
-    onProfileSite: (String) -> Unit,
-    onSaveServer: () -> Unit,
-    onPrepareWrite: () -> Unit,
-    onOpenNfcSettings: () -> Unit,
-) {
-    val scroll = rememberScrollState()
-    val statusError =
-        status.contains("실패") && !status.contains("서버 보고는 건너뜀", ignoreCase = true)
-    val statusOkPartial = status.contains("완료되었습니다. 서버 보고", ignoreCase = true) ||
-        status.contains("서버 보고는 건너뜀", ignoreCase = true)
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(scroll)
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Text("Pet-ID NFC Writer", style = MaterialTheme.typography.headlineSmall)
-        Text("웹에서 전달하거나, 아래에 직접 입력한 URL을 태그에 기록합니다.")
-
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(
-                modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedTextField(
-                    value = draftUid,
-                    onValueChange = onDraftUid,
-                    label = { Text("태그 UID") },
-                    singleLine = true,
-                    enabled = !busy,
-                    keyboardOptions = KeyboardOptions.Default,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = draftUrl,
-                    onValueChange = onDraftUrl,
-                    label = { Text("기록할 프로필 URL") },
-                    minLines = 2,
-                    enabled = !busy,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedButton(
-                    onClick = onFillProfileUrl,
-                    enabled = !busy
-                ) {
-                    Text("URL 자동(UID+사이트)")
-                }
-                OutlinedTextField(
-                    value = draftHandoff,
-                    onValueChange = onDraftHandoff,
-                    label = { Text("핸드오프 토큰(웹 발급)") },
-                    minLines = 2,
-                    enabled = !busy,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        }
-
-        OutlinedButton(
-            onClick = { onToggleServerFields(!showServerFields) }
-        ) {
-            Text(if (showServerFields) "서버 보고 설정 닫기" else "서버 보고 설정(API·키·프로필 사이트)")
-        }
-
-        if (showServerFields) {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(
-                    modifier = Modifier.padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text("서버에 쓰기 완료를 보고하려면 배포 URL과 서버에 설정한 NFC_NATIVE_APP_API_KEY(동일 값)이 필요합니다.")
-                    OutlinedTextField(
-                        value = serverBaseInput,
-                        onValueChange = onServerBase,
-                        label = { Text("API 기본 URL(예: https://xxx.pages.dev)") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = serverKeyInput,
-                        onValueChange = onServerKey,
-                        label = { Text("NATIVE 앱 API 키(서버와 동일)") },
-                        singleLine = true,
-                        visualTransformation = PasswordVisualTransformation(),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = profileSiteInput,
-                        onValueChange = onProfileSite,
-                        label = { Text("프로필 사이트(자동 URL용, 비어 있으면 API URL 사용)") },
-                        minLines = 1,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Button(
-                        onClick = onSaveServer,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("설정 저장")
-                    }
-                }
-            }
-        }
-
-        Text(
-            text = status,
-            style = MaterialTheme.typography.bodyLarge,
-            color = when {
-                statusError -> MaterialTheme.colorScheme.error
-                statusOkPartial -> MaterialTheme.colorScheme.primary
-                else -> MaterialTheme.colorScheme.onSurface
-            }
-        )
-
-        Button(
-            onClick = onPrepareWrite,
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !busy
-        ) {
-            Text(
-                if (awaitingTag) "태그 대기 중(태그에 대기)…"
-                else if (busy) "처리 중…"
-                else "기록 시작"
-            )
-        }
-
-        OutlinedButton(onClick = onOpenNfcSettings, modifier = Modifier.fillMaxWidth()) {
-            Text("NFC 설정 열기")
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "딥링크 예시: petidconnect://nfc/write?uid=04:A1:...&url=https://example.com/t/uid&handoffToken=...",
-            style = MaterialTheme.typography.bodySmall
-        )
     }
 }

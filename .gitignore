@@ -38,6 +38,10 @@ next-env.d.ts
 # cloudflare
 /.wrangler/
 
+# android / ide
+**/.idea/
+*.hprof
+
 # pwa
 /public/sw.js
 /public/sw.js.map

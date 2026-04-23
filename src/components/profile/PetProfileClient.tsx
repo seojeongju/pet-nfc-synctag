@@ -196,12 +196,12 @@ export default function PetProfileClient({
     <div
       ref={containerRef}
       className={cn(
-        "min-h-screen bg-[#FDFCFB] font-outfit overflow-x-hidden relative",
+        "min-h-screen w-full bg-[#FDFCFB] font-outfit overflow-x-hidden relative flex flex-col items-center",
         treatAsPublicVisitor ? "pb-44" : "pb-32"
       )}
     >
       {/* Immersive Hero Header */}
-      <div className="relative h-[60vh] w-full overflow-hidden">
+      <div className="relative h-[60vh] w-full min-w-0 self-stretch overflow-hidden">
         <motion.div 
           style={{ y: imageY, scale: imageScale }}
           className="absolute inset-0 z-0"
@@ -260,7 +260,7 @@ export default function PetProfileClient({
 
       {/* 실종 모드 활성화 시 긴급 배너 */}
       {Boolean(pet.is_lost) && (
-        <div className="max-w-md mx-auto px-6 -mt-2 mb-3 relative z-20">
+        <div className="w-full max-w-md min-w-0 -mt-2 mb-3 relative z-20 pl-[max(1.5rem,env(safe-area-inset-left,0px))] pr-[max(1.5rem,env(safe-area-inset-right,0px))]">
           <div className="flex items-center gap-3 rounded-2xl bg-rose-500 px-4 py-3 shadow-xl shadow-rose-500/30 animate-in slide-in-from-top-2 duration-300">
             <AlertTriangle className="w-5 h-5 text-white shrink-0 animate-pulse" />
             <div className="flex-1 min-w-0">
@@ -274,7 +274,7 @@ export default function PetProfileClient({
       )}
 
       {nfcEntry && treatAsPublicVisitor && (
-        <div className="max-w-md mx-auto px-6 -mt-2 mb-2 relative z-20">
+        <div className="w-full max-w-md min-w-0 -mt-2 mb-2 relative z-20 pl-[max(1.5rem,env(safe-area-inset-left,0px))] pr-[max(1.5rem,env(safe-area-inset-right,0px))]">
           <div className="rounded-2xl bg-teal-600/10 border border-teal-200 px-4 py-3 text-center">
             <p className="text-[12px] font-bold text-teal-900 leading-relaxed">
               {scanEntrySource === "scan"
@@ -286,7 +286,7 @@ export default function PetProfileClient({
       )}
 
       {nfcOwnerGate && !ownerUnlocked && (
-        <div className="max-w-md mx-auto px-6 -mt-1 mb-3 relative z-20">
+        <div className="w-full max-w-md min-w-0 -mt-1 mb-3 relative z-20 pl-[max(1.5rem,env(safe-area-inset-left,0px))] pr-[max(1.5rem,env(safe-area-inset-right,0px))]">
           <div className="rounded-2xl border border-amber-200 bg-amber-50/90 px-4 py-3 space-y-2">
             <p className="text-[11px] font-bold text-amber-900 leading-snug">
               이 휴대폰은 가족(보호자) 계정으로 로그인되어 있어요. 남이 보지 않도록, 본인 확인 후에만 아래에서 관리 화면이 열립니다.
@@ -330,7 +330,7 @@ export default function PetProfileClient({
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="max-w-md mx-auto px-6 -mt-4 relative z-20 space-y-8"
+        className="w-full max-w-md min-w-0 box-border -mt-4 relative z-20 space-y-8 pl-[max(1.5rem,env(safe-area-inset-left,0px))] pr-[max(1.5rem,env(safe-area-inset-right,0px))]"
       >
         {/* Core Info & Alert Widget */}
         <motion.section variants={itemVariants}>
@@ -516,6 +516,9 @@ export default function PetProfileClient({
 
       {/* Floating Bottom Nav: 소유자는 대시보드 연동 · 공개 방문자는 랜딩/연락 중심 (S3) */}
       {treatAsPublicVisitor ? (
+      <div
+        className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none pb-4 pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))]"
+      >
       <motion.nav
          style={{ transformOrigin: "50% 100%" }}
          animate={{
@@ -524,9 +527,9 @@ export default function PetProfileClient({
            y: isPublicNavCondensed ? navTuning.y : 0,
          }}
          transition={{ duration: 0.2, ease: "easeOut" }}
-         className="fixed bottom-4 left-4 right-4 z-50 mx-auto w-full max-w-sm glass-dark rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/20"
+         className="pointer-events-auto w-full max-w-sm min-w-0 glass-dark rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/20"
       >
-         {/** Framer transform과 Tailwind -translate-x-1/2 충돌 방지: left/right+mx-auto로 가운데 정렬 */}
+         {/** Framer transform과 Tailwind -translate-x-1/2 충돌 방지: 상단 래퍼 flex justify-center + max-w-sm */}
          <div className="grid grid-cols-3 w-full min-h-[5rem] items-end gap-0 px-2 sm:px-3 pb-2.5 pt-1">
          <div className="flex justify-center min-w-0">
          <Link href="/" className="flex flex-col items-center gap-0.5 group w-full max-w-[5rem]">
@@ -588,8 +591,10 @@ export default function PetProfileClient({
          </div>
          </div>
       </motion.nav>
+      </div>
       ) : (
-      <nav className="fixed bottom-4 left-4 right-4 z-50 mx-auto w-full max-w-sm min-h-20 glass-dark rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center justify-around px-2 sm:px-3 border border-white/20">
+      <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none pb-4 pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))]">
+      <nav className="pointer-events-auto w-full max-w-sm min-w-0 min-h-20 glass-dark rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center justify-around px-2 sm:px-3 border border-white/20">
          <Link href={`/dashboard/${subjectKind}${kindQs}`} className="flex flex-col items-center gap-1 group">
             <div className="p-2.5 rounded-2xl text-slate-400 group-hover:text-white transition-all active:scale-90">
                <Home className="w-6 h-6" />
@@ -626,6 +631,7 @@ export default function PetProfileClient({
             <span className="text-[9px] font-black text-slate-400 group-hover:text-white uppercase tracking-widest">Edit</span>
          </Link>
       </nav>
+      </div>
       )}
     </div>
   );
