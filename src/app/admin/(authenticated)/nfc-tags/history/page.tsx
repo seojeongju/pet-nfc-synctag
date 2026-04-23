@@ -20,6 +20,8 @@ export default async function AdminNfcTagsHistoryPage({
   const auditDaysFilter = Number(params.days) || 30;
   const auditActorFilter = (params.actor as string) || "";
   const auditActionFilter = (params.action as string) || "";
+  const auditPlatformFilter = (params.platform as "all" | "android" | "ios" | "unknown") || "all";
+  const auditModeFilter = (params.mode as "all" | "linku" | "tools" | "unknown") || "all";
   const auditSortBy = (params.sortBy as "created_at" | "action" | "success") || "created_at";
   const auditSortOrder = (params.sortOrder as "asc" | "desc") || "desc";
   const auditPage = Number(params.page) || 1;
@@ -34,6 +36,8 @@ export default async function AdminNfcTagsHistoryPage({
       days: auditDaysFilter,
       actorEmail: auditActorFilter,
       action: auditActionFilter,
+      platform: auditPlatformFilter,
+      mode: auditModeFilter,
       sortBy: auditSortBy,
       sortOrder: auditSortOrder,
     }),

@@ -112,6 +112,10 @@ export function AdminAuditLogsPanel({
     setAuditActorFilter,
     auditActionFilter,
     setAuditActionFilter,
+    auditPlatformFilter,
+    setAuditPlatformFilter,
+    auditModeFilter,
+    setAuditModeFilter,
     auditSortBy,
     setAuditSortBy,
     auditSortOrder,
@@ -132,6 +136,8 @@ export function AdminAuditLogsPanel({
     chips.push(`최근 ${auditDaysFilter}일`);
     if (auditActorFilter.trim()) chips.push(`실행자: ${auditActorFilter.trim()}`);
     if (auditActionFilter) chips.push(`액션: ${actionDisplayName(auditActionFilter)}`);
+    if (auditPlatformFilter !== "all") chips.push(`플랫폼: ${auditPlatformFilter}`);
+    if (auditModeFilter !== "all") chips.push(`모드: ${auditModeFilter}`);
     const sortLabel =
       auditSortBy === "created_at" ? "시각" : auditSortBy === "action" ? "액션" : "결과";
     chips.push(`정렬 ${sortLabel} · ${auditSortOrder === "desc" ? "내림차순" : "오름차순"}`);
@@ -140,6 +146,8 @@ export function AdminAuditLogsPanel({
     auditActionFilter,
     auditActorFilter,
     auditDaysFilter,
+    auditPlatformFilter,
+    auditModeFilter,
     auditSortBy,
     auditSortOrder,
     auditSuccessFilter,
@@ -306,6 +314,38 @@ export function AdminAuditLogsPanel({
                   <option value="platform_user_delete">{ACTION_LABELS.platform_user_delete}</option>
                 </select>
               </label>
+              <div className="grid grid-cols-2 gap-2 sm:col-span-2 sm:gap-3">
+                <label className="space-y-1.5">
+                  <span className="text-[11px] font-black uppercase tracking-wide text-slate-400 sm:text-[10px]">
+                    플랫폼
+                  </span>
+                  <select
+                    value={auditPlatformFilter}
+                    onChange={(e) => setAuditPlatformFilter(e.target.value as "all" | "android" | "ios" | "unknown")}
+                    className={selectClass}
+                  >
+                    <option value="all">전체 플랫폼</option>
+                    <option value="android">Android</option>
+                    <option value="ios">iOS</option>
+                    <option value="unknown">unknown</option>
+                  </select>
+                </label>
+                <label className="space-y-1.5">
+                  <span className="text-[11px] font-black uppercase tracking-wide text-slate-400 sm:text-[10px]">
+                    모드
+                  </span>
+                  <select
+                    value={auditModeFilter}
+                    onChange={(e) => setAuditModeFilter(e.target.value as "all" | "linku" | "tools" | "unknown")}
+                    className={selectClass}
+                  >
+                    <option value="all">전체 모드</option>
+                    <option value="linku">Link-U</option>
+                    <option value="tools">Tools</option>
+                    <option value="unknown">unknown</option>
+                  </select>
+                </label>
+              </div>
               <div className="grid grid-cols-2 gap-2 sm:col-span-2 sm:gap-3">
                 <label className="space-y-1.5">
                   <span className="text-[11px] font-black uppercase tracking-wide text-slate-400 sm:text-[10px]">

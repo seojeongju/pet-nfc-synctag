@@ -9,6 +9,8 @@ export type AuditSuccessFilter = "all" | "success" | "failed";
 export type AuditDaysFilter = 7 | 30 | 90;
 export type AuditSortBy = "created_at" | "action" | "success";
 export type AuditSortOrder = "asc" | "desc";
+export type AuditPlatformFilter = "all" | "android" | "ios" | "unknown";
+export type AuditModeFilter = "all" | "linku" | "tools" | "unknown";
 
 export function useAdminTagsAuditUrl() {
   const router = useRouter();
@@ -18,6 +20,8 @@ export function useAdminTagsAuditUrl() {
   const [auditDaysFilter, setAuditDaysFilter] = useState<AuditDaysFilter>(30);
   const [auditActorFilter, setAuditActorFilter] = useState("");
   const [auditActionFilter, setAuditActionFilter] = useState("");
+  const [auditPlatformFilter, setAuditPlatformFilter] = useState<AuditPlatformFilter>("all");
+  const [auditModeFilter, setAuditModeFilter] = useState<AuditModeFilter>("all");
   const [auditSortBy, setAuditSortBy] = useState<AuditSortBy>("created_at");
   const [auditSortOrder, setAuditSortOrder] = useState<AuditSortOrder>("desc");
   const [auditPage, setAuditPage] = useState(1);
@@ -27,6 +31,8 @@ export function useAdminTagsAuditUrl() {
     const days = Number(searchParams.get("days") || 30) as AuditDaysFilter;
     const actor = searchParams.get("actor") || "";
     const action = searchParams.get("action") || "";
+    const platform = (searchParams.get("platform") as AuditPlatformFilter) || "all";
+    const mode = (searchParams.get("mode") as AuditModeFilter) || "all";
     const sortBy = (searchParams.get("sortBy") as AuditSortBy) || "created_at";
     const sortOrder = (searchParams.get("sortOrder") as AuditSortOrder) || "desc";
     const page = Number(searchParams.get("page") || 1);
@@ -34,6 +40,8 @@ export function useAdminTagsAuditUrl() {
     setAuditDaysFilter([7, 30, 90].includes(days) ? days : 30);
     setAuditActorFilter(actor);
     setAuditActionFilter(action);
+    setAuditPlatformFilter(["all", "android", "ios", "unknown"].includes(platform) ? platform : "all");
+    setAuditModeFilter(["all", "linku", "tools", "unknown"].includes(mode) ? mode : "all");
     setAuditSortBy(sortBy);
     setAuditSortOrder(sortOrder);
     setAuditPage(Number.isFinite(page) && page > 0 ? page : 1);
@@ -42,7 +50,7 @@ export function useAdminTagsAuditUrl() {
 
   useEffect(() => {
     setAuditPage(1);
-  }, [auditSuccessFilter, auditDaysFilter, auditActorFilter, auditActionFilter, auditSortBy, auditSortOrder]);
+  }, [auditSuccessFilter, auditDaysFilter, auditActorFilter, auditActionFilter, auditPlatformFilter, auditModeFilter, auditSortBy, auditSortOrder]);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -50,6 +58,8 @@ export function useAdminTagsAuditUrl() {
     params.set("days", String(auditDaysFilter));
     if (auditActorFilter.trim()) params.set("actor", auditActorFilter.trim());
     if (auditActionFilter) params.set("action", auditActionFilter);
+    if (auditPlatformFilter !== "all") params.set("platform", auditPlatformFilter);
+    if (auditModeFilter !== "all") params.set("mode", auditModeFilter);
     params.set("sortBy", auditSortBy);
     params.set("sortOrder", auditSortOrder);
     params.set("page", String(auditPage));
@@ -59,6 +69,8 @@ export function useAdminTagsAuditUrl() {
     auditDaysFilter,
     auditActorFilter,
     auditActionFilter,
+    auditPlatformFilter,
+    auditModeFilter,
     auditSortBy,
     auditSortOrder,
     auditPage,
@@ -78,6 +90,10 @@ export function useAdminTagsAuditUrl() {
     setAuditActorFilter,
     auditActionFilter,
     setAuditActionFilter,
+    auditPlatformFilter,
+    setAuditPlatformFilter,
+    auditModeFilter,
+    setAuditModeFilter,
     auditSortBy,
     setAuditSortBy,
     auditSortOrder,

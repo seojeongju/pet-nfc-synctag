@@ -445,6 +445,8 @@ export async function getAdminAuditLogs(params?: {
     days?: number;
     actorEmail?: string;
     action?: string;
+    platform?: "all" | "android" | "ios" | "unknown";
+    mode?: "all" | "linku" | "tools" | "unknown";
     sortBy?: "created_at" | "action" | "success";
     sortOrder?: "asc" | "desc";
 }) {
@@ -456,6 +458,8 @@ export async function getAdminAuditLogs(params?: {
     const days = Math.max(1, Math.min(params?.days ?? 30, 365));
     const actorEmail = (params?.actorEmail ?? "").trim();
     const action = (params?.action ?? "").trim();
+    const platform = params?.platform ?? "all";
+    const mode = params?.mode ?? "all";
     const sortBy = params?.sortBy ?? "created_at";
     const sortOrder = params?.sortOrder === "asc" ? "ASC" : "DESC";
 
@@ -470,6 +474,14 @@ export async function getAdminAuditLogs(params?: {
     if (action) {
         whereParts.push("action = ?");
         bindValues.push(action);
+    }
+    if (platform !== "all") {
+        whereParts.push("COALESCE(json_extract(payload, '$.platform'), 'unknown') = ?");
+        bindValues.push(platform);
+    }
+    if (mode !== "all") {
+        whereParts.push("COALESCE(json_extract(payload, '$.mode'), 'unknown') = ?");
+        bindValues.push(mode);
     }
     const whereClause = whereParts.join(" AND ");
 
