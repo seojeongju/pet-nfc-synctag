@@ -23,9 +23,9 @@ export function LocationShare({
   const activeTag = tagId || searchParams.get("tag");
   const canSend = enabled && Boolean(activeTag);
   const helperText = useMemo(() => {
-    if (!enabled) return "공개 방문자 화면에서만 위치 공유를 보낼 수 있습니다.";
-    if (!activeTag) return "태그 스캔 진입에서만 보호자에게 위치가 전달됩니다.";
-    return "현재 위치를 공유하면 보호자에게 마지막 발견 위치가 전달됩니다.";
+    if (!enabled) return "이 화면에서만 위치를 보낼 수 있어요.";
+    if (!activeTag) return "인식표로 이 화면에 바로 오셨을 때만 가족에게 전달돼요. 링크로만 열었을 땐 전화·문자로 알려 주세요.";
+    return "누르면 지금 계신 곳이 가족에게 전해져요. (위치 사용을 허용해 주세요.)";
   }, [enabled, activeTag]);
 
   const getHapticPattern = () => {
@@ -139,7 +139,7 @@ export function LocationShare({
               >
                 <CheckCircle2 className="w-7 h-7" />
               </motion.div>
-              위치 공유 완료!
+              가족에게 보냈어요
             </Button>
           </motion.div>
         ) : (
@@ -172,12 +172,12 @@ export function LocationShare({
                 <MapPin className="w-7 h-7 group-hover:bounce transition-transform" />
               )}
               {status === "loading"
-                ? "위치 정보 전송 중..."
+                ? "보내는 중…"
                 : status === "error"
-                  ? "위치 권한을 확인하고 다시 시도해 주세요"
+                  ? "위치를 켜 주시고 다시 눌러 주세요"
                   : canSend
-                    ? "현재 위치 공유하기"
-                    : "위치 공유 사용 불가"}
+                    ? "지금 위치 보내기"
+                    : "지금은 쓸 수 없어요"}
               
               {/* Subtle hover effect light */}
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />

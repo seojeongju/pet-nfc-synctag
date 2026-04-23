@@ -124,8 +124,8 @@ export default function PetProfileClient({
   const displayName = maskNameForPublicViewer(pet.name, subjectKind, treatAsPublicVisitor);
   const finderCopy =
     subjectKind === "pet"
-      ? "아이를 발견하셨나요? 당황하지 마세요! 아래 연락처로 연락 주시면 보호자님께 즉시 전달됩니다."
-      : "발견하셨나요? 아래 연락처로 연락 주시면 등록자에게 즉시 전달됩니다.";
+      ? "아이를 보셨다면, 아래 연락처로 가족에게 알려 주세요. 전화·문자 모두 괜찮아요."
+      : "아래 연락처로 가족(담당자)에게 바로 알려 주세요.";
   const finderParagraph = treatAsPublicVisitor ? nfcPublicFinderIntro[subjectKind] : finderCopy;
   const idSecondary =
     subjectKind === "pet"
@@ -193,7 +193,13 @@ export default function PetProfileClient({
   });
 
   return (
-    <div ref={containerRef} className="min-h-screen bg-[#FDFCFB] font-outfit pb-32 overflow-x-hidden relative">
+    <div
+      ref={containerRef}
+      className={cn(
+        "min-h-screen bg-[#FDFCFB] font-outfit overflow-x-hidden relative",
+        treatAsPublicVisitor ? "pb-44" : "pb-32"
+      )}
+    >
       {/* Immersive Hero Header */}
       <div className="relative h-[60vh] w-full overflow-hidden">
         <motion.div 
@@ -269,14 +275,11 @@ export default function PetProfileClient({
 
       {nfcEntry && treatAsPublicVisitor && (
         <div className="max-w-md mx-auto px-6 -mt-2 mb-2 relative z-20">
-          <div className="rounded-2xl bg-teal-600/10 border border-teal-200 px-4 py-3 text-center space-y-1.5">
-            <p className="text-[11px] font-bold text-teal-800 leading-snug">
+          <div className="rounded-2xl bg-teal-600/10 border border-teal-200 px-4 py-3 text-center">
+            <p className="text-[12px] font-bold text-teal-900 leading-relaxed">
               {scanEntrySource === "scan"
-                ? "태그 스캔(/t/…)으로 접속되었습니다. 아래 1) 연락 2) 위치 공유 순서로 도와주세요."
-                : "NFC 태그로 이 페이지를 열었습니다. 발견을 도와주셔서 감사합니다."}
-            </p>
-            <p className="text-[10px] font-semibold text-teal-700/90">
-              보호자는 로그인 후 <span className="font-black">대시보드 → 관리 대상</span>에서 같은 태그 ID를 연결할 수 있어요.
+                ? "인식표(스마트 태그)로 이 화면에 오셨어요. ① 먼저 가족에게 전화·문자 → ② 가능하면 아래에서 위치를 보내 주세요. 큰 도움이 됩니다."
+                : "가족이 연락을 받을 수 있게 열어 둔 화면이에요. 아래 안내대로 먼저 연락해 주시면 감사하겠습니다."}
             </p>
           </div>
         </div>
@@ -286,7 +289,7 @@ export default function PetProfileClient({
         <div className="max-w-md mx-auto px-6 -mt-1 mb-3 relative z-20">
           <div className="rounded-2xl border border-amber-200 bg-amber-50/90 px-4 py-3 space-y-2">
             <p className="text-[11px] font-bold text-amber-900 leading-snug">
-              이 기기에 로그인된 계정이 이 프로필의 보호자와 일치합니다. 공용 기기에서는 다른 분이 보지 못하도록, 태그·대시보드 관리는 아래를 눌러 확인 후에만 열립니다.
+              이 휴대폰은 가족(보호자) 계정으로 로그인되어 있어요. 남이 보지 않도록, 본인 확인 후에만 아래에서 관리 화면이 열립니다.
             </p>
             <Button
               type="button"
@@ -313,7 +316,7 @@ export default function PetProfileClient({
                   확인 중…
                 </>
               ) : (
-                "보호자 화면 열기 (태그·상세 관리)"
+                "가족(보호자) 화면 열기"
               )}
             </Button>
             {unlockError && (
@@ -368,9 +371,9 @@ export default function PetProfileClient({
               </p>
               {treatAsPublicVisitor ? (
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <p className="text-[11px] font-black text-slate-700">발견자 가이드</p>
-                  <p className="text-[11px] font-semibold text-slate-500 mt-1">
-                    1) 먼저 보호자에게 전화하고, 2) 현재 위치를 공유해 주세요.
+                  <p className="text-[11px] font-black text-slate-800">지금 하실 일</p>
+                  <p className="text-[12px] font-semibold text-slate-600 mt-1.5 leading-snug">
+                    ① 가족에게 전화(또는 문자) ② 여유가 되시면 아래에서 &apos;위치 보내기&apos;까지
                   </p>
                 </div>
               ) : null}
@@ -403,8 +406,8 @@ export default function PetProfileClient({
                     </Button>
                  )}
                  {treatAsPublicVisitor && !tagId && (
-                   <p className="text-[11px] text-slate-400 text-center font-medium -mt-1">
-                     NFC 태그로 스캔한 경우에만 발견 위치를 보호자에게 전달할 수 있어요.
+                   <p className="text-[11px] text-slate-500 text-center font-medium -mt-1 leading-snug">
+                     위치는 인식표로 이 화면에 바로 들어오셨을 때만 가족에게 전달될 수 있어요. 링크로만 열었을 땐 전화·문자로 알려 주세요.
                    </p>
                  )}
                  <div id="finder-location-share">
@@ -480,8 +483,8 @@ export default function PetProfileClient({
                   <ShieldCheck className="w-4 h-4 text-teal-500" />
                   상세 메모 비공개
                 </h4>
-                <p className="text-xs font-bold text-slate-400 leading-relaxed">
-                  의료·메모 등 상세 정보는 링크유에 로그인한 소유자만 볼 수 있습니다. 발견 도움은 위 연락처와 위치 공유로 전달됩니다.
+                <p className="text-xs font-bold text-slate-500 leading-relaxed">
+                  병원 기록·가족 메모는 가족만 볼 수 있어요. 지금은 위 전화·문자·위치 보내기로 도움을 주시면 됩니다.
                 </p>
               </CardContent>
               )}
@@ -514,44 +517,52 @@ export default function PetProfileClient({
       {/* Floating Bottom Nav: 소유자는 대시보드 연동 · 공개 방문자는 랜딩/연락 중심 (S3) */}
       {treatAsPublicVisitor ? (
       <motion.nav
+         style={{ transformOrigin: "50% 100%" }}
          animate={{
            scale: isPublicNavCondensed ? navTuning.scale : publicNavScale.get(),
            opacity: isPublicNavCondensed ? navTuning.opacity : publicNavOpacity.get(),
            y: isPublicNavCondensed ? navTuning.y : 0,
          }}
          transition={{ duration: 0.2, ease: "easeOut" }}
-         className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm h-20 glass-dark rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] z-50 flex items-center justify-around px-6 border border-white/20"
+         className="fixed bottom-4 left-4 right-4 z-50 mx-auto w-full max-w-sm glass-dark rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/20"
       >
-         <Link href="/" className="flex flex-col items-center gap-1 group">
-            <div className="p-2.5 rounded-2xl text-slate-400 group-hover:text-white transition-all active:scale-90">
+         {/** Framer transform과 Tailwind -translate-x-1/2 충돌 방지: left/right+mx-auto로 가운데 정렬 */}
+         <div className="grid grid-cols-3 w-full min-h-[5rem] items-end gap-0 px-2 sm:px-3 pb-2.5 pt-1">
+         <div className="flex justify-center min-w-0">
+         <Link href="/" className="flex flex-col items-center gap-0.5 group w-full max-w-[5rem]">
+            <div className="p-2 rounded-2xl text-slate-400 group-hover:text-white transition-all active:scale-90">
                <Home className="w-6 h-6" />
             </div>
             <span className="text-[9px] font-black text-slate-400 group-hover:text-white tracking-widest">홈</span>
          </Link>
+         </div>
+         <div className="flex flex-col items-center justify-end min-w-0 pb-0.5">
          {pet.emergency_contact ? (
-         <a href={`tel:${pet.emergency_contact}`} className="flex flex-col items-center gap-1 group">
-            <div className="p-3.5 -mt-8 rounded-full bg-teal-500 text-white shadow-xl shadow-teal-500/40 border-4 border-slate-950">
+         <a href={`tel:${pet.emergency_contact}`} onClick={() => logFinderClick("call_click")} className="flex flex-col items-center gap-0.5 group -mb-0.5">
+            <div className="p-3 rounded-full bg-teal-500 text-white shadow-xl shadow-teal-500/40 border-2 border-slate-900/80 ring-2 ring-white/20">
                <Phone className="w-6 h-6" />
             </div>
-            <span className="text-[9px] font-black text-teal-400 tracking-widest mt-1">전화</span>
+            <span className="text-[9px] font-black text-teal-400 tracking-widest">전화</span>
          </a>
          ) : (
-         <div className="flex flex-col items-center gap-1 opacity-40">
-            <div className="p-3.5 -mt-8 rounded-full bg-slate-600 text-white border-4 border-slate-950">
+         <div className="flex flex-col items-center gap-0.5 opacity-40">
+            <div className="p-3 rounded-full bg-slate-600 text-white border-2 border-slate-900/80">
                <Phone className="w-6 h-6" />
             </div>
-            <span className="text-[9px] font-black text-slate-500 tracking-widest mt-1">—</span>
+            <span className="text-[9px] font-black text-slate-500 tracking-widest">—</span>
          </div>
          )}
+         </div>
+         <div className="flex justify-center min-w-0">
          <Link
             href={tagId ? "#finder-location-share" : "#"}
-            title={tagId ? "위치 공유로 이동" : "태그 스캔 진입에서만 위치 공유 가능"}
+            title={tagId ? "아래의 위치 보내기로 이동" : "인식표로 이 화면에 온 경우에만 위치를 보낼 수 있어요"}
             aria-disabled={!tagId}
-            className={cn("flex flex-col items-center gap-1 group", !tagId ? "opacity-40 pointer-events-none" : "")}
+            className={cn("flex flex-col items-center gap-0.5 group w-full max-w-[5rem]", !tagId ? "opacity-40 pointer-events-none" : "")}
          >
             <div
               className={cn(
-                "p-2.5 rounded-2xl transition-all active:scale-90",
+                "p-2 rounded-2xl transition-all active:scale-90",
                 locationShareStatus === "success"
                   ? "text-teal-400"
                   : "text-slate-400 group-hover:text-white"
@@ -561,22 +572,24 @@ export default function PetProfileClient({
             </div>
             <span
               className={cn(
-                "text-[8px] font-black text-center leading-tight max-w-[4.5rem]",
+                "text-[8px] font-black text-center leading-tight px-0.5",
                 locationShareStatus === "success"
                   ? "text-teal-300"
                   : "text-slate-400 group-hover:text-white"
               )}
             >
               {locationShareStatus === "loading"
-                ? "전송 중"
+                ? "보내는 중"
                 : locationShareStatus === "success"
-                  ? "전달 완료"
-                  : "위치 공유"}
+                  ? "보냄"
+                  : "위치 보내기"}
             </span>
          </Link>
+         </div>
+         </div>
       </motion.nav>
       ) : (
-      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm h-20 glass-dark rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] z-50 flex items-center justify-around px-4 border border-white/20">
+      <nav className="fixed bottom-4 left-4 right-4 z-50 mx-auto w-full max-w-sm min-h-20 glass-dark rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center justify-around px-2 sm:px-3 border border-white/20">
          <Link href={`/dashboard/${subjectKind}${kindQs}`} className="flex flex-col items-center gap-1 group">
             <div className="p-2.5 rounded-2xl text-slate-400 group-hover:text-white transition-all active:scale-90">
                <Home className="w-6 h-6" />

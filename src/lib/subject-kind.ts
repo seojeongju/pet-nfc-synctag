@@ -132,16 +132,16 @@ export const subjectKindNfcPublic: Record<
   SubjectKind,
   { roleLine: string; callCta: string; hideMedicalBlock: boolean; idCardLabel: string; scanHintLabel: string; scanHintBody: string }
 > = {
-  pet: { roleLine: "NFC 공개 프로필 · 링크유 - 펫 (반려동물)", callCta: "보호자에게 연락하기", hideMedicalBlock: true, idCardLabel: "식별 메모", scanHintLabel: "스캔 기록", scanHintBody: "위치 공유로 보호자에게 도움을 줄 수 있어요." },
-  elder: { roleLine: "NFC 공개 프로필 · 링크유 - 메모리 (기억 동행)", callCta: "보호자·가족에게 연락하기", hideMedicalBlock: true, idCardLabel: "참고 메모", scanHintLabel: "안내", scanHintBody: "필요할 때 가족에게 연락해 주세요." },
-  child: { roleLine: "NFC 공개 프로필 · 링크유 - 키즈 (우리 아이 안심)", callCta: "보호자에게 연락하기", hideMedicalBlock: true, idCardLabel: "식별", scanHintLabel: "안내", scanHintBody: "보호자 연락을 우선해 주세요." },
-  luggage: { roleLine: "NFC 공개 프로필 · 링크유 - 태그 (수화물·가방)", callCta: "등록자에게 연락하기", hideMedicalBlock: true, idCardLabel: "소지품", scanHintLabel: "분실 안내", scanHintBody: "주인에게 연락해 주시면 감사하겠습니다." },
+  pet: { roleLine: "가족이 남긴 연락 화면 · 반려동물", callCta: "가족(보호자)에게 전화·문자", hideMedicalBlock: true, idCardLabel: "참고", scanHintLabel: "도움말", scanHintBody: "가능하면 위치도 보내 주시면 가족에게 큰 도움이 돼요." },
+  elder: { roleLine: "가족이 남긴 연락 화면 · 기억 동행", callCta: "가족에게 전화·문자", hideMedicalBlock: true, idCardLabel: "참고", scanHintLabel: "도움말", scanHintBody: "필요할 때 위 전화(문자)로 가족에게 연락해 주세요." },
+  child: { roleLine: "가족이 남긴 연락 화면 · 아이 안심", callCta: "가족(보호자)에게 전화·문자", hideMedicalBlock: true, idCardLabel: "참고", scanHintLabel: "도움말", scanHintBody: "가족에게 먼저 연락해 주세요." },
+  luggage: { roleLine: "가족이 남긴 연락 화면 · 분실물", callCta: "주인에게 전화·문자", hideMedicalBlock: true, idCardLabel: "물품", scanHintLabel: "도움말", scanHintBody: "주인에게 연락해 주시면 감사합니다." },
   gold: {
-    roleLine: "NFC 공개 프로필 · 링크유 - 골드 (고귀한 가치·인증서)",
-    callCta: "소유자에게 연락하기",
+    roleLine: "가족이 남긴 연락 화면 · 귀중품",
+    callCta: "주인에게 전화·문자",
     hideMedicalBlock: true,
-    idCardLabel: "인증·제품",
-    scanHintLabel: "안내",
-    scanHintBody: "고귀한 가치(인증)와 안전한 보호(분실 방지) 안내를 함께 제공합니다.",
+    idCardLabel: "제품",
+    scanHintLabel: "도움말",
+    scanHintBody: "주인에게 먼저 연락해 주시고, 필요하면 위치도 보내 주세요.",
   },
 };
