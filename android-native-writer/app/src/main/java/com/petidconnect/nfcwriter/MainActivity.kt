@@ -37,6 +37,12 @@ data class WritePayload(
     val handoffToken: String,
 )
 
+private enum class AppMode {
+    Landing,
+    LinkU,
+    Tools,
+}
+
 private sealed class ServerReport {
     data object Ok : ServerReport()
     data class SkippedNoConfig(val hint: String) : ServerReport()
@@ -44,6 +50,8 @@ private sealed class ServerReport {
 }
 
 class MainActivity : ComponentActivity() {
+    private var appMode by mutableStateOf(AppMode.Landing)
+    private var entryFromDeepLink by mutableStateOf(false)
     private var statusText by mutableStateOf("Link-U 웹에서 기록 흐름을 쓰면 자동으로 불러옵니다. 직접 쓸 땐 아래에 입력하세요.")
     private var draftUid by mutableStateOf("")
     private var draftUrl by mutableStateOf("")
@@ -73,6 +81,32 @@ class MainActivity : ComponentActivity() {
         setContent {
             PetIdNfcTheme {
                 WriterAppScreen(
+                    appMode = appMode.name,
+                    entryFromDeepLink = entryFromDeepLink,
+                    onSelectLinkU = {
+                        appMode = AppMode.LinkU
+                        if (statusText.isBlank()) {
+                            statusText = "Link-U 모드입니다. 웹에서 자동 입력되거나 아래에 직접 입력해 태그를 기록할 수 있어요."
+                        }
+                    },
+                    onSelectTools = {
+                        appMode = AppMode.Tools
+                        if (statusText.isBlank() || statusText.contains("웹에서 불러왔어요")) {
+                            statusText = "일반 NFC 도구 모드입니다. URL/텍스트 태그 기록을 바로 시작할 수 있어요."
+                        }
+                    },
+                    onBackToLanding = {
+                        if (entryFromDeepLink) {
+                            statusText = "태그/웹에서 들어온 Link-U 세션입니다. 아래에서 바로 기록을 진행해 주세요."
+                        } else {
+                            appMode = AppMode.Landing
+                            awaitingTag = false
+                            busy = false
+                            pendingWrite = null
+                            tagWriteSuccess = false
+                            statusText = "모드를 선택해 시작해 주세요."
+                        }
+                    },
                     status = statusText,
                     draftUid = draftUid,
                     draftUrl = draftUrl,
@@ -148,8 +182,13 @@ class MainActivity : ComponentActivity() {
         val u = draftUid.trim()
         val purl = draftUrl.trim()
         val tok = draftHandoff.trim()
-        if (u.isEmpty() || purl.isEmpty() || tok.isEmpty()) {
-            statusText = "세 칸을 모두 채워 주세요. 웹에서 복사해 붙여 넣을 수 있어요."
+        val requireHandoff = appMode == AppMode.LinkU
+        if (u.isEmpty() || purl.isEmpty() || (requireHandoff && tok.isEmpty())) {
+            statusText = if (requireHandoff) {
+                "Link-U 모드에서는 세 칸을 모두 채워 주세요. 웹에서 복사해 붙여 넣을 수 있어요."
+            } else {
+                "일반 도구 모드에서는 태그·제품 ID와 URL을 먼저 채워 주세요."
+            }
             return
         }
         tagWriteSuccess = false
@@ -222,6 +261,8 @@ class MainActivity : ComponentActivity() {
         draftUid = uid
         draftUrl = profileUrl
         draftHandoff = handoffToken
+        appMode = AppMode.LinkU
+        entryFromDeepLink = true
         pendingWrite = null
         awaitingTag = false
         tagWriteSuccess = false
@@ -239,11 +280,15 @@ class MainActivity : ComponentActivity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             val writeResult = writeNdefUrl(tag, current.url)
-            val report = postNativeWriteResult(
-                payload = current,
-                success = writeResult.isSuccess,
-                clientError = writeResult.exceptionOrNull()?.message
-            )
+            val report = if (appMode == AppMode.LinkU && current.handoffToken.isNotBlank()) {
+                postNativeWriteResult(
+                    payload = current,
+                    success = writeResult.isSuccess,
+                    clientError = writeResult.exceptionOrNull()?.message
+                )
+            } else {
+                ServerReport.SkippedNoConfig("일반 NFC 도구 모드에서는 Link-U 서버 기록을 생략했어요.")
+            }
 
             launch(Dispatchers.Main) {
                 busy = false

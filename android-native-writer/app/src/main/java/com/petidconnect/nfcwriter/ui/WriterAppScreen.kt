@@ -74,6 +74,11 @@ import androidx.compose.ui.unit.sp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WriterAppScreen(
+    appMode: String,
+    entryFromDeepLink: Boolean,
+    onSelectLinkU: () -> Unit,
+    onSelectTools: () -> Unit,
+    onBackToLanding: () -> Unit,
     status: String,
     draftUid: String,
     draftUrl: String,
@@ -98,6 +103,21 @@ fun WriterAppScreen(
     onPrepareWrite: () -> Unit,
     onOpenNfcSettings: () -> Unit
 ) {
+    if (appMode == "Landing") {
+        LandingModeScreen(
+            onSelectLinkU = onSelectLinkU,
+            onSelectTools = onSelectTools
+        )
+        return
+    }
+
+    val isLinkUMode = appMode == "LinkU"
+    val modeTitle = if (isLinkUMode) "Link-U 모드" else "일반 NFC 도구 모드"
+    val modeDescription = if (isLinkUMode) {
+        "Link-U 웹/태그와 바로 연결되는 기록 흐름"
+    } else {
+        "누구나 NFC 읽기·쓰기 도구로 시작"
+    }
     val scroll = rememberScrollState()
     val tone = statusToneFor(status, awaitingTag, busy)
     var showTechnicalDetails by remember { mutableStateOf(false) }
@@ -142,20 +162,20 @@ fun WriterAppScreen(
                 }
                 Column(Modifier.padding(start = 16.dp)) {
                     Text(
-                        "Link-U",
+                        if (isLinkUMode) "Link-U" else "NFC Tools",
                         style = MaterialTheme.typography.headlineSmall,
                         color = Color.White,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        "Tag Writer",
+                        modeTitle,
                         style = MaterialTheme.typography.labelLarge,
                         color = Color.White.copy(0.95f),
                         fontWeight = FontWeight.SemiBold
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "펫·가족·기억(메모리)·아이·수하물… 웹에서 만든 링크를 태그에",
+                        modeDescription,
                         style = MaterialTheme.typography.labelMedium,
                         color = Color.White.copy(0.88f)
                     )
@@ -178,12 +198,26 @@ fun WriterAppScreen(
             )
 
             Text(
-                "① Link-U 웹에서 [앱으로 태그 주소 기록] 등 기록 흐름을 쓰면 이 앱이 자동으로 불러옵니다.\n" +
-                    "② [태그에 쓰기]를 누른 뒤, 휴대폰 뒤에 태그를 가깝게 대 주세요.",
+                if (isLinkUMode) {
+                    "① Link-U 웹에서 [앱으로 태그 주소 기록] 흐름을 쓰면 이 앱이 자동으로 불러옵니다.\n" +
+                        "② [태그에 쓰기]를 누른 뒤, 휴대폰 뒤에 태그를 가깝게 대 주세요."
+                } else {
+                    "① 태그·제품 ID와 URL(또는 텍스트 링크)을 입력해 주세요.\n" +
+                        "② [태그에 쓰기]를 누른 뒤, 휴대폰 뒤에 태그를 가깝게 대 주세요."
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.88f),
                 lineHeight = 22.sp
             )
+
+            if (!entryFromDeepLink) {
+                TextButton(
+                    onClick = onBackToLanding,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("모드 선택으로 돌아가기")
+                }
+            }
 
             if (status.isNotBlank()) {
                 StatusMessageCard(message = status, tone = tone)
@@ -240,11 +274,13 @@ fun WriterAppScreen(
                             title = "열릴 링크",
                             shortLine = if (hasUrl) summarizeUrlForDisplay(draftUrl) else "아직 없음"
                         )
-                        DraftStatusRow(
-                            ok = hasHandoff,
-                            title = "한번 쓰는 인증",
-                            shortLine = if (hasHandoff) summarizeHandoffForDisplay(draftHandoff) else "아직 없음"
-                        )
+                        if (isLinkUMode) {
+                            DraftStatusRow(
+                                ok = hasHandoff,
+                                title = "한번 쓰는 인증",
+                                shortLine = if (hasHandoff) summarizeHandoffForDisplay(draftHandoff) else "아직 없음"
+                            )
+                        }
                     }
                 }
             }
@@ -317,25 +353,27 @@ fun WriterAppScreen(
                         )
                         Text("번호만 넣고 주소 자동으로 만들기")
                     }
-                    OutlinedTextField(
-                        value = draftHandoff,
-                        onValueChange = onDraftHandoff,
-                        label = { Text("웹에서 받은 한번용 인증") },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Filled.Key,
-                                contentDescription = null
-                            )
-                        },
-                        supportingText = {
-                            Text("웹에 나온 긴 문장을 그대로 복사해 붙여 넣어 주세요.")
-                        },
-                        minLines = 3,
-                        maxLines = 6,
-                        enabled = !busy,
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    if (isLinkUMode) {
+                        OutlinedTextField(
+                            value = draftHandoff,
+                            onValueChange = onDraftHandoff,
+                            label = { Text("웹에서 받은 한번용 인증") },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Filled.Key,
+                                    contentDescription = null
+                                )
+                            },
+                            supportingText = {
+                                Text("웹에 나온 긴 문장을 그대로 복사해 붙여 넣어 주세요.")
+                            },
+                            minLines = 3,
+                            maxLines = 6,
+                            enabled = !busy,
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
             }
 
@@ -428,101 +466,162 @@ fun WriterAppScreen(
                 Text("NFC 켜기(휴대폰 설정)")
             }
 
-            Text(
-                "고급 (운영·개발)",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(top = 12.dp)
-            )
-            TextButton(
-                onClick = { onToggleServerFields(!showServerFields) },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    Icons.Filled.Settings,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .padding(end = 8.dp)
-                        .size(18.dp),
-                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                )
+            if (isLinkUMode) {
                 Text(
-                    if (showServerFields) {
-                        "Link-U 서버에 기록하는 설정 · 닫기"
-                    } else {
-                        "Link-U 서버에 기록하는 설정 · 열기 (대부분 생략)"
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                    "고급 (운영·개발)",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 12.dp)
                 )
-            }
-            AnimatedVisibility(
-                visible = showServerFields,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut()
-            ) {
-                Card(
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
-                    ),
+                TextButton(
+                    onClick = { onToggleServerFields(!showServerFields) },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(
-                        Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    Icon(
+                        Icons.Filled.Settings,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .padding(end = 8.dp)
+                            .size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    )
+                    Text(
+                        if (showServerFields) {
+                            "Link-U 서버에 기록하는 설정 · 닫기"
+                        } else {
+                            "Link-U 서버에 기록하는 설정 · 열기 (대부분 생략)"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                    )
+                }
+                AnimatedVisibility(
+                    visible = showServerFields,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
+                ) {
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                        ),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(
-                            "· 태그에 링크만 쓰면 스캔·연락은 됩니다. 꼭 필요한 경우에만 이 설정을 쓰세요.\n" +
-                                "· 앱을 배포할 때 서버 주소·암호를 이미 넣어 둔 경우, 쓰기가 끝난 뒤 Link-U에 자동으로 보고될 수 있어 대부분 이 화면을 열지 않아도 됩니다.\n" +
-                                "· 관리자 안내로 직접 넣으라는 경우, 또는 개발·테스트로 다른 서버를 쓸 때만 아래에 입력·저장하세요.",
-                            style = MaterialTheme.typography.bodySmall,
-                            lineHeight = 20.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.88f)
-                        )
-                        OutlinedTextField(
-                            value = serverBaseInput,
-                            onValueChange = onServerBase,
-                            label = { Text("Link-U 서비스 주소 (https://…)") },
-                            singleLine = true,
-                            leadingIcon = {
-                                Icon(Icons.Filled.PhoneAndroid, contentDescription = null)
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        OutlinedTextField(
-                            value = serverKeyInput,
-                            onValueChange = onServerKey,
-                            label = { Text("연결 암호 (관리자 안내)") },
-                            singleLine = true,
-                            visualTransformation = PasswordVisualTransformation(),
-                            leadingIcon = {
-                                Icon(Icons.Filled.Key, contentDescription = null)
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        OutlinedTextField(
-                            value = profileSiteInput,
-                            onValueChange = onProfileSite,
-                            label = { Text("“주소 자동”에 쓸 사이트 (없으면 위 주소)") },
-                            minLines = 1,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        Button(
-                            onClick = onSaveServer,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(14.dp)
-                        ) { Text("저장") }
+                        Column(
+                            Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Text(
+                                "· 태그에 링크만 쓰면 스캔·연락은 됩니다. 꼭 필요한 경우에만 이 설정을 쓰세요.\n" +
+                                    "· 앱을 배포할 때 서버 주소·암호를 이미 넣어 둔 경우, 쓰기가 끝난 뒤 Link-U에 자동으로 보고될 수 있어 대부분 이 화면을 열지 않아도 됩니다.\n" +
+                                    "· 관리자 안내로 직접 넣으라는 경우, 또는 개발·테스트로 다른 서버를 쓸 때만 아래에 입력·저장하세요.",
+                                style = MaterialTheme.typography.bodySmall,
+                                lineHeight = 20.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.88f)
+                            )
+                            OutlinedTextField(
+                                value = serverBaseInput,
+                                onValueChange = onServerBase,
+                                label = { Text("Link-U 서비스 주소 (https://…)") },
+                                singleLine = true,
+                                leadingIcon = {
+                                    Icon(Icons.Filled.PhoneAndroid, contentDescription = null)
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            OutlinedTextField(
+                                value = serverKeyInput,
+                                onValueChange = onServerKey,
+                                label = { Text("연결 암호 (관리자 안내)") },
+                                singleLine = true,
+                                visualTransformation = PasswordVisualTransformation(),
+                                leadingIcon = {
+                                    Icon(Icons.Filled.Key, contentDescription = null)
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            OutlinedTextField(
+                                value = profileSiteInput,
+                                onValueChange = onProfileSite,
+                                label = { Text("“주소 자동”에 쓸 사이트 (없으면 위 주소)") },
+                                minLines = 1,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            Button(
+                                onClick = onSaveServer,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(14.dp)
+                            ) { Text("저장") }
+                        }
                     }
                 }
             }
 
             // 하단 내비·제스처 영역을 넘겨도 스크롤로 충분히 읽을 수 있도록
             Spacer(Modifier.height(32.dp))
+        }
+    }
+}
+
+@Composable
+private fun LandingModeScreen(
+    onSelectLinkU: () -> Unit,
+    onSelectTools: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(horizontal = 20.dp, vertical = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Text(
+            "Link-U Tag Writer",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.ExtraBold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            "태그(딥링크)로 들어오면 Link-U 모드로 자동 연동됩니다.\n일반 실행은 아래에서 모드를 선택해 시작하세요.",
+            style = MaterialTheme.typography.bodyMedium,
+            lineHeight = 22.sp,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+        )
+
+        Card(shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Link-U 모드", fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+                Text(
+                    "우리 프로그램 태그/웹과 바로 연동되는 기록 흐름",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+                )
+                Button(onClick = onSelectLinkU, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
+                    Text("Link-U로 시작")
+                }
+            }
+        }
+
+        Card(shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("일반 NFC 도구 모드", fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+                Text(
+                    "누구나 URL/텍스트 NFC 읽기·쓰기 도구로 사용",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+                )
+                FilledTonalButton(
+                    onClick = onSelectTools,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text("일반 도구로 시작")
+                }
+            }
         }
     }
 }
