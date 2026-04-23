@@ -1,7 +1,25 @@
-﻿plugins {
+﻿import java.util.Properties
+
+plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
+
+val localProperties = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) {
+        f.inputStream().use { load(it) }
+    }
+}
+
+fun prop(name: String): String {
+    val fromGradle = (project.findProperty(name) as String?)?.trim().orEmpty()
+    if (fromGradle.isNotEmpty()) return fromGradle
+    return localProperties.getProperty(name, "").trim()
+}
+
+fun escapeForBuildConfig(s: String): String =
+    s.replace("\\", "\\\\").replace("\"", "\\\"")
 
 android {
     namespace = "com.petidconnect.nfcwriter"
@@ -16,10 +34,10 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        val apiBase = (project.findProperty("NATIVE_API_BASE_URL") as String?) ?: ""
-        val apiKey = (project.findProperty("NATIVE_APP_API_KEY") as String?) ?: ""
-        val hmacCurrent = (project.findProperty("NATIVE_HMAC_SECRET_CURRENT") as String?) ?: ""
-        val hmacNext = (project.findProperty("NATIVE_HMAC_SECRET_NEXT") as String?) ?: ""
+        val apiBase = escapeForBuildConfig(prop("NATIVE_API_BASE_URL"))
+        val apiKey = escapeForBuildConfig(prop("NATIVE_APP_API_KEY"))
+        val hmacCurrent = escapeForBuildConfig(prop("NATIVE_HMAC_SECRET_CURRENT"))
+        val hmacNext = escapeForBuildConfig(prop("NATIVE_HMAC_SECRET_NEXT"))
 
         buildConfigField("String", "NATIVE_API_BASE_URL", "\"$apiBase\"")
         buildConfigField("String", "NATIVE_APP_API_KEY", "\"$apiKey\"")

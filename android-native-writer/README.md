@@ -23,19 +23,23 @@ NATIVE_HMAC_SECRET_NEXT=
 - `NATIVE_APP_API_KEY`: 서버 `NFC_NATIVE_APP_API_KEY`
 - HMAC은 선택(서버에서 활성화했을 때만)
 
+`local.properties`는 Gradle이 읽어 `BuildConfig`에 넣습니다. **빌드 없이** 바꾸려면 앱에서 **「서버 보고 설정」** 에 API URL·키를 저장해도 됩니다(SharedPreferences, 런타임 값이 우선).
+
 ## 3) 실행
 
 1. Android Studio에서 `android-native-writer` 폴더 열기
 2. Gradle sync
 3. `app` 실행
 
-## 4) 딥링크 테스트
+## 4) 딥링크·수동 입력
 
-아래 형태로 앱 실행:
+딥링크로 앱을 열면 **UID / URL / 토큰** 필드가 채워집니다. **「기록 시작」** 을 누른 뒤 태그를 대면 NDEF URL 쓰기가 진행됩니다.
 
-`petidconnect://nfc/write?uid=04:A1:B2&url=https://example.com/t/04:A1:B2&handoffToken=...`
+`petidconnect://nfc/write?uid=04:A1:B2&url=https://example.com/t/...&handoffToken=...`
 
-앱이 열리면 자동으로 태그 대기 상태가 되며, 태그를 대면 URL을 기록하고 서버 콜백을 전송합니다.
+필드에 직접 붙여 넣어서 써도 됩니다. **「URL 자동(UID+사이트)」** 은 프로필 사이트(또는 API base)를 기준으로 `/t/{uid}` URL을 만듭니다.
+
+서버에 쓰기 완료를 보고하려면 `NFC_NATIVE_APP_API_KEY`·`NFC_NATIVE_HANDOFF_SECRET` 등이 서버에 맞게 설정돼 있어야 하며, 앱 쪽 API URL·키가 비어 있으면 **태그 쓰기는 성공해도 서버 보고는 건너뛰고** 안내만 합니다(개발용).
 
 ## 5) 웹 연동 포인트
 
