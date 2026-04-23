@@ -58,3 +58,4 @@
 BLE·Find My·NFC 등 **축별 약속 범위**와 대외 문구 가이드는 아래 문서에 정리합니다.
 
 - [`docs/TRACKING_PRODUCT_GOALS.md`](./TRACKING_PRODUCT_GOALS.md)
+- [`docs/IOS_EXPANSION_MASTER_PLAN.md`](./IOS_EXPANSION_MASTER_PLAN.md) — iOS 확장 고도화 개발 계획
