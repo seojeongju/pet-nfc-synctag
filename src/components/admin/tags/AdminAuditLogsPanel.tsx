@@ -116,6 +116,8 @@ export function AdminAuditLogsPanel({
     setAuditPlatformFilter,
     auditModeFilter,
     setAuditModeFilter,
+    auditAppVersionFilter,
+    setAuditAppVersionFilter,
     auditSortBy,
     setAuditSortBy,
     auditSortOrder,
@@ -138,6 +140,7 @@ export function AdminAuditLogsPanel({
     if (auditActionFilter) chips.push(`액션: ${actionDisplayName(auditActionFilter)}`);
     if (auditPlatformFilter !== "all") chips.push(`플랫폼: ${auditPlatformFilter}`);
     if (auditModeFilter !== "all") chips.push(`모드: ${auditModeFilter}`);
+    if (auditAppVersionFilter.trim()) chips.push(`버전: ${auditAppVersionFilter.trim()}`);
     const sortLabel =
       auditSortBy === "created_at" ? "시각" : auditSortBy === "action" ? "액션" : "결과";
     chips.push(`정렬 ${sortLabel} · ${auditSortOrder === "desc" ? "내림차순" : "오름차순"}`);
@@ -148,6 +151,7 @@ export function AdminAuditLogsPanel({
     auditDaysFilter,
     auditPlatformFilter,
     auditModeFilter,
+    auditAppVersionFilter,
     auditSortBy,
     auditSortOrder,
     auditSuccessFilter,
@@ -346,6 +350,20 @@ export function AdminAuditLogsPanel({
                   </select>
                 </label>
               </div>
+              <label className="space-y-1.5 sm:col-span-2">
+                <span className="text-[11px] font-black uppercase tracking-wide text-slate-400 sm:text-[10px]">
+                  앱 버전
+                </span>
+                <input
+                  value={auditAppVersionFilter}
+                  onChange={(e) => setAuditAppVersionFilter(e.target.value)}
+                  placeholder="예: 0.1.0 (정확히 일치)"
+                  className={cn(
+                    adminUi.input,
+                    "min-h-[48px] w-full rounded-2xl text-base font-semibold shadow-inner shadow-slate-900/[0.02] placeholder:text-slate-400 focus:border-teal-400 focus:ring-2 focus:ring-teal-500/20 sm:min-h-[44px] sm:text-xs sm:font-bold"
+                  )}
+                />
+              </label>
               <div className="grid grid-cols-2 gap-2 sm:col-span-2 sm:gap-3">
                 <label className="space-y-1.5">
                   <span className="text-[11px] font-black uppercase tracking-wide text-slate-400 sm:text-[10px]">

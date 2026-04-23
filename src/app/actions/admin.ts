@@ -447,6 +447,7 @@ export async function getAdminAuditLogs(params?: {
     action?: string;
     platform?: "all" | "android" | "ios" | "unknown";
     mode?: "all" | "linku" | "tools" | "unknown";
+    appVersion?: string;
     sortBy?: "created_at" | "action" | "success";
     sortOrder?: "asc" | "desc";
 }) {
@@ -460,6 +461,7 @@ export async function getAdminAuditLogs(params?: {
     const action = (params?.action ?? "").trim();
     const platform = params?.platform ?? "all";
     const mode = params?.mode ?? "all";
+    const appVersion = (params?.appVersion ?? "").trim();
     const sortBy = params?.sortBy ?? "created_at";
     const sortOrder = params?.sortOrder === "asc" ? "ASC" : "DESC";
 
@@ -482,6 +484,10 @@ export async function getAdminAuditLogs(params?: {
     if (mode !== "all") {
         whereParts.push("COALESCE(json_extract(payload, '$.mode'), 'unknown') = ?");
         bindValues.push(mode);
+    }
+    if (appVersion) {
+        whereParts.push("COALESCE(json_extract(payload, '$.appVersion'), 'unknown') = ?");
+        bindValues.push(appVersion);
     }
     const whereClause = whereParts.join(" AND ");
 

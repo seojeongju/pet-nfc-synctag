@@ -22,6 +22,7 @@ export default async function AdminNfcTagsHistoryPage({
   const auditActionFilter = (params.action as string) || "";
   const auditPlatformFilter = (params.platform as "all" | "android" | "ios" | "unknown") || "all";
   const auditModeFilter = (params.mode as "all" | "linku" | "tools" | "unknown") || "all";
+  const auditAppVersionFilter = (params.appVersion as string) || "";
   const auditSortBy = (params.sortBy as "created_at" | "action" | "success") || "created_at";
   const auditSortOrder = (params.sortOrder as "asc" | "desc") || "desc";
   const auditPage = Number(params.page) || 1;
@@ -38,6 +39,7 @@ export default async function AdminNfcTagsHistoryPage({
       action: auditActionFilter,
       platform: auditPlatformFilter,
       mode: auditModeFilter,
+      appVersion: auditAppVersionFilter,
       sortBy: auditSortBy,
       sortOrder: auditSortOrder,
     }),

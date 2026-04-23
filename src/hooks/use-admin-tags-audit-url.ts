@@ -22,6 +22,7 @@ export function useAdminTagsAuditUrl() {
   const [auditActionFilter, setAuditActionFilter] = useState("");
   const [auditPlatformFilter, setAuditPlatformFilter] = useState<AuditPlatformFilter>("all");
   const [auditModeFilter, setAuditModeFilter] = useState<AuditModeFilter>("all");
+  const [auditAppVersionFilter, setAuditAppVersionFilter] = useState("");
   const [auditSortBy, setAuditSortBy] = useState<AuditSortBy>("created_at");
   const [auditSortOrder, setAuditSortOrder] = useState<AuditSortOrder>("desc");
   const [auditPage, setAuditPage] = useState(1);
@@ -33,6 +34,7 @@ export function useAdminTagsAuditUrl() {
     const action = searchParams.get("action") || "";
     const platform = (searchParams.get("platform") as AuditPlatformFilter) || "all";
     const mode = (searchParams.get("mode") as AuditModeFilter) || "all";
+    const appVersion = searchParams.get("appVersion") || "";
     const sortBy = (searchParams.get("sortBy") as AuditSortBy) || "created_at";
     const sortOrder = (searchParams.get("sortOrder") as AuditSortOrder) || "desc";
     const page = Number(searchParams.get("page") || 1);
@@ -42,6 +44,7 @@ export function useAdminTagsAuditUrl() {
     setAuditActionFilter(action);
     setAuditPlatformFilter(["all", "android", "ios", "unknown"].includes(platform) ? platform : "all");
     setAuditModeFilter(["all", "linku", "tools", "unknown"].includes(mode) ? mode : "all");
+    setAuditAppVersionFilter(appVersion);
     setAuditSortBy(sortBy);
     setAuditSortOrder(sortOrder);
     setAuditPage(Number.isFinite(page) && page > 0 ? page : 1);
@@ -50,7 +53,7 @@ export function useAdminTagsAuditUrl() {
 
   useEffect(() => {
     setAuditPage(1);
-  }, [auditSuccessFilter, auditDaysFilter, auditActorFilter, auditActionFilter, auditPlatformFilter, auditModeFilter, auditSortBy, auditSortOrder]);
+  }, [auditSuccessFilter, auditDaysFilter, auditActorFilter, auditActionFilter, auditPlatformFilter, auditModeFilter, auditAppVersionFilter, auditSortBy, auditSortOrder]);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -60,6 +63,7 @@ export function useAdminTagsAuditUrl() {
     if (auditActionFilter) params.set("action", auditActionFilter);
     if (auditPlatformFilter !== "all") params.set("platform", auditPlatformFilter);
     if (auditModeFilter !== "all") params.set("mode", auditModeFilter);
+    if (auditAppVersionFilter.trim()) params.set("appVersion", auditAppVersionFilter.trim());
     params.set("sortBy", auditSortBy);
     params.set("sortOrder", auditSortOrder);
     params.set("page", String(auditPage));
@@ -71,6 +75,7 @@ export function useAdminTagsAuditUrl() {
     auditActionFilter,
     auditPlatformFilter,
     auditModeFilter,
+    auditAppVersionFilter,
     auditSortBy,
     auditSortOrder,
     auditPage,
@@ -94,6 +99,8 @@ export function useAdminTagsAuditUrl() {
     setAuditPlatformFilter,
     auditModeFilter,
     setAuditModeFilter,
+    auditAppVersionFilter,
+    setAuditAppVersionFilter,
     auditSortBy,
     setAuditSortBy,
     auditSortOrder,
