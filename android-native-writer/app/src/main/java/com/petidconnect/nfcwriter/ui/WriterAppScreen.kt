@@ -1,14 +1,17 @@
 package com.petidconnect.nfcwriter.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,6 +32,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Info
@@ -42,7 +47,7 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Contacts
 import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.Mail
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material.icons.filled.Wifi
@@ -53,12 +58,13 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -73,14 +79,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.shape.GenericShape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -144,10 +151,12 @@ fun WriterAppScreen(
     val scroll = rememberScrollState()
     val tone = statusToneFor(status, awaitingTag, busy)
     var showTechnicalDetails by remember { mutableStateOf(false) }
+    var activeTemplateEditor by remember { mutableStateOf<String?>(null) }
     val hasUid = draftUid.isNotBlank()
     val hasUrl = draftUrl.isNotBlank()
     val hasHandoff = draftHandoff.isNotBlank()
     val allReady = hasUid && hasUrl && hasHandoff
+    val showTemplateInputPage = !isLinkUMode && activeTemplateEditor != null
 
     Column(
         modifier = Modifier
@@ -168,7 +177,10 @@ fun WriterAppScreen(
                 )
                 .padding(24.dp, 20.dp, 24.dp, 20.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Box(
                     modifier = Modifier
                         .size(48.dp)
@@ -203,6 +215,23 @@ fun WriterAppScreen(
                         color = Color.White.copy(0.88f)
                     )
                 }
+                Spacer(Modifier.weight(1f))
+                if (!entryFromDeepLink) {
+                    IconButton(
+                        onClick = onBackToLanding,
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color.White.copy(alpha = 0.18f))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Home,
+                            contentDescription = "모드 선택으로 돌아가기",
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
             }
         }
 
@@ -214,65 +243,117 @@ fun WriterAppScreen(
                 .padding(horizontal = 20.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            CurrentStepFlowRow(
-                hasDraft = draftUid.isNotBlank() && draftUrl.isNotBlank() && draftHandoff.isNotBlank(),
-                awaiting = awaitingTag,
-                writeSuccess = tagWriteSuccess
-            )
-
-            QuickStartStepsCard(isLinkUMode = isLinkUMode)
-
-            if (!entryFromDeepLink) {
-                TextButton(
-                    onClick = onBackToLanding,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("모드 선택으로 돌아가기")
-                }
-            }
-
-            if (!isLinkUMode) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-                    )
-                ) {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(
-                            "일반 모드 도구형 대시보드",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.ExtraBold
-                        )
-                        Text(
-                            "아이콘을 눌러 바로 입력 템플릿을 불러오세요.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
-                        )
-                        HexToolGrid(onTap = onApplyToolTemplate, selectedKey = toolsTemplate)
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column(Modifier.weight(1f)) {
-                                Text(
-                                    "읽기 전용 모드",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    "태그를 읽기만 하고, 기록은 하지 않습니다.",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            if (showTemplateInputPage) {
+                UnifiedTemplateInputPage(
+                    template = activeTemplateEditor!!,
+                    draftUrl = draftUrl,
+                    wifiSsid = wifiSsid,
+                    wifiPassword = wifiPassword,
+                    wifiSecurity = wifiSecurity,
+                    bluetoothMac = bluetoothMac,
+                    readOnlyMode = readOnlyMode,
+                    onToggleReadOnly = onToggleReadOnly,
+                    onClose = { activeTemplateEditor = null },
+                    onApply = { value ->
+                        when (value.template) {
+                            "url" -> onDraftUrl(value.urlInput.trim())
+                            "phone" -> {
+                                onDraftUrl(
+                                    buildBusinessCardPayload(
+                                        format = value.contactFormatInput,
+                                        name = value.contactNameInput,
+                                        phone = value.phoneOrSmsInput,
+                                        email = value.contactEmailInput,
+                                        org = value.contactCompanyInput
+                                    )
                                 )
                             }
-                            Switch(
-                                checked = readOnlyMode,
-                                onCheckedChange = onToggleReadOnly
+                            "sms" -> onDraftUrl("sms:${value.phoneOrSmsInput.trim()}")
+                            "video" -> onDraftUrl(value.videoInput.trim())
+                            "wifi" -> {
+                                onWifiSecurity(value.wifiSecurityInput)
+                                onWifiSsid(value.wifiSsidInput)
+                                onWifiPassword(value.wifiPasswordInput)
+                                onDraftUrl(
+                                    "WIFI:T:${value.wifiSecurityInput};S:${value.wifiSsidInput.trim()};P:${value.wifiPasswordInput.trim()};;"
+                                )
+                            }
+                            "bluetooth" -> {
+                                onBluetoothMac(value.bluetoothMacInput.trim())
+                                onDraftUrl("BT:MAC:${value.bluetoothMacInput.trim()};")
+                            }
+                        }
+                        activeTemplateEditor = null
+                        showTechnicalDetails = false
+                    }
+                )
+            } else {
+                if (isLinkUMode) {
+                    CurrentStepFlowRow(
+                        hasDraft = draftUid.isNotBlank() && draftUrl.isNotBlank() && draftHandoff.isNotBlank(),
+                        awaiting = awaitingTag,
+                        writeSuccess = tagWriteSuccess
+                    )
+                    QuickStartStepsCard(isLinkUMode = true)
+                } else {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.TouchApp,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                "아이콘 선택 → 정보 입력 → 태그에 쓰기 순서로 진행하세요.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.82f)
+                            )
+                        }
+                    }
+                }
+
+                if (!isLinkUMode) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                        )
+                    ) {
+                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text(
+                                "일반 모드 도구형 대시보드",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                            Text(
+                                "아이콘을 눌러 바로 입력 템플릿을 불러오세요.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+                            )
+                            SquareToolGrid(
+                                onTap = { key ->
+                                    onApplyToolTemplate(key)
+                                    activeTemplateEditor = key
+                                },
+                                selectedKey = toolsTemplate
+                            )
+                            Text(
+                                "각 기능 아이콘을 눌러 열린 창에서 읽기/쓰기 모드를 선택할 수 있습니다.",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f)
                             )
                         }
                     }
@@ -283,93 +364,94 @@ fun WriterAppScreen(
                 StatusMessageCard(message = status, tone = tone)
             }
 
-            Text(
-                "준비하기",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.ExtraBold
-            )
+            if (!showTemplateInputPage && isLinkUMode) {
+                Text(
+                    "준비하기",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.ExtraBold
+                )
 
-            if (!showTechnicalDetails) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
-                    )
-                ) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        if (allReady) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    Icons.Filled.Check,
-                                    null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                                Spacer(Modifier.width(10.dp))
+                if (!showTechnicalDetails) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+                        )
+                    ) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            if (allReady) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Filled.Check,
+                                        null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                    Spacer(Modifier.width(10.dp))
+                                    Text(
+                                        "웹에서 보내 준 값이 모두 들어왔어요.\n[태그에 쓰기]만 누른 뒤 태그를 대시면 됩니다.",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        lineHeight = 20.sp,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
+                            } else {
                                 Text(
-                                    "웹에서 보내 준 값이 모두 들어왔어요.\n[태그에 쓰기]만 누른 뒤 태그를 대시면 됩니다.",
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    if (isLinkUMode) {
+                                        "웹(Link-U)에서 ‘앱으로 기록’을 쓰면 대부분 자동으로 넣겠습니다. " +
+                                            "빈 항목이 있으면 아래 [상세]에서 직접 붙여 넣을 수 있어요."
+                                    } else {
+                                        "일반 모드는 자동 연동을 쓰지 않습니다. " +
+                                            "아래 [상세]에서 링크/정보를 직접 입력해 주세요."
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
                                     lineHeight = 20.sp,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f)
                                 )
                             }
-                        } else {
-                            Text(
-                                if (isLinkUMode) {
-                                    "웹(Link-U)에서 ‘앱으로 기록’을 쓰면 대부분 자동으로 넣겠습니다. " +
-                                        "빈 항목이 있으면 아래 [상세]에서 직접 붙여 넣을 수 있어요."
-                                } else {
-                                    "일반 모드는 자동 연동을 쓰지 않습니다. " +
-                                        "아래 [상세]에서 링크/정보를 직접 입력해 주세요."
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                                lineHeight = 20.sp,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f)
-                            )
-                        }
-                        DraftStatusRow(
-                            ok = hasUid,
-                            title = "태그·제품",
-                            shortLine = if (hasUid) summarizeUidForDisplay(draftUid) else "아직 없음"
-                        )
-                        DraftStatusRow(
-                            ok = hasUrl,
-                            title = "열릴 링크",
-                            shortLine = if (hasUrl) summarizeUrlForDisplay(draftUrl) else "아직 없음"
-                        )
-                        if (isLinkUMode) {
                             DraftStatusRow(
-                                ok = hasHandoff,
-                                title = "한번 쓰는 인증",
-                                shortLine = if (hasHandoff) summarizeHandoffForDisplay(draftHandoff) else "아직 없음"
+                                ok = hasUid,
+                                title = "태그·제품",
+                                shortLine = if (hasUid) summarizeUidForDisplay(draftUid) else "아직 없음"
                             )
+                            DraftStatusRow(
+                                ok = hasUrl,
+                                title = "열릴 링크",
+                                shortLine = if (hasUrl) summarizeUrlForDisplay(draftUrl) else "아직 없음"
+                            )
+                            if (isLinkUMode) {
+                                DraftStatusRow(
+                                    ok = hasHandoff,
+                                    title = "한번 쓰는 인증",
+                                    shortLine = if (hasHandoff) summarizeHandoffForDisplay(draftHandoff) else "아직 없음"
+                                )
+                            }
                         }
                     }
                 }
-            }
 
-            TextButton(
-                onClick = { showTechnicalDetails = !showTechnicalDetails },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    if (showTechnicalDetails) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .padding(end = 8.dp)
-                        .size(20.dp)
-                )
-                Text(if (showTechnicalDetails) "요약 화면만 보기" else "상세보기 · 직접 붙여넣기 (고급)")
-            }
+                TextButton(
+                    onClick = { showTechnicalDetails = !showTechnicalDetails },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        if (showTechnicalDetails) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .padding(end = 8.dp)
+                            .size(20.dp)
+                    )
+                    Text(if (showTechnicalDetails) "요약 화면만 보기" else "상세보기 · 직접 붙여넣기 (고급)")
+                }
 
-            AnimatedVisibility(
-                visible = showTechnicalDetails,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut()
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                AnimatedVisibility(
+                    visible = showTechnicalDetails,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     OutlinedTextField(
                         value = draftUid,
                         onValueChange = onDraftUid,
@@ -403,79 +485,6 @@ fun WriterAppScreen(
                         shape = RoundedCornerShape(16.dp),
                         modifier = Modifier.fillMaxWidth()
                     )
-                    if (!isLinkUMode && toolsTemplate == "wifi") {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f)
-                            )
-                        ) {
-                            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text("Wi-Fi 전용 입력", fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                                    listOf("WPA", "WEP", "nopass").forEach { sec ->
-                                        FilledTonalButton(
-                                            onClick = { onWifiSecurity(sec) },
-                                            modifier = Modifier.weight(1f),
-                                            shape = RoundedCornerShape(10.dp),
-                                            colors = if (wifiSecurity.equals(sec, ignoreCase = true)) {
-                                                ButtonDefaults.filledTonalButtonColors()
-                                            } else {
-                                                ButtonDefaults.filledTonalButtonColors(
-                                                    containerColor = MaterialTheme.colorScheme.surface,
-                                                    contentColor = MaterialTheme.colorScheme.onSurface
-                                                )
-                                            }
-                                        ) { Text(sec) }
-                                    }
-                                }
-                                OutlinedTextField(
-                                    value = wifiSsid,
-                                    onValueChange = onWifiSsid,
-                                    label = { Text("SSID (네트워크 이름)") },
-                                    singleLine = true,
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                OutlinedTextField(
-                                    value = wifiPassword,
-                                    onValueChange = onWifiPassword,
-                                    label = { Text("비밀번호") },
-                                    singleLine = true,
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
-                        }
-                    }
-                    if (!isLinkUMode && toolsTemplate == "bluetooth") {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f)
-                            )
-                        ) {
-                            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text("블루투스 전용 입력", fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
-                                OutlinedTextField(
-                                    value = bluetoothMac,
-                                    onValueChange = onBluetoothMac,
-                                    label = { Text("MAC 주소 (AA:BB:CC:DD:EE:FF)") },
-                                    singleLine = true,
-                                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                Text(
-                                    "MAC 형식이 올바를 때만 쓰기를 진행합니다.",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                                )
-                            }
-                        }
-                    }
                     if (isLinkUMode) {
                         FilledTonalButton(
                             onClick = onFillProfileUrl,
@@ -514,6 +523,7 @@ fun WriterAppScreen(
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
+                }
                 }
             }
 
@@ -705,6 +715,7 @@ fun WriterAppScreen(
             Spacer(Modifier.height(32.dp))
         }
     }
+
 }
 
 private data class ToolTileItem(
@@ -715,7 +726,7 @@ private data class ToolTileItem(
 )
 
 @Composable
-private fun HexToolGrid(
+private fun SquareToolGrid(
     onTap: (String) -> Unit,
     selectedKey: String
 ) {
@@ -723,7 +734,7 @@ private fun HexToolGrid(
         ToolTileItem("url", "모바일웹 링크", Icons.Filled.Language, true),
         ToolTileItem("phone", "명함(전화)", Icons.Filled.Contacts, true),
         ToolTileItem("sms", "문자 공유", Icons.Filled.Sms, true),
-        ToolTileItem("mail", "이메일 공유", Icons.Filled.Mail, true),
+        ToolTileItem("video", "영상 공유", Icons.Filled.PlayArrow, true),
         ToolTileItem("wifi", "Wi-Fi 연결", Icons.Filled.Wifi, true),
         ToolTileItem("bluetooth", "블루투스 연결", Icons.Filled.Bluetooth, true),
     )
@@ -735,7 +746,7 @@ private fun HexToolGrid(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 rowTiles.forEach { item ->
-                    HexToolTile(
+                    SquareToolTile(
                         modifier = Modifier.weight(1f),
                         item = item,
                         selected = item.key == selectedKey,
@@ -751,54 +762,536 @@ private fun HexToolGrid(
 }
 
 @Composable
-private fun HexToolTile(
+private fun SquareToolTile(
     modifier: Modifier = Modifier,
     item: ToolTileItem,
     selected: Boolean,
     onClick: () -> Unit
 ) {
-    val hexShape: Shape = GenericShape { size, _ ->
-        val w = size.width
-        val h = size.height
-        moveTo(w * 0.25f, 0f)
-        lineTo(w * 0.75f, 0f)
-        lineTo(w, h * 0.5f)
-        lineTo(w * 0.75f, h)
-        lineTo(w * 0.25f, h)
-        lineTo(0f, h * 0.5f)
-        close()
-    }
-    val alpha = if (item.enabled) 1f else 0.45f
+    val alpha = if (item.enabled) 1f else 0.5f
     val tileBg = if (selected) Color(0xFFEECB2B) else Color(0xFFF5D54A)
+    val borderColor = if (selected) Color(0xFFD4A808) else Color(0x00000000)
+
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier,
+        shape = RoundedCornerShape(18.dp),
+        border = androidx.compose.foundation.BorderStroke(2.dp, borderColor),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = tileBg,
+            contentColor = Color.White
+        ),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            horizontal = 10.dp,
+            vertical = 14.dp
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .defaultMinSize(minHeight = 86.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.White.copy(alpha = 0.22f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = item.icon,
+                    contentDescription = item.title,
+                    tint = Color.White.copy(alpha),
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            Text(
+                text = item.title,
+                style = MaterialTheme.typography.labelMedium,
+                color = Color(0xFF5A4C00).copy(if (item.enabled) 1f else 0.6f),
+                fontWeight = FontWeight.ExtraBold,
+                textAlign = TextAlign.Center
+            )
+        }
+    } 
+}
+
+private data class TemplateDialogResult(
+    val template: String,
+    val urlInput: String = "",
+    val phoneOrSmsInput: String = "",
+    val videoInput: String = "",
+    val contactFormatInput: String = "vcard3",
+    val contactNameInput: String = "",
+    val contactEmailInput: String = "",
+    val contactCompanyInput: String = "",
+    val wifiSsidInput: String = "",
+    val wifiPasswordInput: String = "",
+    val wifiSecurityInput: String = "WPA",
+    val bluetoothMacInput: String = ""
+)
+
+@Composable
+private fun UnifiedTemplateInputPage(
+    template: String,
+    draftUrl: String,
+    wifiSsid: String,
+    wifiPassword: String,
+    wifiSecurity: String,
+    bluetoothMac: String,
+    readOnlyMode: Boolean,
+    onToggleReadOnly: (Boolean) -> Unit,
+    onClose: () -> Unit,
+    onApply: (TemplateDialogResult) -> Unit
+) {
+    var urlInput by remember(template, draftUrl) {
+        mutableStateOf(if (template == "url") draftUrl else "https://")
+    }
+    var phoneOrSmsInput by remember(template, draftUrl) {
+        mutableStateOf(
+            when (template) {
+                "phone" -> draftUrl.removePrefix("tel:")
+                "sms" -> draftUrl.removePrefix("sms:")
+                else -> ""
+            }
+        )
+    }
+    var videoInput by remember(template, draftUrl) {
+        mutableStateOf(
+            if (template == "video") draftUrl else "https://www.youtube.com/watch?v="
+        )
+    }
+    var contactFormatInput by remember(template) { mutableStateOf("vcard3") }
+    var contactNameInput by remember(template) { mutableStateOf("") }
+    var contactEmailInput by remember(template) { mutableStateOf("") }
+    var contactCompanyInput by remember(template) { mutableStateOf("") }
+    var wifiSsidInput by remember(template, wifiSsid) { mutableStateOf(wifiSsid) }
+    var wifiPasswordInput by remember(template, wifiPassword) { mutableStateOf(wifiPassword) }
+    var wifiSecurityInput by remember(template, wifiSecurity) { mutableStateOf(wifiSecurity.ifBlank { "WPA" }) }
+    var bluetoothMacInput by remember(template, bluetoothMac) {
+        mutableStateOf(if (bluetoothMac.isBlank()) "AA:BB:CC:DD:EE:FF" else bluetoothMac)
+    }
+
+    val (title, icon) = when (template) {
+        "url" -> "모바일 웹 링크" to Icons.Filled.Language
+        "phone" -> "명함 (전화)" to Icons.Filled.Contacts
+        "sms" -> "문자 공유" to Icons.Filled.Sms
+        "video" -> "영상 공유" to Icons.Filled.PlayArrow
+        "wifi" -> "Wi-Fi 연결" to Icons.Filled.Wifi
+        "bluetooth" -> "블루투스 연결" to Icons.Filled.Bluetooth
+        else -> "입력" to Icons.Filled.Info
+    }
 
     Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFFFFEF8))
+            .padding(vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = onClose,
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color(0xFFF3F3F3))
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Home,
+                    contentDescription = "입력 페이지 닫기",
+                    tint = Color(0xFF9A9A9A)
+                )
+            }
+            Text(
+                title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color(0xFF8E8E8E),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(Modifier.size(36.dp))
+        }
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(1.35f)
-                .clip(hexShape)
-                .background(tileBg)
-                .clickable { onClick() },
-            contentAlignment = Alignment.Center
+                .height(3.dp)
+                .background(Color(0xFFF5D54A))
+        )
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFECECEC))
         ) {
-            Icon(
-                imageVector = item.icon,
-                contentDescription = item.title,
-                tint = Color.White.copy(alpha),
-                modifier = Modifier.size(28.dp)
+            Column(
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(icon, contentDescription = null, tint = Color(0xFFD4A808), modifier = Modifier.size(20.dp))
+                    Text(
+                        "정보 입력",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color(0xFF6B5A00),
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+
+                when (template) {
+                    "url" -> {
+                        OutlinedTextField(
+                            value = urlInput,
+                            onValueChange = { urlInput = it },
+                            label = { Text("모바일웹 주소를 입력해 주세요.") },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    "phone" -> {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            FilledTonalButton(
+                                onClick = { contactFormatInput = "mecard" },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = if (contactFormatInput == "mecard") {
+                                    ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = Color(0xFFF5D54A),
+                                        contentColor = Color(0xFF4F4300)
+                                    )
+                                } else {
+                                    ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = Color(0xFFF7F7F7),
+                                        contentColor = Color(0xFF666666)
+                                    )
+                                }
+                            ) {
+                                Text("MECARD")
+                            }
+                            FilledTonalButton(
+                                onClick = { contactFormatInput = "vcard3" },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = if (contactFormatInput == "vcard3") {
+                                    ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = Color(0xFFF5D54A),
+                                        contentColor = Color(0xFF4F4300)
+                                    )
+                                } else {
+                                    ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = Color(0xFFF7F7F7),
+                                        contentColor = Color(0xFF666666)
+                                    )
+                                }
+                            ) {
+                                Text("vCard 3.0")
+                            }
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            FilledTonalButton(
+                                onClick = { contactFormatInput = "vcard4" },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = if (contactFormatInput == "vcard4") {
+                                    ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = Color(0xFFF5D54A),
+                                        contentColor = Color(0xFF4F4300)
+                                    )
+                                } else {
+                                    ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = Color(0xFFF7F7F7),
+                                        contentColor = Color(0xFF666666)
+                                    )
+                                }
+                            ) {
+                                Text("vCard 4.0")
+                            }
+                        }
+                        Text(
+                            when (contactFormatInput) {
+                                "vcard4" -> "vCard 4.0으로 저장됩니다. 최신 표준 기반으로 공유됩니다."
+                                "vcard3" -> "vCard 3.0으로 저장됩니다. 연락처 앱 호환성이 높습니다."
+                                else ->
+                                "MECARD 포맷으로 저장됩니다. 간단한 명함 정보에 적합합니다."
+                            },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFF8E8E8E)
+                        )
+                        OutlinedTextField(
+                            value = contactNameInput,
+                            onValueChange = { contactNameInput = it },
+                            label = { Text("이름") },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = phoneOrSmsInput,
+                            onValueChange = { phoneOrSmsInput = it },
+                            label = { Text("휴대폰 번호") },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = contactEmailInput,
+                            onValueChange = { contactEmailInput = it },
+                            label = { Text("이메일") },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = contactCompanyInput,
+                            onValueChange = { contactCompanyInput = it },
+                            label = { Text("회사명") },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    "sms" -> {
+                        OutlinedTextField(
+                            value = phoneOrSmsInput,
+                            onValueChange = { phoneOrSmsInput = it },
+                            label = { Text("문자 받을 번호") },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    "video" -> {
+                        OutlinedTextField(
+                            value = videoInput,
+                            onValueChange = { videoInput = it },
+                            label = { Text("영상 URL (YouTube 등)") },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Text(
+                            "예: https://www.youtube.com/watch?v=...",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFF8E8E8E)
+                        )
+                    }
+                    "wifi" -> {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                            listOf("WPA", "WEP", "nopass").forEach { sec ->
+                                FilledTonalButton(
+                                    onClick = { wifiSecurityInput = sec },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = if (wifiSecurityInput.equals(sec, ignoreCase = true)) {
+                                        ButtonDefaults.filledTonalButtonColors(
+                                            containerColor = Color(0xFFF5D54A),
+                                            contentColor = Color(0xFF4F4300)
+                                        )
+                                    } else {
+                                        ButtonDefaults.filledTonalButtonColors(
+                                            containerColor = Color(0xFFF7F7F7),
+                                            contentColor = Color(0xFF666666)
+                                        )
+                                    }
+                                ) { Text(sec) }
+                            }
+                        }
+                        OutlinedTextField(
+                            value = wifiSsidInput,
+                            onValueChange = { wifiSsidInput = it },
+                            label = { Text("SSID") },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = wifiPasswordInput,
+                            onValueChange = { wifiPasswordInput = it },
+                            label = { Text("비밀번호") },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    "bluetooth" -> {
+                        OutlinedTextField(
+                            value = bluetoothMacInput,
+                            onValueChange = { bluetoothMacInput = it },
+                            label = { Text("MAC address (AA:BB:CC:DD:EE:FF)") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
+        }
+
+        Button(
+            onClick = {
+                onApply(
+                    TemplateDialogResult(
+                        template = template,
+                        urlInput = urlInput,
+                        phoneOrSmsInput = phoneOrSmsInput,
+                        videoInput = videoInput,
+                        contactFormatInput = contactFormatInput,
+                        contactNameInput = contactNameInput,
+                        contactEmailInput = contactEmailInput,
+                        contactCompanyInput = contactCompanyInput,
+                        wifiSsidInput = wifiSsidInput,
+                        wifiPasswordInput = wifiPasswordInput,
+                        wifiSecurityInput = wifiSecurityInput,
+                        bluetoothMacInput = bluetoothMacInput
+                    )
+                )
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFFF5D54A),
+                contentColor = Color(0xFF4F4300)
+            )
+        ) { Text("확인", fontWeight = FontWeight.ExtraBold) }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ModeSelectOption(
+                modifier = Modifier.weight(1f),
+                title = "읽기/쓰기 모드",
+                subtitle = "태그 내용 읽기 + 기록",
+                icon = Icons.Filled.Nfc,
+                selected = !readOnlyMode,
+                onSelect = { onToggleReadOnly(false) }
+            )
+            ModeSelectOption(
+                modifier = Modifier.weight(1f),
+                title = "읽기 전용 모드",
+                subtitle = "읽기만 가능, 기록 잠금",
+                icon = Icons.Filled.Key,
+                selected = readOnlyMode,
+                onSelect = { onToggleReadOnly(true) }
             )
         }
         Text(
-            text = item.title,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(if (item.enabled) 0.85f else 0.55f),
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center
+            "읽기 전용 모드로 만든 태그는 데이터 수정이 불가능할 수 있습니다.",
+            style = MaterialTheme.typography.labelSmall,
+            color = Color(0xFF8E8E8E),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
         )
+    }
+}
+
+@Composable
+private fun ModeSelectOption(
+    modifier: Modifier = Modifier,
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    selected: Boolean,
+    onSelect: () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val haptics = LocalHapticFeedback.current
+    val animatedScale by animateFloatAsState(
+        targetValue = if (pressed) 0.98f else 1f,
+        label = "mode-card-press-scale"
+    )
+    val animatedBorder by animateColorAsState(
+        targetValue = if (selected) Color(0xFFF5D54A) else Color(0xFFE5E7EB),
+        label = "mode-card-border"
+    )
+    val animatedBg by animateColorAsState(
+        targetValue = if (selected) Color(0xFFFFF8D5) else Color.White,
+        label = "mode-card-bg"
+    )
+
+    Card(
+        modifier = modifier
+            .graphicsLayer {
+                scaleX = animatedScale
+                scaleY = animatedScale
+            }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onSelect()
+                }
+            ),
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(
+            2.dp,
+            animatedBorder
+        ),
+        colors = CardDefaults.cardColors(
+            containerColor = animatedBg
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (selected) 3.dp else 0.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (selected) Color(0xFFF5D54A) else Color(0xFFF3F4F6)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (selected) Icons.Filled.Check else icon,
+                        contentDescription = null,
+                        tint = if (selected) Color.White else Color(0xFF6B7280),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+                Text(
+                    title,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (selected) Color(0xFF5A4C00) else Color(0xFF4B5563),
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (selected) Color(0xFF7C6500) else Color(0xFF9CA3AF),
+                lineHeight = 15.sp
+            )
+        }
     }
 }
 
@@ -977,6 +1470,56 @@ private fun LandingModeScreen(
         )
     }
 }
+
+private fun buildBusinessCardPayload(
+    format: String,
+    name: String,
+    phone: String,
+    email: String,
+    org: String
+): String {
+    val rawName = name.trim()
+    val rawPhone = phone.trim()
+    val rawEmail = email.trim()
+    val rawOrg = org.trim()
+    val selected = format.lowercase()
+
+    if (selected == "vcard3" || selected == "vcard4") {
+        val version = if (selected == "vcard4") "4.0" else "3.0"
+        val lines = buildList {
+            add("BEGIN:VCARD")
+            add("VERSION:$version")
+            if (rawName.isNotEmpty()) add("FN:${rawName.escapeVcard()}")
+            if (rawPhone.isNotEmpty()) add("TEL;TYPE=CELL:${rawPhone.escapeVcard()}")
+            if (rawEmail.isNotEmpty()) add("EMAIL:${rawEmail.escapeVcard()}")
+            if (rawOrg.isNotEmpty()) add("ORG:${rawOrg.escapeVcard()}")
+            add("END:VCARD")
+        }
+        return lines.joinToString("\n")
+    }
+
+    val n = rawName.escapeMecard()
+    val t = rawPhone.escapeMecard()
+    val e = rawEmail.escapeMecard()
+    val o = rawOrg.escapeMecard()
+    val mecardBody = buildString {
+        if (n.isNotEmpty()) append("N:$n;")
+        if (t.isNotEmpty()) append("TEL:$t;")
+        if (e.isNotEmpty()) append("EMAIL:$e;")
+        if (o.isNotEmpty()) append("ORG:$o;")
+    }
+    return if (mecardBody.isBlank()) {
+        if (rawPhone.isNotEmpty()) "tel:$rawPhone" else "tel:010"
+    } else {
+        "MECARD:$mecardBody;"
+    }
+}
+
+private fun String.escapeMecard(): String =
+    replace("\\", "\\\\").replace(";", "\\;").replace(":", "\\:").replace(",", "\\,")
+
+private fun String.escapeVcard(): String =
+    replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\n", " ")
 
 @Composable
 private fun DraftStatusRow(

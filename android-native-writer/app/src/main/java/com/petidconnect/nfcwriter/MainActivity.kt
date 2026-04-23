@@ -350,26 +350,34 @@ class MainActivity : ComponentActivity() {
         toolsTemplate = template
         when (template) {
             "url" -> {
-                if (draftUrl.isBlank()) draftUrl = "https://"
+                draftUrl = "https://"
                 statusText = "웹 링크 템플릿을 불러왔어요. 주소를 완성한 뒤 [태그에 쓰기]를 눌러 주세요."
             }
             "phone" -> {
-                draftUrl = "tel:"
+                draftUrl = "tel:010"
                 statusText = "전화번호 템플릿(tel:)을 불러왔어요. 번호를 이어서 입력해 주세요."
             }
             "sms" -> {
-                draftUrl = "sms:"
+                draftUrl = "sms:010"
                 statusText = "문자 템플릿(sms:)을 불러왔어요. 번호를 이어서 입력해 주세요."
             }
+            "video" -> {
+                draftUrl = "https://www.youtube.com/watch?v="
+                statusText = "영상 공유 템플릿을 불러왔어요. YouTube 등 영상 URL을 입력해 주세요."
+            }
+            // 과거 키와의 호환(기존 설치본 상태 복원 대비)
             "mail" -> {
-                draftUrl = "mailto:"
-                statusText = "메일 템플릿(mailto:)을 불러왔어요. 주소를 이어서 입력해 주세요."
+                draftUrl = "https://www.youtube.com/watch?v="
+                statusText = "영상 공유 템플릿을 불러왔어요. YouTube 등 영상 URL을 입력해 주세요."
             }
             "wifi" -> {
                 draftUrl = buildWifiPayload(wifiSsid, wifiPassword, wifiSecurity)
                 statusText = "Wi-Fi 템플릿을 불러왔어요. S(이름), P(비밀번호)를 채운 뒤 [태그에 쓰기]를 눌러 주세요."
             }
             "bluetooth" -> {
+                if (bluetoothMac.isBlank()) {
+                    bluetoothMac = "AA:BB:CC:DD:EE:FF"
+                }
                 draftUrl = buildBluetoothPayload(bluetoothMac)
                 statusText = "블루투스 템플릿을 불러왔어요. MAC 주소를 채운 뒤 [태그에 쓰기]를 눌러 주세요."
             }
@@ -482,7 +490,13 @@ class MainActivity : ComponentActivity() {
 
     private fun createBestEffortRecord(rawInput: String): NdefRecord {
         val input = rawInput.trim()
-        return if (input.startsWith("WIFI:", ignoreCase = true) || input.startsWith("BT:", ignoreCase = true)) {
+        val shouldWriteTextRecord =
+            input.startsWith("WIFI:", ignoreCase = true) ||
+            input.startsWith("BT:", ignoreCase = true) ||
+            input.startsWith("MECARD:", ignoreCase = true) ||
+            input.startsWith("BEGIN:VCARD", ignoreCase = true)
+
+        return if (shouldWriteTextRecord) {
             NdefRecord.createTextRecord("en", input)
         } else {
             NdefRecord.createUri(input)
