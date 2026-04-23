@@ -15,7 +15,8 @@ import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { LocationShare } from "@/components/LocationShare";
 import { TagManageCard } from "@/components/TagManageCard";
-import { useRef, useState, useEffect, useTransition } from "react";
+import { useRef, useState, useEffect, useLayoutEffect, useTransition } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { subjectKindMeta, subjectKindNfcPublic, type SubjectKind } from "@/lib/subject-kind";
 import {
@@ -97,9 +98,13 @@ export default function PetProfileClient({
   const writeLocked = Boolean(tenantId && tenantSuspended);
 
   const { scrollY } = useScroll();
-  const publicNavScale = useTransform(scrollY, [0, 1], [1, 1]);
-  const publicNavOpacity = useTransform(scrollY, [0, 1], [1, 1]);
-  
+
+  /** 하단 내비: 조상 overflow·flex·motion 등으로 fixed가 어긋나는 케이스(특히 Android WebView) 방지 */
+  const [floatNavHostReady, setFloatNavHostReady] = useState(false);
+  useLayoutEffect(() => {
+    setFloatNavHostReady(true);
+  }, []);
+
   // Parallax effects for the hero image
   const imageY = useTransform(scrollY, [0, 400], [0, 100]);
   const imageScale = useTransform(scrollY, [0, 400], [1, 1.2]);
@@ -134,7 +139,7 @@ export default function PetProfileClient({
   const floatNavPadX =
     "px-[max(1rem,env(safe-area-inset-left,0px),env(safe-area-inset-right,0px))]";
   const floatNavShell =
-    "fixed bottom-0 left-0 right-0 z-50 box-border pointer-events-none pb-[max(1rem,env(safe-area-inset-bottom,0px))]";
+    "fixed bottom-0 left-0 right-0 z-[100] box-border pointer-events-none pb-[max(1rem,env(safe-area-inset-bottom,0px))]";
 
   const idSecondary =
     subjectKind === "pet"
@@ -202,6 +207,7 @@ export default function PetProfileClient({
   });
 
   return (
+    <>
     <div
       ref={containerRef}
       className={cn(
@@ -543,22 +549,23 @@ export default function PetProfileClient({
            </p>
         </motion.section>
       </motion.div>
+    </div>
 
-      {/* Floating Bottom Nav: 소유자는 대시보드 연동 · 공개 방문자는 랜딩/연락 중심 (S3) */}
-      {treatAsPublicVisitor ? (
+      {/* Floating Bottom Nav: body에 포털(조상에 fixed 끼는 WebView/overflow 이슈 회피) · S3 */}
+      {floatNavHostReady
+        ? createPortal(
+            treatAsPublicVisitor ? (
       <div className={cn(floatNavShell, floatNavPadX)}>
         <div className="mx-auto w-full min-w-0 max-w-sm">
       <motion.nav
-         style={{ transformOrigin: "50% 100%" }}
          animate={{
-           scale: isPublicNavCondensed ? navTuning.scale : publicNavScale.get(),
-           opacity: isPublicNavCondensed ? navTuning.opacity : publicNavOpacity.get(),
            y: isPublicNavCondensed ? navTuning.y : 0,
+           opacity: isPublicNavCondensed ? navTuning.opacity : 1,
          }}
          transition={{ duration: 0.2, ease: "easeOut" }}
          className="pointer-events-auto w-full min-w-0 glass-dark rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/20"
       >
-         {/** Framer transform과 flex justify-center 조합 대신 block + mx-auto max-w-sm 래퍼로 가운데 정렬 */}
+         {/** scale 제거: WebView에서 transform+가로 정렬이 어긋나는 사례 방지 */}
          <div className="grid grid-cols-3 w-full min-h-[5rem] items-end gap-0 px-2 sm:px-3 pb-2.5 pt-1">
          <div className="flex justify-center min-w-0">
          <Link href="/" className="flex flex-col items-center gap-0.5 group w-full max-w-[5rem]">
@@ -664,7 +671,10 @@ export default function PetProfileClient({
       </nav>
         </div>
       </div>
-      )}
-    </div>
+            ),
+            document.body
+          )
+        : null}
+    </>
   );
 }
