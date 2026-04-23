@@ -41,6 +41,11 @@ function summarizePayload(payloadRaw?: string | null) {
   if (!payloadRaw) return "-";
   try {
     const payload = JSON.parse(payloadRaw);
+    const nativeMeta = [
+      payload?.platform ? `platform=${String(payload.platform)}` : null,
+      payload?.mode ? `mode=${String(payload.mode)}` : null,
+      payload?.appVersion ? `ver=${String(payload.appVersion)}` : null,
+    ].filter(Boolean).join(", ");
     if (payload?.targetEmail && (payload?.nextRole || payload?.prevRole)) {
       return `${String(payload.targetEmail)}: ${String(payload.prevRole)} -> ${String(payload.nextRole)}`;
     }
@@ -63,10 +68,10 @@ function summarizePayload(payloadRaw?: string | null) {
       return `handoff tagId=${payload.tagId}`;
     }
     if (payload?.source === "native_app" && payload?.tagId && payload?.clientError === undefined) {
-      return `native_write tagId=${payload.tagId}, device=${payload.deviceId ?? "-"}`;
+      return `native_write tagId=${payload.tagId}, device=${payload.deviceId ?? "-"}${nativeMeta ? `, ${nativeMeta}` : ""}`;
     }
     if (payload?.source === "native_app" && payload?.clientError) {
-      return `native_write err=${String(payload.clientError).slice(0, 40)}`;
+      return `native_write err=${String(payload.clientError).slice(0, 40)}${nativeMeta ? `, ${nativeMeta}` : ""}`;
     }
     if (payload?.tagId && payload?.url && payload?.clientError === undefined) {
       return `tagId=${payload.tagId}, url=${String(payload.url).slice(0, 48)}…`;
@@ -144,15 +149,23 @@ export function AdminAuditLogsPanel({
     if (auditLogs.length === 0) return;
     const escapeCsv = (value: string) => `"${value.replace(/"/g, '""')}"`;
     const rows = [
-      ["created_at", "action", "actor_email", "success", "summary"],
+      ["created_at", "action", "actor_email", "success", "summary", "platform", "mode", "appVersion"],
       ...auditLogs.map((log) => {
         let summary = "-";
+        let platform = "-";
+        let mode = "-";
+        let appVersion = "-";
         try {
           const payload = log.payload ? JSON.parse(log.payload) : null;
+          platform = payload?.platform ? String(payload.platform) : "-";
+          mode = payload?.mode ? String(payload.mode) : "-";
+          appVersion = payload?.appVersion ? String(payload.appVersion) : "-";
           if (payload?.registeredCount !== undefined) {
             summary = `registered=${payload.registeredCount};failed=${payload.failedCount ?? 0}`;
           } else if (payload?.error) {
             summary = String(payload.error);
+          } else if (payload?.source === "native_app" && payload?.tagId) {
+            summary = summarizePayload(log.payload);
           }
         } catch {
           summary = log.payload || "-";
@@ -163,6 +176,9 @@ export function AdminAuditLogsPanel({
           getActorLabel(log.actor_email),
           getResultLabel(log.success),
           summary,
+          platform,
+          mode,
+          appVersion,
         ];
       }),
     ];
