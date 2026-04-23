@@ -387,42 +387,6 @@ fun WriterAppScreen(
                 StatusMessageCard(message = status, tone = tone)
             }
 
-            if (showSuccessBanner) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE6FFFB)),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFA7F3D0))
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(26.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(Color(0xFF10B981)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Check,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                        Text(
-                            "정상적으로 쓰기가 완료되었습니다.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color(0xFF065F46),
-                            fontWeight = FontWeight.ExtraBold
-                        )
-                    }
-                }
-            }
-
             if (!showTemplateInputPage && isLinkUMode) {
                 Text(
                     "준비하기",
@@ -779,6 +743,9 @@ fun WriterAppScreen(
 
     if (awaitingTag && !busy) {
         NfcTapGuideDialog()
+    }
+    if (showSuccessBanner && !awaitingTag) {
+        WriteSuccessDialog()
     }
 }
 
@@ -1897,6 +1864,46 @@ private fun NfcTapGuideDialog() {
                     "휴대폰 뒷면에 NFC 태그를 가까이 대주세요.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color(0xFF4B5563),
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WriteSuccessDialog() {
+    Dialog(onDismissRequest = { }) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFA7F3D0)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color(0xFF10B981)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Check,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+                Text(
+                    "정상적으로 쓰기가 완료되었습니다.",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color(0xFF065F46),
+                    fontWeight = FontWeight.ExtraBold,
                     textAlign = TextAlign.Center
                 )
             }
