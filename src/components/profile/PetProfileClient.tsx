@@ -28,6 +28,8 @@ import {
 import { verifyOwnerAndLoadPetTags } from "@/app/actions/tag";
 import { logFinderAction } from "@/app/actions/scan";
 import { cn } from "@/lib/utils";
+import { usePwaInstall } from "@/components/pwa-install-context";
+import { FinderTagConsentFlow, readFinderGateSession } from "@/components/profile/FinderTagConsentFlow";
 
 const heroIcons: Record<SubjectKind, LucideIcon> = {
   pet: PawPrint,
@@ -96,6 +98,11 @@ export default function PetProfileClient({
   /** 발견자 UI와 동일하게 취급: 비소유자이거나, NFC 게이트에서 아직 잠금 해제 전 */
   const treatAsPublicVisitor = isPublicViewer || (nfcOwnerGate && !ownerUnlocked);
   const writeLocked = Boolean(tenantId && tenantSuspended);
+  const { isStandalone } = usePwaInstall();
+  /** 태그로 들어온 외부 발견자만(보호자 본인 잠금 화면 제외) */
+  const needsFinderGate = Boolean(nfcEntry && tagId && treatAsPublicVisitor && !nfcOwnerGate);
+  const [finderGateDone, setFinderGateDone] = useState(false);
+  const [finderLocationConsent, setFinderLocationConsent] = useState<boolean | null>(null);
 
   const { scrollY } = useScroll();
 
@@ -104,6 +111,33 @@ export default function PetProfileClient({
   useLayoutEffect(() => {
     setFloatNavHostReady(true);
   }, []);
+
+  useLayoutEffect(() => {
+    if (!needsFinderGate) {
+      setFinderGateDone(true);
+      setFinderLocationConsent(true);
+      return;
+    }
+    if (!tagId) return;
+    const gate = readFinderGateSession(tagId);
+    if (gate) {
+      setFinderLocationConsent(gate.loc);
+      setFinderGateDone(true);
+      return;
+    }
+    if (isStandalone) {
+      setFinderLocationConsent(true);
+      setFinderGateDone(true);
+      try {
+        sessionStorage.setItem(
+          `linku_finder_gate_${tagId}`,
+          JSON.stringify({ v: 1, loc: true })
+        );
+      } catch {
+        /* private mode */
+      }
+    }
+  }, [needsFinderGate, tagId, isStandalone]);
 
   // Parallax effects for the hero image
   const imageY = useTransform(scrollY, [0, 400], [0, 100]);
@@ -447,7 +481,17 @@ export default function PetProfileClient({
                    <LocationShare
                      tagId={tagId}
                     petId={pet.id}
-                     enabled={treatAsPublicVisitor}
+                     enabled={
+                       treatAsPublicVisitor &&
+                       (!needsFinderGate || (finderGateDone && finderLocationConsent === true))
+                     }
+                     disabledHint={
+                       needsFinderGate && finderGateDone && finderLocationConsent === false
+                         ? "위치 전달에는 동의하지 않으셨어요. 전화·문자만으로도 가족에게 큰 도움이 됩니다."
+                         : needsFinderGate && !finderGateDone
+                           ? "먼저 위쪽 안내에 응답해 주세요."
+                           : undefined
+                     }
                      onStatusChange={setLocationShareStatus}
                    />
                  </div>
@@ -675,6 +719,16 @@ export default function PetProfileClient({
             document.body
           )
         : null}
+      {needsFinderGate && !finderGateDone && !isStandalone && tagId ? (
+        <FinderTagConsentFlow
+          tagId={tagId}
+          subjectKind={subjectKind}
+          onComplete={(p) => {
+            setFinderLocationConsent(p.loc);
+            setFinderGateDone(true);
+          }}
+        />
+      ) : null}
     </>
   );
 }

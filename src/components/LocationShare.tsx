@@ -11,11 +11,14 @@ export function LocationShare({
   tagId,
   petId,
   enabled = true,
+  disabledHint,
   onStatusChange,
 }: {
   tagId: string | null;
   petId?: string | null;
   enabled?: boolean;
+  /** enabled=false일 때 기본 문구 대신 표시 (발견자 동의 거절 등) */
+  disabledHint?: string | null;
   onStatusChange?: (status: "idle" | "loading" | "success" | "error") => void;
 }) {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
@@ -23,10 +26,14 @@ export function LocationShare({
   const activeTag = tagId || searchParams.get("tag");
   const canSend = enabled && Boolean(activeTag);
   const helperText = useMemo(() => {
-    if (!enabled) return "이 화면에서만 위치를 보낼 수 있어요.";
+    if (!enabled) {
+      const h = disabledHint?.trim();
+      if (h) return h;
+      return "이 화면에서만 위치를 보낼 수 있어요.";
+    }
     if (!activeTag) return "인식표로 이 화면에 바로 오셨을 때만 가족에게 전달돼요. 링크로만 열었을 땐 전화·문자로 알려 주세요.";
     return "누르면 지금 계신 곳이 가족에게 전해져요. (위치 사용을 허용해 주세요.)";
-  }, [enabled, activeTag]);
+  }, [enabled, activeTag, disabledHint]);
 
   const getHapticPattern = () => {
     if (typeof navigator === "undefined") return [35, 25, 35] as number[];

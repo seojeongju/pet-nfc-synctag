@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import { PwaInstallProvider } from "@/components/pwa-install-context";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { ViewportFix } from "@/components/viewport-fix";
 
@@ -46,8 +47,10 @@ export default function RootLayout({
       <body className="min-h-dvh min-h-[100svh] antialiased font-outfit">
         {/* Google OAuth 복귀 시 viewport 오염 자동 복구 */}
         <ViewportFix />
-        {children}
-        <PwaInstallPrompt />
+        <PwaInstallProvider>
+          {children}
+          <PwaInstallPrompt />
+        </PwaInstallProvider>
       </body>
     </html>
   );
