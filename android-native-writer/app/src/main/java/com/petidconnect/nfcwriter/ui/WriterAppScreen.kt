@@ -88,6 +88,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -283,9 +284,7 @@ fun WriterAppScreen(
                                 onDraftUrl("BT:MAC:${value.bluetoothMacInput.trim()};")
                             }
                         }
-                        activeTemplateEditor = null
-                        showTechnicalDetails = false
-                        // 확인 직후 바로 태그 대기 상태로 전환해 UX를 단순화
+                        // 입력 페이지를 유지한 채 태그 대기 오버레이만 겹쳐 보여준다.
                         onPrepareWrite()
                     }
                 )
@@ -731,6 +730,9 @@ fun WriterAppScreen(
         }
     }
 
+    if (awaitingTag && !busy) {
+        NfcTapGuideDialog()
+    }
 }
 
 private data class ToolTileItem(
@@ -774,6 +776,7 @@ private fun SquareToolGrid(
             }
         }
     }
+
 }
 
 @Composable
@@ -1813,6 +1816,43 @@ private fun StatusMessageCard(message: String, tone: StatusTone) {
                 lineHeight = 22.sp,
                 textAlign = TextAlign.Start
             )
+        }
+    }
+}
+
+@Composable
+private fun NfcTapGuideDialog() {
+    Dialog(onDismissRequest = { }) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE8ECEF)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Nfc,
+                    contentDescription = null,
+                    tint = Color(0xFF0F766E),
+                    modifier = Modifier.size(44.dp)
+                )
+                Text(
+                    "NFC 태그에 쓰기 준비됨",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color(0xFF0F766E),
+                    fontWeight = FontWeight.ExtraBold
+                )
+                Text(
+                    "휴대폰 뒷면에 NFC 태그를 가까이 대주세요.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF4B5563),
+                    textAlign = TextAlign.Center
+                )
+            }
         }
     }
 }
