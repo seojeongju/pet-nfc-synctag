@@ -486,8 +486,8 @@ export async function getAdminAuditLogs(params?: {
         bindValues.push(mode);
     }
     if (appVersion) {
-        whereParts.push("COALESCE(json_extract(payload, '$.appVersion'), 'unknown') = ?");
-        bindValues.push(appVersion);
+        whereParts.push("COALESCE(json_extract(payload, '$.appVersion'), 'unknown') LIKE ?");
+        bindValues.push(`%${appVersion}%`);
     }
     const whereClause = whereParts.join(" AND ");
 

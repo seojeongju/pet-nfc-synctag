@@ -157,6 +157,21 @@ export function AdminAuditLogsPanel({
     auditSuccessFilter,
   ]);
 
+  const appVersionOptions = useMemo(() => {
+    const versions = new Set<string>();
+    for (const log of auditLogs) {
+      if (!log.payload) continue;
+      try {
+        const payload = JSON.parse(log.payload);
+        const v = typeof payload?.appVersion === "string" ? payload.appVersion.trim() : "";
+        if (v) versions.add(v);
+      } catch {
+        // ignore broken payload
+      }
+    }
+    return Array.from(versions).sort((a, b) => b.localeCompare(a));
+  }, [auditLogs]);
+
   const exportAuditCsv = () => {
     if (auditLogs.length === 0) return;
     const escapeCsv = (value: string) => `"${value.replace(/"/g, '""')}"`;
@@ -357,12 +372,20 @@ export function AdminAuditLogsPanel({
                 <input
                   value={auditAppVersionFilter}
                   onChange={(e) => setAuditAppVersionFilter(e.target.value)}
-                  placeholder="예: 0.1.0 (정확히 일치)"
+                  placeholder="예: 0.1 (부분 일치)"
+                  list="audit-app-version-options"
                   className={cn(
                     adminUi.input,
                     "min-h-[48px] w-full rounded-2xl text-base font-semibold shadow-inner shadow-slate-900/[0.02] placeholder:text-slate-400 focus:border-teal-400 focus:ring-2 focus:ring-teal-500/20 sm:min-h-[44px] sm:text-xs sm:font-bold"
                   )}
                 />
+                {appVersionOptions.length > 0 ? (
+                  <datalist id="audit-app-version-options">
+                    {appVersionOptions.map((ver) => (
+                      <option key={ver} value={ver} />
+                    ))}
+                  </datalist>
+                ) : null}
               </label>
               <div className="grid grid-cols-2 gap-2 sm:col-span-2 sm:gap-3">
                 <label className="space-y-1.5">
