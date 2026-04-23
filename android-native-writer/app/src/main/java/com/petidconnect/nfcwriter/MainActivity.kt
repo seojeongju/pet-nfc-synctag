@@ -379,6 +379,7 @@ class MainActivity : ComponentActivity() {
                 put("url", payload.url)
                 put("handoffToken", payload.handoffToken)
                 put("deviceId", Build.MODEL ?: "unknown-device")
+                put("platform", "android")
                 put("success", success)
                 put("clientError", clientError ?: JSONObject.NULL)
                 put("writtenAt", java.time.Instant.now().toString())

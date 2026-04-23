@@ -9,6 +9,7 @@ type NativeWriteBody = {
   tagId?: unknown;
   url?: unknown;
   deviceId?: unknown;
+  platform?: unknown;
   success?: unknown;
   clientError?: unknown;
   writtenAt?: unknown;
@@ -119,6 +120,12 @@ function getStringOrNull(v: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function normalizePlatform(v: unknown): "android" | "ios" | "unknown" {
+  const raw = getStringOrNull(v)?.toLowerCase();
+  if (raw === "android" || raw === "ios") return raw;
+  return "unknown";
+}
+
 async function verifyNativeSignature(request: Request, rawBody: string): Promise<boolean> {
   const keyId = request.headers.get("x-native-key-id")?.trim() || "current";
   const legacy = process.env.NFC_NATIVE_APP_HMAC_SECRET?.trim();
@@ -172,6 +179,7 @@ export async function POST(request: Request) {
   const tagIdRaw = getStringOrNull(body.tagId);
   const url = getStringOrNull(body.url);
   const deviceId = getStringOrNull(body.deviceId) ?? "unknown-device";
+  const platform = normalizePlatform(body.platform);
   const success = typeof body.success === "boolean" ? body.success : null;
   const clientError = getStringOrNull(body.clientError);
   const writtenAt = getStringOrNull(body.writtenAt);
@@ -249,6 +257,7 @@ export async function POST(request: Request) {
     tagId,
     url,
     deviceId,
+    platform,
     source: "native_app",
     keyId: request.headers.get("x-native-key-id")?.trim() || "current",
     handoffJti: handoffVerified.payload.jti,
