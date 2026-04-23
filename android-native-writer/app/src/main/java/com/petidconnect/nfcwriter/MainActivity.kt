@@ -107,6 +107,7 @@ class MainActivity : ComponentActivity() {
                             statusText = "모드를 선택해 시작해 주세요."
                         }
                     },
+                    onApplyToolTemplate = { applyToolsTemplate(it) },
                     status = statusText,
                     draftUid = draftUid,
                     draftUrl = draftUrl,
@@ -245,6 +246,16 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntent(intent: Intent?) {
+        // 런처에서 일반 실행 시(딥링크 아님) 이전 Link-U 상태가 남지 않도록 랜딩으로 복귀
+        if (intent?.action == Intent.ACTION_MAIN && intent.data == null) {
+            entryFromDeepLink = false
+            if (!busy && !awaitingTag) {
+                appMode = AppMode.Landing
+                statusText = "모드를 선택해 시작해 주세요."
+            }
+            return
+        }
+
         val data = intent?.data ?: return
         if (data.scheme != "petidconnect" || data.host != "nfc" || data.path != "/write") {
             return
@@ -267,6 +278,29 @@ class MainActivity : ComponentActivity() {
         awaitingTag = false
         tagWriteSuccess = false
         statusText = "웹에서 불러왔어요. [태그에 쓰기]를 누른 뒤, 휴대폰 뒤에 태그를 대 주세요."
+    }
+
+    private fun applyToolsTemplate(template: String) {
+        if (appMode != AppMode.Tools || busy) return
+        tagWriteSuccess = false
+        when (template) {
+            "url" -> {
+                if (draftUrl.isBlank()) draftUrl = "https://"
+                statusText = "웹 링크 템플릿을 불러왔어요. 주소를 완성한 뒤 [태그에 쓰기]를 눌러 주세요."
+            }
+            "phone" -> {
+                draftUrl = "tel:"
+                statusText = "전화번호 템플릿(tel:)을 불러왔어요. 번호를 이어서 입력해 주세요."
+            }
+            "sms" -> {
+                draftUrl = "sms:"
+                statusText = "문자 템플릿(sms:)을 불러왔어요. 번호를 이어서 입력해 주세요."
+            }
+            "mail" -> {
+                draftUrl = "mailto:"
+                statusText = "메일 템플릿(mailto:)을 불러왔어요. 주소를 이어서 입력해 주세요."
+            }
+        }
     }
 
     private fun onTagDetected(tag: Tag) {

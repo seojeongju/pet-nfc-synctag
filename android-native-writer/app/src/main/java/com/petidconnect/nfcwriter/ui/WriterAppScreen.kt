@@ -79,6 +79,7 @@ fun WriterAppScreen(
     onSelectLinkU: () -> Unit,
     onSelectTools: () -> Unit,
     onBackToLanding: () -> Unit,
+    onApplyToolTemplate: (String) -> Unit,
     status: String,
     draftUid: String,
     draftUrl: String,
@@ -216,6 +217,54 @@ fun WriterAppScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("모드 선택으로 돌아가기")
+                }
+            }
+
+            if (!isLinkUMode) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                    )
+                ) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(
+                            "일반 모드 빠른 템플릿",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                        Text(
+                            "스토어 사용자도 바로 쓸 수 있도록 자주 쓰는 형식을 한 번에 불러옵니다.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                            FilledTonalButton(
+                                onClick = { onApplyToolTemplate("url") },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp)
+                            ) { Text("모바일웹 링크") }
+                            FilledTonalButton(
+                                onClick = { onApplyToolTemplate("phone") },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp)
+                            ) { Text("명함(전화)") }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                            FilledTonalButton(
+                                onClick = { onApplyToolTemplate("sms") },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp)
+                            ) { Text("문자 공유") }
+                            FilledTonalButton(
+                                onClick = { onApplyToolTemplate("mail") },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp)
+                            ) { Text("이메일 공유") }
+                        }
+                    }
                 }
             }
 
@@ -572,57 +621,174 @@ private fun LandingModeScreen(
     onSelectLinkU: () -> Unit,
     onSelectTools: () -> Unit
 ) {
+    val landingScroll = rememberScrollState()
+    val brandYellow = Color(0xFFF5D54A)
+    val brandYellowSoft = Color(0xFFFFF8D5)
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface)
+            .background(Color(0xFFFFFEF6))
+            .verticalScroll(landingScroll)
+            .navigationBarsPadding()
             .padding(horizontal = 20.dp, vertical = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            "Link-U Tag Writer",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.ExtraBold,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Text(
-            "태그(딥링크)로 들어오면 Link-U 모드로 자동 연동됩니다.\n일반 실행은 아래에서 모드를 선택해 시작하세요.",
-            style = MaterialTheme.typography.bodyMedium,
-            lineHeight = 22.sp,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-        )
+        Card(
+            shape = RoundedCornerShape(28.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 22.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(52.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(brandYellowSoft),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Nfc,
+                            contentDescription = null,
+                            modifier = Modifier.size(30.dp),
+                            tint = Color(0xFFD4A808)
+                        )
+                    }
+                    Column(Modifier.padding(start = 12.dp)) {
+                        Text(
+                            "NFC Writer",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color(0xFF6B5A00)
+                        )
+                        Text(
+                            "Link-U + 일반 도구 듀얼 시작",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color(0xFF8A7A2D),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+                Text(
+                    "태그(딥링크)로 들어오면 Link-U 모드로 자동 연동됩니다.\n일반 실행은 아래에서 모드를 선택해 시작하세요.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    lineHeight = 22.sp,
+                    color = Color(0xFF5F5A46)
+                )
+            }
+        }
 
-        Card(shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Link-U 모드", fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(brandYellowSoft),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Filled.Link, contentDescription = null, tint = Color(0xFFD4A808), modifier = Modifier.size(18.dp))
+                    }
+                    Text(
+                        "Link-U 모드",
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color(0xFF6B5A00),
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
                 Text(
                     "우리 프로그램 태그/웹과 바로 연동되는 기록 흐름",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+                    color = Color(0xFF5F5A46)
                 )
-                Button(onClick = onSelectLinkU, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
-                    Text("Link-U로 시작")
+                Button(
+                    onClick = onSelectLinkU,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = brandYellow,
+                        contentColor = Color(0xFF4F4300)
+                    )
+                ) {
+                    Icon(
+                        Icons.Filled.TouchApp,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .padding(end = 8.dp)
+                            .size(18.dp)
+                    )
+                    Text("Link-U로 시작", fontWeight = FontWeight.ExtraBold)
                 }
             }
         }
 
-        Card(shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("일반 NFC 도구 모드", fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(brandYellowSoft),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Filled.Settings, contentDescription = null, tint = Color(0xFFD4A808), modifier = Modifier.size(18.dp))
+                    }
+                    Text(
+                        "일반 NFC 도구 모드",
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color(0xFF6B5A00),
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
                 Text(
-                    "누구나 URL/텍스트 NFC 읽기·쓰기 도구로 사용",
+                    "누구나 URL/텍스트 NFC 읽기·쓰기 도구로 시작",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+                    color = Color(0xFF5F5A46)
                 )
                 FilledTonalButton(
                     onClick = onSelectTools,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp)
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = brandYellowSoft,
+                        contentColor = Color(0xFF5A4C00)
+                    )
                 ) {
-                    Text("일반 도구로 시작")
+                    Icon(
+                        Icons.Filled.PhoneAndroid,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .padding(end = 8.dp)
+                            .size(18.dp)
+                    )
+                    Text("일반 도구로 시작", fontWeight = FontWeight.ExtraBold)
                 }
             }
         }
+
+        Text(
+            "Tip: NFC가 꺼져 있으면 모드 진입 후 [NFC 켜기] 버튼으로 바로 설정을 열 수 있어요.",
+            style = MaterialTheme.typography.labelMedium,
+            color = Color(0xFF8A7A2D),
+            lineHeight = 20.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
