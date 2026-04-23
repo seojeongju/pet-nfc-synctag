@@ -380,6 +380,12 @@ class MainActivity : ComponentActivity() {
                 put("handoffToken", payload.handoffToken)
                 put("deviceId", Build.MODEL ?: "unknown-device")
                 put("platform", "android")
+                put("mode", when (appMode) {
+                    AppMode.LinkU -> "linku"
+                    AppMode.Tools -> "tools"
+                    AppMode.Landing -> "unknown"
+                })
+                put("appVersion", BuildConfig.VERSION_NAME.ifBlank { "unknown" })
                 put("success", success)
                 put("clientError", clientError ?: JSONObject.NULL)
                 put("writtenAt", java.time.Instant.now().toString())

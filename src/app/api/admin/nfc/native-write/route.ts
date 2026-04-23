@@ -10,6 +10,8 @@ type NativeWriteBody = {
   url?: unknown;
   deviceId?: unknown;
   platform?: unknown;
+  mode?: unknown;
+  appVersion?: unknown;
   success?: unknown;
   clientError?: unknown;
   writtenAt?: unknown;
@@ -126,6 +128,12 @@ function normalizePlatform(v: unknown): "android" | "ios" | "unknown" {
   return "unknown";
 }
 
+function normalizeMode(v: unknown): "linku" | "tools" | "unknown" {
+  const raw = getStringOrNull(v)?.toLowerCase();
+  if (raw === "linku" || raw === "tools") return raw;
+  return "unknown";
+}
+
 async function verifyNativeSignature(request: Request, rawBody: string): Promise<boolean> {
   const keyId = request.headers.get("x-native-key-id")?.trim() || "current";
   const legacy = process.env.NFC_NATIVE_APP_HMAC_SECRET?.trim();
@@ -180,6 +188,8 @@ export async function POST(request: Request) {
   const url = getStringOrNull(body.url);
   const deviceId = getStringOrNull(body.deviceId) ?? "unknown-device";
   const platform = normalizePlatform(body.platform);
+  const mode = normalizeMode(body.mode);
+  const appVersion = getStringOrNull(body.appVersion) ?? "unknown";
   const success = typeof body.success === "boolean" ? body.success : null;
   const clientError = getStringOrNull(body.clientError);
   const writtenAt = getStringOrNull(body.writtenAt);
@@ -258,6 +268,8 @@ export async function POST(request: Request) {
     url,
     deviceId,
     platform,
+    mode,
+    appVersion,
     source: "native_app",
     keyId: request.headers.get("x-native-key-id")?.trim() || "current",
     handoffJti: handoffVerified.payload.jti,
