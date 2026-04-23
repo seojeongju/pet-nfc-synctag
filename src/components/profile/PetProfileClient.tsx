@@ -130,8 +130,11 @@ export default function PetProfileClient({
   /** 홈 인디케이터 등으로 좌우 safe-area가 다르면 콘텐츠가 한쪽으로 치우쳐 보일 수 있어, 양쪽에 동일한 값을 씀 */
   const publicPagePadX =
     "px-[max(1.5rem,env(safe-area-inset-left,0px),env(safe-area-inset-right,0px))]";
+  /** 하단 떠 있는 내비: 좌우 대칭 + (Android WebView에서 flex justify-center + transform 조합 시 흔한 오프셋 방지) */
   const floatNavPadX =
     "px-[max(1rem,env(safe-area-inset-left,0px),env(safe-area-inset-right,0px))]";
+  const floatNavShell =
+    "fixed bottom-0 left-0 right-0 z-50 box-border pointer-events-none pb-[max(1rem,env(safe-area-inset-bottom,0px))]";
 
   const idSecondary =
     subjectKind === "pet"
@@ -543,12 +546,8 @@ export default function PetProfileClient({
 
       {/* Floating Bottom Nav: 소유자는 대시보드 연동 · 공개 방문자는 랜딩/연락 중심 (S3) */}
       {treatAsPublicVisitor ? (
-      <div
-        className={cn(
-          "fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none pb-4",
-          floatNavPadX
-        )}
-      >
+      <div className={cn(floatNavShell, floatNavPadX)}>
+        <div className="mx-auto w-full min-w-0 max-w-sm">
       <motion.nav
          style={{ transformOrigin: "50% 100%" }}
          animate={{
@@ -557,9 +556,9 @@ export default function PetProfileClient({
            y: isPublicNavCondensed ? navTuning.y : 0,
          }}
          transition={{ duration: 0.2, ease: "easeOut" }}
-         className="pointer-events-auto w-full max-w-sm min-w-0 glass-dark rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/20"
+         className="pointer-events-auto w-full min-w-0 glass-dark rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/20"
       >
-         {/** Framer transform과 Tailwind -translate-x-1/2 충돌 방지: 상단 래퍼 flex justify-center + max-w-sm */}
+         {/** Framer transform과 flex justify-center 조합 대신 block + mx-auto max-w-sm 래퍼로 가운데 정렬 */}
          <div className="grid grid-cols-3 w-full min-h-[5rem] items-end gap-0 px-2 sm:px-3 pb-2.5 pt-1">
          <div className="flex justify-center min-w-0">
          <Link href="/" className="flex flex-col items-center gap-0.5 group w-full max-w-[5rem]">
@@ -621,15 +620,12 @@ export default function PetProfileClient({
          </div>
          </div>
       </motion.nav>
+        </div>
       </div>
       ) : (
-      <div
-        className={cn(
-          "fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none pb-4",
-          floatNavPadX
-        )}
-      >
-      <nav className="pointer-events-auto w-full max-w-sm min-w-0 min-h-20 glass-dark rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center justify-around px-2 sm:px-3 border border-white/20">
+      <div className={cn(floatNavShell, floatNavPadX)}>
+        <div className="mx-auto w-full min-w-0 max-w-sm">
+      <nav className="pointer-events-auto w-full min-w-0 min-h-20 glass-dark rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center justify-around px-2 sm:px-3 border border-white/20">
          <Link href={`/dashboard/${subjectKind}${kindQs}`} className="flex flex-col items-center gap-1 group">
             <div className="p-2.5 rounded-2xl text-slate-400 group-hover:text-white transition-all active:scale-90">
                <Home className="w-6 h-6" />
@@ -666,6 +662,7 @@ export default function PetProfileClient({
             <span className="text-[9px] font-black text-slate-400 group-hover:text-white uppercase tracking-widest">Edit</span>
          </Link>
       </nav>
+        </div>
       </div>
       )}
     </div>
