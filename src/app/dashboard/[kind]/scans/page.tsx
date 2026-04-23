@@ -6,7 +6,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
-import { Bell, MapPin, Clock, Smartphone, PawPrint, Bluetooth, Cpu, Tag } from "lucide-react";
+import { Bell, MapPin, Clock, PawPrint, Bluetooth, Cpu, Tag } from "lucide-react";
+import { ScanUserAgentBlock } from "@/components/dashboard/ScanUserAgentBlock";
 import { extractBleRawMeta } from "@/lib/ble-raw-payload";
 import { cn } from "@/lib/utils";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
@@ -246,10 +247,7 @@ export default async function ScansPage({
                                                 {formatScanCoords(log.latitude, log.longitude)}
                                             </span>
                                         </a>
-                                        <div className="flex items-center gap-2 p-2 rounded-xl bg-slate-50 text-slate-600">
-                                            <Smartphone className="w-4 h-4 text-teal-400" />
-                                            <span className="truncate">{log.user_agent ? "모바일 확인" : "정보 없음"}</span>
-                                        </div>
+                                        <ScanUserAgentBlock userAgent={log.user_agent} />
                                     </div>
                                     
                                     {log.ip_address && (

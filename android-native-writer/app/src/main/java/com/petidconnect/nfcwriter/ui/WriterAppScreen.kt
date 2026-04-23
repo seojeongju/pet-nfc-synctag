@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -23,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Info
@@ -31,9 +35,11 @@ import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Nfc
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.WavingHand
-import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -47,7 +53,12 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import android.net.Uri
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -82,16 +93,24 @@ fun WriterAppScreen(
     onServerKey: (String) -> Unit,
     onProfileSite: (String) -> Unit,
     onSaveServer: () -> Unit,
+    /** 태그 NDEF 쓰기에 성공한 뒤(서버 기록은 성공/스킵/실패와 무관하게 태그 쓰기 OK일 때) */
+    tagWriteSuccess: Boolean = false,
     onPrepareWrite: () -> Unit,
     onOpenNfcSettings: () -> Unit
 ) {
     val scroll = rememberScrollState()
     val tone = statusToneFor(status, awaitingTag, busy)
+    var showTechnicalDetails by remember { mutableStateOf(false) }
+    val hasUid = draftUid.isNotBlank()
+    val hasUrl = draftUrl.isNotBlank()
+    val hasHandoff = draftHandoff.isNotBlank()
+    val allReady = hasUid && hasUrl && hasHandoff
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface)
+            .imePadding()
     ) {
         Box(
             modifier = Modifier
@@ -148,12 +167,14 @@ fun WriterAppScreen(
             modifier = Modifier
                 .weight(1f)
                 .verticalScroll(scroll)
-                .padding(20.dp),
+                .navigationBarsPadding()
+                .padding(horizontal = 20.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            StepChipsRow(
+            CurrentStepFlowRow(
                 hasDraft = draftUid.isNotBlank() && draftUrl.isNotBlank() && draftHandoff.isNotBlank(),
-                awaiting = awaitingTag
+                awaiting = awaitingTag,
+                writeSuccess = tagWriteSuccess
             )
 
             Text(
@@ -169,178 +190,186 @@ fun WriterAppScreen(
             }
 
             Text(
-                "필수 입력",
+                "준비하기",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.ExtraBold
             )
 
-            OutlinedTextField(
-                value = draftUid,
-                onValueChange = onDraftUid,
-                label = { Text("태그·제품 ID") },
-                leadingIcon = {
-                    Icon(
-                        Icons.Filled.Fingerprint,
-                        contentDescription = null
+            if (!showTechnicalDetails) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
                     )
-                },
-                singleLine = true,
-                enabled = !busy,
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Characters
-                )
-            )
-            OutlinedTextField(
-                value = draftUrl,
-                onValueChange = onDraftUrl,
-                label = { Text("스캔 시 열릴 링크(URL)") },
-                leadingIcon = {
-                    Icon(
-                        Icons.Filled.Link,
-                        contentDescription = null
-                    )
-                },
-                minLines = 2,
-                enabled = !busy,
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth()
-            )
-            FilledTonalButton(
-                onClick = onFillProfileUrl,
-                enabled = !busy,
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    Icons.Filled.TouchApp,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .padding(end = 8.dp)
-                        .size(20.dp)
-                )
-                Text("번호만 넣고 주소 자동으로 만들기")
+                ) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (allReady) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Filled.Check,
+                                    null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                                Spacer(Modifier.width(10.dp))
+                                Text(
+                                    "웹에서 보내 준 값이 모두 들어왔어요.\n[태그에 쓰기]만 누른 뒤 태그를 대시면 됩니다.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    lineHeight = 20.sp,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        } else {
+                            Text(
+                                "웹(Link-U)에서 ‘앱으로 기록’을 쓰면 대부분 자동으로 넣겠습니다. " +
+                                    "빈 항목이 있으면 아래 [상세]에서 직접 붙여 넣을 수 있어요.",
+                                style = MaterialTheme.typography.bodySmall,
+                                lineHeight = 20.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f)
+                            )
+                        }
+                        DraftStatusRow(
+                            ok = hasUid,
+                            title = "태그·제품",
+                            shortLine = if (hasUid) summarizeUidForDisplay(draftUid) else "아직 없음"
+                        )
+                        DraftStatusRow(
+                            ok = hasUrl,
+                            title = "열릴 링크",
+                            shortLine = if (hasUrl) summarizeUrlForDisplay(draftUrl) else "아직 없음"
+                        )
+                        DraftStatusRow(
+                            ok = hasHandoff,
+                            title = "한번 쓰는 인증",
+                            shortLine = if (hasHandoff) summarizeHandoffForDisplay(draftHandoff) else "아직 없음"
+                        )
+                    }
+                }
             }
-            OutlinedTextField(
-                value = draftHandoff,
-                onValueChange = onDraftHandoff,
-                label = { Text("웹에서 받은 한번용 인증") },
-                leadingIcon = {
-                    Icon(
-                        Icons.Filled.Key,
-                        contentDescription = null
-                    )
-                },
-                supportingText = {
-                    Text("웹에 나온 긴 문장을 그대로 복사해 붙여 넣어 주세요.")
-                },
-                minLines = 2,
-                enabled = !busy,
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth()
-            )
 
             TextButton(
-                onClick = { onToggleServerFields(!showServerFields) },
+                onClick = { showTechnicalDetails = !showTechnicalDetails },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(
-                    Icons.Filled.Settings,
+                    if (showTechnicalDetails) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
                     contentDescription = null,
                     modifier = Modifier
                         .padding(end = 8.dp)
                         .size(20.dp)
                 )
-                Text(
-                    if (showServerFields) "Link-U 서비스에 기록(선택) · 닫기" else "Link-U 서비스에 기록(선택) · 열기"
-                )
+                Text(if (showTechnicalDetails) "요약 화면만 보기" else "상세보기 · 직접 붙여넣기 (고급)")
             }
 
             AnimatedVisibility(
-                visible = showServerFields,
+                visible = showTechnicalDetails,
                 enter = expandVertically() + fadeIn(),
                 exit = shrinkVertically() + fadeOut()
             ) {
-                Card(
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.Top) {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    OutlinedTextField(
+                        value = draftUid,
+                        onValueChange = onDraftUid,
+                        label = { Text("태그·제품 ID") },
+                        leadingIcon = {
                             Icon(
-                                Icons.Outlined.Cloud,
-                                contentDescription = null,
-                                modifier = Modifier.padding(4.dp, 2.dp, 8.dp, 0.dp),
-                                tint = MaterialTheme.colorScheme.primary
+                                Icons.Filled.Fingerprint,
+                                contentDescription = null
                             )
-                            Text(
-                                "태그에 URL만 써도 사용할 수 있어요. " +
-                                    "Link-U 대시보드에 ‘기록 완료’도 남기려면, 쓰는 모드(펫·기억·캐리 등)에 맞게 관리자·안내에 나온 서비스 주소·암호를 넣고 저장하세요.",
-                                style = MaterialTheme.typography.bodySmall,
-                                lineHeight = 20.sp
+                        },
+                        singleLine = true,
+                        enabled = !busy,
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Characters
+                        )
+                    )
+                    OutlinedTextField(
+                        value = draftUrl,
+                        onValueChange = onDraftUrl,
+                        label = { Text("스캔 시 열릴 링크(URL)") },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Filled.Link,
+                                contentDescription = null
                             )
-                        }
-                        OutlinedTextField(
-                            value = serverBaseInput,
-                            onValueChange = onServerBase,
-                            label = { Text("Link-U 서비스 주소 (https://…)") },
-                            singleLine = true,
-                            leadingIcon = {
-                                Icon(Icons.Filled.PhoneAndroid, contentDescription = null)
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
+                        },
+                        minLines = 2,
+                        enabled = !busy,
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    FilledTonalButton(
+                        onClick = onFillProfileUrl,
+                        enabled = !busy,
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            Icons.Filled.TouchApp,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .padding(end = 8.dp)
+                                .size(20.dp)
                         )
-                        OutlinedTextField(
-                            value = serverKeyInput,
-                            onValueChange = onServerKey,
-                            label = { Text("연결 암호 (관리자 안내)" ) },
-                            singleLine = true,
-                            visualTransformation = PasswordVisualTransformation(),
-                            leadingIcon = {
-                                Icon(Icons.Filled.Key, contentDescription = null)
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        OutlinedTextField(
-                            value = profileSiteInput,
-                            onValueChange = onProfileSite,
-                            label = { Text("“주소 자동”에 쓸 사이트 (없으면 위 주소)") },
-                            minLines = 1,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        Button(
-                            onClick = onSaveServer,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(14.dp)
-                        ) { Text("저장") }
+                        Text("번호만 넣고 주소 자동으로 만들기")
                     }
+                    OutlinedTextField(
+                        value = draftHandoff,
+                        onValueChange = onDraftHandoff,
+                        label = { Text("웹에서 받은 한번용 인증") },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Filled.Key,
+                                contentDescription = null
+                            )
+                        },
+                        supportingText = {
+                            Text("웹에 나온 긴 문장을 그대로 복사해 붙여 넣어 주세요.")
+                        },
+                        minLines = 3,
+                        maxLines = 6,
+                        enabled = !busy,
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
 
             Spacer(Modifier.height(4.dp))
             Button(
                 onClick = onPrepareWrite,
-                enabled = !busy,
+                enabled = !busy && !tagWriteSuccess,
                 shape = RoundedCornerShape(18.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp),
+                    .defaultMinSize(minHeight = 56.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
+                    containerColor = if (tagWriteSuccess) {
+                        Color(0xFF0F766E)
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    }
                 )
             ) {
                 when {
+                    tagWriteSuccess && !busy -> {
+                        Icon(
+                            imageVector = Icons.Filled.Check,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .padding(end = 10.dp)
+                                .size(24.dp)
+                        )
+                        Text(
+                            "쓰기가 정상적으로 완료되었습니다",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                     busy && awaitingTag -> {
                         CircularProgressIndicator(
                             modifier = Modifier
@@ -398,23 +427,217 @@ fun WriterAppScreen(
                 )
                 Text("NFC 켜기(휴대폰 설정)")
             }
+
+            Text(
+                "고급 (운영·개발)",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 12.dp)
+            )
+            TextButton(
+                onClick = { onToggleServerFields(!showServerFields) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    Icons.Filled.Settings,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                )
+                Text(
+                    if (showServerFields) {
+                        "Link-U 서버에 기록하는 설정 · 닫기"
+                    } else {
+                        "Link-U 서버에 기록하는 설정 · 열기 (대부분 생략)"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                )
+            }
+            AnimatedVisibility(
+                visible = showServerFields,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            "· 태그에 링크만 쓰면 스캔·연락은 됩니다. 꼭 필요한 경우에만 이 설정을 쓰세요.\n" +
+                                "· 앱을 배포할 때 서버 주소·암호를 이미 넣어 둔 경우, 쓰기가 끝난 뒤 Link-U에 자동으로 보고될 수 있어 대부분 이 화면을 열지 않아도 됩니다.\n" +
+                                "· 관리자 안내로 직접 넣으라는 경우, 또는 개발·테스트로 다른 서버를 쓸 때만 아래에 입력·저장하세요.",
+                            style = MaterialTheme.typography.bodySmall,
+                            lineHeight = 20.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.88f)
+                        )
+                        OutlinedTextField(
+                            value = serverBaseInput,
+                            onValueChange = onServerBase,
+                            label = { Text("Link-U 서비스 주소 (https://…)") },
+                            singleLine = true,
+                            leadingIcon = {
+                                Icon(Icons.Filled.PhoneAndroid, contentDescription = null)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        OutlinedTextField(
+                            value = serverKeyInput,
+                            onValueChange = onServerKey,
+                            label = { Text("연결 암호 (관리자 안내)") },
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            leadingIcon = {
+                                Icon(Icons.Filled.Key, contentDescription = null)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        OutlinedTextField(
+                            value = profileSiteInput,
+                            onValueChange = onProfileSite,
+                            label = { Text("“주소 자동”에 쓸 사이트 (없으면 위 주소)") },
+                            minLines = 1,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        Button(
+                            onClick = onSaveServer,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp)
+                        ) { Text("저장") }
+                    }
+                }
+            }
+
+            // 하단 내비·제스처 영역을 넘겨도 스크롤로 충분히 읽을 수 있도록
+            Spacer(Modifier.height(32.dp))
         }
     }
 }
 
 @Composable
-private fun StepChipsRow(hasDraft: Boolean, awaiting: Boolean) {
+private fun DraftStatusRow(
+    ok: Boolean,
+    title: String,
+    shortLine: String
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        StepPill(1, "확인", done = hasDraft, active = !hasDraft)
-        StepPill(2, "담기", done = false, active = awaiting)
+        Icon(
+            imageVector = if (ok) Icons.Filled.Check else Icons.Outlined.RadioButtonUnchecked,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = if (ok) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
+            }
+        )
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                title,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+            )
+            Text(
+                shortLine,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f)
+            )
+        }
+    }
+}
+
+private fun summarizeUidForDisplay(uid: String): String {
+    val t = uid.trim()
+    if (t.isEmpty()) return "—"
+    if (t.length <= 18) return t
+    return t.take(10) + "…" + t.takeLast(8)
+}
+
+private fun summarizeUrlForDisplay(url: String): String {
+    val t = url.trim()
+    if (t.isEmpty()) return "—"
+    return try {
+        val u = Uri.parse(t)
+        val host = u.host ?: return "웹 링크"
+        val seg = u.path?.trim('/')?.split('/')?.filter { it.isNotEmpty() }?.firstOrNull().orEmpty()
+        if (seg.isNotEmpty()) "$host · /$seg…" else host
+    } catch (_: Exception) {
+        "웹 링크"
+    }
+}
+
+private fun summarizeHandoffForDisplay(handoff: String): String {
+    val t = handoff.trim()
+    if (t.isEmpty()) return "—"
+    val n = t.length
+    return "안전하게 보관됨 · ${n}자"
+}
+
+/** “현재 단계: 정보확인 → 저장완료” 앱 안의 진행 흐름(메뉴 아님) */
+@Composable
+private fun CurrentStepFlowRow(
+    hasDraft: Boolean,
+    awaiting: Boolean,
+    writeSuccess: Boolean
+) {
+    val step1Done = hasDraft
+    val step1Active = !hasDraft
+    val step2Done = writeSuccess
+    val step2Active = awaiting && !writeSuccess
+
+    Column(Modifier.fillMaxWidth()) {
+        Text(
+            "현재 단계",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.ExtraBold
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            StepPill(
+                label = "정보확인",
+                done = step1Done,
+                active = step1Active
+            )
+            Text(
+                " → ",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
+                fontWeight = FontWeight.Bold
+            )
+            StepPill(
+                label = "저장완료",
+                done = step2Done,
+                active = step2Active
+            )
+        }
     }
 }
 
 @Composable
-private fun StepPill(num: Int, label: String, active: Boolean, done: Boolean) {
+private fun StepPill(label: String, active: Boolean, done: Boolean) {
     val bg = when {
         done && !active -> Color(0xFF0D9488)
         active -> Color(0xFF14B8A6)
@@ -422,29 +645,18 @@ private fun StepPill(num: Int, label: String, active: Boolean, done: Boolean) {
     }
     val fg = when {
         done || active -> Color.White
-        else -> MaterialTheme.colorScheme.onSurface.copy(0.55f)
+        else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
     }
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+    Text(
+        text = label,
+        color = fg,
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = if (active || (done && !active)) FontWeight.Bold else FontWeight.Medium,
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
             .background(bg)
-            .padding(horizontal = 12.dp, vertical = 8.dp)
-    ) {
-        Text(
-            "$num",
-            color = fg,
-            fontWeight = FontWeight.Black,
-            fontSize = 12.sp
-        )
-        Spacer(Modifier.width(6.dp))
-        Text(
-            label,
-            color = fg,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = if (active || done) FontWeight.Bold else FontWeight.Medium
-        )
-    }
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+    )
 }
 
 private enum class StatusTone { Info, Good, Partial, Error, Active }

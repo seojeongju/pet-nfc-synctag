@@ -52,6 +52,8 @@ class MainActivity : ComponentActivity() {
     private var pendingWrite: WritePayload? = null
     private var awaitingTag by mutableStateOf(false)
     private var busy by mutableStateOf(false)
+    /** NDEF 쓰기(태그 기록) 성공 직후 Primary 버튼에 완료 문구 표시 */
+    private var tagWriteSuccess by mutableStateOf(false)
 
     private var nfcAdapter: NfcAdapter? = null
     private lateinit var serverSettings: NfcServerSettings
@@ -75,9 +77,18 @@ class MainActivity : ComponentActivity() {
                     draftUid = draftUid,
                     draftUrl = draftUrl,
                     draftHandoff = draftHandoff,
-                    onDraftUid = { draftUid = it },
-                    onDraftUrl = { draftUrl = it },
-                    onDraftHandoff = { draftHandoff = it },
+                    onDraftUid = {
+                        draftUid = it
+                        tagWriteSuccess = false
+                    },
+                    onDraftUrl = {
+                        draftUrl = it
+                        tagWriteSuccess = false
+                    },
+                    onDraftHandoff = {
+                        draftHandoff = it
+                        tagWriteSuccess = false
+                    },
                     onFillProfileUrl = { fillProfileUrlFromUid() },
                     awaitingTag = awaitingTag,
                     busy = busy,
@@ -90,6 +101,7 @@ class MainActivity : ComponentActivity() {
                     onServerKey = { serverKeyInput = it },
                     onProfileSite = { profileSiteInput = it },
                     onSaveServer = { saveServerSettings() },
+                    tagWriteSuccess = tagWriteSuccess,
                     onPrepareWrite = { onUserStartWrite() },
                     onOpenNfcSettings = {
                         startActivity(Intent(Settings.ACTION_NFC_SETTINGS))
@@ -140,6 +152,7 @@ class MainActivity : ComponentActivity() {
             statusText = "세 칸을 모두 채워 주세요. 웹에서 복사해 붙여 넣을 수 있어요."
             return
         }
+        tagWriteSuccess = false
         pendingWrite = WritePayload(uid = u, url = purl, handoffToken = tok)
         awaitingTag = true
         statusText = "휴대폰 뒤에 태그를 가깝게 대 주세요."
@@ -211,6 +224,7 @@ class MainActivity : ComponentActivity() {
         draftHandoff = handoffToken
         pendingWrite = null
         awaitingTag = false
+        tagWriteSuccess = false
         statusText = "웹에서 불러왔어요. [태그에 쓰기]를 누른 뒤, 휴대폰 뒤에 태그를 대 주세요."
     }
 
@@ -237,6 +251,7 @@ class MainActivity : ComponentActivity() {
                 pendingWrite = null
 
                 if (writeResult.isSuccess) {
+                    tagWriteSuccess = true
                     statusText = when (report) {
                         is ServerReport.Ok -> "태그에 담았고, Link-U 서비스에도 기록됐어요. 감사합니다."
                         is ServerReport.SkippedNoConfig ->
@@ -245,6 +260,7 @@ class MainActivity : ComponentActivity() {
                             "태그 쓰기는 됐는데 서비스 기록에 실패했어요: ${report.message}"
                     }
                 } else {
+                    tagWriteSuccess = false
                     statusText = "태그에 쓰지 못했어요: ${writeResult.exceptionOrNull()?.message ?: "잠시 후 다시 시도해 주세요."}"
                 }
             }

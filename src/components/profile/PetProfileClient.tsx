@@ -127,6 +127,12 @@ export default function PetProfileClient({
       ? "아이를 보셨다면, 아래 연락처로 가족에게 알려 주세요. 전화·문자 모두 괜찮아요."
       : "아래 연락처로 가족(담당자)에게 바로 알려 주세요.";
   const finderParagraph = treatAsPublicVisitor ? nfcPublicFinderIntro[subjectKind] : finderCopy;
+  /** 홈 인디케이터 등으로 좌우 safe-area가 다르면 콘텐츠가 한쪽으로 치우쳐 보일 수 있어, 양쪽에 동일한 값을 씀 */
+  const publicPagePadX =
+    "px-[max(1.5rem,env(safe-area-inset-left,0px),env(safe-area-inset-right,0px))]";
+  const floatNavPadX =
+    "px-[max(1rem,env(safe-area-inset-left,0px),env(safe-area-inset-right,0px))]";
+
   const idSecondary =
     subjectKind === "pet"
       ? "품종 미상"
@@ -260,7 +266,12 @@ export default function PetProfileClient({
 
       {/* 실종 모드 활성화 시 긴급 배너 */}
       {Boolean(pet.is_lost) && (
-        <div className="w-full max-w-md min-w-0 -mt-2 mb-3 relative z-20 pl-[max(1.5rem,env(safe-area-inset-left,0px))] pr-[max(1.5rem,env(safe-area-inset-right,0px))]">
+        <div
+          className={cn(
+            "w-full max-w-md min-w-0 -mt-2 mb-3 relative z-20",
+            publicPagePadX
+          )}
+        >
           <div className="flex items-center gap-3 rounded-2xl bg-rose-500 px-4 py-3 shadow-xl shadow-rose-500/30 animate-in slide-in-from-top-2 duration-300">
             <AlertTriangle className="w-5 h-5 text-white shrink-0 animate-pulse" />
             <div className="flex-1 min-w-0">
@@ -274,7 +285,12 @@ export default function PetProfileClient({
       )}
 
       {nfcEntry && treatAsPublicVisitor && (
-        <div className="w-full max-w-md min-w-0 -mt-2 mb-2 relative z-20 pl-[max(1.5rem,env(safe-area-inset-left,0px))] pr-[max(1.5rem,env(safe-area-inset-right,0px))]">
+        <div
+          className={cn(
+            "w-full max-w-md min-w-0 -mt-2 mb-2 relative z-20",
+            publicPagePadX
+          )}
+        >
           <div className="rounded-2xl bg-teal-600/10 border border-teal-200 px-4 py-3 text-center">
             <p className="text-[12px] font-bold text-teal-900 leading-relaxed">
               {scanEntrySource === "scan"
@@ -286,7 +302,12 @@ export default function PetProfileClient({
       )}
 
       {nfcOwnerGate && !ownerUnlocked && (
-        <div className="w-full max-w-md min-w-0 -mt-1 mb-3 relative z-20 pl-[max(1.5rem,env(safe-area-inset-left,0px))] pr-[max(1.5rem,env(safe-area-inset-right,0px))]">
+        <div
+          className={cn(
+            "w-full max-w-md min-w-0 -mt-1 mb-3 relative z-20",
+            publicPagePadX
+          )}
+        >
           <div className="rounded-2xl border border-amber-200 bg-amber-50/90 px-4 py-3 space-y-2">
             <p className="text-[11px] font-bold text-amber-900 leading-snug">
               이 휴대폰은 가족(보호자) 계정으로 로그인되어 있어요. 남이 보지 않도록, 본인 확인 후에만 아래에서 관리 화면이 열립니다.
@@ -330,12 +351,15 @@ export default function PetProfileClient({
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="w-full max-w-md min-w-0 box-border -mt-4 relative z-20 space-y-8 pl-[max(1.5rem,env(safe-area-inset-left,0px))] pr-[max(1.5rem,env(safe-area-inset-right,0px))]"
+        className={cn(
+          "w-full max-w-md min-w-0 box-border -mt-4 relative z-20 space-y-8",
+          publicPagePadX
+        )}
       >
         {/* Core Info & Alert Widget */}
-        <motion.section variants={itemVariants}>
-          <Card className="border-none shadow-app rounded-[40px] overflow-hidden bg-white/80 backdrop-blur-md">
-            <CardContent className="p-8 space-y-6">
+        <motion.section variants={itemVariants} className="w-full min-w-0">
+          <Card className="w-full min-w-0 border-none shadow-app rounded-[40px] overflow-hidden bg-white/80 backdrop-blur-md">
+            <CardContent className="p-6 sm:p-8 space-y-6 max-w-full">
               <div className="flex items-center justify-between">
                  <div className="space-y-1">
                     <h2 className="text-xl font-black text-slate-900 leading-none">
@@ -424,7 +448,10 @@ export default function PetProfileClient({
         </motion.section>
 
         {/* Feature Grid */}
-        <motion.section variants={itemVariants} className="grid grid-cols-2 gap-4">
+        <motion.section
+          variants={itemVariants}
+          className="grid w-full min-w-0 grid-cols-2 gap-4"
+        >
            <div className="bg-white p-6 rounded-[32px] shadow-sm border border-slate-100 space-y-3">
               <div className="w-10 h-10 rounded-[14px] bg-slate-50 flex items-center justify-center text-slate-400"><Fingerprint className="w-5 h-5" /></div>
               <div>
@@ -517,7 +544,10 @@ export default function PetProfileClient({
       {/* Floating Bottom Nav: 소유자는 대시보드 연동 · 공개 방문자는 랜딩/연락 중심 (S3) */}
       {treatAsPublicVisitor ? (
       <div
-        className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none pb-4 pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))]"
+        className={cn(
+          "fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none pb-4",
+          floatNavPadX
+        )}
       >
       <motion.nav
          style={{ transformOrigin: "50% 100%" }}
@@ -593,7 +623,12 @@ export default function PetProfileClient({
       </motion.nav>
       </div>
       ) : (
-      <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none pb-4 pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))]">
+      <div
+        className={cn(
+          "fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none pb-4",
+          floatNavPadX
+        )}
+      >
       <nav className="pointer-events-auto w-full max-w-sm min-w-0 min-h-20 glass-dark rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center justify-around px-2 sm:px-3 border border-white/20">
          <Link href={`/dashboard/${subjectKind}${kindQs}`} className="flex flex-col items-center gap-1 group">
             <div className="p-2.5 rounded-2xl text-slate-400 group-hover:text-white transition-all active:scale-90">
