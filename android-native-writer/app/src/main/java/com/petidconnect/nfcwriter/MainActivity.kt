@@ -241,11 +241,17 @@ class MainActivity : ComponentActivity() {
         val purl = draftUrl.trim()
         val tok = draftHandoff.trim()
         val requireHandoff = appMode == AppMode.LinkU
-        if (u.isEmpty() || purl.isEmpty() || (requireHandoff && tok.isEmpty())) {
+        val missingRequired = if (requireHandoff) {
+            u.isEmpty() || purl.isEmpty() || tok.isEmpty()
+        } else {
+            // 일반 도구 모드에서는 URL/정보만 있으면 바로 태그 쓰기 대기로 진입
+            purl.isEmpty()
+        }
+        if (missingRequired) {
             statusText = if (requireHandoff) {
                 "Link-U 모드에서는 세 칸을 모두 채워 주세요. 웹에서 복사해 붙여 넣을 수 있어요."
             } else {
-                "일반 도구 모드에서는 태그·제품 ID와 URL을 먼저 채워 주세요."
+                "일반 도구 모드에서는 URL/정보를 먼저 채워 주세요."
             }
             return
         }
@@ -257,7 +263,8 @@ class MainActivity : ComponentActivity() {
             }
         }
         tagWriteSuccess = false
-        pendingWrite = WritePayload(uid = u, url = purl, handoffToken = tok)
+        val effectiveUid = if (u.isBlank()) "TOOLS-MANUAL" else u
+        pendingWrite = WritePayload(uid = effectiveUid, url = purl, handoffToken = tok)
         awaitingTag = true
         statusText = "휴대폰 뒤에 태그를 가깝게 대 주세요."
     }

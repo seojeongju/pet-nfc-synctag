@@ -285,6 +285,8 @@ fun WriterAppScreen(
                         }
                         activeTemplateEditor = null
                         showTechnicalDetails = false
+                        // 확인 직후 바로 태그 대기 상태로 전환해 UX를 단순화
+                        onPrepareWrite()
                     }
                 )
             } else {
@@ -315,7 +317,7 @@ fun WriterAppScreen(
                                 modifier = Modifier.size(18.dp)
                             )
                             Text(
-                                "아이콘 선택 → 정보 입력 → 태그에 쓰기 순서로 진행하세요.",
+                                "아이콘 선택 → 정보 입력 → 확인 후 태그 대기 순서로 진행하세요.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.82f)
                             )
@@ -328,20 +330,21 @@ fun WriterAppScreen(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-                        )
+                            containerColor = Color(0xFFF7FCFC)
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2F3F2))
                     ) {
                         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Text(
                                 "일반 모드 도구형 대시보드",
                                 style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.primary,
+                                color = Color(0xFF0F766E),
                                 fontWeight = FontWeight.ExtraBold
                             )
                             Text(
                                 "아이콘을 눌러 바로 입력 템플릿을 불러오세요.",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+                                color = Color(0xFF4B6B68)
                             )
                             SquareToolGrid(
                                 onTap = { key ->
@@ -353,14 +356,24 @@ fun WriterAppScreen(
                             Text(
                                 "각 기능 아이콘을 눌러 열린 창에서 읽기/쓰기 모드를 선택할 수 있습니다.",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f)
+                                color = Color(0xFF5F7D79)
                             )
                         }
                     }
                 }
             }
 
-            if (status.isNotBlank()) {
+            val shouldShowStatusInCurrentScreen =
+                if (showTemplateInputPage) {
+                    status.contains("NFC", ignoreCase = true) ||
+                        status.contains("실패", ignoreCase = true) ||
+                        status.contains("못했", ignoreCase = true) ||
+                        status.contains("오류", ignoreCase = true)
+                } else {
+                    status.isNotBlank()
+                }
+
+            if (shouldShowStatusInCurrentScreen) {
                 StatusMessageCard(message = status, tone = tone)
             }
 
@@ -527,75 +540,77 @@ fun WriterAppScreen(
                 }
             }
 
-            Spacer(Modifier.height(4.dp))
-            Button(
-                onClick = onPrepareWrite,
-                enabled = !busy && !tagWriteSuccess,
-                shape = RoundedCornerShape(18.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .defaultMinSize(minHeight = 56.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (tagWriteSuccess) {
-                        Color(0xFF0F766E)
-                    } else {
-                        MaterialTheme.colorScheme.primary
-                    }
-                )
-            ) {
-                when {
-                    tagWriteSuccess && !busy -> {
-                        Icon(
-                            imageVector = Icons.Filled.Check,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .padding(end = 10.dp)
-                                .size(24.dp)
-                        )
-                        Text(
-                            "쓰기가 정상적으로 완료되었습니다",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    busy && awaitingTag -> {
-                        CircularProgressIndicator(
-                            modifier = Modifier
-                                .padding(end = 10.dp)
-                                .size(24.dp),
-                            color = Color.White,
-                            strokeWidth = 2.dp
-                        )
-                        Text(
-                            "태그에 쓰는 중…",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    busy -> {
-                        CircularProgressIndicator(
-                            modifier = Modifier
-                                .padding(end = 10.dp)
-                                .size(24.dp),
-                            color = Color.White,
-                            strokeWidth = 2.dp
-                        )
-                        Text("잠시만요…", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    }
-                    else -> {
-                        val icon: ImageVector = if (awaitingTag) Icons.Filled.Nfc else Icons.Filled.PhoneAndroid
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .padding(end = 10.dp)
-                                .size(24.dp)
-                        )
-                        Text(
-                            if (awaitingTag) "휴대폰 뒤에 태그를 대 주세요" else "태그에 쓰기",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
+            if (!showTemplateInputPage) {
+                Spacer(Modifier.height(4.dp))
+                Button(
+                    onClick = onPrepareWrite,
+                    enabled = !busy && !tagWriteSuccess,
+                    shape = RoundedCornerShape(18.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .defaultMinSize(minHeight = 56.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (tagWriteSuccess) {
+                            Color(0xFF0F766E)
+                        } else {
+                            MaterialTheme.colorScheme.primary
+                        }
+                    )
+                ) {
+                    when {
+                        tagWriteSuccess && !busy -> {
+                            Icon(
+                                imageVector = Icons.Filled.Check,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .padding(end = 10.dp)
+                                    .size(24.dp)
+                            )
+                            Text(
+                                "쓰기가 정상적으로 완료되었습니다",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        busy && awaitingTag -> {
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .padding(end = 10.dp)
+                                    .size(24.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                            Text(
+                                "태그에 쓰는 중…",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        busy -> {
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .padding(end = 10.dp)
+                                    .size(24.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                            Text("잠시만요…", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        }
+                        else -> {
+                            val icon: ImageVector = if (awaitingTag) Icons.Filled.Nfc else Icons.Filled.PhoneAndroid
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .padding(end = 10.dp)
+                                    .size(24.dp)
+                            )
+                            Text(
+                                if (awaitingTag) "휴대폰 뒤에 태그를 대 주세요" else "태그에 쓰기",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }
@@ -769,8 +784,10 @@ private fun SquareToolTile(
     onClick: () -> Unit
 ) {
     val alpha = if (item.enabled) 1f else 0.5f
-    val tileBg = if (selected) Color(0xFFEECB2B) else Color(0xFFF5D54A)
-    val borderColor = if (selected) Color(0xFFD4A808) else Color(0x00000000)
+    val tileBg = if (selected) Color(0xFF5EEAD4) else Color(0xFFD1FAF5)
+    val borderColor = if (selected) Color(0xFF0F766E) else Color(0x00000000)
+    val iconTint = if (selected) Color.White.copy(alpha) else Color(0xFF0F766E).copy(alpha)
+    val titleColor = if (selected) Color(0xFF134E4A) else Color(0xFF115E59)
 
     OutlinedButton(
         onClick = onClick,
@@ -783,34 +800,34 @@ private fun SquareToolTile(
         ),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(
             horizontal = 10.dp,
-            vertical = 14.dp
+            vertical = 16.dp
         )
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .defaultMinSize(minHeight = 86.dp),
+                .defaultMinSize(minHeight = 110.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(38.dp)
+                    .size(48.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color.White.copy(alpha = 0.22f)),
+                    .background(if (selected) Color.White.copy(alpha = 0.24f) else Color.White.copy(alpha = 0.92f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = item.icon,
                     contentDescription = item.title,
-                    tint = Color.White.copy(alpha),
-                    modifier = Modifier.size(22.dp)
+                    tint = iconTint,
+                    modifier = Modifier.size(28.dp)
                 )
             }
             Text(
                 text = item.title,
                 style = MaterialTheme.typography.labelMedium,
-                color = Color(0xFF5A4C00).copy(if (item.enabled) 1f else 0.6f),
+                color = titleColor.copy(if (item.enabled) 1f else 0.6f),
                 fontWeight = FontWeight.ExtraBold,
                 textAlign = TextAlign.Center
             )
@@ -1301,8 +1318,8 @@ private fun LandingModeScreen(
     onSelectTools: () -> Unit
 ) {
     val landingScroll = rememberScrollState()
-    val brandYellow = Color(0xFFF5D54A)
-    val brandYellowSoft = Color(0xFFFFF8D5)
+    val brandTeal = Color(0xFF0F766E)
+    val brandMint = Color(0xFFD1FAF5)
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1327,14 +1344,14 @@ private fun LandingModeScreen(
                         modifier = Modifier
                             .size(52.dp)
                             .clip(RoundedCornerShape(16.dp))
-                            .background(brandYellowSoft),
+                            .background(brandMint),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Nfc,
                             contentDescription = null,
                             modifier = Modifier.size(30.dp),
-                            tint = Color(0xFFD4A808)
+                            tint = brandTeal
                         )
                     }
                     Column(Modifier.padding(start = 12.dp)) {
@@ -1342,12 +1359,12 @@ private fun LandingModeScreen(
                             "NFC Writer",
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.ExtraBold,
-                            color = Color(0xFF6B5A00)
+                            color = Color(0xFF134E4A)
                         )
                         Text(
                             "Link-U + 일반 도구 듀얼 시작",
                             style = MaterialTheme.typography.labelMedium,
-                            color = Color(0xFF8A7A2D),
+                            color = Color(0xFF0F766E),
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -1356,118 +1373,117 @@ private fun LandingModeScreen(
                     "태그(딥링크)로 들어오면 Link-U 모드로 자동 연동됩니다.\n일반 실행은 아래에서 모드를 선택해 시작하세요.",
                     style = MaterialTheme.typography.bodyMedium,
                     lineHeight = 22.sp,
-                    color = Color(0xFF5F5A46)
+                    color = Color(0xFF355B57)
                 )
             }
         }
 
-        Card(
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(34.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(brandYellowSoft),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Filled.Link, contentDescription = null, tint = Color(0xFFD4A808), modifier = Modifier.size(18.dp))
-                    }
-                    Text(
-                        "Link-U 모드",
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color(0xFF6B5A00),
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
-                }
-                Text(
-                    "우리 프로그램 태그/웹과 바로 연동되는 기록 흐름",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF5F5A46)
-                )
-                Button(
-                    onClick = onSelectLinkU,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = brandYellow,
-                        contentColor = Color(0xFF4F4300)
-                    )
-                ) {
-                    Icon(
-                        Icons.Filled.TouchApp,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .padding(end = 8.dp)
-                            .size(18.dp)
-                    )
-                    Text("Link-U로 시작", fontWeight = FontWeight.ExtraBold)
-                }
-            }
-        }
+        LargeModeEntryCard(
+            title = "Link-U 모드",
+            description = "우리 프로그램 태그/웹과 바로 연동되는 기록 흐름",
+            buttonText = "Link-U로 시작",
+            icon = Icons.Filled.Link,
+            onClick = onSelectLinkU,
+            primary = true
+        )
 
-        Card(
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(34.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(brandYellowSoft),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Filled.Settings, contentDescription = null, tint = Color(0xFFD4A808), modifier = Modifier.size(18.dp))
-                    }
-                    Text(
-                        "일반 NFC 도구 모드",
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color(0xFF6B5A00),
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
-                }
-                Text(
-                    "누구나 URL/텍스트 NFC 읽기·쓰기 도구로 시작",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF5F5A46)
-                )
-                FilledTonalButton(
-                    onClick = onSelectTools,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = brandYellowSoft,
-                        contentColor = Color(0xFF5A4C00)
-                    )
-                ) {
-                    Icon(
-                        Icons.Filled.PhoneAndroid,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .padding(end = 8.dp)
-                            .size(18.dp)
-                    )
-                    Text("일반 도구로 시작", fontWeight = FontWeight.ExtraBold)
-                }
-            }
-        }
+        LargeModeEntryCard(
+            title = "일반 NFC 도구 모드",
+            description = "누구나 URL/텍스트 NFC 읽기·쓰기 도구로 시작",
+            buttonText = "일반 도구로 시작",
+            icon = Icons.Filled.Settings,
+            onClick = onSelectTools,
+            primary = false
+        )
 
         Text(
             "Tip: NFC가 꺼져 있으면 모드 진입 후 [NFC 켜기] 버튼으로 바로 설정을 열 수 있어요.",
             style = MaterialTheme.typography.labelMedium,
-            color = Color(0xFF8A7A2D),
+            color = Color(0xFF4B6B68),
             lineHeight = 20.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
         )
+    }
+}
+
+@Composable
+private fun LargeModeEntryCard(
+    title: String,
+    description: String,
+    buttonText: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    primary: Boolean
+) {
+    val bg = if (primary) Color(0xFFE6FFFB) else Color(0xFFF7FCFC)
+    val iconBg = if (primary) Color(0xFF14B8A6) else Color(0xFFD1FAF5)
+    val iconTint = if (primary) Color.White else Color(0xFF0F766E)
+    val buttonBg = if (primary) Color(0xFF0F766E) else Color(0xFF5EEAD4)
+    val buttonFg = if (primary) Color.White else Color(0xFF134E4A)
+
+    Card(
+        shape = RoundedCornerShape(26.dp),
+        colors = CardDefaults.cardColors(containerColor = bg),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2F3F2)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color.White.copy(alpha = 0.85f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(74.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(iconBg),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = iconTint,
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
+            }
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color(0xFF134E4A)
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color(0xFF3F6560)
+            )
+            Button(
+                onClick = onClick,
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = buttonBg,
+                    contentColor = buttonFg
+                )
+            ) {
+                Icon(
+                    Icons.Filled.TouchApp,
+                    contentDescription = null,
+                    modifier = Modifier.padding(end = 8.dp).size(18.dp)
+                )
+                Text(buttonText, fontWeight = FontWeight.ExtraBold)
+            }
+        }
     }
 }
 
