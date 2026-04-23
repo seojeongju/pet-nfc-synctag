@@ -771,18 +771,7 @@ export default function PetDashboard({
                   {!webNfcWriteSupported ? (
                     <Button
                       onClick={() => {
-                        if (SHOW_NFC_NATIVE_HANDOFF) {
-                          void openNativeAppForNfcWrite();
-                          return;
-                        }
-                        if (NFC_NATIVE_APP_STORE_URL) {
-                          window.location.href = NFC_NATIVE_APP_STORE_URL;
-                          return;
-                        }
-                        setTagMessage({
-                          type: "error",
-                          text: "전용 앱 호출이 아직 활성화되지 않았습니다. 운영자에게 NEXT_PUBLIC_NFC_NATIVE_HANDOFF_ENABLED 설정을 요청해 주세요.",
-                        });
+                        void openNativeAppForNfcWrite();
                       }}
                       disabled={
                         tenantSuspended ||
@@ -816,7 +805,7 @@ export default function PetDashboard({
                       이 브라우저에서는 태그에 주소를 바로 쓸 수 없을 수 있어요.
                       {SHOW_NFC_NATIVE_HANDOFF
                         ? " 위의 '앱으로 태그 주소 기록' 버튼으로 전용 앱을 열어 진행해 주세요."
-                        : " 위의 '앱 설치/열기' 버튼으로 전용 앱 설치를 진행하거나, 운영자에게 앱 호출 설정을 요청해 주세요."}
+                        : " 위의 '앱 설치/열기'를 누르면 전용 앱이 열리고, 앱에서 태그에 주소를 기록할 수 있어요. 앱이 없다면 아래 '스토어에서 설치하기'를 이용해 주세요."}
                     </p>
                   ) : (
                     <p className="text-[11px] font-bold text-slate-400">
