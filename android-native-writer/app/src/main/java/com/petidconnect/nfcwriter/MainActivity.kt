@@ -69,6 +69,12 @@ class MainActivity : ComponentActivity() {
     private var serverBaseInput by mutableStateOf("")
     private var serverKeyInput by mutableStateOf("")
     private var profileSiteInput by mutableStateOf("")
+    private var toolsTemplate by mutableStateOf("url")
+    private var wifiSsid by mutableStateOf("")
+    private var wifiPassword by mutableStateOf("")
+    private var wifiSecurity by mutableStateOf("WPA")
+    private var bluetoothMac by mutableStateOf("")
+    private var readOnlyMode by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -91,9 +97,15 @@ class MainActivity : ComponentActivity() {
                     },
                     onSelectTools = {
                         appMode = AppMode.Tools
-                        if (statusText.isBlank() || statusText.contains("웹에서 불러왔어요")) {
-                            statusText = "일반 NFC 도구 모드입니다. URL/텍스트 태그 기록을 바로 시작할 수 있어요."
-                        }
+                        // 일반 모드는 Link-U 자동 연동값을 끌고 가지 않도록 새로 시작
+                        draftUid = ""
+                        draftUrl = ""
+                        draftHandoff = ""
+                        pendingWrite = null
+                        awaitingTag = false
+                        busy = false
+                        tagWriteSuccess = false
+                        statusText = "일반 NFC 도구 모드입니다. 태그 ID와 링크/정보를 직접 입력해 주세요."
                     },
                     onBackToLanding = {
                         if (entryFromDeepLink) {
@@ -108,6 +120,47 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     onApplyToolTemplate = { applyToolsTemplate(it) },
+                    toolsTemplate = toolsTemplate,
+                    wifiSsid = wifiSsid,
+                    wifiPassword = wifiPassword,
+                    wifiSecurity = wifiSecurity,
+                    bluetoothMac = bluetoothMac,
+                    readOnlyMode = readOnlyMode,
+                    onWifiSsid = {
+                        wifiSsid = it
+                        if (appMode == AppMode.Tools && toolsTemplate == "wifi") {
+                            draftUrl = buildWifiPayload(wifiSsid, wifiPassword, wifiSecurity)
+                        }
+                    },
+                    onWifiPassword = {
+                        wifiPassword = it
+                        if (appMode == AppMode.Tools && toolsTemplate == "wifi") {
+                            draftUrl = buildWifiPayload(wifiSsid, wifiPassword, wifiSecurity)
+                        }
+                    },
+                    onWifiSecurity = {
+                        wifiSecurity = it
+                        if (appMode == AppMode.Tools && toolsTemplate == "wifi") {
+                            draftUrl = buildWifiPayload(wifiSsid, wifiPassword, wifiSecurity)
+                        }
+                    },
+                    onBluetoothMac = {
+                        bluetoothMac = it.uppercase(Locale.US)
+                        if (appMode == AppMode.Tools && toolsTemplate == "bluetooth") {
+                            draftUrl = buildBluetoothPayload(bluetoothMac)
+                        }
+                    },
+                    onToggleReadOnly = {
+                        readOnlyMode = it
+                        if (it) {
+                            pendingWrite = null
+                            awaitingTag = false
+                            tagWriteSuccess = false
+                            statusText = "읽기 전용 모드예요. 태그를 대면 읽기만 하고 쓰기는 하지 않습니다."
+                        } else {
+                            statusText = "읽기/쓰기 모드로 전환했어요. 입력값을 확인한 뒤 [태그에 쓰기]를 눌러 주세요."
+                        }
+                    },
                     status = statusText,
                     draftUid = draftUid,
                     draftUrl = draftUrl,
@@ -180,6 +233,10 @@ class MainActivity : ComponentActivity() {
 
     private fun onUserStartWrite() {
         if (busy) return
+        if (appMode == AppMode.Tools && readOnlyMode) {
+            statusText = "읽기 전용 모드에서는 태그를 읽기만 합니다. 쓰려면 읽기 전용을 꺼 주세요."
+            return
+        }
         val u = draftUid.trim()
         val purl = draftUrl.trim()
         val tok = draftHandoff.trim()
@@ -191,6 +248,13 @@ class MainActivity : ComponentActivity() {
                 "일반 도구 모드에서는 태그·제품 ID와 URL을 먼저 채워 주세요."
             }
             return
+        }
+        if (appMode == AppMode.Tools && toolsTemplate == "bluetooth" && purl.startsWith("BT:", ignoreCase = true)) {
+            val mac = bluetoothMac.trim()
+            if (!isValidMacAddress(mac)) {
+                statusText = "블루투스 MAC 형식이 올바르지 않아요. 예: AA:BB:CC:DD:EE:FF"
+                return
+            }
         }
         tagWriteSuccess = false
         pendingWrite = WritePayload(uid = u, url = purl, handoffToken = tok)
@@ -283,6 +347,7 @@ class MainActivity : ComponentActivity() {
     private fun applyToolsTemplate(template: String) {
         if (appMode != AppMode.Tools || busy) return
         tagWriteSuccess = false
+        toolsTemplate = template
         when (template) {
             "url" -> {
                 if (draftUrl.isBlank()) draftUrl = "https://"
@@ -300,12 +365,46 @@ class MainActivity : ComponentActivity() {
                 draftUrl = "mailto:"
                 statusText = "메일 템플릿(mailto:)을 불러왔어요. 주소를 이어서 입력해 주세요."
             }
+            "wifi" -> {
+                draftUrl = buildWifiPayload(wifiSsid, wifiPassword, wifiSecurity)
+                statusText = "Wi-Fi 템플릿을 불러왔어요. S(이름), P(비밀번호)를 채운 뒤 [태그에 쓰기]를 눌러 주세요."
+            }
+            "bluetooth" -> {
+                draftUrl = buildBluetoothPayload(bluetoothMac)
+                statusText = "블루투스 템플릿을 불러왔어요. MAC 주소를 채운 뒤 [태그에 쓰기]를 눌러 주세요."
+            }
         }
+    }
+
+    private fun buildWifiPayload(ssid: String, password: String, security: String): String {
+        val sec = security.trim().ifEmpty { "WPA" }
+        return "WIFI:T:$sec;S:${ssid.trim()};P:${password.trim()};;"
+    }
+
+    private fun buildBluetoothPayload(mac: String): String {
+        return "BT:MAC:${mac.trim()};"
     }
 
     private fun onTagDetected(tag: Tag) {
         val current = pendingWrite
         if (!awaitingTag || busy || current == null) {
+            // 일반 모드에서는 "태그를 대면 UID(및 가능하면 링크)를 미리 채우는" 읽기 동작 제공
+            if (appMode == AppMode.Tools && !busy) {
+                val detectedUid = tag.id?.toHexUid()
+                if (!detectedUid.isNullOrBlank()) {
+                    draftUid = detectedUid
+                }
+                if (draftUrl.isBlank()) {
+                    readFirstNdefTextOrUri(tag)?.let { found ->
+                        draftUrl = found
+                    }
+                }
+                statusText = if (draftUrl.isNotBlank()) {
+                    "태그를 읽어 ID와 링크를 채웠어요. 필요하면 수정 후 [태그에 쓰기]를 눌러 주세요."
+                } else {
+                    "태그 ID를 읽었어요. 링크/정보를 입력한 뒤 [태그에 쓰기]를 눌러 주세요."
+                }
+            }
             return
         }
 
@@ -348,7 +447,7 @@ class MainActivity : ComponentActivity() {
 
     private fun writeNdefUrl(tag: Tag, profileUrl: String): Result<Unit> {
         return runCatching {
-            val record = NdefRecord.createUri(profileUrl)
+            val record = createBestEffortRecord(profileUrl)
             val message = NdefMessage(arrayOf(record))
 
             val ndef = Ndef.get(tag)
@@ -379,6 +478,30 @@ class MainActivity : ComponentActivity() {
 
             error("이 태그(제품)는 이런 방식 쓰기를 지원하지 않아요.")
         }
+    }
+
+    private fun createBestEffortRecord(rawInput: String): NdefRecord {
+        val input = rawInput.trim()
+        return if (input.startsWith("WIFI:", ignoreCase = true) || input.startsWith("BT:", ignoreCase = true)) {
+            NdefRecord.createTextRecord("en", input)
+        } else {
+            NdefRecord.createUri(input)
+        }
+    }
+
+    private fun readFirstNdefTextOrUri(tag: Tag): String? {
+        val ndef = Ndef.get(tag) ?: return null
+        return runCatching {
+            ndef.connect()
+            try {
+                val msg = ndef.cachedNdefMessage ?: return@runCatching null
+                msg.records.firstNotNullOfOrNull { rec ->
+                    rec.toUri()?.toString() ?: rec.toTextRecordOrNull()
+                }
+            } finally {
+                runCatching { ndef.close() }
+            }
+        }.getOrNull()
     }
 
     private fun getEffectiveApiBase(): String {
@@ -481,4 +604,24 @@ class MainActivity : ComponentActivity() {
             String.format(Locale.US, "%02x", it)
         }
     }
+}
+
+private fun ByteArray.toHexUid(): String =
+    joinToString(":") { b -> String.format(Locale.US, "%02X", b) }
+
+private fun isValidMacAddress(value: String): Boolean {
+    val v = value.trim()
+    return Regex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$").matches(v)
+}
+
+private fun NdefRecord.toTextRecordOrNull(): String? {
+    if (tnf != NdefRecord.TNF_WELL_KNOWN) return null
+    if (!type.contentEquals(NdefRecord.RTD_TEXT)) return null
+    val p = payload
+    if (p.isEmpty()) return null
+    val status = p[0].toInt()
+    val langLen = status and 0x3F
+    if (p.size <= 1 + langLen) return null
+    val textBytes = p.copyOfRange(1 + langLen, p.size)
+    return textBytes.toString(Charsets.UTF_8)
 }

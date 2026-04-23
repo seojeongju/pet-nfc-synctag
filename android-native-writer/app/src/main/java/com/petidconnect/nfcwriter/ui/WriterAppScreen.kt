@@ -6,7 +6,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -37,7 +39,13 @@ import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.Bluetooth
+import androidx.compose.material.icons.filled.Contacts
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Mail
 import androidx.compose.material.icons.filled.TouchApp
+import androidx.compose.material.icons.filled.Sms
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WavingHand
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material3.Button
@@ -50,6 +58,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -64,12 +73,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.shape.GenericShape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,6 +91,17 @@ fun WriterAppScreen(
     onSelectTools: () -> Unit,
     onBackToLanding: () -> Unit,
     onApplyToolTemplate: (String) -> Unit,
+    toolsTemplate: String,
+    wifiSsid: String,
+    wifiPassword: String,
+    wifiSecurity: String,
+    bluetoothMac: String,
+    readOnlyMode: Boolean,
+    onWifiSsid: (String) -> Unit,
+    onWifiPassword: (String) -> Unit,
+    onWifiSecurity: (String) -> Unit,
+    onBluetoothMac: (String) -> Unit,
+    onToggleReadOnly: (Boolean) -> Unit,
     status: String,
     draftUid: String,
     draftUrl: String,
@@ -198,18 +220,7 @@ fun WriterAppScreen(
                 writeSuccess = tagWriteSuccess
             )
 
-            Text(
-                if (isLinkUMode) {
-                    "① Link-U 웹에서 [앱으로 태그 주소 기록] 흐름을 쓰면 이 앱이 자동으로 불러옵니다.\n" +
-                        "② [태그에 쓰기]를 누른 뒤, 휴대폰 뒤에 태그를 가깝게 대 주세요."
-                } else {
-                    "① 태그·제품 ID와 URL(또는 텍스트 링크)을 입력해 주세요.\n" +
-                        "② [태그에 쓰기]를 누른 뒤, 휴대폰 뒤에 태그를 가깝게 대 주세요."
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.88f),
-                lineHeight = 22.sp
-            )
+            QuickStartStepsCard(isLinkUMode = isLinkUMode)
 
             if (!entryFromDeepLink) {
                 TextButton(
@@ -230,39 +241,39 @@ fun WriterAppScreen(
                 ) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(
-                            "일반 모드 빠른 템플릿",
+                            "일반 모드 도구형 대시보드",
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.ExtraBold
                         )
                         Text(
-                            "스토어 사용자도 바로 쓸 수 있도록 자주 쓰는 형식을 한 번에 불러옵니다.",
+                            "아이콘을 눌러 바로 입력 템플릿을 불러오세요.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
                         )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                            FilledTonalButton(
-                                onClick = { onApplyToolTemplate("url") },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp)
-                            ) { Text("모바일웹 링크") }
-                            FilledTonalButton(
-                                onClick = { onApplyToolTemplate("phone") },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp)
-                            ) { Text("명함(전화)") }
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                            FilledTonalButton(
-                                onClick = { onApplyToolTemplate("sms") },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp)
-                            ) { Text("문자 공유") }
-                            FilledTonalButton(
-                                onClick = { onApplyToolTemplate("mail") },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp)
-                            ) { Text("이메일 공유") }
+                        HexToolGrid(onTap = onApplyToolTemplate, selectedKey = toolsTemplate)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    "읽기 전용 모드",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    "태그를 읽기만 하고, 기록은 하지 않습니다.",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                )
+                            }
+                            Switch(
+                                checked = readOnlyMode,
+                                onCheckedChange = onToggleReadOnly
+                            )
                         }
                     }
                 }
@@ -306,8 +317,13 @@ fun WriterAppScreen(
                             }
                         } else {
                             Text(
-                                "웹(Link-U)에서 ‘앱으로 기록’을 쓰면 대부분 자동으로 넣겠습니다. " +
-                                    "빈 항목이 있으면 아래 [상세]에서 직접 붙여 넣을 수 있어요.",
+                                if (isLinkUMode) {
+                                    "웹(Link-U)에서 ‘앱으로 기록’을 쓰면 대부분 자동으로 넣겠습니다. " +
+                                        "빈 항목이 있으면 아래 [상세]에서 직접 붙여 넣을 수 있어요."
+                                } else {
+                                    "일반 모드는 자동 연동을 쓰지 않습니다. " +
+                                        "아래 [상세]에서 링크/정보를 직접 입력해 주세요."
+                                },
                                 style = MaterialTheme.typography.bodySmall,
                                 lineHeight = 20.sp,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f)
@@ -387,20 +403,95 @@ fun WriterAppScreen(
                         shape = RoundedCornerShape(16.dp),
                         modifier = Modifier.fillMaxWidth()
                     )
-                    FilledTonalButton(
-                        onClick = onFillProfileUrl,
-                        enabled = !busy,
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(
-                            Icons.Filled.TouchApp,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .padding(end = 8.dp)
-                                .size(20.dp)
-                        )
-                        Text("번호만 넣고 주소 자동으로 만들기")
+                    if (!isLinkUMode && toolsTemplate == "wifi") {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f)
+                            )
+                        ) {
+                            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("Wi-Fi 전용 입력", fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                    listOf("WPA", "WEP", "nopass").forEach { sec ->
+                                        FilledTonalButton(
+                                            onClick = { onWifiSecurity(sec) },
+                                            modifier = Modifier.weight(1f),
+                                            shape = RoundedCornerShape(10.dp),
+                                            colors = if (wifiSecurity.equals(sec, ignoreCase = true)) {
+                                                ButtonDefaults.filledTonalButtonColors()
+                                            } else {
+                                                ButtonDefaults.filledTonalButtonColors(
+                                                    containerColor = MaterialTheme.colorScheme.surface,
+                                                    contentColor = MaterialTheme.colorScheme.onSurface
+                                                )
+                                            }
+                                        ) { Text(sec) }
+                                    }
+                                }
+                                OutlinedTextField(
+                                    value = wifiSsid,
+                                    onValueChange = onWifiSsid,
+                                    label = { Text("SSID (네트워크 이름)") },
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                OutlinedTextField(
+                                    value = wifiPassword,
+                                    onValueChange = onWifiPassword,
+                                    label = { Text("비밀번호") },
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                    }
+                    if (!isLinkUMode && toolsTemplate == "bluetooth") {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f)
+                            )
+                        ) {
+                            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("블루투스 전용 입력", fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+                                OutlinedTextField(
+                                    value = bluetoothMac,
+                                    onValueChange = onBluetoothMac,
+                                    label = { Text("MAC 주소 (AA:BB:CC:DD:EE:FF)") },
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Text(
+                                    "MAC 형식이 올바를 때만 쓰기를 진행합니다.",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+                    }
+                    if (isLinkUMode) {
+                        FilledTonalButton(
+                            onClick = onFillProfileUrl,
+                            enabled = !busy,
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                Icons.Filled.TouchApp,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .padding(end = 8.dp)
+                                    .size(20.dp)
+                            )
+                            Text("번호만 넣고 주소 자동으로 만들기")
+                        }
                     }
                     if (isLinkUMode) {
                         OutlinedTextField(
@@ -616,6 +707,101 @@ fun WriterAppScreen(
     }
 }
 
+private data class ToolTileItem(
+    val key: String,
+    val title: String,
+    val icon: ImageVector,
+    val enabled: Boolean = true
+)
+
+@Composable
+private fun HexToolGrid(
+    onTap: (String) -> Unit,
+    selectedKey: String
+) {
+    val tiles = listOf(
+        ToolTileItem("url", "모바일웹 링크", Icons.Filled.Language, true),
+        ToolTileItem("phone", "명함(전화)", Icons.Filled.Contacts, true),
+        ToolTileItem("sms", "문자 공유", Icons.Filled.Sms, true),
+        ToolTileItem("mail", "이메일 공유", Icons.Filled.Mail, true),
+        ToolTileItem("wifi", "Wi-Fi 연결", Icons.Filled.Wifi, true),
+        ToolTileItem("bluetooth", "블루투스 연결", Icons.Filled.Bluetooth, true),
+    )
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+        tiles.chunked(2).forEach { rowTiles ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                rowTiles.forEach { item ->
+                    HexToolTile(
+                        modifier = Modifier.weight(1f),
+                        item = item,
+                        selected = item.key == selectedKey,
+                        onClick = { onTap(item.key) }
+                    )
+                }
+                if (rowTiles.size == 1) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HexToolTile(
+    modifier: Modifier = Modifier,
+    item: ToolTileItem,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val hexShape: Shape = GenericShape { size, _ ->
+        val w = size.width
+        val h = size.height
+        moveTo(w * 0.25f, 0f)
+        lineTo(w * 0.75f, 0f)
+        lineTo(w, h * 0.5f)
+        lineTo(w * 0.75f, h)
+        lineTo(w * 0.25f, h)
+        lineTo(0f, h * 0.5f)
+        close()
+    }
+    val alpha = if (item.enabled) 1f else 0.45f
+    val tileBg = if (selected) Color(0xFFEECB2B) else Color(0xFFF5D54A)
+
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1.35f)
+                .clip(hexShape)
+                .background(tileBg)
+                .clickable { onClick() },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = item.icon,
+                contentDescription = item.title,
+                tint = Color.White.copy(alpha),
+                modifier = Modifier.size(28.dp)
+            )
+        }
+        Text(
+            text = item.title,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(if (item.enabled) 0.85f else 0.55f),
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
 @Composable
 private fun LandingModeScreen(
     onSelectLinkU: () -> Unit,
@@ -824,6 +1010,91 @@ private fun DraftStatusRow(
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun QuickStartStepsCard(isLinkUMode: Boolean) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Filled.TouchApp,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    "빠른 시작",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.ExtraBold,
+                    modifier = Modifier.padding(start = 8.dp)
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                StepMiniCard(
+                    modifier = Modifier.weight(1f),
+                    icon = if (isLinkUMode) Icons.Filled.Link else Icons.Filled.Fingerprint,
+                    title = if (isLinkUMode) "1. 자동 불러오기" else "1. 직접 입력",
+                    desc = if (isLinkUMode) "웹에서 값 수신" else "태그 ID + 링크"
+                )
+                StepMiniCard(
+                    modifier = Modifier.weight(1f),
+                    icon = Icons.Filled.Nfc,
+                    title = "2. 태그에 쓰기",
+                    desc = "버튼 후 휴대폰 뒤 태그 접촉"
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StepMiniCard(
+    modifier: Modifier = Modifier,
+    icon: ImageVector,
+    title: String,
+    desc: String
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                title,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                desc,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                lineHeight = 16.sp
             )
         }
     }
