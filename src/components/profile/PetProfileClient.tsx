@@ -445,24 +445,40 @@ export default function PetProfileClient({
                 </div>
               ) : null}
 
-              {/* Action Buttons */}
+              {/* Action Buttons — 앵커는 block w-full, 내용은 flex 래퍼로 가운데(WebView 정렬 이슈 방지) */}
               <div className="grid gap-4 mt-2 focus-within:ring-0">
                  {pet.emergency_contact ? (
                  <>
-                   <a href={`tel:${pet.emergency_contact}`} className="group" onClick={() => logFinderClick("call_click")}>
-                      <Button className="w-full h-20 rounded-[28px] bg-teal-500 hover:bg-teal-600 text-white font-black text-lg shadow-xl shadow-teal-500/20 transition-all active:scale-[0.97] flex items-center justify-center gap-4 border-b-4 border-teal-700">
-                         <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center"><Phone className="w-6 h-6 animate-pulse" /></div>
-                         {treatAsPublicVisitor ? nfc.callCta : "보호자님 호출하기"}
+                   <a
+                     href={`tel:${pet.emergency_contact}`}
+                     className="group block w-full min-w-0"
+                     onClick={() => logFinderClick("call_click")}
+                   >
+                      <Button className="flex h-20 w-full min-w-0 rounded-[28px] border-b-4 border-teal-700 bg-teal-500 px-4 text-lg font-black text-white shadow-xl shadow-teal-500/20 transition-all hover:bg-teal-600 active:scale-[0.97]">
+                        <span className="flex w-full min-w-0 items-center justify-center gap-3 sm:gap-4">
+                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20">
+                            <Phone className="h-6 w-6 animate-pulse" />
+                          </span>
+                          <span className="min-w-0 text-center leading-tight">
+                            {treatAsPublicVisitor ? nfc.callCta : "보호자님 호출하기"}
+                          </span>
+                        </span>
                       </Button>
                    </a>
                    {treatAsPublicVisitor ? (
-                     <a href={`sms:${pet.emergency_contact}`} className="group" onClick={() => logFinderClick("sms_click")}>
+                     <a
+                       href={`sms:${pet.emergency_contact}`}
+                       className="group block w-full min-w-0"
+                       onClick={() => logFinderClick("sms_click")}
+                     >
                        <Button
                          variant="outline"
-                         className="w-full h-12 rounded-2xl border-slate-200 bg-white text-slate-700 font-black text-sm hover:bg-slate-50 flex items-center justify-center gap-2"
+                         className="flex h-12 w-full min-w-0 rounded-2xl border-slate-200 bg-white px-4 text-sm font-black text-slate-700 hover:bg-slate-50"
                        >
-                         <MessageCircle className="w-4 h-4 text-teal-600" />
-                         문자로도 알리기
+                         <span className="flex w-full min-w-0 items-center justify-center gap-2">
+                           <MessageCircle className="h-4 w-4 shrink-0 text-teal-600" />
+                           <span className="text-center">문자로도 알리기</span>
+                         </span>
                        </Button>
                      </a>
                    ) : null}

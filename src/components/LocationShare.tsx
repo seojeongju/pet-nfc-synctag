@@ -138,15 +138,18 @@ export function LocationShare({
             exit={{ opacity: 0, scale: 0.9, y: -10 }}
             className="w-full"
           >
-            <Button disabled className="w-full h-20 rounded-[28px] text-lg font-black bg-teal-500 text-white gap-3 shadow-xl shadow-teal-500/20 border-b-4 border-teal-700 opacity-100">
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", damping: 10 }}
-              >
-                <CheckCircle2 className="w-7 h-7" />
-              </motion.div>
-              가족에게 보냈어요
+            <Button disabled className="flex h-20 w-full min-w-0 rounded-[28px] border-b-4 border-teal-700 bg-teal-500 px-4 text-lg font-black text-white opacity-100 shadow-xl shadow-teal-500/20">
+              <span className="flex w-full min-w-0 items-center justify-center gap-3">
+                <motion.span
+                  className="inline-flex shrink-0"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", damping: 10 }}
+                >
+                  <CheckCircle2 className="h-7 w-7" />
+                </motion.span>
+                <span className="text-center leading-tight">가족에게 보냈어요</span>
+              </span>
             </Button>
           </motion.div>
         ) : (
@@ -157,37 +160,37 @@ export function LocationShare({
             exit={{ opacity: 0, scale: 0.9, y: -10 }}
             className="w-full"
           >
-            <Button 
+            <Button
               onClick={handleShare}
               disabled={!canSend || status === "loading"}
-              variant="outline" 
+              variant="outline"
               className={cn(
-                "w-full h-20 rounded-[28px] text-lg font-black border-2 transition-all active:scale-95 gap-4 group overflow-hidden relative",
-                !canSend
-                  ? "border-slate-200 text-slate-400 bg-slate-50"
-                  : "",
-                status === "error" 
-                  ? "border-rose-100 text-rose-500 hover:bg-rose-50" 
+                "group relative flex h-20 w-full min-w-0 overflow-hidden rounded-[28px] border-2 px-4 text-lg font-black transition-all active:scale-95",
+                !canSend ? "border-slate-200 bg-slate-50 text-slate-400" : "",
+                status === "error"
+                  ? "border-rose-100 text-rose-500 hover:bg-rose-50"
                   : "border-teal-100 text-teal-600 hover:bg-teal-50"
               )}
             >
-              {status === "loading" ? (
-                <Loader2 className="w-7 h-7 animate-spin" />
-              ) : status === "error" ? (
-                <AlertCircle className="w-7 h-7" />
-              ) : (
-                <MapPin className="w-7 h-7 group-hover:bounce transition-transform" />
-              )}
-              {status === "loading"
-                ? "보내는 중…"
-                : status === "error"
-                  ? "위치를 켜 주시고 다시 눌러 주세요"
-                  : canSend
-                    ? "지금 위치 보내기"
-                    : "지금은 쓸 수 없어요"}
-              
-              {/* Subtle hover effect light */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+              <div className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full transition-transform duration-1000 group-hover:translate-x-full" />
+              <span className="relative z-[1] flex w-full min-w-0 items-center justify-center gap-3">
+                {status === "loading" ? (
+                  <Loader2 className="h-7 w-7 shrink-0 animate-spin" />
+                ) : status === "error" ? (
+                  <AlertCircle className="h-7 w-7 shrink-0" />
+                ) : (
+                  <MapPin className="h-7 w-7 shrink-0 transition-transform group-hover:bounce" />
+                )}
+                <span className="min-w-0 text-center leading-tight">
+                  {status === "loading"
+                    ? "보내는 중…"
+                    : status === "error"
+                      ? "위치를 켜 주시고 다시 눌러 주세요"
+                      : canSend
+                        ? "지금 위치 보내기"
+                        : "지금은 쓸 수 없어요"}
+                </span>
+              </span>
             </Button>
             <p className="mt-2 text-[11px] text-slate-400 text-center font-semibold">{helperText}</p>
           </motion.div>
