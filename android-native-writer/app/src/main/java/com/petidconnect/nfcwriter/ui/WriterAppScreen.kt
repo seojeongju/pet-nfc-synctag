@@ -68,6 +68,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -89,6 +90,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -153,11 +155,20 @@ fun WriterAppScreen(
     val tone = statusToneFor(status, awaitingTag, busy)
     var showTechnicalDetails by remember { mutableStateOf(false) }
     var activeTemplateEditor by remember { mutableStateOf<String?>(null) }
+    var showSuccessBanner by remember { mutableStateOf(false) }
     val hasUid = draftUid.isNotBlank()
     val hasUrl = draftUrl.isNotBlank()
     val hasHandoff = draftHandoff.isNotBlank()
     val allReady = hasUid && hasUrl && hasHandoff
     val showTemplateInputPage = !isLinkUMode && activeTemplateEditor != null
+
+    LaunchedEffect(tagWriteSuccess) {
+        if (tagWriteSuccess) {
+            showSuccessBanner = true
+            delay(2500)
+            showSuccessBanner = false
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -374,6 +385,42 @@ fun WriterAppScreen(
 
             if (shouldShowStatusInCurrentScreen) {
                 StatusMessageCard(message = status, tone = tone)
+            }
+
+            if (showSuccessBanner) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE6FFFB)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFA7F3D0))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(26.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0xFF10B981)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Check,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        Text(
+                            "정상적으로 쓰기가 완료되었습니다.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color(0xFF065F46),
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
+                }
             }
 
             if (!showTemplateInputPage && isLinkUMode) {
