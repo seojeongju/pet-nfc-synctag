@@ -1,6 +1,25 @@
 /**
  * NFC tag UID normalization and validation (bulk register, server actions, Web NFC).
  */
+
+/**
+ * /t/... 경로의 [tag_id]는 브라우저·NFC에 따라 1~2회 인코딩될 수 있어,
+ * 안정적으로 decode 한 뒤 [normalizeTagUid]에 넘깁니다.
+ */
+export function decodeTagPathParam(raw: string): string {
+  let s = raw.trim();
+  for (let i = 0; i < 5; i++) {
+    try {
+      const next = decodeURIComponent(s);
+      if (next === s) break;
+      s = next;
+    } catch {
+      break;
+    }
+  }
+  return s;
+}
+
 export function normalizeTagUid(uid: string): string {
   return uid.trim().toUpperCase();
 }
