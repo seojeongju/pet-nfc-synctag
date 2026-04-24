@@ -60,9 +60,9 @@ export async function linkTag(petId: string, tagId: string) {
     const { userId } = await requireActor();
 
     const petScope = await db
-        .prepare("SELECT owner_id, tenant_id FROM pets WHERE id = ?")
+        .prepare("SELECT owner_id, tenant_id, subject_kind FROM pets WHERE id = ?")
         .bind(petId)
-        .first<{ owner_id: string; tenant_id: string | null }>();
+        .first<{ owner_id: string; tenant_id: string | null; subject_kind: string | null }>();
     if (!petScope) {
         throw new Error("연결 대상이 존재하지 않습니다.");
     }
@@ -126,6 +126,10 @@ export async function linkTag(petId: string, tagId: string) {
 
     revalidatePath(`/profile/${petId}`);
     revalidatePath(`/dashboard`);
+    const dashboardKind = petScope.subject_kind
+        ? parseSubjectKind(petScope.subject_kind)
+        : "pet";
+    revalidatePath(`/dashboard/${dashboardKind}/pets/${petId}`);
     revalidatePath(`/admin/tags`);
     revalidatePath(`/admin/nfc-tags`);
 }
@@ -294,13 +298,19 @@ export async function unlinkTag(tagId: string) {
 
     const existing = await db
         .prepare(
-            `SELECT t.pet_id AS pet_id, p.owner_id AS owner_id, p.tenant_id AS tenant_id
+            `SELECT t.pet_id AS pet_id, p.owner_id AS owner_id, p.tenant_id AS tenant_id,
+                    p.subject_kind AS subject_kind
              FROM tags t
              LEFT JOIN pets p ON p.id = t.pet_id
              WHERE t.id = ?`
         )
         .bind(normalizedTagId)
-        .first<{ pet_id?: string | null; owner_id?: string | null; tenant_id?: string | null }>();
+        .first<{
+            pet_id?: string | null;
+            owner_id?: string | null;
+            tenant_id?: string | null;
+            subject_kind?: string | null;
+        }>();
 
     if (existing?.pet_id) {
         if (existing.tenant_id) {
@@ -314,6 +324,15 @@ export async function unlinkTag(tagId: string) {
     await db.prepare("UPDATE tags SET pet_id = NULL, tenant_id = NULL, is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
         .bind(normalizedTagId)
         .run();
+
+    if (existing?.pet_id) {
+        const unlinkedPetId = existing.pet_id;
+        const dashboardKind = existing.subject_kind
+            ? parseSubjectKind(existing.subject_kind)
+            : "pet";
+        revalidatePath(`/dashboard/${dashboardKind}/pets/${unlinkedPetId}`);
+        revalidatePath(`/profile/${unlinkedPetId}`);
+    }
 
     if (existing?.pet_id) {
         await db.prepare(`

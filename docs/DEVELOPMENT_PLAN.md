@@ -22,7 +22,7 @@
 
 ---
 
-## 2단계: 보호자 웹 — NFC 태그 관리(추가 구현)
+## 2단계: 보호자 웹 — NFC 태그 관리(추가 구현) — **1차 완료(반려 상세)**
 
 **전제:** 1단계 완료 후 착수. (Play 스토어 배포 전 — [`.cursor/rules/app-distribution.mdc`](../.cursor/rules/app-distribution.mdc) 전제 유지.)
 
@@ -30,10 +30,11 @@
 
 **범위(요약):**
 
-- 반려 상세(`dashboard/.../pets/[pet_id]`)에 기존 `TagManageCard` 수준의 관리 UI 도입 또는 동일 로직 공유
-- 대시보드 홈 ↔ 반려 상세 이동(필요 시 `#nfc` / 쿼리)
-- 해제 확인 모달, 테넌트 `writeLocked` 정합
-- 서버: 기존 `linkTag` / `unlinkTag` / `getPetTags` 중심(스키마 변경은 후속)
+- [x] 반려 상세 `dashboard/.../pets/[pet_id]` **NFC 섹션**에 `TagManageCard`(embed) — 목록·UID 추가 연결·해제 **확인 모달**, `tenantSuspended` → `writeLocked`와 동일(수정/연결 잠김)
+- [x] `linkTag` / `unlinkTag` 성공 시 **반려 상세 경로 revalidate** (`/dashboard/{kind}/pets/{id}`)
+- [x] 대시보드 홈 ↔ 반려 상세, `#nfc` (이미 연동)
+- [ ] (후속) 다른 `subject` 대시보드/반려가 아닌 **경로에서의 동일 패턴**·쿼터/가이드 문구 통일
+- 서버: `linkTag` / `unlinkTag` / `getPetTags` 유지(스키마 변경 없음)
 
 **상세 설계:** 채팅/이슈에 정리된 “반려 단위 중심 IA”를 따름.
 

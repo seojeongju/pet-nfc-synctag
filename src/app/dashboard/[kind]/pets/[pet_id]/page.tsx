@@ -12,6 +12,7 @@ import { getTenantStatus } from "@/lib/tenant-status";
 import { LostModeToggle } from "@/components/pet/LostModeToggle";
 import { OpenNativePetNfcSectionButton } from "@/components/pet/OpenNativePetNfcSectionButton";
 import SafePetImage from "@/components/pet/SafePetImage";
+import { TagManageCard } from "@/components/TagManageCard";
 import {
   ArrowLeft, Edit3, Heart, Activity,
   Nfc, Stethoscope, Clock, AlertTriangle, ChevronRight
@@ -74,7 +75,6 @@ export default async function PetDetailPage({
 
   const tenantQs = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : "";
   const kindQs = tenantQs;
-  const dashboardLink = `/dashboard/${subjectKind}${tenantQs}`;
   const listLink = `/dashboard/${subjectKind}/pets${tenantQs}`;
   const scansLink = `/dashboard/${subjectKind}/scans${tenantQs}`;
 
@@ -200,45 +200,12 @@ export default async function PetDetailPage({
               </span>
             </div>
 
-            {tags.length === 0 ? (
-              <div className="rounded-[16px] border border-dashed border-slate-200 bg-slate-50 py-4 text-center">
-                <p className="text-xs font-bold text-slate-500">연결된 태그가 없어요</p>
-                <a
-                  href={dashboardLink}
-                  className="mt-1 inline-block text-[11px] font-black text-teal-600 hover:underline"
-                >
-                  대시보드에서 태그 연결하기 →
-                </a>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {tags.slice(0, 3).map((tag) => (
-                  <div
-                    key={tag.id}
-                    className="flex items-center justify-between px-3 py-2.5 rounded-[14px] bg-slate-50 border border-slate-100"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className={cn(
-                        "w-2 h-2 rounded-full",
-                        tag.is_active ? "bg-teal-400" : "bg-slate-300"
-                      )} />
-                      <span className="text-xs font-black text-slate-700 font-mono">{tag.id.slice(0, 16)}{tag.id.length > 16 ? "…" : ""}</span>
-                    </div>
-                    <span className={cn(
-                      "text-[9px] font-black uppercase tracking-wide",
-                      tag.is_active ? "text-teal-500" : "text-slate-400"
-                    )}>
-                      {tag.is_active ? "활성" : "비활성"}
-                    </span>
-                  </div>
-                ))}
-                {tags.length > 3 && (
-                  <p className="text-[10px] font-bold text-slate-400 text-center">
-                    +{tags.length - 3}개 더
-                  </p>
-                )}
-              </div>
-            )}
+            <TagManageCard
+              petId={pet.id}
+              existingTags={tags}
+              writeLocked={tenantSuspended}
+              embed
+            />
 
             <OpenNativePetNfcSectionButton
               kind={subjectKind}
