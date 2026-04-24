@@ -1,9 +1,10 @@
 ﻿<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.NFC" />
+    <!-- true면 NFC 없는 기기/일부 환경에서 설치·검증 이슈가 날 수 있어 false. 앱은 소프트웨어로 NfcAdapter null 처리. -->
     <uses-feature
         android:name="android.hardware.nfc"
-        android:required="true" />
+        android:required="false" />
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application

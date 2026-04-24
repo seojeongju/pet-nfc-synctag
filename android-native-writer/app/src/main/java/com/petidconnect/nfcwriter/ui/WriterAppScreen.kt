@@ -7,7 +7,9 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -44,15 +46,16 @@ import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.Bluetooth
-import androidx.compose.material.icons.filled.Contacts
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.TouchApp
-import androidx.compose.material.icons.filled.Sms
-import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WavingHand
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Bluetooth
+import androidx.compose.material.icons.outlined.Contacts
+import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
+import androidx.compose.material.icons.outlined.Sms
+import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -64,11 +67,9 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -89,8 +90,45 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.window.Dialog
-import kotlinx.coroutines.delay
+import androidx.compose.ui.window.DialogProperties
+
+/**
+ * NFC(태그 쓰기) 꺼짐·미지원 시 [NfcOffForWriteDialog]로 안내
+ */
+enum class NfcOffDialogKind {
+    Hidden,
+    NoHardware,
+    NfcOffWhenTappingWrite,
+    NfcOffWhileAwaitingTag
+}
+
+/**
+ * Link-U / 일반 모드에서 상단에 보여주는 **소비자용** 휴대폰 NFC 상태(켜짐 / 꺼짐 / 지원 없음).
+ */
+enum class NfcUserBannerState {
+    /** NFC 켜짐 — 태그 쓰기·읽기에 사용 가능 */
+    On,
+    /** NFC 꺼짐 */
+    TurnedOff,
+    /** 이 기기는 태그용 NFC 없음 */
+    Unsupported
+}
+
+/**
+ * [WriterAppScreen]에 넣던 NFC/성공/꺼짐 다이얼로그 인자를 한 객체로 묶어,
+ * Composable 합성 메서드/기본인자가 ART에서 VerifyError 나는 것을 줄입니다.
+ */
+class WriterNfcUiProps(
+    val nfcUserBanner: NfcUserBannerState,
+    val tagWriteSuccess: Boolean,
+    val onTagWriteSuccessGoToModeSelection: () -> Unit,
+    val nfcOffDialogKind: NfcOffDialogKind,
+    val onDismissNfcOffDialog: () -> Unit,
+    val onOpenNfcSettingsFromDialog: () -> Unit,
+    val onOpenNfcSettings: () -> Unit
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -131,10 +169,9 @@ fun WriterAppScreen(
     onServerKey: (String) -> Unit,
     onProfileSite: (String) -> Unit,
     onSaveServer: () -> Unit,
-    /** 태그 NDEF 쓰기에 성공한 뒤(서버 기록은 성공/스킵/실패와 무관하게 태그 쓰기 OK일 때) */
-    tagWriteSuccess: Boolean = false,
-    onPrepareWrite: () -> Unit,
-    onOpenNfcSettings: () -> Unit
+    nfcUi: WriterNfcUiProps,
+    /** null이면 Activity의 draft(링크)값 사용. 템플릿 [확인] 직후엔 방금 편집한 payload를 넣어 state 갱신 타이밍 이슈를 피합니다. */
+    onPrepareWrite: (String?) -> Unit
 ) {
     if (appMode == "Landing") {
         LandingModeScreen(
@@ -155,27 +192,19 @@ fun WriterAppScreen(
     val tone = statusToneFor(status, awaitingTag, busy)
     var showTechnicalDetails by remember { mutableStateOf(false) }
     var activeTemplateEditor by remember { mutableStateOf<String?>(null) }
-    var showSuccessBanner by remember { mutableStateOf(false) }
     val hasUid = draftUid.isNotBlank()
     val hasUrl = draftUrl.isNotBlank()
     val hasHandoff = draftHandoff.isNotBlank()
     val allReady = hasUid && hasUrl && hasHandoff
     val showTemplateInputPage = !isLinkUMode && activeTemplateEditor != null
 
-    LaunchedEffect(tagWriteSuccess) {
-        if (tagWriteSuccess) {
-            showSuccessBanner = true
-            delay(2500)
-            showSuccessBanner = false
-        }
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface)
-            .imePadding()
-    ) {
+    Box(Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.surface)
+                .imePadding()
+        ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -247,6 +276,11 @@ fun WriterAppScreen(
             }
         }
 
+        NfcUserEducationalBanner(
+            state = nfcUi.nfcUserBanner,
+            onOpenNfcSettings = nfcUi.onOpenNfcSettings
+        )
+
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -267,36 +301,54 @@ fun WriterAppScreen(
                     onToggleReadOnly = onToggleReadOnly,
                     onClose = { activeTemplateEditor = null },
                     onApply = { value ->
-                        when (value.template) {
-                            "url" -> onDraftUrl(value.urlInput.trim())
-                            "phone" -> {
-                                onDraftUrl(
-                                    buildBusinessCardPayload(
-                                        format = value.contactFormatInput,
-                                        name = value.contactNameInput,
-                                        phone = value.phoneOrSmsInput,
-                                        email = value.contactEmailInput,
-                                        org = value.contactCompanyInput
-                                    )
-                                )
+                        val payload = when (value.template) {
+                            "url" -> {
+                                val u = value.urlInput.trim()
+                                onDraftUrl(u)
+                                u
                             }
-                            "sms" -> onDraftUrl("sms:${value.phoneOrSmsInput.trim()}")
-                            "video" -> onDraftUrl(value.videoInput.trim())
+                            "phone" -> {
+                                val p = buildBusinessCardPayload(
+                                    format = value.contactFormatInput,
+                                    name = value.contactNameInput,
+                                    phone = value.phoneOrSmsInput,
+                                    email = value.contactEmailInput,
+                                    org = value.contactCompanyInput
+                                )
+                                onDraftUrl(p)
+                                p
+                            }
+                            "sms" -> {
+                                val p = "sms:${value.phoneOrSmsInput.trim()}"
+                                onDraftUrl(p)
+                                p
+                            }
+                            "video" -> {
+                                val p = value.videoInput.trim()
+                                onDraftUrl(p)
+                                p
+                            }
                             "wifi" -> {
                                 onWifiSecurity(value.wifiSecurityInput)
                                 onWifiSsid(value.wifiSsidInput)
                                 onWifiPassword(value.wifiPasswordInput)
-                                onDraftUrl(
+                                val p =
                                     "WIFI:T:${value.wifiSecurityInput};S:${value.wifiSsidInput.trim()};P:${value.wifiPasswordInput.trim()};;"
-                                )
+                                onDraftUrl(p)
+                                p
                             }
                             "bluetooth" -> {
                                 onBluetoothMac(value.bluetoothMacInput.trim())
-                                onDraftUrl("BT:MAC:${value.bluetoothMacInput.trim()};")
+                                val p = "BT:MAC:${value.bluetoothMacInput.trim()};"
+                                onDraftUrl(p)
+                                p
+                            }
+                            else -> {
+                                onDraftUrl(draftUrl)
+                                draftUrl
                             }
                         }
-                        // 입력 페이지를 유지한 채 태그 대기 오버레이만 겹쳐 보여준다.
-                        onPrepareWrite()
+                        onPrepareWrite(payload)
                     }
                 )
             } else {
@@ -304,7 +356,7 @@ fun WriterAppScreen(
                     CurrentStepFlowRow(
                         hasDraft = draftUid.isNotBlank() && draftUrl.isNotBlank() && draftHandoff.isNotBlank(),
                         awaiting = awaitingTag,
-                        writeSuccess = tagWriteSuccess
+                        writeSuccess = nfcUi.tagWriteSuccess
                     )
                     QuickStartStepsCard(isLinkUMode = true)
                 } else {
@@ -336,52 +388,76 @@ fun WriterAppScreen(
                 }
 
                 if (!isLinkUMode) {
+                    val glassDashBg = Brush.linearGradient(
+                        listOf(
+                            Color(0xFFBDDBD6),
+                            Color(0xFFDEEFE9),
+                            Color(0xFFAACCC6)
+                        )
+                    )
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFFF7FCFC)
+                            containerColor = Color.Transparent
                         ),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2F3F2))
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            Color(0x99E8F2EF)
+                        )
                     ) {
-                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text(
-                                "일반 모드 도구형 대시보드",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = Color(0xFF0F766E),
-                                fontWeight = FontWeight.ExtraBold
-                            )
-                            Text(
-                                "아이콘을 눌러 바로 입력 템플릿을 불러오세요.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF4B6B68)
-                            )
-                            SquareToolGrid(
-                                onTap = { key ->
-                                    onApplyToolTemplate(key)
-                                    activeTemplateEditor = key
-                                },
-                                selectedKey = toolsTemplate
-                            )
-                            Text(
-                                "각 기능 아이콘을 눌러 열린 창에서 읽기/쓰기 모드를 선택할 수 있습니다.",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color(0xFF5F7D79)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(brush = glassDashBg, shape = RoundedCornerShape(20.dp))
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Text(
+                                    "일반 모드 도구형 대시보드",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = Color(0xFF0A3D3A),
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                                Text(
+                                    "아이콘을 눌러 바로 입력 템플릿을 불러오세요.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color(0xFF2D5B56)
+                                )
+                                SquareToolGrid(
+                                    onTap = { key ->
+                                        onApplyToolTemplate(key)
+                                        activeTemplateEditor = key
+                                    },
+                                    selectedKey = toolsTemplate
+                                )
+                                Text(
+                                    "각 기능 아이콘을 눌러 열린 창에서 읽기/쓰기 모드를 선택할 수 있습니다.",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color(0xFF3A655F),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(end = 22.dp)
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.Outlined.AutoAwesome,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(8.dp)
+                                    .size(18.dp),
+                                tint = Color(0x660A3D3A)
                             )
                         }
                     }
                 }
             }
 
-            val shouldShowStatusInCurrentScreen =
-                if (showTemplateInputPage) {
-                    status.contains("NFC", ignoreCase = true) ||
-                        status.contains("실패", ignoreCase = true) ||
-                        status.contains("못했", ignoreCase = true) ||
-                        status.contains("오류", ignoreCase = true)
-                } else {
-                    status.isNotBlank()
-                }
+            // 템플릿 시트를 연 상태에서도 항상 상태를 보이게(이전: NFC·오류만 → 먼저 채우라는 안내가 숨겨짐)
+            val shouldShowStatusInCurrentScreen = status.isNotBlank()
 
             if (shouldShowStatusInCurrentScreen) {
                 StatusMessageCard(message = status, tone = tone)
@@ -553,14 +629,14 @@ fun WriterAppScreen(
             if (!showTemplateInputPage) {
                 Spacer(Modifier.height(4.dp))
                 Button(
-                    onClick = onPrepareWrite,
-                    enabled = !busy && !tagWriteSuccess,
+                    onClick = { onPrepareWrite(null) },
+                    enabled = !busy && !nfcUi.tagWriteSuccess,
                     shape = RoundedCornerShape(18.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .defaultMinSize(minHeight = 56.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (tagWriteSuccess) {
+                        containerColor = if (nfcUi.tagWriteSuccess) {
                             Color(0xFF0F766E)
                         } else {
                             MaterialTheme.colorScheme.primary
@@ -568,7 +644,7 @@ fun WriterAppScreen(
                     )
                 ) {
                     when {
-                        tagWriteSuccess && !busy -> {
+                        nfcUi.tagWriteSuccess && !busy -> {
                             Icon(
                                 imageVector = Icons.Filled.Check,
                                 contentDescription = null,
@@ -625,7 +701,7 @@ fun WriterAppScreen(
                 }
             }
             FilledTonalButton(
-                onClick = onOpenNfcSettings,
+                onClick = nfcUi.onOpenNfcSettings,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
@@ -739,13 +815,23 @@ fun WriterAppScreen(
             // 하단 내비·제스처 영역을 넘겨도 스크롤로 충분히 읽을 수 있도록
             Spacer(Modifier.height(32.dp))
         }
-    }
+        }
 
-    if (awaitingTag && !busy) {
-        NfcTapGuideDialog()
-    }
-    if (showSuccessBanner && !awaitingTag) {
-        WriteSuccessDialog()
+        if (nfcUi.nfcOffDialogKind != NfcOffDialogKind.Hidden) {
+            NfcOffForWriteDialog(
+                kind = nfcUi.nfcOffDialogKind,
+                onDismiss = nfcUi.onDismissNfcOffDialog,
+                onOpenSettings = nfcUi.onOpenNfcSettingsFromDialog
+            )
+        }
+        if (awaitingTag && !busy) {
+            NfcTapGuideDialog()
+        }
+        if (nfcUi.tagWriteSuccess && !awaitingTag) {
+            WriteSuccessOverlay(
+                onConfirm = nfcUi.onTagWriteSuccessGoToModeSelection
+            )
+        }
     }
 }
 
@@ -762,12 +848,12 @@ private fun SquareToolGrid(
     selectedKey: String
 ) {
     val tiles = listOf(
-        ToolTileItem("url", "모바일웹 링크", Icons.Filled.Language, true),
-        ToolTileItem("phone", "명함(전화)", Icons.Filled.Contacts, true),
-        ToolTileItem("sms", "문자 공유", Icons.Filled.Sms, true),
-        ToolTileItem("video", "영상 공유", Icons.Filled.PlayArrow, true),
-        ToolTileItem("wifi", "Wi-Fi 연결", Icons.Filled.Wifi, true),
-        ToolTileItem("bluetooth", "블루투스 연결", Icons.Filled.Bluetooth, true),
+        ToolTileItem("url", "모바일 웹 링크", Icons.Outlined.Language, true),
+        ToolTileItem("phone", "명함(전화)", Icons.Outlined.Contacts, true),
+        ToolTileItem("sms", "문자 공유", Icons.Outlined.Sms, true),
+        ToolTileItem("video", "영상 공유", Icons.Outlined.PlayArrow, true),
+        ToolTileItem("wifi", "Wi-Fi 연결", Icons.Outlined.Wifi, true),
+        ToolTileItem("bluetooth", "블루투스 연결", Icons.Outlined.Bluetooth, true),
     )
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
@@ -800,56 +886,77 @@ private fun SquareToolTile(
     selected: Boolean,
     onClick: () -> Unit
 ) {
-    val alpha = if (item.enabled) 1f else 0.5f
-    val tileBg = if (selected) Color(0xFF5EEAD4) else Color(0xFFD1FAF5)
-    val borderColor = if (selected) Color(0xFF0F766E) else Color(0x00000000)
-    val iconTint = if (selected) Color.White.copy(alpha) else Color(0xFF0F766E).copy(alpha)
-    val titleColor = if (selected) Color(0xFF134E4A) else Color(0xFF115E59)
+    // 글라스 / 선택: 짙은 틸 + 내부 시안 보더(참고 목업)
+    val darkTeal = Color(0xFF004D4D)
+    val deepTextOnFrosted = Color(0xFF0A2F2C)
+    val enableMul = if (item.enabled) 1f else 0.5f
+    val tileShape = RoundedCornerShape(22.dp)
+    val iconBoxShape = RoundedCornerShape(14.dp)
+    val cyanEdge = Color(0xFF67E8F9)
+    val tileBackground = if (selected) {
+        darkTeal.copy(alpha = 0.92f * enableMul)
+    } else {
+        Color(0xC0FFFFFF)
+    }
+    val tileBorder = if (selected) {
+        1.5.dp to Color(0x8C0A6B6B)
+    } else {
+        1.dp to Color(0x5EFFFFFF)
+    }
+    val iconBoxBorder = if (selected) 2.dp to cyanEdge else 1.dp to Color(0x330A3D3A)
+    val iconBoxBg = if (selected) {
+        Color(0x1EFFFFFF)
+    } else {
+        Color(0xD8FFFFFF)
+    }
+    val iconTint = if (selected) {
+        Color.White.copy(alpha = enableMul)
+    } else {
+        deepTextOnFrosted.copy(alpha = enableMul)
+    }
+    val titleColor = if (selected) {
+        Color(0xFFF0FFFC).copy(alpha = enableMul)
+    } else {
+        deepTextOnFrosted.copy(alpha = enableMul)
+    }
 
-    OutlinedButton(
-        onClick = onClick,
-        modifier = modifier,
-        shape = RoundedCornerShape(18.dp),
-        border = androidx.compose.foundation.BorderStroke(2.dp, borderColor),
-        colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = tileBg,
-            contentColor = Color.White
-        ),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-            horizontal = 10.dp,
-            vertical = 16.dp
-        )
+    Column(
+        modifier = modifier
+            .defaultMinSize(minHeight = 118.dp)
+            .clip(tileShape)
+            .background(color = tileBackground, shape = tileShape)
+            .border(width = tileBorder.first, color = tileBorder.second, shape = tileShape)
+            .clickable(
+                enabled = item.enabled,
+                onClick = onClick
+            )
+            .padding(horizontal = 10.dp, vertical = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)
     ) {
-        Column(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .defaultMinSize(minHeight = 110.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .size(50.dp)
+                .clip(iconBoxShape)
+                .background(iconBoxBg, iconBoxShape)
+                .border(iconBoxBorder.first, iconBoxBorder.second, iconBoxShape),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(if (selected) Color.White.copy(alpha = 0.24f) else Color.White.copy(alpha = 0.92f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = item.icon,
-                    contentDescription = item.title,
-                    tint = iconTint,
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-            Text(
-                text = item.title,
-                style = MaterialTheme.typography.labelMedium,
-                color = titleColor.copy(if (item.enabled) 1f else 0.6f),
-                fontWeight = FontWeight.ExtraBold,
-                textAlign = TextAlign.Center
+            Icon(
+                imageVector = item.icon,
+                contentDescription = item.title,
+                tint = iconTint,
+                modifier = Modifier.size(26.dp)
             )
         }
-    } 
+        Text(
+            text = item.title,
+            style = MaterialTheme.typography.labelMedium,
+            color = titleColor,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center
+        )
+    }
 }
 
 private data class TemplateDialogResult(
@@ -909,12 +1016,12 @@ private fun UnifiedTemplateInputPage(
     }
 
     val (title, icon) = when (template) {
-        "url" -> "모바일 웹 링크" to Icons.Filled.Language
-        "phone" -> "명함 (전화)" to Icons.Filled.Contacts
-        "sms" -> "문자 공유" to Icons.Filled.Sms
-        "video" -> "영상 공유" to Icons.Filled.PlayArrow
-        "wifi" -> "Wi-Fi 연결" to Icons.Filled.Wifi
-        "bluetooth" -> "블루투스 연결" to Icons.Filled.Bluetooth
+        "url" -> "모바일 웹 링크" to Icons.Outlined.Language
+        "phone" -> "명함 (전화)" to Icons.Outlined.Contacts
+        "sms" -> "문자 공유" to Icons.Outlined.Sms
+        "video" -> "영상 공유" to Icons.Outlined.PlayArrow
+        "wifi" -> "Wi-Fi 연결" to Icons.Outlined.Wifi
+        "bluetooth" -> "블루투스 연결" to Icons.Outlined.Bluetooth
         else -> "입력" to Icons.Filled.Info
     }
 
@@ -1776,6 +1883,9 @@ private enum class StatusTone { Info, Good, Partial, Error, Active }
 private fun statusToneFor(status: String, awaiting: Boolean, busy: Boolean): StatusTone = when {
     status.contains("실패") && !status.contains("건너", ignoreCase = true) -> StatusTone.Error
     status.contains("꺼져", ignoreCase = true) && status.contains("NFC", ignoreCase = true) -> StatusTone.Error
+    status.contains("NFC", ignoreCase = true) && status.contains("켜 주세요", ignoreCase = true) -> StatusTone.Error
+    status.contains("태그 쓰기", ignoreCase = true) && status.contains("할 수 없", ignoreCase = true) -> StatusTone.Error
+    status.contains("NFC", ignoreCase = true) && status.contains("쓸 수 없", ignoreCase = true) -> StatusTone.Error
     (busy && awaiting) || status.contains("쓰는 중", ignoreCase = true) || status.contains("담는 중", ignoreCase = true) || (status.contains("옮기", ignoreCase = true) && busy) -> StatusTone.Active
     status.contains("담았고", ignoreCase = true) && (status.contains("Link-U", ignoreCase = true) || status.contains("서비스", ignoreCase = true) || status.contains("가족", ignoreCase = true)) -> StatusTone.Good
     status.contains("완료", ignoreCase = true) && status.contains("태그", ignoreCase = true) && status.contains("건너", ignoreCase = true) -> StatusTone.Partial
@@ -1835,76 +1945,410 @@ private fun StatusMessageCard(message: String, tone: StatusTone) {
 }
 
 @Composable
-private fun NfcTapGuideDialog() {
-    Dialog(onDismissRequest = { }) {
-        Card(
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE8ECEF)),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 18.dp, vertical = 20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+private fun NfcUserEducationalBanner(
+    state: NfcUserBannerState,
+    onOpenNfcSettings: () -> Unit
+) {
+    when (state) {
+        NfcUserBannerState.On -> {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFF0D9488).copy(alpha = 0.1f)
+                )
             ) {
-                Icon(
-                    imageVector = Icons.Filled.Nfc,
-                    contentDescription = null,
-                    tint = Color(0xFF0F766E),
-                    modifier = Modifier.size(44.dp)
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Check,
+                        contentDescription = null,
+                        modifier = Modifier.size(22.dp),
+                        tint = Color(0xFF0F766E)
+                    )
+                    Text(
+                        text = "휴대폰 NFC: 켜짐 · 태그 쓰기·읽기에 사용할 수 있어요",
+                        modifier = Modifier.padding(start = 10.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        lineHeight = 20.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+        }
+        NfcUserBannerState.TurnedOff -> {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 10.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFF134E4A).copy(alpha = 0.12f)
+                ),
+                border = BorderStroke(1.dp, Color(0xFF0D9488).copy(alpha = 0.45f))
+            ) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Filled.PhoneAndroid,
+                            contentDescription = null,
+                            tint = Color(0xFF0F766E),
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Text(
+                            text = "이 휴대폰의 NFC는 지금 꺼져 있어요",
+                            modifier = Modifier.padding(start = 12.dp),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    Text(
+                        text = "태그를 쓰거나 읽을 때 반응이 없다면, 대부분 NFC가 꺼져 있어서예요. 설정에서 켜 주세요.",
+                        style = MaterialTheme.typography.bodySmall,
+                        lineHeight = 20.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    FilledTonalButton(
+                        onClick = onOpenNfcSettings,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Settings,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("NFC 켜기 (설정 열기)")
+                    }
+                }
+            }
+        }
+        NfcUserBannerState.Unsupported -> {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 10.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
                 )
-                Text(
-                    "NFC 태그에 쓰기 준비됨",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color(0xFF0F766E),
-                    fontWeight = FontWeight.ExtraBold
-                )
-                Text(
-                    "휴대폰 뒷면에 NFC 태그를 가까이 대주세요.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF4B5563),
-                    textAlign = TextAlign.Center
-                )
+            ) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Filled.ErrorOutline,
+                        contentDescription = null,
+                        modifier = Modifier.size(26.dp),
+                        tint = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                    Text(
+                        text = "이 휴대폰은 태그용 NFC(근거리 무선)를 쓸 수 없어요. 태그 기록·읽기는 NFC가 있는 기기에서 이용해 주세요.",
+                        modifier = Modifier.padding(start = 12.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        lineHeight = 20.sp,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun WriteSuccessDialog() {
-    Dialog(onDismissRequest = { }) {
-        Card(
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFA7F3D0)),
-            modifier = Modifier.fillMaxWidth()
+private fun NfcOffForWriteDialog(
+    kind: NfcOffDialogKind,
+    onDismiss: () -> Unit,
+    onOpenSettings: () -> Unit
+) {
+    if (kind == NfcOffDialogKind.Hidden) return
+    val title = when (kind) {
+        NfcOffDialogKind.Hidden -> ""
+        NfcOffDialogKind.NoHardware -> "NFC(태그 쓰기)를 쓸 수 없어요"
+        NfcOffDialogKind.NfcOffWhenTappingWrite, NfcOffDialogKind.NfcOffWhileAwaitingTag ->
+            "NFC(태그 쓰기)를 켜 주세요"
+    }
+    val body = when (kind) {
+        NfcOffDialogKind.NoHardware ->
+            "이 휴대폰은 NFC 하드웨어가 없어 태그에 쓸 수 없어요. NFC를 지원하는 기기에서 이용해 주세요."
+        NfcOffDialogKind.NfcOffWhenTappingWrite ->
+            "휴대폰에서 NFC가 꺼져 있어요. 켜야 태그에 쓸 수 있어요.\n" +
+                "[NFC 설정 열기]를 누르면 [NFC 켜기(휴대폰 설정)]과 같이 휴대폰의 NFC 설정 화면으로 이동합니다."
+        NfcOffDialogKind.NfcOffWhileAwaitingTag ->
+            "태그 쓰기 대기 중에 NFC가 꺼졌어요. NFC를 켜면 이어서 태그에 쓸 수 있어요.\n" +
+                "[NFC 설정 열기]로 동일한 설정 화면이 열립니다."
+        NfcOffDialogKind.Hidden -> ""
+    }
+    // Material3 AlertDialog는 일부 기기/레이어에서 가려지거나 안 뜨는 사례가 있어,
+    // 태그 대기(NfcTapGuide)와 동일한 ui.window.Dialog + 전면 딤으로 통일
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0x8A0A1A18))
+                .padding(20.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 18.dp, vertical = 20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(22.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFFF5FAF8)
+                ),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFBBE0DB))
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Color(0xFF10B981)),
-                    contentAlignment = Alignment.Center
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.Check,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(26.dp)
+                    Text(
+                        title,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color(0xFF0A2F2B)
+                    )
+                    Text(
+                        body,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF1E3D38)
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Spacer(Modifier.weight(1f))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (kind != NfcOffDialogKind.NoHardware) {
+                                TextButton(onClick = onDismiss) { Text("닫기") }
+                            }
+                            if (kind == NfcOffDialogKind.NoHardware) {
+                                TextButton(onClick = onDismiss) { Text("확인") }
+                            } else {
+                                Button(
+                                    onClick = onOpenSettings,
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF0F766E),
+                                        contentColor = Color.White
+                                    )
+                                ) { Text("NFC 설정 열기", fontWeight = FontWeight.Bold) }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NfcTapGuideDialog() {
+    val glassPanel = Brush.linearGradient(
+        listOf(
+            Color(0xE6C5E8E3),
+            Color(0xE8E8F0EF),
+            Color(0xDDB8D9D4)
+        )
+    )
+    Dialog(
+        onDismissRequest = { },
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0x640B1F1C))
+                .padding(horizontal = 20.dp, vertical = 24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(26.dp))
+                    .background(brush = glassPanel, shape = RoundedCornerShape(26.dp))
+                    .border(1.5.dp, Color(0x9EFFFFFF), RoundedCornerShape(26.dp))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 22.dp, vertical = 26.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            // 뒤 그라데이션이 비치도록 유리 느낌만(거의 투명)
+                            .background(
+                                color = Color(0x0EFFFFFF),
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                            .border(
+                                width = 1.5.dp,
+                                brush = Brush.linearGradient(
+                                    listOf(
+                                        Color(0xD0FFFFFF),
+                                        Color(0x7A67E8F9)
+                                    )
+                                ),
+                                shape = RoundedCornerShape(16.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Nfc,
+                            contentDescription = null,
+                            tint = Color(0xFF0F766E),
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                    Text(
+                        "NFC 태그에 쓰기 준비됨",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color(0xFF043330),
+                        fontWeight = FontWeight.ExtraBold,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        "휴대폰 뒷면에 NFC 태그를 가까이 대주세요.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xD9093D3A),
+                        textAlign = TextAlign.Center
                     )
                 }
-                Text(
-                    "정상적으로 쓰기가 완료되었습니다.",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color(0xFF065F46),
-                    fontWeight = FontWeight.ExtraBold,
-                    textAlign = TextAlign.Center
+            }
+        }
+    }
+}
+
+/**
+ * `Dialog`는 별도 Window를 쓰므로, 성공 직후 [Landing]으로 전환할 때
+ * 윈도 정리 충돌로 “계속 중단됨”이 나는 기기가 있어 동일 composable 트리 안에만 그립니다.
+ */
+@Composable
+private fun WriteSuccessOverlay(
+    onConfirm: () -> Unit
+) {
+    val successGlass = Brush.linearGradient(
+        listOf(
+            Color(0xE6C4E0D4),
+            Color(0xE6ECF2EA),
+            Color(0xD5C2DBCC)
+        )
+    )
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .zIndex(100f)
+            .background(Color(0x5A0B2418))
+            .imePadding()
+            .navigationBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(28.dp))
+                .background(brush = successGlass, shape = RoundedCornerShape(28.dp))
+                .border(
+                    width = 1.5.dp,
+                    brush = Brush.linearGradient(
+                        listOf(
+                            Color(0xDBFFFFFF),
+                            Color(0x7A5EE9B4),
+                            Color(0x5E2DD4A3)
+                        )
+                    ),
+                    shape = RoundedCornerShape(28.dp)
+                )
+        ) {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 30.dp)
+                        .padding(end = 20.dp, bottom = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(60.dp)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(Color(0x14FFFFFF), RoundedCornerShape(18.dp))
+                            .border(
+                                width = 1.5.dp,
+                                brush = Brush.linearGradient(
+                                    listOf(
+                                        Color(0xDCFFFFFF),
+                                        Color(0x7A3EE7B0)
+                                    )
+                                ),
+                                shape = RoundedCornerShape(18.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    color = Color(0x1E059669),
+                                    shape = CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Check,
+                                contentDescription = null,
+                                tint = Color(0xFF047857),
+                                modifier = Modifier.size(30.dp)
+                            )
+                        }
+                    }
+                    Text(
+                        "쓰기가 정상적으로 완료되었습니다.",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color(0xFF032A22),
+                        fontWeight = FontWeight.ExtraBold,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        "NFC 태그에 기록이 반영됐어요.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xD9114C3B),
+                        textAlign = TextAlign.Center
+                    )
+                    Button(
+                        onClick = onConfirm,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF0F766E)
+                        )
+                    ) {
+                        Text("일반 NFC 도구 모드로", fontWeight = FontWeight.ExtraBold)
+                    }
+                }
+                Icon(
+                    imageVector = Icons.Outlined.AutoAwesome,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(10.dp)
+                        .size(18.dp),
+                    tint = Color(0x48059669)
                 )
             }
         }
