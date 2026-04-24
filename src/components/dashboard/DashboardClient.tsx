@@ -54,6 +54,7 @@ export default function DashboardClient({
           tenantId={tenantId}
           tenantUsage={tenantUsage}
           tenantSuspended={tenantSuspended}
+          linkedTagCount={linkedTagCount}
         />
       );
     case "child":
@@ -66,6 +67,7 @@ export default function DashboardClient({
           tenantId={tenantId}
           tenantUsage={tenantUsage}
           tenantSuspended={tenantSuspended}
+          linkedTagCount={linkedTagCount}
         />
       );
     case "luggage":
@@ -78,6 +80,7 @@ export default function DashboardClient({
           tenantId={tenantId}
           tenantUsage={tenantUsage}
           tenantSuspended={tenantSuspended}
+          linkedTagCount={linkedTagCount}
         />
       );
     case "gold":
@@ -90,6 +93,7 @@ export default function DashboardClient({
           tenantId={tenantId}
           tenantUsage={tenantUsage}
           tenantSuspended={tenantSuspended}
+          linkedTagCount={linkedTagCount}
         />
       );
     default:

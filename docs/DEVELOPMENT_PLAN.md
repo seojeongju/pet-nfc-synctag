@@ -33,7 +33,8 @@
 - [x] 반려 상세 `dashboard/.../pets/[pet_id]` **NFC 섹션**에 `TagManageCard`(embed) — 목록·UID 추가 연결·해제 **확인 모달**, `tenantSuspended` → `writeLocked`와 동일(수정/연결 잠김)
 - [x] `linkTag` / `unlinkTag` 성공 시 **반려 상세 경로 revalidate** (`/dashboard/{kind}/pets/{id}`)
 - [x] 대시보드 홈 ↔ 반려 상세, `#nfc` (이미 연동)
-- [ ] (후속) 다른 `subject` 대시보드/반려가 아닌 **경로에서의 동일 패턴**·쿼터/가이드 문구 통일
+- [x] **홈 대시보드** elder/child/luggage/gold — `DashboardNfcQuickRegisterCard`로 pet과 동일 NFC 흐름(스캔·NDEF·네이티브 handoff·`linkedTagCount`)
+- [ ] (후속) 다른 `subject` **비홈** 경로·쿼터/가이드 문구 통일
 - 서버: `linkTag` / `unlinkTag` / `getPetTags` 유지(스키마 변경 없음)
 
 **상세 설계:** 채팅/이슈에 정리된 “반려 단위 중심 IA”를 따름.

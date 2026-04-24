@@ -1,18 +1,16 @@
 "use client";
 
-import { useEffect, useState, useTransition, useCallback, useRef } from "react";
-import { usePathname, useSearchParams, useRouter } from "next/navigation";
+import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Plus, MapPin, PawPrint, Search, Bell,
-  ShieldCheck, Activity, Smartphone, CheckCircle, AlertCircle,
+  ShieldCheck, Activity, CheckCircle, AlertCircle,
   AlertTriangle, Link2, ScanLine, Siren, X,
 } from "lucide-react";
 import Image from "next/image";
-import { Input } from "@/components/ui/input";
-import { linkTagSafe, prepareGuardianNfcNativeHandoff } from "@/app/actions/tag";
 import { cn } from "@/lib/utils";
 import { subjectKindMeta } from "@/lib/subject-kind";
 import ModeAnnouncementsBanner from "@/components/dashboard/ModeAnnouncementsBanner";
@@ -22,10 +20,7 @@ import { getLatestLocations } from "@/app/actions/pet";
 import LiveLocationMap from "@/components/dashboard/LiveLocationMap";
 import { type SubjectKind } from "@/lib/subject-kind";
 import SafePetImage from "@/components/pet/SafePetImage";
-import { OpenNativePetNfcSectionButton } from "@/components/pet/OpenNativePetNfcSectionButton";
-import { isWebNfcReadSupported, readNfcTagUidOnce } from "@/lib/web-nfc-read-uid";
-import { normalizeTagUid } from "@/lib/tag-uid-format";
-import { getNfcOriginMismatchMessage, normalizeAppBaseUrl } from "@/lib/nfc-app-origin-guard";
+import { DashboardNfcQuickRegisterCard } from "@/components/dashboard/DashboardNfcQuickRegisterCard";
 
 interface SubjectWithLocation {
   id: string;
@@ -58,30 +53,6 @@ function limitText(used: number, limit: number | null): string {
 
 const STALE_ACTION_RELOAD_KEY = "pet-dashboard-stale-action-reload-once";
 const NFC_BANNER_DISMISS_KEY = "pet-dashboard-nfc-banner-dismissed";
-const SHOW_NFC_NATIVE_HANDOFF = process.env.NEXT_PUBLIC_NFC_NATIVE_HANDOFF_ENABLED === "true";
-const NFC_NATIVE_APP_STORE_URL = (process.env.NEXT_PUBLIC_NFC_NATIVE_APP_STORE_URL || "").trim();
-
-type NDEFWriterCtor = new () => {
-  write(message: { records: Array<{ recordType: string; data: string }> }): Promise<void>;
-};
-
-function getNdefWriterClass(): NDEFWriterCtor | null {
-  if (typeof window === "undefined") return null;
-  const w = window as unknown as { NDEFWriter?: NDEFWriterCtor };
-  return w.NDEFWriter ?? null;
-}
-
-type TagUrlWriteResult =
-  | { ok: true }
-  | {
-      ok: false;
-      reason:
-        | "unsupported"
-        | "app_url_missing"
-        | "write_failed"
-        | "origin_or_config_mismatch";
-      message: string;
-    };
 
 export default function PetDashboard({
   session,
@@ -93,39 +64,28 @@ export default function PetDashboard({
   tenantSuspended = false,
   linkedTagCount = 0
 }: PetDashboardProps) {
-  const [isPending, startTransition] = useTransition();
-  const [selectedPetId, setSelectedPetId] = useState("");
-  const [tagId, setTagId] = useState("");
-  const [tagMessage, setTagMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [nfcSelectedSubjectId, setNfcSelectedSubjectId] = useState("");
   const [subjectsWithLocation, setSubjectsWithLocation] = useState<SubjectWithLocation[]>([]);
   const [isMapRefreshing, setIsMapRefreshing] = useState(false);
   const [tagLinkedInSession, setTagLinkedInSession] = useState(false);
-  const [isNfcScanning, setIsNfcScanning] = useState(false);
-  const [isNfcWriting, setIsNfcWriting] = useState(false);
-  const [isNativeWriteOpening, setIsNativeWriteOpening] = useState(false);
-  const [nfcSectionHighlight, setNfcSectionHighlight] = useState(false);
   const [nfcBannerDismissed, setNfcBannerDismissed] = useState(false);
+  const [mapStaleMessage, setMapStaleMessage] = useState<string | null>(null);
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const onboardingNfcHandledRef = useRef(false);
 
   const subjectKind = "pet";
   const meta = subjectKindMeta[subjectKind];
   const tenantQs = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : "";
   const kindQs = tenantQs;
-  /** 원탁 가이드·태그 연결 바로가기용: 스크롤 + 테두리 강조(Onboarding=nfc) */
+  /** 원탁 가이드·태그 연결 바로가기용 (자녀 컴포넌트 [DashboardNfcQuickRegisterCard]가 선택 id를 올려줌) */
   const nfcOnboardingHref = (() => {
     const p = new URLSearchParams();
     if (tenantId) p.set("tenant", tenantId);
     p.set("onboarding", "nfc");
-    const pid = selectedPetId || (pets.length === 1 ? pets[0]?.id : "") || "";
+    const pid = nfcSelectedSubjectId || (pets.length === 1 ? pets[0]?.id : "") || "";
     if (pid) p.set("pet", pid);
     return `/dashboard/${subjectKind}?${p.toString()}`;
   })();
   const AvatarIcon = PawPrint;
-  const webNfcSupported = isWebNfcReadSupported();
-  const webNfcWriteSupported = Boolean(getNdefWriterClass());
 
   const isStaleServerActionError = (error: unknown): boolean => {
     const message = error instanceof Error ? error.message : String(error ?? "");
@@ -147,158 +107,9 @@ export default function PetDashboard({
     }
   };
 
-  const toKoreanNfcError = (message: string): string => {
-    const m = message.toLowerCase();
-    if (m.includes("not supported")) return "이 브라우저/기기에서는 NFC 읽기를 지원하지 않습니다.";
-    if (m.includes("permission denied") || m.includes("notallowederror")) return "NFC 권한이 거부되었습니다. 브라우저 권한을 확인해 주세요.";
-    if (m.includes("no tag detected")) return "태그를 인식하지 못했습니다. 태그를 휴대폰 뒷면에 다시 가까이 대주세요.";
-    if (m.includes("reading error")) return "NFC 읽기 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.";
-    if (m.includes("invalid uid format")) return "인식한 태그 UID 형식이 올바르지 않습니다.";
-    if (m.includes("cancelled")) return "NFC 읽기가 취소되었습니다.";
-    return "NFC 태그를 읽지 못했습니다. 다시 시도해 주세요.";
-  };
-
-  const toKoreanNfcWriteError = (message: string): string => {
-    const m = message.toLowerCase();
-    if (m.includes("not supported")) return "이 브라우저/기기에서는 NFC URL 기록을 지원하지 않습니다.";
-    if (m.includes("permission denied") || m.includes("notallowederror")) return "NFC 기록 권한이 거부되었습니다. 브라우저 권한을 확인해 주세요.";
-    if (m.includes("no tag detected")) return "태그를 인식하지 못했습니다. 태그를 휴대폰 뒷면에 다시 가까이 대주세요.";
-    if (m.includes("format error") || m.includes("invalid")) return "태그에 기록할 수 없습니다. 다른 NFC 태그인지 확인해 주세요.";
-    if (m.includes("cancelled") || m.includes("abort")) return "NFC 기록이 취소되었습니다.";
-    return "NFC URL 기록 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.";
-  };
-
-  const registerTagToSelectedPet = (uid: string) => {
-    setTagMessage(null);
-    startTransition(async () => {
-      try {
-        const result = await linkTagSafe(selectedPetId, uid.trim());
-        if (!result.ok) {
-          setTagMessage({ type: "error", text: result.error });
-          return;
-        }
-        const writeResult = await writeTagUrlToNfc(uid, { silent: true });
-        if (writeResult.ok) {
-          setTagMessage({
-            type: "success",
-            text: "NFC 태그 연결과 프로필 주소 기록이 완료되었습니다. 이제 태그를 스캔하면 프로필이 열립니다.",
-          });
-        } else {
-          setTagMessage({
-            type: "success",
-            text: `NFC 태그 연결은 완료되었습니다. 다만 태그에 프로필 주소 자동 기록은 되지 않았습니다 (${writeResult.message}). 아래 '태그에 프로필 주소 기록'으로 다시 시도해 주세요.`,
-          });
-        }
-        setTagLinkedInSession(true);
-        setTagId(normalizeTagUid(uid));
-        router.refresh();
-      } catch (e: unknown) {
-        const err = e instanceof Error ? e.message : "NFC 태그 등록에 실패했습니다.";
-        setTagMessage({ type: "error", text: err });
-      }
-    });
-  };
-
-  const writeTagUrlToNfc = async (
-    uidRaw: string,
-    options?: { silent?: boolean }
-  ): Promise<TagUrlWriteResult> => {
-    const Writer = getNdefWriterClass();
-    if (!Writer) {
-      const message =
-        "이 기기/브라우저는 NFC URL 기록(NDEFWriter)을 지원하지 않습니다. 안드로이드 Chrome(HTTPS)으로 이 페이지를 연 뒤 다시 시도해 주세요.";
-      if (!options?.silent) {
-        setTagMessage({
-          type: "error",
-          text: message,
-        });
-      }
-      return { ok: false, reason: "unsupported", message };
-    }
-    const normalizedUid = normalizeTagUid(uidRaw);
-    if (typeof window !== "undefined") {
-      const originGuard = getNfcOriginMismatchMessage(process.env.NEXT_PUBLIC_APP_URL, window.location.origin);
-      if (originGuard) {
-        if (!options?.silent) {
-          setTagMessage({ type: "error", text: originGuard });
-        }
-        return { ok: false, reason: "origin_or_config_mismatch", message: originGuard };
-      }
-    }
-    const envBase = normalizeAppBaseUrl(process.env.NEXT_PUBLIC_APP_URL);
-    const appBase =
-      envBase || (typeof window !== "undefined" ? window.location.origin : "");
-    if (!appBase) {
-      const message = "앱 주소를 확인할 수 없어 URL 기록을 진행할 수 없습니다.";
-      if (!options?.silent) {
-        setTagMessage({ type: "error", text: message });
-      }
-      return { ok: false, reason: "app_url_missing", message };
-    }
-    const tagUrl = `${appBase}/t/${encodeURIComponent(normalizedUid)}`;
-
-    setIsNfcWriting(true);
-    try {
-      const writer = new Writer();
-      await writer.write({
-        records: [{ recordType: "url", data: tagUrl }],
-      });
-      if (!options?.silent) {
-        setTagMessage({
-          type: "success",
-          text: "태그에 프로필 주소 기록이 완료되었습니다. 이제 태그를 스캔하면 프로필이 열립니다.",
-        });
-      }
-      return { ok: true };
-    } catch (error: unknown) {
-      const err = error instanceof Error ? error.message : String(error);
-      const message = toKoreanNfcWriteError(err);
-      if (!options?.silent) {
-        setTagMessage({
-          type: "error",
-          text: `태그에 프로필 주소 기록에 실패했습니다: ${message}`,
-        });
-      }
-      return { ok: false, reason: "write_failed", message };
-    } finally {
-      setIsNfcWriting(false);
-    }
-  };
-
-  const openNativeAppForNfcWrite = async () => {
-    if (!selectedPetId || !tagId.trim()) {
-      setTagMessage({ type: "error", text: "먼저 연결할 대상과 태그 UID를 확인해 주세요." });
-      return;
-    }
-
-    setIsNativeWriteOpening(true);
-    setTagMessage(null);
-    try {
-      const handoff = await prepareGuardianNfcNativeHandoff({
-        petId: selectedPetId,
-        tagIdRaw: tagId,
-      });
-      if (!handoff.ok) {
-        setTagMessage({ type: "error", text: handoff.error });
-        return;
-      }
-      if (typeof window !== "undefined") {
-        window.location.href = handoff.appLink;
-      }
-      setTagMessage({
-        type: "success",
-        text: "기록 앱 실행을 시도했습니다. 앱에서 태그 기록 후 다시 돌아오면 연결 상태를 확인할 수 있습니다.",
-      });
-    } catch (error: unknown) {
-      const err = error instanceof Error ? error.message : String(error);
-      setTagMessage({ type: "error", text: `앱 실행 준비에 실패했습니다: ${err}` });
-    } finally {
-      setIsNativeWriteOpening(false);
-    }
-  };
-
   const refreshLocations = useCallback(async () => {
     setIsMapRefreshing(true);
+    setMapStaleMessage(null);
     try {
       const data = await getLatestLocations(subjectKind as SubjectKind, tenantId);
       setSubjectsWithLocation(data);
@@ -309,10 +120,7 @@ export default function PetDashboard({
       if (isStaleServerActionError(err)) {
         const reloaded = reloadOnceForStaleAction();
         if (!reloaded) {
-          setTagMessage({
-            type: "error",
-            text: "앱이 최신 버전으로 갱신되어야 합니다. 화면을 새로고침한 뒤 다시 시도해 주세요.",
-          });
+          setMapStaleMessage("앱이 최신 버전으로 갱신되어야 합니다. 화면을 새로고침한 뒤 다시 시도해 주세요.");
         }
       } else {
         console.error("Map data refresh failed:", err);
@@ -337,80 +145,6 @@ export default function PetDashboard({
       /* ignore */
     }
   }, []);
-
-  useEffect(() => {
-    if (pets.length === 0) return;
-    const petQ = searchParams.get("pet");
-    if (petQ && pets.some((p) => p.id === petQ)) {
-      setSelectedPetId(petQ);
-      return;
-    }
-    setSelectedPetId((prev) => prev || pets[0].id);
-  }, [pets, searchParams]);
-
-  useEffect(() => {
-    if (searchParams.get("onboarding") !== "nfc") {
-      onboardingNfcHandledRef.current = false;
-    }
-  }, [searchParams]);
-
-  useEffect(() => {
-    if (searchParams.get("onboarding") !== "nfc") return;
-    if (onboardingNfcHandledRef.current) return;
-    onboardingNfcHandledRef.current = true;
-
-    const scrollT = window.setTimeout(() => {
-      document.getElementById("quick-nfc-register")?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    }, 400);
-    setNfcSectionHighlight(true);
-    const hlT = window.setTimeout(() => setNfcSectionHighlight(false), 5200);
-
-    const p = new URLSearchParams(searchParams.toString());
-    p.delete("onboarding");
-    p.delete("pet");
-    const next = p.toString();
-    router.replace(`${pathname}${next ? `?${next}` : ""}`, { scroll: false });
-
-    return () => {
-      window.clearTimeout(scrollT);
-      window.clearTimeout(hlT);
-    };
-  }, [searchParams, pathname, router]);
-
-  const handleQuickNfcRegister = () => {
-    if (tenantSuspended) return;
-    if (!selectedPetId || !tagId.trim()) return;
-    registerTagToSelectedPet(tagId);
-  };
-
-  const handleReadNfcAndRegister = async () => {
-    if (tenantSuspended) return;
-    if (!selectedPetId) {
-      setTagMessage({ type: "error", text: "먼저 연결할 관리 대상을 선택해 주세요." });
-      return;
-    }
-    if (!webNfcSupported) {
-      setTagMessage({ type: "error", text: "이 브라우저/기기에서는 NFC 읽기를 지원하지 않습니다." });
-      return;
-    }
-
-    setTagMessage(null);
-    setIsNfcScanning(true);
-    try {
-      const result = await readNfcTagUidOnce({ timeoutMs: 30_000 });
-      if (!result.ok) {
-        setTagMessage({ type: "error", text: toKoreanNfcError(result.error) });
-        return;
-      }
-      setTagId(result.uid);
-      registerTagToSelectedPet(result.uid);
-    } finally {
-      setIsNfcScanning(false);
-    }
-  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -696,185 +430,31 @@ export default function PetDashboard({
         </motion.section>
 
         <motion.section variants={itemVariants}>
-          <Card
-            id="quick-nfc-register"
-            className={cn(
-              "rounded-[32px] border-none shadow-app bg-white scroll-mt-24 transition-shadow duration-500",
-              nfcSectionHighlight && "ring-2 ring-teal-400 ring-offset-2 shadow-teal-100/80"
-            )}
-          >
-            <CardContent className="p-6 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-2xl bg-teal-50 text-teal-500 flex items-center justify-center">
-                  <Smartphone className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-black text-slate-900">NFC 빠른 등록</h3>
-                  <p className="text-[11px] text-slate-400 font-bold">NFC 스캔으로 UID를 자동 인식해 바로 등록할 수 있어요.</p>
-                </div>
-              </div>
-
-              {pets.length > 0 ? (
-                <>
-                  <select
-                    value={selectedPetId}
-                    onChange={(e) => setSelectedPetId(e.target.value)}
-                    disabled={tenantSuspended}
-                    className="w-full h-12 rounded-2xl border border-slate-100 bg-slate-50 px-4 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/20"
-                  >
-                    {pets.map((pet) => (
-                      <option key={pet.id} value={pet.id}>
-                        {pet.name} {pet.breed ? `(${pet.breed})` : ""}
-                      </option>
-                    ))}
-                  </select>
-
-                  <div className="flex items-center gap-2">
-                    <Input
-                      value={tagId}
-                      onChange={(e) => setTagId(e.target.value)}
-                      disabled={tenantSuspended || isPending || isNfcScanning}
-                      placeholder="NFC 태그 UID 입력"
-                      className="h-12 rounded-2xl border-slate-100 bg-slate-50 font-bold"
-                    />
-                    <Button
-                      onClick={handleReadNfcAndRegister}
-                      disabled={tenantSuspended || isPending || isNfcScanning || isNfcWriting || !selectedPetId}
-                      className="h-12 rounded-2xl bg-teal-600 hover:bg-teal-500 text-white px-4 font-black"
-                    >
-                      {isNfcScanning ? "스캔 중..." : "NFC 스캔"}
-                    </Button>
-                    <Button
-                      onClick={handleQuickNfcRegister}
-                      disabled={tenantSuspended || isPending || isNfcScanning || isNfcWriting || !selectedPetId || !tagId.trim()}
-                      className="h-12 rounded-2xl bg-slate-900 hover:bg-teal-500 text-white px-5 font-black"
-                    >
-                      등록
-                    </Button>
-                  </div>
-                  <Button
-                    onClick={() => {
-                      void writeTagUrlToNfc(tagId);
-                    }}
-                    disabled={
-                      tenantSuspended ||
-                      isPending ||
-                      isNfcScanning ||
-                      isNfcWriting ||
-                      isNativeWriteOpening ||
-                      !tagId.trim() ||
-                      !webNfcWriteSupported
-                    }
-                    className="h-11 w-full rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black"
-                  >
-                    {isNfcWriting ? "기록 중..." : "태그에 프로필 주소 기록"}
-                  </Button>
-                  {!webNfcWriteSupported ? (
-                    <Button
-                      onClick={() => {
-                        void openNativeAppForNfcWrite();
-                      }}
-                      disabled={
-                        tenantSuspended ||
-                        isPending ||
-                        isNfcScanning ||
-                        isNfcWriting ||
-                        isNativeWriteOpening ||
-                        !selectedPetId ||
-                        !tagId.trim()
-                      }
-                      className="h-11 w-full rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-black"
-                    >
-                      {isNativeWriteOpening
-                        ? "앱 실행 중..."
-                        : SHOW_NFC_NATIVE_HANDOFF
-                          ? "앱으로 태그 주소 기록"
-                          : "앱 설치/열기"}
-                    </Button>
-                  ) : null}
-                  {!webNfcSupported ? (
-                    <p className="text-[11px] font-bold text-slate-400">
-                      현재 기기/브라우저는 NFC 스캔을 지원하지 않아 UID 수동 입력으로 등록할 수 있습니다.
-                    </p>
-                  ) : (
-                    <p className="text-[11px] font-bold text-slate-400">
-                      안드로이드 Chrome에서 NFC 스캔 버튼을 누른 뒤 태그를 휴대폰 뒷면에 가까이 대주세요.
-                    </p>
-                  )}
-                  {!webNfcWriteSupported ? (
-                    <p className="text-[11px] font-bold text-amber-600">
-                      이 브라우저에서는 태그에 주소를 바로 쓸 수 없을 수 있어요.
-                      {SHOW_NFC_NATIVE_HANDOFF
-                        ? " 위의 '앱으로 태그 주소 기록' 버튼으로 전용 앱을 열어 진행해 주세요."
-                        : " 위의 '앱 설치/열기'를 누르면 전용 앱이 열리고, 앱에서 태그에 주소를 기록할 수 있어요. 앱이 없다면 아래 '스토어에서 설치하기'를 이용해 주세요."}
-                    </p>
-                  ) : (
-                    <p className="text-[11px] font-bold text-slate-400">
-                      주소를 직접 입력하지 않아도 됩니다. 버튼을 누른 뒤 태그를 폰 뒷면에 대면 서비스가 알아서 기록해요.
-                    </p>
-                  )}
-                  {!webNfcWriteSupported && NFC_NATIVE_APP_STORE_URL ? (
-                    <a
-                      href={NFC_NATIVE_APP_STORE_URL}
-                      className="inline-flex items-center text-[11px] font-black text-indigo-700 underline underline-offset-2"
-                    >
-                      앱이 없나요? 스토어에서 설치하기
-                    </a>
-                  ) : null}
-                  {selectedPetId ? (
-                    <OpenNativePetNfcSectionButton
-                      kind={subjectKind}
-                      petId={selectedPetId}
-                      tenantId={tenantId ?? null}
-                    />
-                  ) : null}
-                  {linkedTagCount > 0 ? (
-                    <p className="text-[11px] font-bold text-teal-600">
-                      현재 연결된 NFC 태그: {linkedTagCount}개
-                    </p>
-                  ) : null}
-                </>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center space-y-2">
-                  <p className="text-xs font-bold text-slate-500">먼저 반려동물을 등록해야 NFC 태그를 연결할 수 있어요.</p>
-                  <a
-                    href={tenantSuspended ? "#" : `/dashboard/${subjectKind}/pets/new${kindQs}`}
-                    aria-disabled={tenantSuspended}
-                    className={cn(
-                      "text-xs font-black underline underline-offset-4",
-                      tenantSuspended ? "pointer-events-none text-slate-400" : "text-teal-600"
-                    )}
-                  >
-                    등록하러 가기
-                  </a>
-                </div>
-              )}
-
-              {tagMessage && (
-                <div
-                  className={`rounded-2xl px-4 py-3 text-xs font-bold flex items-center gap-2 ${
-                    tagMessage.type === "success" ? "bg-teal-50 text-teal-600" : "bg-rose-50 text-rose-500"
-                  }`}
-                >
-                  {tagMessage.type === "success" ? (
-                    <CheckCircle className="w-4 h-4" />
-                  ) : (
-                    <AlertCircle className="w-4 h-4" />
-                  )}
-                  <span>{tagMessage.text}</span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <DashboardNfcQuickRegisterCard
+            subjectKind={subjectKind}
+            subjects={pets}
+            tenantId={tenantId}
+            tenantSuspended={tenantSuspended}
+            linkedTagCount={linkedTagCount}
+            emptyRegisterHint={meta.emptyRegisterHint}
+            subtitle="NFC 스캔으로 UID를 자동 인식해 바로 등록할 수 있어요."
+            onSelectedSubjectIdChange={setNfcSelectedSubjectId}
+            onTagLinkSessionSuccess={() => setTagLinkedInSession(true)}
+          />
         </motion.section>
 
-        <motion.section variants={itemVariants}>
-           <LiveLocationMap
-             subjects={subjectsWithLocation}
-             subjectKind={subjectKind}
-             onRefresh={refreshLocations}
-             isRefreshing={isMapRefreshing}
-           />
+        <motion.section variants={itemVariants} className="space-y-2">
+          {mapStaleMessage ? (
+            <p className="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700">
+              {mapStaleMessage}
+            </p>
+          ) : null}
+          <LiveLocationMap
+            subjects={subjectsWithLocation}
+            subjectKind={subjectKind}
+            onRefresh={refreshLocations}
+            isRefreshing={isMapRefreshing}
+          />
         </motion.section>
 
         <motion.section variants={itemVariants} className="space-y-4">

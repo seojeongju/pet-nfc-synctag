@@ -1,18 +1,15 @@
 "use client";
 
-import { useEffect, useState, useTransition, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Plus, MapPin, Gem, Search, Bell,
-  ShieldCheck, Activity, Smartphone, CheckCircle, AlertCircle,
+  ShieldCheck, Activity,
   AlertTriangle,
 } from "lucide-react";
 import Image from "next/image";
-import { Input } from "@/components/ui/input";
-import { linkTag } from "@/app/actions/tag";
-import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { subjectKindMeta } from "@/lib/subject-kind";
 import ModeAnnouncementsBanner from "@/components/dashboard/ModeAnnouncementsBanner";
@@ -20,6 +17,7 @@ import type { ModeAnnouncementRow } from "@/types/mode-announcement";
 import type { TenantPlanUsageSummary } from "@/lib/tenant-quota";
 import { getLatestLocations } from "@/app/actions/pet";
 import LiveLocationMap from "@/components/dashboard/LiveLocationMap";
+import { DashboardNfcQuickRegisterCard } from "@/components/dashboard/DashboardNfcQuickRegisterCard";
 import { type SubjectKind } from "@/lib/subject-kind";
 
 interface SubjectWithLocation {
@@ -44,6 +42,7 @@ interface GoldDashboardProps {
   tenantId?: string | null;
   tenantUsage?: TenantPlanUsageSummary | null;
   tenantSuspended?: boolean;
+  linkedTagCount?: number;
 }
 
 function limitText(used: number, limit: number | null): string {
@@ -57,15 +56,11 @@ export default function GoldDashboard({
   modeAnnouncements,
   tenantId,
   tenantUsage,
-  tenantSuspended = false
+  tenantSuspended = false,
+  linkedTagCount = 0
 }: GoldDashboardProps) {
-  const [isPending, startTransition] = useTransition();
-  const [selectedItemId, setSelectedItemId] = useState("");
-  const [tagId, setTagId] = useState("");
-  const [tagMessage, setTagMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [subjectsWithLocation, setSubjectsWithLocation] = useState<SubjectWithLocation[]>([]);
   const [isMapRefreshing, setIsMapRefreshing] = useState(false);
-  const router = useRouter();
   
   const subjectKind = "gold";
   const meta = subjectKindMeta[subjectKind];
@@ -90,29 +85,6 @@ export default function GoldDashboard({
     const interval = setInterval(refreshLocations, 30000);
     return () => clearInterval(interval);
   }, [refreshLocations]);
-
-  useEffect(() => {
-    if (items.length > 0 && !selectedItemId) {
-      setSelectedItemId(items[0].id);
-    }
-  }, [items, selectedItemId]);
-
-  const handleQuickNfcRegister = () => {
-    if (tenantSuspended) return;
-    if (!selectedItemId || !tagId.trim()) return;
-    setTagMessage(null);
-    startTransition(async () => {
-      try {
-        await linkTag(selectedItemId, tagId.trim());
-        setTagMessage({ type: "success", text: "NFC 태그가 제품에 연결되었습니다." });
-        setTagId("");
-        router.refresh();
-      } catch (e: unknown) {
-        const err = e instanceof Error ? e.message : "NFC 태그 등록에 실패했습니다.";
-        setTagMessage({ type: "error", text: err });
-      }
-    });
-  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -254,82 +226,15 @@ export default function GoldDashboard({
         </motion.section>
 
         <motion.section variants={itemVariants}>
-          <Card className="rounded-[32px] border-none shadow-app bg-white">
-            <CardContent className="p-6 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center">
-                  <Smartphone className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-black text-slate-900">NFC 빠른 등록</h3>
-                  <p className="text-[11px] text-slate-400 font-bold">제품에 부착된 태그나 UID를 입력하여 가치를 연결하세요.</p>
-                </div>
-              </div>
-
-              {items.length > 0 ? (
-                <>
-                  <select
-                    value={selectedItemId}
-                    onChange={(e) => setSelectedItemId(e.target.value)}
-                    disabled={tenantSuspended}
-                    className="w-full h-12 rounded-2xl border border-slate-100 bg-slate-50 px-4 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-amber-500/20"
-                  >
-                    {items.map((i) => (
-                      <option key={i.id} value={i.id}>
-                        {i.name}
-                      </option>
-                    ))}
-                  </select>
-
-                  <div className="flex items-center gap-2">
-                    <Input
-                      value={tagId}
-                      onChange={(e) => setTagId(e.target.value)}
-                      disabled={tenantSuspended}
-                      placeholder="NFC 태그 UID 입력"
-                      className="h-12 rounded-2xl border-slate-100 bg-slate-50 font-bold"
-                    />
-                    <Button
-                      onClick={handleQuickNfcRegister}
-                      disabled={tenantSuspended || isPending || !selectedItemId || !tagId.trim()}
-                      className="h-12 rounded-2xl bg-slate-900 hover:bg-amber-500 text-white px-5 font-black"
-                    >
-                      등록
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center space-y-2">
-                  <p className="text-xs font-bold text-slate-500">먼저 제품을 등록해야 태그를 연결할 수 있어요.</p>
-                  <a
-                    href={tenantSuspended ? "#" : `/dashboard/${subjectKind}/pets/new${kindQs}`}
-                    aria-disabled={tenantSuspended}
-                    className={cn(
-                      "text-xs font-black underline underline-offset-4",
-                      tenantSuspended ? "pointer-events-none text-slate-400" : "text-amber-600"
-                    )}
-                  >
-                    등록하러 가기
-                  </a>
-                </div>
-              )}
-
-              {tagMessage && (
-                <div
-                  className={`rounded-2xl px-4 py-3 text-xs font-bold flex items-center gap-2 ${
-                    tagMessage.type === "success" ? "bg-teal-50 text-teal-600" : "bg-rose-50 text-rose-500"
-                  }`}
-                >
-                  {tagMessage.type === "success" ? (
-                    <CheckCircle className="w-4 h-4" />
-                  ) : (
-                    <AlertCircle className="w-4 h-4" />
-                  )}
-                  <span>{tagMessage.text}</span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <DashboardNfcQuickRegisterCard
+            subjectKind={subjectKind}
+            subjects={items}
+            tenantId={tenantId}
+            tenantSuspended={tenantSuspended}
+            linkedTagCount={linkedTagCount}
+            emptyRegisterHint={meta.emptyRegisterHint}
+            subtitle="제품 태그를 스캔하거나 UID로 가치(프로필)에 연결하세요. 웹 NDEF·네이티브 앱 흐름은 반려 모드와 같아요."
+          />
         </motion.section>
 
         <motion.section variants={itemVariants}>

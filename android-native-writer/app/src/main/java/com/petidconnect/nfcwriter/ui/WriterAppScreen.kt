@@ -12,6 +12,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -92,6 +93,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -1523,56 +1525,38 @@ private fun LandingModeScreen(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Image(
+                                painter = painterResource(id = com.petidconnect.nfcwriter.R.drawable.linku_logo),
+                                contentDescription = "Link-U Logo",
                                 modifier = Modifier
-                                    .size(42.dp)
-                                    .clip(RoundedCornerShape(14.dp))
-                                    .background(
-                                        Brush.linearGradient(
-                                            listOf(Color(0xFF14B8A6), Color(0xFF0D9488))
-                                        )
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Nfc,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(22.dp),
-                                    tint = Color.White
-                                )
-                            }
-                            Column(Modifier.padding(start = 12.dp)) {
-                                Text(
-                                    "NFC Writer",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Black,
-                                    color = Color(0xFF0F172A),
-                                    letterSpacing = (-0.3).sp
-                                )
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(
-                                        Modifier
-                                            .size(4.dp)
-                                            .background(brandTeal, CircleShape)
-                                    )
-                                    Spacer(Modifier.width(4.dp))
-                                    Text(
-                                        "Smart Dual Gateway",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = brandTeal,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        letterSpacing = 0.5.sp
-                                    )
-                                }
-                            }
+                                    .height(50.dp)
+                                    .padding(vertical = 4.dp)
+                            )
+                        }
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                "NFC Writer Gateway",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = brandTeal,
+                                fontWeight = FontWeight.ExtraBold,
+                                letterSpacing = 0.5.sp
+                            )
                         }
                         Text(
                             "태그(딥링크)로 들어오면 Link-U 모드로 자동 연동됩니다. 일반 실행은 아래에서 모드를 선택해 시작하세요.",
                             style = MaterialTheme.typography.bodySmall,
                             lineHeight = 16.sp,
                             color = Color(0xFF64748B),
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
+                            textAlign = TextAlign.Center
                         )
                     }
                 }
@@ -1632,23 +1616,13 @@ private fun LandingModeScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = "Link",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Black,
-                        color = Color(0xFF1E293B)
-                    )
-                    Text(
-                        text = "U",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Black,
-                        color = brandTeal
-                    )
-                }
+                Image(
+                    painter = painterResource(id = com.petidconnect.nfcwriter.R.drawable.linku_logo),
+                    contentDescription = "Link-U Footer Logo",
+                    modifier = Modifier
+                        .height(32.dp)
+                        .padding(vertical = 4.dp)
+                )
                 Text(
                     text = "제작사 (주)와우쓰리디",
                     style = MaterialTheme.typography.labelSmall,
