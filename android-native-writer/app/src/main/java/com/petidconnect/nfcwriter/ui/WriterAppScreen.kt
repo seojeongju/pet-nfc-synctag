@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -78,6 +79,7 @@ import androidx.compose.ui.Alignment
 import android.net.Uri
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -212,11 +214,12 @@ fun WriterAppScreen(
                     Brush.linearGradient(
                         listOf(
                             Color(0xFF0D9488),
-                            Color(0xFF0F766E)
+                            Color(0xFF0F766E),
+                            Color(0xFF0D9488)
                         )
                     )
                 )
-                .padding(24.dp, 20.dp, 24.dp, 20.dp)
+                .padding(horizontal = 16.dp, vertical = 16.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -224,36 +227,40 @@ fun WriterAppScreen(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(0.2f)),
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.White.copy(0.15f))
+                        .border(1.dp, Color.White.copy(0.2f), RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Nfc,
                         contentDescription = null,
-                        modifier = Modifier.size(28.dp),
+                        modifier = Modifier.size(24.dp),
                         tint = Color.White
                     )
                 }
-                Column(Modifier.padding(start = 16.dp)) {
+                Column(Modifier.padding(start = 12.dp)) {
                     Text(
                         if (isLinkUMode) "Link-U" else "NFC Tools",
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White.copy(0.7f),
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp
                     )
                     Text(
                         modeTitle,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = Color.White.copy(0.95f),
-                        fontWeight = FontWeight.SemiBold
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = (-0.3).sp
                     )
-                    Spacer(Modifier.height(4.dp))
                     Text(
                         modeDescription,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color.White.copy(0.88f)
+                        style = MaterialTheme.typography.labelSmall,
+                        fontSize = 10.sp,
+                        color = Color.White.copy(0.6f),
+                        fontWeight = FontWeight.Medium
                     )
                 }
                 Spacer(Modifier.weight(1f))
@@ -261,15 +268,16 @@ fun WriterAppScreen(
                     IconButton(
                         onClick = onBackToLanding,
                         modifier = Modifier
-                            .size(44.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color.White.copy(alpha = 0.18f))
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color.White.copy(alpha = 0.12f))
+                            .border(1.dp, Color.White.copy(0.15f), RoundedCornerShape(10.dp))
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Home,
                             contentDescription = "모드 선택으로 돌아가기",
                             tint = Color.White,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }
@@ -1442,93 +1450,159 @@ private fun LandingModeScreen(
     onSelectTools: () -> Unit
 ) {
     val landingScroll = rememberScrollState()
-    val brandTeal = Color(0xFF0F766E)
-    val brandMint = Color(0xFFD1FAF5)
-    Column(
+    val brandTeal = Color(0xFF0D9488)
+    val brandIndigo = Color(0xFF4338CA)
+    
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFFFFEF6))
-            .verticalScroll(landingScroll)
-            .navigationBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xFFF8FAFC), Color(0xFFF1F5F9))
+                )
+            )
     ) {
-        Card(
-            shape = RoundedCornerShape(28.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            modifier = Modifier.fillMaxWidth()
+        // Decorative background elements (Scaled down)
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .offset(x = 40.dp, y = (-30).dp)
+                .size(160.dp)
+                .background(brandTeal.copy(alpha = 0.08f), CircleShape)
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .offset(x = (-50).dp, y = 70.dp)
+                .size(200.dp)
+                .background(brandIndigo.copy(alpha = 0.05f), CircleShape)
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(landingScroll)
+                .navigationBarsPadding()
+                .padding(horizontal = 14.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 22.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+            // Header Section (70% Scaled)
+            AnimatedVisibility(
+                visible = true,
+                enter = fadeIn() + expandVertically()
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(52.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(brandMint),
-                        contentAlignment = Alignment.Center
+                Card(
+                    shape = RoundedCornerShape(22.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(8.dp, RoundedCornerShape(22.dp), spotColor = brandTeal.copy(alpha = 0.15f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.Nfc,
-                            contentDescription = null,
-                            modifier = Modifier.size(30.dp),
-                            tint = brandTeal
-                        )
-                    }
-                    Column(Modifier.padding(start = 12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(
+                                        Brush.linearGradient(
+                                            listOf(Color(0xFF14B8A6), Color(0xFF0D9488))
+                                        )
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Nfc,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(22.dp),
+                                    tint = Color.White
+                                )
+                            }
+                            Column(Modifier.padding(start = 12.dp)) {
+                                Text(
+                                    "NFC Writer",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Black,
+                                    color = Color(0xFF0F172A),
+                                    letterSpacing = (-0.3).sp
+                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        Modifier
+                                            .size(4.dp)
+                                            .background(brandTeal, CircleShape)
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        "Smart Dual Gateway",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = brandTeal,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        letterSpacing = 0.5.sp
+                                    )
+                                }
+                            }
+                        }
                         Text(
-                            "NFC Writer",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color(0xFF134E4A)
-                        )
-                        Text(
-                            "Link-U + 일반 도구 듀얼 시작",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = Color(0xFF0F766E),
-                            fontWeight = FontWeight.Bold
+                            "태그(딥링크)로 들어오면 Link-U 모드로 자동 연동됩니다. 일반 실행은 아래에서 모드를 선택해 시작하세요.",
+                            style = MaterialTheme.typography.bodySmall,
+                            lineHeight = 16.sp,
+                            color = Color(0xFF64748B),
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
+            }
+
+            Spacer(Modifier.height(2.dp))
+
+            // Tools Mode Card (Moved to TOP, Scaled)
+            LargeModeEntryCard(
+                title = "일반 NFC 도구 모드",
+                description = "누구나 URL/텍스트 NFC 읽기·쓰기 도구로 시작",
+                buttonText = "일반 도구로 시작",
+                icon = Icons.Filled.Settings,
+                onClick = onSelectTools,
+                primary = false
+            )
+
+            // Link-U Mode Card (Moved to BOTTOM, Scaled)
+            LargeModeEntryCard(
+                title = "Link-U 모드",
+                description = "우리 프로그램 태그/웹과 바로 연동되는 기록 흐름",
+                buttonText = "Link-U로 시작",
+                icon = Icons.Filled.Link,
+                onClick = onSelectLinkU,
+                primary = true
+            )
+
+            Spacer(Modifier.height(4.dp))
+
+            // Bottom Tip
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.White.copy(alpha = 0.5f))
+                    .padding(12.dp),
+                contentAlignment = Alignment.Center
+            ) {
                 Text(
-                    "태그(딥링크)로 들어오면 Link-U 모드로 자동 연동됩니다.\n일반 실행은 아래에서 모드를 선택해 시작하세요.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    lineHeight = 22.sp,
-                    color = Color(0xFF355B57)
+                    text = "Tip: NFC가 꺼져 있으면 모드 진입 후 [NFC 켜기] 버튼으로 바로 설정을 열 수 있어요.",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontSize = 10.sp,
+                    color = Color(0xFF94A3B8),
+                    lineHeight = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
                 )
             }
         }
-
-        LargeModeEntryCard(
-            title = "Link-U 모드",
-            description = "우리 프로그램 태그/웹과 바로 연동되는 기록 흐름",
-            buttonText = "Link-U로 시작",
-            icon = Icons.Filled.Link,
-            onClick = onSelectLinkU,
-            primary = true
-        )
-
-        LargeModeEntryCard(
-            title = "일반 NFC 도구 모드",
-            description = "누구나 URL/텍스트 NFC 읽기·쓰기 도구로 시작",
-            buttonText = "일반 도구로 시작",
-            icon = Icons.Filled.Settings,
-            onClick = onSelectTools,
-            primary = false
-        )
-
-        Text(
-            "Tip: NFC가 꺼져 있으면 모드 진입 후 [NFC 켜기] 버튼으로 바로 설정을 열 수 있어요.",
-            style = MaterialTheme.typography.labelMedium,
-            color = Color(0xFF4B6B68),
-            lineHeight = 20.sp,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-        )
     }
 }
 
@@ -1541,71 +1615,121 @@ private fun LargeModeEntryCard(
     onClick: () -> Unit,
     primary: Boolean
 ) {
-    val bg = if (primary) Color(0xFFE6FFFB) else Color(0xFFF7FCFC)
-    val iconBg = if (primary) Color(0xFF14B8A6) else Color(0xFFD1FAF5)
-    val iconTint = if (primary) Color.White else Color(0xFF0F766E)
-    val buttonBg = if (primary) Color(0xFF0F766E) else Color(0xFF5EEAD4)
-    val buttonFg = if (primary) Color.White else Color(0xFF134E4A)
+    val brandTeal = Color(0xFF0D9488)
+    
+    val bgGradient = if (primary) {
+        Brush.linearGradient(listOf(Color(0xFFF0FDFA), Color(0xFFE6FFFA)))
+    } else {
+        Brush.linearGradient(listOf(Color(0xFFF8FAFC), Color(0xFFF1F5F9)))
+    }
+    
+    val iconBg = if (primary) {
+        Brush.linearGradient(listOf(Color(0xFF2DD4BF), Color(0xFF0D9488)))
+    } else {
+        Brush.linearGradient(listOf(Color(0xFF94A3B8), Color(0xFF475569)))
+    }
+    
+    val buttonBg = if (primary) {
+        Brush.linearGradient(listOf(brandTeal, Color(0xFF0F766E)))
+    } else {
+        Brush.linearGradient(listOf(Color(0xFF64748B), Color(0xFF334155)))
+    }
 
-    Card(
-        shape = RoundedCornerShape(26.dp),
-        colors = CardDefaults.cardColors(containerColor = bg),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2F3F2)),
-        modifier = Modifier.fillMaxWidth()
+    AnimatedVisibility(
+        visible = true,
+        enter = fadeIn() + expandVertically()
     ) {
-        Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+        Card(
+            shape = RoundedCornerShape(22.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(
+                    elevation = if (primary) 10.dp else 6.dp,
+                    shape = RoundedCornerShape(22.dp),
+                    spotColor = if (primary) brandTeal.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.1f)
+                )
+                .background(bgGradient, RoundedCornerShape(22.dp))
+                .border(1.dp, Color.White.copy(alpha = 0.6f), RoundedCornerShape(22.dp))
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Color.White.copy(alpha = 0.85f)),
-                contentAlignment = Alignment.Center
+            Column(
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Box(
                     modifier = Modifier
-                        .size(74.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(iconBg),
+                        .fillMaxWidth()
+                        .height(90.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color.White.copy(alpha = 0.4f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = iconTint,
-                        modifier = Modifier.size(40.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(iconBg),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(30.dp)
+                        )
+                    }
+                }
+                
+                Column(modifier = Modifier.padding(horizontal = 2.dp)) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Black,
+                        color = Color(0xFF1E293B),
+                        letterSpacing = (-0.3).sp
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = description,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color(0xFF64748B),
+                        fontWeight = FontWeight.Medium,
+                        lineHeight = 16.sp
                     )
                 }
-            }
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.ExtraBold,
-                color = Color(0xFF134E4A)
-            )
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF3F6560)
-            )
-            Button(
-                onClick = onClick,
-                modifier = Modifier.fillMaxWidth().height(50.dp),
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = buttonBg,
-                    contentColor = buttonFg
-                )
-            ) {
-                Icon(
-                    Icons.Filled.TouchApp,
-                    contentDescription = null,
-                    modifier = Modifier.padding(end = 8.dp).size(18.dp)
-                )
-                Text(buttonText, fontWeight = FontWeight.ExtraBold)
+                
+                Button(
+                    onClick = onClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(40.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(buttonBg),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = buttonText,
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.7f),
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+                }
             }
         }
     }
