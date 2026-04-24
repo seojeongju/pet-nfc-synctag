@@ -53,6 +53,7 @@ NATIVE_HMAC_SECRET_NEXT=
 - `tenant`: 멀티 테넌트일 때만(쿼리 `?tenant=` 와 동일).
 - 열리는 URL: `{Link-U 서비스 주소 또는 프로필 사이트}/dashboard/{kind}/pets/{pet_id}?tenant=…#nfc`  
   앱에 저장한 **Link-U 서비스 주소·프로필 사이트**(`local.properties` / 앱 내 설정)가 비어 있으면 동작하지 않는다.
+- 보호자 **대시보드 홈**(`NFC 빠른 등록`)·**반려 상세** 화면에서도 동일 딥링크 버튼이 나올 수 있음(웹 `NEXT_PUBLIC_NFC_NATIVE_HANDOFF_ENABLED`·Android).
 
 서버에 쓰기 완료를 보고하려면 `NFC_NATIVE_APP_API_KEY`·`NFC_NATIVE_HANDOFF_SECRET` 등이 서버에 맞게 설정돼 있어야 하며, 앱 쪽 API URL·키가 비어 있으면 **태그 쓰기는 성공해도 서버 보고는 건너뛰고** 안내만 합니다(개발용).
 

@@ -22,6 +22,7 @@ import { getLatestLocations } from "@/app/actions/pet";
 import LiveLocationMap from "@/components/dashboard/LiveLocationMap";
 import { type SubjectKind } from "@/lib/subject-kind";
 import SafePetImage from "@/components/pet/SafePetImage";
+import { OpenNativePetNfcSectionButton } from "@/components/pet/OpenNativePetNfcSectionButton";
 import { isWebNfcReadSupported, readNfcTagUidOnce } from "@/lib/web-nfc-read-uid";
 import { normalizeTagUid } from "@/lib/tag-uid-format";
 import { getNfcOriginMismatchMessage, normalizeAppBaseUrl } from "@/lib/nfc-app-origin-guard";
@@ -819,6 +820,13 @@ export default function PetDashboard({
                     >
                       앱이 없나요? 스토어에서 설치하기
                     </a>
+                  ) : null}
+                  {selectedPetId ? (
+                    <OpenNativePetNfcSectionButton
+                      kind={subjectKind}
+                      petId={selectedPetId}
+                      tenantId={tenantId ?? null}
+                    />
                   ) : null}
                   {linkedTagCount > 0 ? (
                     <p className="text-[11px] font-bold text-teal-600">

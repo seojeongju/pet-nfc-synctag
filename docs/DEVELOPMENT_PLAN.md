@@ -44,7 +44,7 @@
 - [x] **딥링크:** `petidconnect://nfc/pet?kind=…&pet_id=…&tenant=…(선택)` → 기본 브라우저에서  
   `{사이트}/dashboard/{kind}/pets/{id}?tenant#nfc` (보호자 반려 상세의 NFC 섹션 앵커). 앱 `MainActivity` + `AndroidManifest` + 웹 `id="nfc"`.
 - [ ] 앱 전용 API로 태그 목록/해제(권한 동일) — **미착수**, 필요 시 별도 설계
-- [x] 반려 상세(NFC 섹션)에서 Android + handoff 플래그 시 **「전용 앱으로 열기 → 브라우저에 이 NFC 태그 안내」** (`OpenNativePetNfcSectionButton`)
+- [x] 반려 상세(NFC 섹션)·보호자 **대시보드 홈(`NFC 빠른 등록`)** 에서 Android + handoff 플래그 시 **「전용 앱으로 열기 → 브라우저에 이 NFC 태그 안내」** (`OpenNativePetNfcSectionButton`)
 
 ---
 
