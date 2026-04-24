@@ -1,5 +1,13 @@
 # iOS 확장 고도화 개발 계획서 (Link-U Tag Writer)
 
+## 상태 (기록)
+
+- **현재:** 이 저장소의 네이티브 앱은 **Android(`android-native-writer`)만** 구현되어 있음.
+- **필수:** **iOS 네이티브 앱(Swift + Core NFC 등) 개발은 아직 착수 전**이며, **제품 측면에서 진행이 필요한 후속 작업**으로 둔다(웹만으로는 iOS Safari Web NFC 쓰기 제약이 큼).
+- **참고:** 본 문서가 iOS 쪽 범위·단계·기술 방향의 단일 계획서다. 착수 시 `docs/DEVELOPMENT_PLAN.md`와 함께 갱신한다.
+
+---
+
 본 문서는 현재 **Android 중심으로 구현된 네이티브 NFC 쓰기 경로**를 iOS까지 확장하기 위한 실행 계획입니다.  
 목표는 “기존 Link-U 특화 기능 유지 + 범용 NFC 도구 확장 + iOS 동시 지원”입니다.
 

@@ -1,5 +1,6 @@
 package com.petidconnect.nfcwriter.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -35,6 +36,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.ErrorOutline
@@ -194,6 +196,21 @@ fun WriterAppScreen(
     val tone = statusToneFor(status, awaitingTag, busy)
     var showTechnicalDetails by remember { mutableStateOf(false) }
     var activeTemplateEditor by remember { mutableStateOf<String?>(null) }
+
+    // 시스템 뒤로가기 버튼 처리
+    BackHandler(enabled = appMode != "Landing") {
+        if (activeTemplateEditor != null) {
+            // 템플릿 입력 페이지가 열려있으면 닫고 대시보드로 이동
+            activeTemplateEditor = null
+        } else if (showTechnicalDetails) {
+            // 상세 보기(고급)가 열려있으면 닫기
+            showTechnicalDetails = false
+        } else {
+            // 그 외에는 랜딩(모드 선택) 화면으로 이동
+            onBackToLanding()
+        }
+    }
+
     val hasUid = draftUid.isNotBlank()
     val hasUrl = draftUrl.isNotBlank()
     val hasHandoff = draftHandoff.isNotBlank()
@@ -274,7 +291,7 @@ fun WriterAppScreen(
                             .border(1.dp, Color.White.copy(0.15f), RoundedCornerShape(10.dp))
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Home,
+                            imageVector = Icons.Filled.Apps,
                             contentDescription = "모드 선택으로 돌아가기",
                             tint = Color.White,
                             modifier = Modifier.size(18.dp)
@@ -294,8 +311,8 @@ fun WriterAppScreen(
                 .weight(1f)
                 .verticalScroll(scroll)
                 .navigationBarsPadding()
-                .padding(horizontal = 20.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 14.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(11.dp)
         ) {
             if (showTemplateInputPage) {
                 UnifiedTemplateInputPage(
@@ -370,25 +387,26 @@ fun WriterAppScreen(
                 } else {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(11.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                         )
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.TouchApp,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(14.dp)
                             )
                             Text(
                                 "아이콘 선택 → 정보 입력 → 확인 후 태그 대기 순서로 진행하세요.",
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontSize = 10.sp,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.82f)
                             )
                         }
@@ -400,12 +418,12 @@ fun WriterAppScreen(
                         listOf(
                             Color(0xFFBDDBD6),
                             Color(0xFFDEEFE9),
-                            Color(0xFFAACCC6)
+                            Color(0xFFBDDBD6)
                         )
                     )
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
+                        shape = RoundedCornerShape(14.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = Color.Transparent
                         ),
@@ -417,22 +435,17 @@ fun WriterAppScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(brush = glassDashBg, shape = RoundedCornerShape(20.dp))
+                                .background(brush = glassDashBg, shape = RoundedCornerShape(14.dp))
                         ) {
                             Column(
-                                modifier = Modifier.padding(14.dp),
-                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Text(
                                     "일반 모드 도구형 대시보드",
-                                    style = MaterialTheme.typography.labelLarge,
+                                    style = MaterialTheme.typography.labelMedium,
                                     color = Color(0xFF0A3D3A),
                                     fontWeight = FontWeight.ExtraBold
-                                )
-                                Text(
-                                    "아이콘을 눌러 바로 입력 템플릿을 불러오세요.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color(0xFF2D5B56)
                                 )
                                 SquareToolGrid(
                                     onTap = { key ->
@@ -444,10 +457,11 @@ fun WriterAppScreen(
                                 Text(
                                     "각 기능 아이콘을 눌러 열린 창에서 읽기/쓰기 모드를 선택할 수 있습니다.",
                                     style = MaterialTheme.typography.labelSmall,
+                                    fontSize = 10.sp,
                                     color = Color(0xFF3A655F),
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(end = 22.dp)
+                                        .padding(end = 16.dp)
                                 )
                             }
                             Icon(
@@ -455,8 +469,8 @@ fun WriterAppScreen(
                                 contentDescription = null,
                                 modifier = Modifier
                                     .align(Alignment.BottomEnd)
-                                    .padding(8.dp)
-                                    .size(18.dp),
+                                    .padding(6.dp)
+                                    .size(14.dp),
                                 tint = Color(0x660A3D3A)
                             )
                         }
@@ -635,75 +649,77 @@ fun WriterAppScreen(
             }
 
             if (!showTemplateInputPage) {
-                Spacer(Modifier.height(4.dp))
-                Button(
-                    onClick = { onPrepareWrite(null) },
-                    enabled = !busy && !nfcUi.tagWriteSuccess,
-                    shape = RoundedCornerShape(18.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .defaultMinSize(minHeight = 56.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (nfcUi.tagWriteSuccess) {
-                            Color(0xFF0F766E)
-                        } else {
-                            MaterialTheme.colorScheme.primary
-                        }
-                    )
-                ) {
-                    when {
-                        nfcUi.tagWriteSuccess && !busy -> {
-                            Icon(
-                                imageVector = Icons.Filled.Check,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .padding(end = 10.dp)
-                                    .size(24.dp)
-                            )
-                            Text(
-                                "쓰기가 정상적으로 완료되었습니다",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        busy && awaitingTag -> {
-                            CircularProgressIndicator(
-                                modifier = Modifier
-                                    .padding(end = 10.dp)
-                                    .size(24.dp),
-                                color = Color.White,
-                                strokeWidth = 2.dp
-                            )
-                            Text(
-                                "태그에 쓰는 중…",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        busy -> {
-                            CircularProgressIndicator(
-                                modifier = Modifier
-                                    .padding(end = 10.dp)
-                                    .size(24.dp),
-                                color = Color.White,
-                                strokeWidth = 2.dp
-                            )
-                            Text("잠시만요…", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        }
-                        else -> {
-                            val icon: ImageVector = if (awaitingTag) Icons.Filled.Nfc else Icons.Filled.PhoneAndroid
-                            Icon(
-                                imageVector = icon,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .padding(end = 10.dp)
-                                    .size(24.dp)
-                            )
-                            Text(
-                                if (awaitingTag) "휴대폰 뒤에 태그를 대 주세요" else "태그에 쓰기",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
+                if (isLinkUMode || awaitingTag || nfcUi.tagWriteSuccess) {
+                    Spacer(Modifier.height(4.dp))
+                    Button(
+                        onClick = { onPrepareWrite(null) },
+                        enabled = !busy && !nfcUi.tagWriteSuccess,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(40.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (nfcUi.tagWriteSuccess) {
+                                Color(0xFF0F766E)
+                            } else {
+                                MaterialTheme.colorScheme.primary
+                            }
+                        )
+                    ) {
+                        when {
+                            nfcUi.tagWriteSuccess && !busy -> {
+                                Icon(
+                                    imageVector = Icons.Filled.Check,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .padding(end = 8.dp)
+                                        .size(18.dp)
+                                )
+                                Text(
+                                    "쓰기 완료",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            busy && awaitingTag -> {
+                                CircularProgressIndicator(
+                                    modifier = Modifier
+                                        .padding(end = 8.dp)
+                                        .size(16.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                                Text(
+                                    "태그에 쓰는 중…",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            busy -> {
+                                CircularProgressIndicator(
+                                    modifier = Modifier
+                                        .padding(end = 8.dp)
+                                        .size(16.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                                Text("잠시만요…", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                            }
+                            else -> {
+                                val icon: ImageVector = if (awaitingTag) Icons.Filled.Nfc else Icons.Filled.PhoneAndroid
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .padding(end = 8.dp)
+                                        .size(18.dp)
+                                )
+                                Text(
+                                    if (awaitingTag) "휴대폰 뒤에 태그를 대 주세요" else "태그에 쓰기",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }
@@ -712,17 +728,17 @@ fun WriterAppScreen(
                 onClick = nfcUi.onOpenNfcSettings,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp),
-                shape = RoundedCornerShape(16.dp)
+                    .height(36.dp),
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Icon(
                     Icons.Filled.PhoneAndroid,
                     contentDescription = null,
                     modifier = Modifier
-                        .padding(end = 8.dp)
-                        .size(22.dp)
+                        .padding(end = 6.dp)
+                        .size(16.dp)
                 )
-                Text("NFC 켜기(휴대폰 설정)")
+                Text("NFC 켜기 (휴대폰 설정)", style = MaterialTheme.typography.labelSmall)
             }
 
             if (isLinkUMode) {
@@ -774,7 +790,8 @@ fun WriterAppScreen(
                             Text(
                                 "· 태그에 링크만 쓰면 스캔·연락은 됩니다. 꼭 필요한 경우에만 이 설정을 쓰세요.\n" +
                                     "· 앱을 배포할 때 서버 주소·암호를 이미 넣어 둔 경우, 쓰기가 끝난 뒤 Link-U에 자동으로 보고될 수 있어 대부분 이 화면을 열지 않아도 됩니다.\n" +
-                                    "· 관리자 안내로 직접 넣으라는 경우, 또는 개발·테스트로 다른 서버를 쓸 때만 아래에 입력·저장하세요.",
+                                    "· 관리자 안내로 직접 넣으라는 경우, 또는 개발·테스트로 다른 서버를 쓸 때만 아래에 입력·저장하세요.\n" +
+                                    "· 보호자 웹의 반려 상세(NFC 태그)만 브라우저로 열려면: petidconnect://nfc/pet?kind=…&pet_id=…&tenant=…(선택) 딥링크(README).",
                                 style = MaterialTheme.typography.bodySmall,
                                 lineHeight = 20.sp,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.88f)
@@ -1052,8 +1069,8 @@ private fun UnifiedTemplateInputPage(
                     .background(Color(0xFFF3F3F3))
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Home,
-                    contentDescription = "입력 페이지 닫기",
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "대시보드로 돌아가기",
                     tint = Color(0xFF9A9A9A)
                 )
             }
@@ -1322,31 +1339,32 @@ private fun UnifiedTemplateInputPage(
         ) { Text("확인", fontWeight = FontWeight.ExtraBold) }
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             ModeSelectOption(
                 modifier = Modifier.weight(1f),
-                title = "읽기/쓰기 모드",
-                subtitle = "태그 내용 읽기 + 기록",
+                title = "읽기/쓰기",
+                subtitle = "내용 읽기 + 기록",
                 icon = Icons.Filled.Nfc,
                 selected = !readOnlyMode,
                 onSelect = { onToggleReadOnly(false) }
             )
             ModeSelectOption(
                 modifier = Modifier.weight(1f),
-                title = "읽기 전용 모드",
-                subtitle = "읽기만 가능, 기록 잠금",
+                title = "읽기 전용",
+                subtitle = "읽기만 가능, 잠금",
                 icon = Icons.Filled.Key,
                 selected = readOnlyMode,
                 onSelect = { onToggleReadOnly(true) }
             )
         }
         Text(
-            "읽기 전용 모드로 만든 태그는 데이터 수정이 불가능할 수 있습니다.",
+            "읽기 전용 태그는 수정이 불가능할 수 있습니다.",
             style = MaterialTheme.typography.labelSmall,
-            color = Color(0xFF8E8E8E),
+            fontSize = 9.sp,
+            color = Color(0xFF9E9E9E),
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
         )
@@ -1405,18 +1423,18 @@ private fun ModeSelectOption(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Box(
                     modifier = Modifier
-                        .size(28.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .size(20.dp)
+                        .clip(RoundedCornerShape(6.dp))
                         .background(if (selected) Color(0xFFF5D54A) else Color(0xFFF3F4F6)),
                     contentAlignment = Alignment.Center
                 ) {
@@ -1424,12 +1442,12 @@ private fun ModeSelectOption(
                         imageVector = if (selected) Icons.Filled.Check else icon,
                         contentDescription = null,
                         tint = if (selected) Color.White else Color(0xFF6B7280),
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(12.dp)
                     )
                 }
                 Text(
                     title,
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.labelSmall,
                     color = if (selected) Color(0xFF5A4C00) else Color(0xFF4B5563),
                     fontWeight = FontWeight.ExtraBold
                 )
@@ -1437,8 +1455,9 @@ private fun ModeSelectOption(
             Text(
                 subtitle,
                 style = MaterialTheme.typography.labelSmall,
-                color = if (selected) Color(0xFF7C6500) else Color(0xFF9CA3AF),
-                lineHeight = 15.sp
+                fontSize = 8.sp,
+                lineHeight = 10.sp,
+                color = if (selected) Color(0xFF8B7E3D) else Color(0xFF9CA3AF)
             )
         }
     }
@@ -1600,6 +1619,42 @@ private fun LandingModeScreen(
                     lineHeight = 14.sp,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center
+                )
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // Footer Section: Logo & Company
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "Link",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Black,
+                        color = Color(0xFF1E293B)
+                    )
+                    Text(
+                        text = "U",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Black,
+                        color = brandTeal
+                    )
+                }
+                Text(
+                    text = "제작사 (주)와우쓰리디",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color(0xFF94A3B8),
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp
                 )
             }
         }

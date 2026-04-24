@@ -10,9 +10,10 @@ import { getScanLogsWithDb } from "@/lib/scan-logs-db";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
 import { getTenantStatus } from "@/lib/tenant-status";
 import { LostModeToggle } from "@/components/pet/LostModeToggle";
+import { OpenNativePetNfcSectionButton } from "@/components/pet/OpenNativePetNfcSectionButton";
 import SafePetImage from "@/components/pet/SafePetImage";
 import {
-  ArrowLeft, PawPrint, Edit3, Heart, Activity,
+  ArrowLeft, Edit3, Heart, Activity,
   Nfc, Stethoscope, Clock, AlertTriangle, ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -181,8 +182,11 @@ export default async function PetDetailPage({
           />
         </section>
 
-        {/* NFC 태그 섹션 */}
-        <section className="bg-white rounded-[28px] border border-slate-100 shadow-sm overflow-hidden">
+        {/* NFC 태그 섹션 (앱/딥링크에서 #nfc 로 스크롤) */}
+        <section
+          id="nfc"
+          className="bg-white rounded-[28px] border border-slate-100 shadow-sm overflow-hidden scroll-mt-4"
+        >
           <div className="px-5 pt-5 pb-4 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -235,6 +239,12 @@ export default async function PetDetailPage({
                 )}
               </div>
             )}
+
+            <OpenNativePetNfcSectionButton
+              kind={subjectKind}
+              petId={pet.id}
+              tenantId={tenantId}
+            />
           </div>
         </section>
 

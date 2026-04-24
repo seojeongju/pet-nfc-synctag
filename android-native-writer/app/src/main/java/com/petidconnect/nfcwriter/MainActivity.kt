@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.nfc.NdefMessage
 import android.nfc.NdefRecord
 import android.nfc.NfcAdapter
@@ -582,15 +583,28 @@ class MainActivity : ComponentActivity() {
         }
 
         val data = intent?.data ?: return
-        if (data.scheme != "petidconnect" || data.host != "nfc" || data.path != "/write") {
+        if (data.scheme != "petidconnect" || data.host != "nfc") {
             return
         }
+        val path = data.path.orEmpty()
+        when {
+            path == "/write" || path.startsWith("/write/") -> applyNfcWriteDeepLink(data)
+            path == "/pet" || path.startsWith("/pet/") -> openPetDashboardFromDeepLink(data)
+            else -> { }
+        }
+    }
+
+    /**
+     * [petidconnect://nfc/write?uid=&url=&handoffToken=]
+     * 세 쿼리가 **모두 비어 있지 않을 때만** 필드를 덮어쓴다. 하나라도 비면 상태는 유지하고 안내만 한다.
+     */
+    private fun applyNfcWriteDeepLink(data: Uri) {
         val uid = data.getQueryParameter("uid")?.trim().orEmpty()
         val profileUrl = data.getQueryParameter("url")?.trim().orEmpty()
         val handoffToken = data.getQueryParameter("handoffToken")?.trim().orEmpty()
 
         if (uid.isBlank() || profileUrl.isBlank() || handoffToken.isBlank()) {
-            statusText = "자동으로 못 가져왔어요. 웹에서 다시 열어 주시거나 아래에 직접 넣어 주세요."
+            statusText = "자동으로 못 가져왔어요. 웹에서 다시 열어 주시거나 아래에 직접 넣어 주세요. (딥링크에 uid·url·handoffToken이 모두 있어야 덮어씁니다)"
             return
         }
 
@@ -603,6 +617,47 @@ class MainActivity : ComponentActivity() {
         awaitingTag = false
         tagWriteSuccess = false
         statusText = "웹에서 불러왔어요. [태그에 쓰기]를 누른 뒤, 휴대폰 뒤에 태그를 대 주세요."
+    }
+
+    /** [BuildConfig]·저장된 API/프로필 주소 → 웹 루트(대시보드 URL용) */
+    private fun siteOriginForDashboard(): String {
+        val fromInput = profileSiteInput.trim().trimEnd('/')
+        if (fromInput.isNotEmpty()) return fromInput
+        val fromPrefs = serverSettings.getApiBaseOrEmpty()
+        if (fromPrefs.isNotEmpty()) return fromPrefs
+        return BuildConfig.NATIVE_API_BASE_URL.trim().trimEnd('/')
+    }
+
+    /**
+     * [petidconnect://nfc/pet?kind=dog&pet_id=...&tenant=...]
+     * 기기 브라우저에서 `…/dashboard/{kind}/pets/{id}?tenant#nfc` 를 연다(관리·태그 UI는 웹).
+     */
+    private fun openPetDashboardFromDeepLink(data: Uri) {
+        val kind = data.getQueryParameter("kind")?.trim().orEmpty()
+        val petId = data.getQueryParameter("pet_id")?.trim().orEmpty()
+        val tenant = data.getQueryParameter("tenant")?.trim()?.takeIf { it.isNotEmpty() }
+        if (kind.isBlank() || petId.isBlank()) {
+            statusText = "반려 상세(웹)를 열려면 kind·pet_id 쿼리가 필요해요. 예: …/nfc/pet?kind=dog&pet_id=…"
+            return
+        }
+        val origin = siteOriginForDashboard()
+        if (origin.isEmpty()) {
+            statusText = "웹 주소(Link-U 서비스/프로필 사이트)를 [Link-U 서비스에 기록]에 넣은 뒤 다시 시도해 주세요."
+            return
+        }
+        val tenantQs = if (tenant != null) {
+            "?tenant=" + URLEncoder.encode(tenant, Charsets.UTF_8.name())
+        } else {
+            ""
+        }
+        val url = "$origin/dashboard/$kind/pets/$petId$tenantQs#nfc"
+        val view = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+        if (view.resolveActivity(packageManager) == null) {
+            statusText = "이 링크를 열 앱(브라우저)이 없어요."
+            return
+        }
+        startActivity(view)
+        statusText = "브라우저에서 이 반려의 NFC 태그 섹션을 열었어요. 앱으로 돌아올 수 있어요."
     }
 
     private fun applyToolsTemplate(template: String) {

@@ -4,21 +4,21 @@
 
 ---
 
-## 1단계: 안드로이드 전용 앱 — URL 입력 기능 마무리 (우선)
+## 1단계: 안드로이드 전용 앱 — URL 입력 기능 마무리 (우선) — **완료(문서·동작 정합)**
 
 **목표:** 웹 딥링크 없이도 **개발·테스트**와 **예외 상황**에서 태그에 URL을 쓸 수 있게 한다.
 
-**현재 전제:** `MainActivity`는 `petidconnect://nfc/write?uid=&url=&handoffToken=` 딥링크로만 `WritePayload`를 채운다.
+**전제·구현:** `WriterAppScreen` + `MainActivity`에서 Link-U 모드 시 UID·URL·핸드오프 토큰을 **필드 입력·붙여넣기**로 넣을 수 있고, `[태그에 쓰기]` → NDEF 쓰기 → `POST /api/admin/nfc/native-write` 경로를 쓴다. 토큰은 웹 handoff에서 발급된 값을 그대로 쓰는 구조.
 
-**마무리할 범위(체크리스트):**
+**체크리스트(닫힘):**
 
-- [ ] UI: 프로필 URL(또는 기록할 URL), UID, **핸드오프 토큰** 입력 수단(필드 / 붙여넣기) — 서버 검증이 필요한 구조면 토큰은 웹에서 발급받은 값을 그대로 넣는 흐름 명시
-- [ ] 입력값으로 `WritePayload` 구성 후, 기존 **태그 대기 → NDEF URL 쓰기 → native-write 콜백** 경로 재사용
-- [ ] 딥링크로 열린 경우와 **수동 입력**이 섞일 때 우선순위(예: 딥링크가 오면 입력란 덮어쓰기 / 확인) 정리
-- [ ] 빈 값·형식 오류 시 메시지(한국어) 정리
-- [ ] `BuildConfig.NATIVE_API_BASE_URL` 등 **개발용 설정**과 문서(`android-native-writer/README.md`) 한 줄 보강
+- [x] UI: 프로필 URL(또는 기록할 URL), UID, 핸드오프 토큰 입력(필드/붙여넣기) 및 `「URL 자동(UID+사이트)」`
+- [x] `WritePayload` → 태그 대기 → NDEF 쓰기 → native-write 콜백(Link-U 모드) 재사용
+- [x] **딥링크(`…/nfc/write`) vs 수동:** `uid`·`url`·`handoffToken`이 **모두** 채워진 딥링크일 때만 필드 덮어쓰기. 하나라도 비면 **기존 입력 유지** + 안내(README·코드 주석)
+- [x] 빈 값: Link-U는 세 칸·일반 도구는 URL/정보, 블루투스 MAC 등 **한국어 안내**(`MainActivity` 등)
+- [x] `NATIVE_API_BASE_URL` / 앱 내 서버 설정: `android-native-writer/README.md`·`local.properties.example`에 정리
 
-**완료 기준:** 실제 기기에서 “웹 없이 입력만으로” 태그 1개에 URL 기록 + 서버 보고까지 성공하는 시나리오 재현 가능.
+**완료 기준:** 기기에서 수동 입력만으로 태그 1개 URL 기록 + (설정 시) 서버 보고 — 재현 가능(검증은 `docs/NFC_NATIVE_E2E_CHECKLIST.md` 권장).
 
 ---
 
@@ -39,17 +39,26 @@
 
 ---
 
-## 3단계(선택): 네이티브에서 관리
+## 3단계(선택): 네이티브에서 “웹 태그 관리”로 **[딥링크 열기만]** — **1차 구현됨**
 
-- 딥링크로 **반려 상세(태그 섹션)** 열기 → 관리는 웹
-- 또는 앱 전용 API로 목록/해제(권한 동일) — 필요 시 별도 설계
+- [x] **딥링크:** `petidconnect://nfc/pet?kind=…&pet_id=…&tenant=…(선택)` → 기본 브라우저에서  
+  `{사이트}/dashboard/{kind}/pets/{id}?tenant#nfc` (보호자 반려 상세의 NFC 섹션 앵커). 앱 `MainActivity` + `AndroidManifest` + 웹 `id="nfc"`.
+- [ ] 앱 전용 API로 태그 목록/해제(권한 동일) — **미착수**, 필요 시 별도 설계
+- [x] 반려 상세(NFC 섹션)에서 Android + handoff 플래그 시 **「전용 앱으로 열기 → 브라우저에 이 NFC 태그 안내」** (`OpenNativePetNfcSectionButton`)
 
 ---
 
 ## 진행 방식
 
-1. **1단계** 끝날 때까지 **2단계 UI/웹 작업은 스코프 밖**으로 둔다.
-2. 1단계 완료 후 이 문서의 1단계 체크를 갱신하고 2단계 이슈/PR을 연다.
+1. **1단계**는 위 기준으로 **닫힘** → **2단계(보호자 웹 태그 관리)** 를 우선 백로그/이슈로 둔다(스코프는 제품 합의에 따름).
+2. 1단계·3단계(딥링크)는 문서·앱·웹에 반영됨. 2단계 착수 시 `dashboard/.../pets/[pet_id]`·`#nfc` IA와 맞출 것.
+
+---
+
+## iOS 네이티브 앱 (필수 후속)
+
+- **Android만** `android-native-writer`로 구현된 상태이며, **iOS는 별도 네이티브 앱으로 개발을 진행해야 한다** (기록일 기준 착수 전). 상세 범위·단계는 아래 문서를 따른다.
+- [`docs/IOS_EXPANSION_MASTER_PLAN.md`](./IOS_EXPANSION_MASTER_PLAN.md)
 
 ---
 

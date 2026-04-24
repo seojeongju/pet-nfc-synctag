@@ -9,9 +9,9 @@
 
     <application
         android:allowBackup="true"
-        android:icon="@android:drawable/sym_def_app_icon"
+        android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:roundIcon="@android:drawable/sym_def_app_icon"
+        android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/Theme.PetIdNfcNativeWriter">
         <activity
@@ -28,6 +28,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="petidconnect" android:host="nfc" android:pathPrefix="/write" />
+                <data android:scheme="petidconnect" android:host="nfc" android:pathPrefix="/pet" />
             </intent-filter>
         </activity>
     </application>
