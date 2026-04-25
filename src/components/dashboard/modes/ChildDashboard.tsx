@@ -218,9 +218,15 @@ export default function ChildDashboard({
               <p className="text-white/80 text-[11px] font-bold leading-relaxed max-w-[70%] drop-shadow-md">
                  NFC로 비상 연락처를 연결하고, 안심 구역으로 우리 아이의 위치를 확인하세요.
               </p>
-              <Button className="rounded-2xl font-black bg-sky-500 text-white hover:bg-sky-600 px-6 h-11 text-xs shadow-lg shadow-sky-500/20">
+              <a
+                href={`/dashboard/${subjectKind}/scans${tenantQs}`}
+                className={cn(
+                  buttonVariants({}),
+                  "rounded-2xl font-black bg-sky-500 text-white hover:bg-sky-600 px-6 h-11 text-xs shadow-lg shadow-sky-500/20 flex items-center justify-center transition-all active:scale-95"
+                )}
+              >
                 상세 리포트 보기
-              </Button>
+              </a>
             </div>
           </Card>
         </motion.section>

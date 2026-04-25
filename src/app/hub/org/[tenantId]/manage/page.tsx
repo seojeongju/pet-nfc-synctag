@@ -4,6 +4,7 @@ import {
   adminCreateTenantInvite,
   adminRemoveTenantMember,
   adminRenameTenant,
+  adminUpdateTenantAllowedModes,
   getTenantOrgAuditLogs,
   getTenantOrgManageContext,
   type TenantAuditLogRow,
@@ -12,6 +13,7 @@ import { TENANT_AUDIT_ACTIONS } from "@/lib/tenant-audit-constants";
 import { auditActionLabelKo, formatTenantAuditRow } from "@/lib/tenant-audit-format";
 import { Building2, ChevronLeft, FileDown, ScrollText, ShieldCheck, UserPlus2 } from "lucide-react";
 import Link from "next/link";
+import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 
@@ -66,6 +68,31 @@ export default async function TenantOrgManagePage({
   if (!data) notFound();
 
   const { view: tenant, isPlatformAdmin } = data;
+
+  const parseAllowedModesForForm = (raw: string | null): { unrestricted: boolean; selected: SubjectKind[] } => {
+    if (raw == null || !String(raw).trim()) {
+      return { unrestricted: true, selected: [] };
+    }
+    try {
+      const v = JSON.parse(raw) as unknown;
+      if (!Array.isArray(v) || v.length === 0) {
+        return { unrestricted: true, selected: [] };
+      }
+      const selected = v.filter(
+        (x): x is SubjectKind => typeof x === "string" && (SUBJECT_KINDS as readonly string[]).includes(x)
+      );
+      if (selected.length === 0) {
+        return { unrestricted: true, selected: [] };
+      }
+      if (selected.length >= SUBJECT_KINDS.length) {
+        return { unrestricted: true, selected };
+      }
+      return { unrestricted: false, selected };
+    } catch {
+      return { unrestricted: true, selected: [] };
+    }
+  };
+  const modeForm = parseAllowedModesForForm(tenant.allowed_subject_kinds);
 
   const auditActionRaw = typeof qs.audit_action === "string" ? qs.audit_action.trim() : "";
   const auditQRaw = typeof qs.audit_q === "string" ? qs.audit_q.trim() : "";
@@ -183,6 +210,65 @@ export default async function TenantOrgManagePage({
             조직명 저장
           </button>
         </form>
+
+        <div className="rounded-2xl border border-amber-100 bg-amber-50/50 p-4 space-y-3">
+          <div>
+            <p className="text-[11px] font-black uppercase text-amber-800">보호자에게 보이는 Link-U 모드</p>
+            <p className="text-[11px] font-semibold text-amber-900/80 mt-1">
+              ‘전체 모드 허용’이면 이 조직 소속 보호자는 허브에서 5가지 모드를 모두 볼 수 있어요. 특정 제품(예: 펫만)이면
+              아래에서 모드를 고릅니다.
+            </p>
+          </div>
+          <form
+            action={async (formData) => {
+              "use server";
+              const { redirect } = await import("next/navigation");
+              try {
+                await adminUpdateTenantAllowedModes(formData);
+              } catch (e) {
+                const msg = e instanceof Error ? e.message : "저장 실패";
+                redirect(withMessage(tenantId, "err", msg));
+              }
+              redirect(withMessage(tenantId, "ok", "허용 모드가 저장되었습니다."));
+            }}
+            className="space-y-3"
+          >
+            <input type="hidden" name="tenant_id" value={tenant.id} />
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                name="unrestricted"
+                value="1"
+                defaultChecked={modeForm.unrestricted}
+                className="mt-1 h-4 w-4 rounded border-amber-300"
+              />
+              <span className="text-sm font-bold text-slate-800">전체 모드 허용 (제한 없음)</span>
+            </label>
+            <div className="pl-6 space-y-2 border-t border-amber-100/80 pt-3">
+              <p className="text-[10px] font-black text-slate-500 uppercase">또는 허용할 모드만 선택</p>
+              <div className="flex flex-wrap gap-x-4 gap-y-2">
+                {SUBJECT_KINDS.map((k) => (
+                  <label key={k} className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                    <input
+                      type="checkbox"
+                      name="mode"
+                      value={k}
+                      defaultChecked={!modeForm.unrestricted && modeForm.selected.includes(k)}
+                      className="h-3.5 w-3.5 rounded border-slate-300"
+                    />
+                    {subjectKindMeta[k].label}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <button
+              type="submit"
+              className="h-9 rounded-xl bg-amber-700 text-white text-xs font-black px-4 hover:bg-amber-800"
+            >
+              허용 모드 저장
+            </button>
+          </form>
+        </div>
 
         <form
           action={async (formData) => {

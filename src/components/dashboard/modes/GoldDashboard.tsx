@@ -218,9 +218,15 @@ export default function GoldDashboard({
               <p className="text-white/80 text-[11px] font-bold leading-relaxed max-w-[70%] drop-shadow-md">
                  NFC로 가치를 증명하고, 분실 시 전 소유주에게 빠르게 연결되도록 보호하세요.
               </p>
-              <Button className="rounded-2xl font-black bg-amber-500 text-white hover:bg-amber-600 px-6 h-11 text-xs shadow-lg shadow-amber-500/20">
+              <a
+                href={`/dashboard/${subjectKind}/scans${tenantQs}`}
+                className={cn(
+                  buttonVariants({}),
+                  "rounded-2xl font-black bg-amber-500 text-white hover:bg-amber-600 px-6 h-11 text-xs shadow-lg shadow-amber-500/20 flex items-center justify-center transition-all active:scale-95"
+                )}
+              >
                 상세 리포트 보기
-              </Button>
+              </a>
             </div>
           </Card>
         </motion.section>

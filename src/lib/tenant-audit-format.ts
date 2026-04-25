@@ -22,6 +22,8 @@ export function auditActionLabelKo(action: string): string {
       return "조직 상태 변경";
     case "tenant_invite_create_by_admin":
       return "초대 발급";
+    case "tenant_allowed_modes_by_admin":
+      return "허용 모드 변경";
     default:
       return action;
   }
@@ -53,6 +55,19 @@ export function auditPayloadSummaryKo(action: string, raw: string | null): strin
         const email = typeof p.email === "string" ? p.email : "";
         const r = typeof p.role === "string" ? roleLabel(p.role as "owner" | "admin" | "member") : "";
         return [email, r].filter(Boolean).join(" · ");
+      }
+      case "tenant_allowed_modes_by_admin": {
+        const raw = p.allowed_subject_kinds;
+        if (raw === null || raw === undefined) return "제한 없음(전체)";
+        if (typeof raw === "string") {
+          try {
+            const a = JSON.parse(raw) as unknown;
+            if (Array.isArray(a) && a.length > 0) return a.join(", ");
+          } catch {
+            return raw;
+          }
+        }
+        return "";
       }
       default:
         return "";

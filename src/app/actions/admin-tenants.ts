@@ -10,6 +10,7 @@ import { assertTenantRole, getMembership } from "@/lib/tenant-membership";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
 import type { D1Database } from "@cloudflare/workers-types";
 import { TENANT_AUDIT_ACTIONS, type TenantOrgAuditFilter } from "@/lib/tenant-audit-constants";
+import { SUBJECT_KINDS, type SubjectKind } from "@/lib/subject-kind";
 
 type TenantRole = "owner" | "admin" | "member";
 
@@ -37,6 +38,8 @@ export type TenantAdminView = {
   slug: string;
   status: string;
   created_at: string;
+  /** NULL·빈 값 = 전체 모드 허용. JSON 배열 문자열. */
+  allowed_subject_kinds: string | null;
   member_count: number;
   members: TenantMemberInfo[];
   invites: TenantInviteInfo[];
@@ -236,12 +239,12 @@ export async function getTenantsAdminView(filters?: {
 
   const tenantsRows = await db
     .prepare(
-      `SELECT t.id, t.name, t.slug, t.status, t.created_at,
+      `SELECT t.id, t.name, t.slug, t.status, t.created_at, t.allowed_subject_kinds,
               COUNT(tm.user_id) AS member_count
        FROM tenants t
        LEFT JOIN tenant_members tm ON tm.tenant_id = t.id
        ${whereClause}
-       GROUP BY t.id, t.name, t.slug, t.status, t.created_at
+       GROUP BY t.id, t.name, t.slug, t.status, t.created_at, t.allowed_subject_kinds
        ORDER BY datetime(t.created_at) DESC`
     )
     .bind(...bindValues)
@@ -251,6 +254,7 @@ export async function getTenantsAdminView(filters?: {
       slug: string;
       status: string;
       created_at: string;
+      allowed_subject_kinds: string | null;
       member_count: number;
     }>();
 
@@ -321,6 +325,7 @@ export async function getTenantsAdminView(filters?: {
     slug: t.slug,
     status: t.status,
     created_at: t.created_at,
+    allowed_subject_kinds: t.allowed_subject_kinds ?? null,
     member_count: Number(t.member_count ?? 0),
     members: membersByTenant.get(t.id) ?? [],
     invites: invitesByTenant.get(t.id) ?? [],
@@ -331,7 +336,7 @@ async function loadTenantAdminView(db: ReturnType<typeof getDB>, tenantId: strin
   await ensureTenantInvitesTable();
   const t = await db
     .prepare(
-      "SELECT id, name, slug, status, created_at FROM tenants WHERE id = ? LIMIT 1"
+      "SELECT id, name, slug, status, created_at, allowed_subject_kinds FROM tenants WHERE id = ? LIMIT 1"
     )
     .bind(tenantId)
     .first<{
@@ -340,6 +345,7 @@ async function loadTenantAdminView(db: ReturnType<typeof getDB>, tenantId: strin
       slug: string;
       status: string;
       created_at: string;
+      allowed_subject_kinds: string | null;
     }>();
   if (!t) return null;
 
@@ -403,6 +409,7 @@ async function loadTenantAdminView(db: ReturnType<typeof getDB>, tenantId: strin
     slug: t.slug,
     status: t.status,
     created_at: t.created_at,
+    allowed_subject_kinds: t.allowed_subject_kinds ?? null,
     member_count: members.length,
     members,
     invites,
@@ -610,6 +617,55 @@ export async function adminRenameTenant(formData: FormData) {
     .bind(name, tenantId)
     .run();
   await writeAdminAudit(actor.actorEmail, "tenant_rename_by_admin", { tenantId, name });
+  revalidateTenantSurfaces(tenantId);
+}
+
+/**
+ * 보호자에게 보이는 Link-U 모드(메뉴) 범위. 전체 허용이면 NULL, 아니면 JSON 배열(예: ["pet"]).
+ */
+export async function adminUpdateTenantAllowedModes(formData: FormData) {
+  const tenantId = String(formData.get("tenant_id") ?? "").trim();
+  if (!tenantId) {
+    throw new Error("조직 정보가 올바르지 않습니다.");
+  }
+  const actor = await requirePlatformOrTenantOrgAdmin(tenantId);
+  const db = getDB();
+
+  const unrestricted =
+    formData.get("unrestricted") === "1" ||
+    formData.get("unrestricted") === "on" ||
+    formData.get("unrestricted") === "true";
+
+  let allowedJson: string | null = null;
+  if (unrestricted) {
+    allowedJson = null;
+  } else {
+    const selected = formData
+      .getAll("mode")
+      .map((x) => String(x).trim())
+      .filter((x) => (SUBJECT_KINDS as readonly string[]).includes(x)) as SubjectKind[];
+    if (selected.length === 0) {
+      throw new Error("‘전체 모드 허용’에 체크하거나, 허용할 모드를 한 개 이상 선택하세요.");
+    }
+    if (selected.length >= SUBJECT_KINDS.length) {
+      allowedJson = null;
+    } else {
+      const ordered = SUBJECT_KINDS.filter((k) => selected.includes(k));
+      allowedJson = JSON.stringify(ordered);
+    }
+  }
+
+  await db
+    .prepare(
+      "UPDATE tenants SET allowed_subject_kinds = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+    )
+    .bind(allowedJson, tenantId)
+    .run();
+
+  await writeAdminAudit(actor.actorEmail, "tenant_allowed_modes_by_admin", {
+    tenantId,
+    allowed_subject_kinds: allowedJson,
+  });
   revalidateTenantSurfaces(tenantId);
 }
 

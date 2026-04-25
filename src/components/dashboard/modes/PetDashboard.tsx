@@ -353,9 +353,15 @@ export default function PetDashboard({
               <p className="text-white/80 text-[11px] font-bold leading-relaxed max-w-[70%] drop-shadow-md">
                  NFC로 빠르게 연결하고, BLE·안심 구역은 단계적으로 더해집니다.
               </p>
-              <Button className="rounded-2xl font-black bg-teal-500 text-white hover:bg-teal-600 px-6 h-11 text-xs shadow-lg shadow-teal-500/20">
+              <a
+                href={`/dashboard/${subjectKind}/scans${tenantQs}`}
+                className={cn(
+                  buttonVariants({}),
+                  "rounded-2xl font-black bg-teal-500 text-white hover:bg-teal-600 px-6 h-11 text-xs shadow-lg shadow-teal-500/20 flex items-center justify-center transition-all active:scale-95"
+                )}
+              >
                 상세 리포트 보기
-              </Button>
+              </a>
             </div>
           </Card>
         </motion.section>

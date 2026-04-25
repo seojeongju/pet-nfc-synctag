@@ -21,6 +21,11 @@ import { listTenantsForUser } from "@/lib/tenant-membership";
 import { resolvePersonalPlan } from "@/lib/plan-resolution";
 import { getTenantPlanUsageSummary } from "@/lib/tenant-quota";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
+import {
+  getEffectiveAllowedSubjectKinds,
+  getHubRedirectForGuardian,
+  getDashboardPathForUserTenant,
+} from "@/lib/mode-visibility";
 import type { D1Database } from "@cloudflare/workers-types";
 
 export const runtime = "edge";
@@ -92,6 +97,27 @@ export default async function HubPage({
   }
 
   const sp = await searchParams;
+  const db = context.env.DB;
+  const roleRow = await db
+    .prepare("SELECT role FROM user WHERE id = ?")
+    .bind(session.user.id)
+    .first<{ role?: string | null }>();
+  const isPlatformAdmin = isPlatformAdminRole(roleRow?.role);
+  const allowedSubjectKinds = await getEffectiveAllowedSubjectKinds(db, session.user.id, {
+    isPlatformAdmin,
+  });
+  const hubVisibleKinds: SubjectKind[] = isPlatformAdmin
+    ? [...SUBJECT_KINDS]
+    : allowedSubjectKinds;
+
+  const isWelcomeOnboarding = sp.onboarding === "welcome";
+  if (!isPlatformAdmin && !isWelcomeOnboarding) {
+    const oneShot = getHubRedirectForGuardian(allowedSubjectKinds);
+    if (oneShot) {
+      redirect(oneShot);
+    }
+  }
+
   const deviceHint =
     (typeof sp.device === "string" && sp.device.trim()) ||
     (typeof sp.uid === "string" && sp.uid.trim()) ||
@@ -99,16 +125,12 @@ export default async function HubPage({
   if (deviceHint) {
     const kind = await resolveDeviceAssignedKind(context.env.DB, deviceHint);
     if (kind) {
-      redirect(`/dashboard/${encodeURIComponent(kind)}`);
+      const canUseDevice = isPlatformAdmin || allowedSubjectKinds.includes(kind);
+      if (canUseDevice) {
+        redirect(`/dashboard/${encodeURIComponent(kind)}`);
+      }
     }
   }
-
-  const db = context.env.DB;
-  const roleRow = await db
-    .prepare("SELECT role FROM user WHERE id = ?")
-    .bind(session.user.id)
-    .first<{ role?: string | null }>();
-  const isPlatformAdmin = isPlatformAdminRole(roleRow?.role);
 
   const tenants = await listTenantsForUser(db, session.user.id).catch(() => []);
   const personalPlan = await resolvePersonalPlan(db, session.user.id).catch(() => null);
@@ -123,15 +145,30 @@ export default async function HubPage({
     string,
     Awaited<ReturnType<typeof getTenantPlanUsageSummary>>
   >;
-  const isWelcomeOnboarding = sp.onboarding === "welcome";
-  const onboardingKind =
+  const tenantDashboardHrefs: Record<string, string> = Object.fromEntries(
+    await Promise.all(
+      tenants.map(async (t) => {
+        const href = await getDashboardPathForUserTenant(db, session.user.id, t.id, {
+          isPlatformAdmin,
+        });
+        return [t.id, href] as const;
+      })
+    )
+  );
+  let onboardingKind: SubjectKind | null =
     typeof sp.kind === "string" && (SUBJECT_KINDS as readonly string[]).includes(sp.kind)
       ? (sp.kind as SubjectKind)
       : null;
-  const onboardingDashboardHref = onboardingKind ? `/dashboard/${onboardingKind}` : "/dashboard/pet";
+  if (!isPlatformAdmin && onboardingKind && !allowedSubjectKinds.includes(onboardingKind)) {
+    onboardingKind = null;
+  }
+  const defaultOnboardingKind = hubVisibleKinds[0] ?? "pet";
+  const onboardingDashboardHref = onboardingKind
+    ? `/dashboard/${onboardingKind}`
+    : `/dashboard/${defaultOnboardingKind}`;
   const onboardingRegisterHref = onboardingKind
     ? `/dashboard/${onboardingKind}/pets/new`
-    : "/dashboard/pet/pets/new";
+    : `/dashboard/${defaultOnboardingKind}/pets/new`;
   const onboardingProgress = await getPersonalOnboardingProgress(db, session.user.id, onboardingKind);
   const onboardingSteps = [
     {
@@ -175,6 +212,11 @@ export default async function HubPage({
           <p className="text-base text-slate-500 font-medium leading-relaxed">
             돌봄과 연결을 위해 맞춤 화면이 달라요. 나중에 언제든 바꿀 수 있어요.
           </p>
+          {!isPlatformAdmin && hubVisibleKinds.length < SUBJECT_KINDS.length ? (
+            <p className="text-[12px] font-bold text-amber-700/90">
+              이 계정·소속에 허용된 모드만 표시됩니다.
+            </p>
+          ) : null}
           {personalPlan && (
             <p className="text-[11px] font-bold text-slate-400">
               개인 플랜: <span className="text-slate-600">{personalPlan.plan.name}</span>
@@ -316,7 +358,7 @@ export default async function HubPage({
                         </a>
                       )}
                       <a
-                        href={`/dashboard/pet?tenant=${encodeURIComponent(t.id)}`}
+                        href={tenantDashboardHrefs[t.id] ?? `/dashboard/pet?tenant=${encodeURIComponent(t.id)}`}
                         className="rounded-xl bg-slate-900 px-3 py-2 text-[10px] font-black text-white hover:bg-teal-600"
                       >
                         대시보드
@@ -334,7 +376,7 @@ export default async function HubPage({
         )}
 
         <nav className="space-y-3">
-          {SUBJECT_KINDS.map((kind) => {
+          {hubVisibleKinds.map((kind) => {
             const meta = subjectKindMeta[kind];
             const Icon = hubIcons[kind];
             return (

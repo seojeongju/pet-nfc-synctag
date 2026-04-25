@@ -11,6 +11,10 @@ import { getTenantPlanUsageSummary, type TenantPlanUsageSummary } from "@/lib/te
 import { getTenantStatus } from "@/lib/tenant-status";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
 import { rethrowNextControlFlowErrors } from "@/lib/next-redirect-guard";
+import {
+  getEffectiveAllowedSubjectKinds,
+  isSubjectKindAllowedForTenant,
+} from "@/lib/mode-visibility";
 import type { SubjectKind } from "@/lib/subject-kind";
 import type { D1Database } from "@cloudflare/workers-types";
 
@@ -78,12 +82,33 @@ export default async function DashboardKindPage({
         await requireTenantMember(context.env.DB, session.user.id, tenantId);
       }
 
-      const [pets, roleRow, announcements, tenantUsage, tenantStatus] = await Promise.all([
+      const roleRow = await context.env.DB
+        .prepare("SELECT role FROM user WHERE id = ?")
+        .bind(session.user.id)
+        .first<{ role?: string | null }>();
+      const isAdmin = isPlatformAdminRole(roleRow?.role);
+
+      if (!isAdmin) {
+        const allowed = await getEffectiveAllowedSubjectKinds(context.env.DB, session.user.id, {
+          isPlatformAdmin: false,
+        });
+        if (!allowed.includes(subjectKind)) {
+          redirect("/hub");
+        }
+        if (tenantId) {
+          const tenantOk = await isSubjectKindAllowedForTenant(
+            context.env.DB,
+            tenantId,
+            subjectKind
+          );
+          if (!tenantOk) {
+            redirect("/hub");
+          }
+        }
+      }
+
+      const [pets, announcements, tenantUsage, tenantStatus] = await Promise.all([
         getPetsWithDb(context.env.DB, session.user.id, subjectKind, tenantId ?? undefined),
-        context.env.DB
-          .prepare("SELECT role FROM user WHERE id = ?")
-          .bind(session.user.id)
-          .first<{ role?: string | null }>(),
         fetchVisibleAnnouncementsForGuardianWithDb(
           context.env.DB,
           session.user.id,
@@ -99,8 +124,6 @@ export default async function DashboardKindPage({
         subjectKind,
         tenantId
       );
-
-      const isAdmin = isPlatformAdminRole(roleRow?.role);
 
       return (
         <DashboardClient

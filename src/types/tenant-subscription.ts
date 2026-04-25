@@ -24,6 +24,8 @@ export type TenantRow = {
   name: string;
   slug: string;
   status: TenantStatus;
+  /** NULL·빈 JSON = 제한 없음(전체 모드) — JSON 배열: '["pet","child"]' */
+  allowed_subject_kinds?: string | null;
   created_at: string;
   updated_at: string;
 };

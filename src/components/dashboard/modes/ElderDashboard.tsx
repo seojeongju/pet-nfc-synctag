@@ -218,9 +218,15 @@ export default function ElderDashboard({
               <p className="text-white/80 text-[11px] font-bold leading-relaxed max-w-[70%] drop-shadow-md">
                  NFC로 연락처를 연결하고, 안심 구역 설정으로 가족의 안전을 확인하세요.
               </p>
-              <Button className="rounded-2xl font-black bg-indigo-500 text-white hover:bg-indigo-600 px-6 h-11 text-xs shadow-lg shadow-indigo-500/20">
+              <a
+                href={`/dashboard/${subjectKind}/scans${tenantQs}`}
+                className={cn(
+                  buttonVariants({}),
+                  "rounded-2xl font-black bg-indigo-500 text-white hover:bg-indigo-600 px-6 h-11 text-xs shadow-lg shadow-indigo-500/20 flex items-center justify-center transition-all active:scale-95"
+                )}
+              >
                 상세 리포트 보기
-              </Button>
+              </a>
             </div>
           </Card>
         </motion.section>

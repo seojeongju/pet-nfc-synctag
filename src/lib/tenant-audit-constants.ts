@@ -6,6 +6,7 @@ export const TENANT_AUDIT_ACTIONS = [
   "tenant_member_remove_by_admin",
   "tenant_status_change_by_admin",
   "tenant_invite_create_by_admin",
+  "tenant_allowed_modes_by_admin",
 ] as const;
 
 export type TenantOrgAuditFilter = {
