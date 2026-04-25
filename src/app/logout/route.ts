@@ -1,6 +1,7 @@
 import { getAuth } from "@/lib/auth";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { SUBJECT_KINDS } from "@/lib/subject-kind";
+import { parseSelectedMode, SELECTED_MODE_COOKIE_NAME } from "@/lib/selected-mode";
 import { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
@@ -11,6 +12,10 @@ function postLogoutLocation(req: NextRequest): URL {
     const kind = req.nextUrl.searchParams.get("kind")?.trim() ?? "";
     if (kind && (SUBJECT_KINDS as readonly string[]).includes(kind)) {
         return new URL(`/${encodeURIComponent(kind)}`, base);
+    }
+    const selectedMode = parseSelectedMode(req.cookies.get(SELECTED_MODE_COOKIE_NAME)?.value);
+    if (selectedMode) {
+        return new URL(`/${encodeURIComponent(selectedMode)}`, base);
     }
     return new URL("/", base);
 }

@@ -1,5 +1,7 @@
 import { Suspense } from "react";
 import { LoginForm } from "./login-form";
+import { parseSubjectKind } from "@/lib/subject-kind";
+import { redirect } from "next/navigation";
 
 function LoginFallback() {
   return (
@@ -9,7 +11,16 @@ function LoginFallback() {
   );
 }
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ kind?: string }>;
+}) {
+  const sp = await searchParams;
+  if (!parseSubjectKind(sp.kind)) {
+    redirect("/");
+  }
+
   return (
     <Suspense fallback={<LoginFallback />}>
       <LoginForm />
