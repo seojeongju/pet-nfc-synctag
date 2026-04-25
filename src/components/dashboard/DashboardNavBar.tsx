@@ -1,12 +1,13 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
-import { PawPrint, MapPin } from "lucide-react";
+import { PawPrint, MapPin, LayoutDashboard, ClipboardList, ScanLine, Images } from "lucide-react";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
 import { FlowTopNavContent, type FlowTopNavSession } from "@/components/layout/FlowTopNav";
 import { DashboardAnnouncementBell } from "@/components/dashboard/DashboardAnnouncementBell";
 import { DashboardContextualHelp } from "@/components/dashboard/DashboardContextualHelp";
 import { dashboardTopNavLinkClass } from "@/lib/dashboard-nav-styles";
+import { cn } from "@/lib/utils";
 import {
   isDashboardAlbums,
   isDashboardGeofences,
@@ -46,30 +47,38 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
   const dashGeo = isDashboardGeofences(pathname);
   const dashAlbums = isDashboardAlbums(pathname);
 
-  const dashLinks = (
-    <>
-      <a href={`/dashboard/${kind}${tenantQs}`} className={dashboardTopNavLinkClass(dashHome)} aria-current={dashHome ? "page" : undefined}>
-        대시보드
-      </a>
-      <a href={`/dashboard/${kind}/pets${tenantQs}`} className={dashboardTopNavLinkClass(dashPets)} aria-current={dashPets ? "page" : undefined}>
-        관리 대상
-      </a>
-      <a href={`/dashboard/${kind}/scans${tenantQs}`} className={dashboardTopNavLinkClass(dashScans)} aria-current={dashScans ? "page" : undefined}>
-        스캔 기록
-      </a>
-      <a href={`/dashboard/${kind}/albums${tenantQs}`} className={dashboardTopNavLinkClass(dashAlbums)} aria-current={dashAlbums ? "page" : undefined}>
-        전자앨범
-      </a>
-      <a
-        href={`/dashboard/${kind}/geofences${tenantQs}`}
-        className={`inline-flex items-center gap-1 ${dashboardTopNavLinkClass(dashGeo)}`}
-        aria-current={dashGeo ? "page" : undefined}
-      >
-        <MapPin className="w-3.5 h-3.5 shrink-0 xl:w-4 xl:h-4" />
-        안심 구역
-      </a>
-    </>
-  );
+  const navItems = [
+    {
+      href: `/dashboard/${kind}${tenantQs}`,
+      label: "대시보드",
+      active: dashHome,
+      Icon: LayoutDashboard,
+    },
+    {
+      href: `/dashboard/${kind}/pets${tenantQs}`,
+      label: "관리대상",
+      active: dashPets,
+      Icon: ClipboardList,
+    },
+    {
+      href: `/dashboard/${kind}/scans${tenantQs}`,
+      label: "스캔기록",
+      active: dashScans,
+      Icon: ScanLine,
+    },
+    {
+      href: `/dashboard/${kind}/albums${tenantQs}`,
+      label: "전자앨범",
+      active: dashAlbums,
+      Icon: Images,
+    },
+    {
+      href: `/dashboard/${kind}/geofences${tenantQs}`,
+      label: "안심구역",
+      active: dashGeo,
+      Icon: MapPin,
+    },
+  ] as const;
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200/90 bg-white/90 backdrop-blur-md">
@@ -98,15 +107,42 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
             </div>
           </div>
 
-          <nav className="hidden xl:flex xl:flex-wrap xl:items-center xl:gap-4" aria-label="대시보드 메뉴">
-            {dashLinks}
+          <nav className="hidden xl:flex xl:flex-wrap xl:items-center xl:gap-3" aria-label="대시보드 메뉴">
+            {navItems.map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                className={cn("inline-flex items-center gap-1.5", dashboardTopNavLinkClass(item.active))}
+                aria-current={item.active ? "page" : undefined}
+              >
+                <item.Icon className="h-4 w-4 shrink-0" />
+                {item.label}
+              </a>
+            ))}
           </nav>
 
           <nav
-            className="-mx-1 flex gap-2 overflow-x-auto pb-1 xl:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="xl:hidden"
             aria-label="대시보드 메뉴"
           >
-            <div className="flex gap-2 text-slate-700">{dashLinks}</div>
+            <div className="grid grid-cols-5 gap-1.5 text-slate-700">
+              {navItems.map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  aria-current={item.active ? "page" : undefined}
+                  className={cn(
+                    "flex min-h-[3.5rem] flex-col items-center justify-center gap-1 rounded-xl border px-1.5 py-1.5 text-center",
+                    item.active
+                      ? "border-teal-200 bg-teal-50 text-teal-800"
+                      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                  )}
+                >
+                  <item.Icon className="h-4.5 w-4.5 shrink-0" />
+                  <span className="text-[11px] font-black leading-tight tracking-[-0.01em]">{item.label}</span>
+                </a>
+              ))}
+            </div>
           </nav>
         </div>
       </div>
