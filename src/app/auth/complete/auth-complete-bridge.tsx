@@ -12,15 +12,12 @@
  */
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 
 interface Props {
   next: string;
 }
 
 export function AuthCompleteBridge({ next }: Props) {
-  const router = useRouter();
-
   useEffect(() => {
     // ① viewport 메타 태그 강제 재주입 — 이전 OAuth 페이지의 zoom 상태 초기화
     const resetViewport = () => {
@@ -57,13 +54,15 @@ export function AuthCompleteBridge({ next }: Props) {
     // ③ 스크롤 위치 초기화
     window.scrollTo(0, 0);
 
-    // ④ 한 프레임 후 최종 목적지로 이동 (replace: 히스토리에 이 페이지를 남기지 않음)
+    // ④ 한 프레임 후 최종 목적지로 이동.
+    //    중요: router.replace(SPA) 대신 location.replace(문서 전환)로
+    //    오염된 viewport 컨텍스트를 완전히 끊고 새 문서로 진입시킵니다.
     const timer = requestAnimationFrame(() => {
-      router.replace(next);
+      window.location.replace(next);
     });
 
     return () => cancelAnimationFrame(timer);
-  }, [next, router]);
+  }, [next]);
 
   // 리다이렉트 중 잠깐 보이는 로딩 UI — 배경만 표시
   return (
