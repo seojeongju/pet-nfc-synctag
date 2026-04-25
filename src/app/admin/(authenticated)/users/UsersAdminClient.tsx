@@ -39,6 +39,14 @@ import {
   UsersRound,
 } from "lucide-react";
 
+const numberKo = new Intl.NumberFormat("ko-KR");
+const dateKoKst = new Intl.DateTimeFormat("ko-KR", {
+  timeZone: "Asia/Seoul",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
 function isPlatformAdminStored(role: string | null): boolean {
   return role === PLATFORM_ADMIN_ROLE || role === "admin";
 }
@@ -252,7 +260,7 @@ export default function UsersAdminClient({
             <UsersRound className="h-5 w-5 text-teal-600" aria-hidden />
             <span className="text-[15px] font-black sm:text-sm">목록</span>
             <span suppressHydrationWarning className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-black text-slate-600">
-              {total.toLocaleString()}명
+              {numberKo.format(total)}명
             </span>
           </div>
           <p className="text-[13px] font-semibold tabular-nums text-slate-500 sm:text-xs">
@@ -419,7 +427,7 @@ export default function UsersAdminClient({
                     </td>
                     <td className={cn(adminUi.tableBodyCell, "tabular-nums")}>{Number(u.pet_count)}</td>
                     <td suppressHydrationWarning className={cn(adminUi.tableBodyCell, "text-slate-400")}>
-                      {new Date(u.createdAt).toLocaleDateString("ko-KR")}
+                      {dateKoKst.format(new Date(u.createdAt))}
                     </td>
                     <td className="py-3 px-4">
                       <select
