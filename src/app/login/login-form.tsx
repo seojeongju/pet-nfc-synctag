@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { recordConsentsFromAuthenticatedLogin } from "@/app/actions/privacy-consent";
 import { signIn, signUp } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -172,6 +173,12 @@ export function LoginForm() {
       setLoginError("로그인 전 필수 동의 3가지를 모두 체크해 주세요.");
       return;
     }
+    try {
+      await fetch("/api/privacy/ack-login-gate", { method: "POST", credentials: "include" });
+    } catch {
+      setLoginError("동의 설정을 서버에 전달하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      return;
+    }
     // 구글만 /auth/complete 브리지를 경유 (카카오는 기존 방식 유지)
     const consentNext = `/consent?next=${encodeURIComponent(callbackURL)}`;
     const resolvedCallbackURL =
@@ -202,7 +209,7 @@ export function LoginForm() {
       const result = await signIn.email({
         email: loginEmail.trim(),
         password: loginPassword,
-        callbackURL: `/consent?next=${encodeURIComponent(callbackURL)}`,
+        callbackURL: callbackURL,
       });
       const signInError = result?.error;
       if (signInError) {
@@ -215,7 +222,12 @@ export function LoginForm() {
         );
         return;
       }
-      window.location.assign(`/consent?next=${encodeURIComponent(callbackURL)}`);
+      try {
+        await recordConsentsFromAuthenticatedLogin();
+        window.location.assign(callbackURL);
+      } catch {
+        window.location.assign(`/consent?next=${encodeURIComponent(callbackURL)}`);
+      }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "로그인 중 오류가 발생했습니다.";
       setLoginError(message);
@@ -254,7 +266,7 @@ export function LoginForm() {
         name: signupName.trim(),
         email: signupEmail.trim(),
         password: signupPassword,
-        callbackURL: `/consent?next=${encodeURIComponent(signupRedirectUrl)}`,
+        callbackURL: signupRedirectUrl,
       });
       const signupResultError = result?.error;
       if (signupResultError) {
@@ -269,7 +281,12 @@ export function LoginForm() {
       }
 
       setSignupSuccess("회원가입이 완료되었습니다. 잠시 후 이동합니다.");
-      window.location.assign(signupRedirectUrl);
+      try {
+        await recordConsentsFromAuthenticatedLogin();
+        window.location.assign(signupRedirectUrl);
+      } catch {
+        window.location.assign(`/consent?next=${encodeURIComponent(signupRedirectUrl)}`);
+      }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "회원가입 중 오류가 발생했습니다.";
       setSignupError(message);

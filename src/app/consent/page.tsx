@@ -1,4 +1,4 @@
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getAuth } from "@/lib/auth";
 import { getCfRequestContext } from "@/lib/cf-request-context";
@@ -45,6 +45,12 @@ export default async function ConsentPage({
   const consent = await getUserConsentStatus(userId);
   if (consent.hasRequired) {
     redirect(next);
+  }
+
+  /** OAuth 전 로그인 화면에서 필수 동의 + ack 쿠키(POST)로 표시 — DB 반영은 Route에서 처리 */
+  const c = await cookies();
+  if (c.get("lgu_ok")?.value === "1") {
+    redirect(`/api/privacy/apply-login-gate?next=${encodeURIComponent(next)}`);
   }
 
   return (
