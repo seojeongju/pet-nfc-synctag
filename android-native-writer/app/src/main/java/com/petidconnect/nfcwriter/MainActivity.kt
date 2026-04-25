@@ -54,7 +54,6 @@ data class WritePayload(
 
 private enum class AppMode {
     Landing,
-    LinkU,
     Tools,
 }
 
@@ -67,7 +66,7 @@ private sealed class ServerReport {
 class MainActivity : ComponentActivity() {
     private var appMode by mutableStateOf(AppMode.Landing)
     private var entryFromDeepLink by mutableStateOf(false)
-    private var statusText by mutableStateOf("Link-U 웹에서 기록 흐름을 쓰면 자동으로 불러옵니다. 직접 쓸 땐 아래에 입력하세요.")
+    private var statusText by mutableStateOf("")
     private var draftUid by mutableStateOf("")
     private var draftUrl by mutableStateOf("")
     private var draftHandoff by mutableStateOf("")
@@ -147,15 +146,12 @@ class MainActivity : ComponentActivity() {
                 WriterAppScreen(
                     appMode = appMode.name,
                     entryFromDeepLink = entryFromDeepLink,
-                    onSelectLinkU = {
-                        appMode = AppMode.LinkU
-                        if (statusText.isBlank()) {
-                            statusText = "Link-U 모드입니다. 웹에서 자동 입력되거나 아래에 직접 입력해 태그를 기록할 수 있어요."
-                        }
+                    onLandingOpenNfcSettings = {
+                        startActivity(Intent(Settings.ACTION_NFC_SETTINGS))
                     },
                     onSelectTools = {
                         appMode = AppMode.Tools
-                        // 일반 모드는 Link-U 자동 연동값을 끌고 가지 않도록 새로 시작
+                        // 랜딩에서 일반 쓰기: Link-U 자동 연동값을 끌고 가지 않도록 새로 시작
                         draftUid = ""
                         draftUrl = ""
                         draftHandoff = ""
@@ -164,11 +160,11 @@ class MainActivity : ComponentActivity() {
                         busy = false
                         tagWriteSuccess = false
                         clearNfcOffDialogState()
-                        statusText = "일반 NFC 도구 모드입니다. 태그 ID와 링크/정보를 직접 입력해 주세요."
+                        statusText = ""
                     },
                     onBackToLanding = {
                         if (entryFromDeepLink) {
-                            statusText = "태그/웹에서 들어온 Link-U 세션입니다. 아래에서 바로 기록을 진행해 주세요."
+                            statusText = "웹에서 열었어요. 이어서 기록을 진행해 주세요."
                         } else {
                             appMode = AppMode.Landing
                             awaitingTag = false
@@ -176,7 +172,7 @@ class MainActivity : ComponentActivity() {
                             pendingWrite = null
                             tagWriteSuccess = false
                             clearNfcOffDialogState()
-                            statusText = "모드를 선택해 시작해 주세요."
+                            statusText = "NFC 켜기(설정) 또는 [NFC 쓰기]로 쓰기를 시작해 주세요."
                         }
                     },
                     onApplyToolTemplate = { applyToolsTemplate(it) },
@@ -265,8 +261,7 @@ class MainActivity : ComponentActivity() {
                             awaitingTag = false
                             busy = false
                             clearNfcOffDialogState()
-                            statusText =
-                                "일반 NFC 도구 모드입니다. 태그 ID와 링크/정보를 직접 입력해 주세요."
+                            statusText = ""
                             // 템플릿 시트(모바일 웹 링크 등) remember 상태를 버리고 격자로 돌아가게 함
                             toolsScreenContentKey++
                         },
@@ -461,18 +456,18 @@ class MainActivity : ComponentActivity() {
         val u = draftUid.trim()
         val purl = (overridePurl?.trim()?.takeIf { it.isNotEmpty() } ?: draftUrl).trim()
         val tok = draftHandoff.trim()
-        val requireHandoff = appMode == AppMode.LinkU
+        // handoff(한번 쓰기)가 있으면 Link-U 서버 기록·웹과 합의된 세 값이 모두 있어야 함. 없으면 URL만으로 일반 쓰기
+        val requireHandoff = tok.isNotEmpty()
         val missingRequired = if (requireHandoff) {
             u.isEmpty() || purl.isEmpty() || tok.isEmpty()
         } else {
-            // 일반 도구 모드에서는 URL/정보만 있으면 바로 태그 쓰기 대기로 진입
             purl.isEmpty()
         }
         if (missingRequired) {
             statusText = if (requireHandoff) {
-                "Link-U 모드에서는 세 칸을 모두 채워 주세요. 웹에서 복사해 붙여 넣을 수 있어요."
+                "웹에서 보낸 ‘한번 쓰기(인증)’를 쓰는 중이에요. 태그·ID, 링크, 인증을 모두 채운 뒤 다시 시도해 주세요. 웹 ‘앱으로 기록’이면 대부분 자동으로 들어갑니다."
             } else {
-                "일반 도구 모드에서는 URL/정보를 먼저 채워 주세요."
+                "URL/정보를 먼저 채워 주세요. 위에서 도구를 고르거나, 아래 ‘보호자 연동’에서 붙여 넣을 수 있어요."
             }
             return
         }
@@ -577,7 +572,7 @@ class MainActivity : ComponentActivity() {
             entryFromDeepLink = false
             if (!busy && !awaitingTag) {
                 appMode = AppMode.Landing
-                statusText = "모드를 선택해 시작해 주세요."
+                statusText = "NFC 켜기(설정) 또는 [NFC 쓰기]로 쓰기를 시작해 주세요."
             }
             return
         }
@@ -611,7 +606,8 @@ class MainActivity : ComponentActivity() {
         draftUid = uid
         draftUrl = profileUrl
         draftHandoff = handoffToken
-        appMode = AppMode.LinkU
+        appMode = AppMode.Tools
+        toolsTemplate = "linku"
         entryFromDeepLink = true
         pendingWrite = null
         awaitingTag = false
@@ -697,6 +693,10 @@ class MainActivity : ComponentActivity() {
                 draftUrl = buildBluetoothPayload(bluetoothMac)
                 statusText = "블루투스 템플릿을 불러왔어요. MAC 주소를 채운 뒤 [태그에 쓰기]를 눌러 주세요."
             }
+            "linku" -> {
+                // 도구 격자에서만 ‘연동’을 택한 경우 — 별도 안내 없이 아래 폼·상태로 충분
+                statusText = ""
+            }
         }
     }
 
@@ -737,14 +737,14 @@ class MainActivity : ComponentActivity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             val writeResult = writeNdefUrl(tag, current.url)
-            val report = if (appMode == AppMode.LinkU && current.handoffToken.isNotBlank()) {
+            val report = if (current.handoffToken.isNotBlank()) {
                 postNativeWriteResult(
                     payload = current,
                     success = writeResult.isSuccess,
                     clientError = writeResult.exceptionOrNull()?.message
                 )
             } else {
-                ServerReport.SkippedNoConfig("일반 NFC 도구 모드에서는 Link-U 서버 기록을 생략했어요.")
+                ServerReport.SkippedNoConfig("한번 쓰기(인증)가 없는 기록이에요. 서버에 ‘쓰기 완료’를 남기지 않았어요.")
             }
 
             launch(Dispatchers.Main) {
@@ -755,7 +755,7 @@ class MainActivity : ComponentActivity() {
                 if (writeResult.isSuccess) {
                     tagWriteSuccess = true
                     statusText = when (report) {
-                        is ServerReport.Ok -> "태그에 담았고, Link-U 서비스에도 기록됐어요. 감사합니다."
+                        is ServerReport.Ok -> "태그에 담았고, 서비스에도 기록됐어요. 감사합니다."
                         is ServerReport.SkippedNoConfig ->
                             "태그에는 잘 담았어요. ${report.hint}"
                         is ServerReport.Fail ->
@@ -867,11 +867,7 @@ class MainActivity : ComponentActivity() {
                 put("handoffToken", payload.handoffToken)
                 put("deviceId", Build.MODEL ?: "unknown-device")
                 put("platform", "android")
-                put("mode", when (appMode) {
-                    AppMode.LinkU -> "linku"
-                    AppMode.Tools -> "tools"
-                    AppMode.Landing -> "unknown"
-                })
+                put("mode", if (payload.handoffToken.isNotBlank()) "linku" else "tools")
                 put("appVersion", BuildConfig.VERSION_NAME.ifBlank { "unknown" })
                 put("success", success)
                 put("clientError", clientError ?: JSONObject.NULL)

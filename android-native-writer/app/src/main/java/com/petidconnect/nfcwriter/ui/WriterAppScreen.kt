@@ -1,6 +1,11 @@
 package com.petidconnect.nfcwriter.ui
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -9,10 +14,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -20,6 +25,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -29,6 +35,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -38,7 +45,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Fingerprint
@@ -74,13 +83,16 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import android.net.Uri
+import android.net.wifi.WifiManager
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
@@ -88,17 +100,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.content.ContextCompat
 
 /**
  * NFC(태그 쓰기) 꺼짐·미지원 시 [NfcOffForWriteDialog]로 안내
@@ -141,7 +155,8 @@ class WriterNfcUiProps(
 fun WriterAppScreen(
     appMode: String,
     entryFromDeepLink: Boolean,
-    onSelectLinkU: () -> Unit,
+    /** 랜딩 전용: 휴대폰 NFC 설정 화면 */
+    onLandingOpenNfcSettings: () -> Unit,
     onSelectTools: () -> Unit,
     onBackToLanding: () -> Unit,
     onApplyToolTemplate: (String) -> Unit,
@@ -181,23 +196,25 @@ fun WriterAppScreen(
 ) {
     if (appMode == "Landing") {
         LandingModeScreen(
-            onSelectLinkU = onSelectLinkU,
-            onSelectTools = onSelectTools
+            onSelectTools = onSelectTools,
+            onOpenNfcSettings = onLandingOpenNfcSettings
         )
         return
     }
 
-    val isLinkUMode = appMode == "LinkU"
-    val modeTitle = if (isLinkUMode) "Link-U 모드" else "일반 NFC 도구 모드"
-    val modeDescription = if (isLinkUMode) {
-        "Link-U 웹/태그와 바로 연결되는 기록 흐름"
-    } else {
-        "누구나 NFC 읽기·쓰기 도구로 시작"
-    }
+    val modeTitle = "NFC 쓰기"
+    val modeDescription = "URL, 명함, Wi-Fi, 보호자·웹에서 넘어온 기록"
     val scroll = rememberScrollState()
     val tone = statusToneFor(status, awaitingTag, busy)
     var showTechnicalDetails by remember { mutableStateOf(false) }
+    var linkUSectionExpanded by remember { mutableStateOf(false) }
     var activeTemplateEditor by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(entryFromDeepLink) {
+        if (entryFromDeepLink) {
+            linkUSectionExpanded = true
+        }
+    }
 
     // 시스템 뒤로가기 버튼 처리
     BackHandler(enabled = appMode != "Landing") {
@@ -217,7 +234,7 @@ fun WriterAppScreen(
     val hasUrl = draftUrl.isNotBlank()
     val hasHandoff = draftHandoff.isNotBlank()
     val allReady = hasUid && hasUrl && hasHandoff
-    val showTemplateInputPage = !isLinkUMode && activeTemplateEditor != null
+    val showTemplateInputPage = activeTemplateEditor != null
 
     Box(Modifier.fillMaxSize()) {
         Column(
@@ -261,7 +278,7 @@ fun WriterAppScreen(
                 }
                 Column(Modifier.padding(start = 12.dp)) {
                     Text(
-                        if (isLinkUMode) "Link-U" else "NFC Tools",
+                        "NFC Tools",
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.White.copy(0.7f),
                         fontWeight = FontWeight.Bold,
@@ -356,11 +373,12 @@ fun WriterAppScreen(
                                 p
                             }
                             "wifi" -> {
-                                onWifiSecurity(value.wifiSecurityInput)
+                                val autoSec = if (value.wifiPasswordInput.trim().isEmpty()) "nopass" else "WPA"
+                                onWifiSecurity(autoSec)
                                 onWifiSsid(value.wifiSsidInput)
                                 onWifiPassword(value.wifiPasswordInput)
                                 val p =
-                                    "WIFI:T:${value.wifiSecurityInput};S:${value.wifiSsidInput.trim()};P:${value.wifiPasswordInput.trim()};;"
+                                    "WIFI:T:$autoSec;S:${value.wifiSsidInput.trim()};P:${value.wifiPasswordInput.trim()};;"
                                 onDraftUrl(p)
                                 p
                             }
@@ -379,103 +397,64 @@ fun WriterAppScreen(
                     }
                 )
             } else {
-                if (isLinkUMode) {
-                    CurrentStepFlowRow(
-                        hasDraft = draftUid.isNotBlank() && draftUrl.isNotBlank() && draftHandoff.isNotBlank(),
-                        awaiting = awaitingTag,
-                        writeSuccess = nfcUi.tagWriteSuccess
-                    )
-                    QuickStartStepsCard(isLinkUMode = true)
-                } else {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(11.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.TouchApp,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Text(
-                                "아이콘 선택 → 정보 입력 → 확인 후 태그 대기 순서로 진행하세요.",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontSize = 10.sp,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.82f)
-                            )
-                        }
-                    }
-                }
+                NfcWriteFlowVisualHint()
 
-                if (!isLinkUMode) {
-                    val glassDashBg = Brush.linearGradient(
-                        listOf(
-                            Color(0xFFBDDBD6),
-                            Color(0xFFDEEFE9),
-                            Color(0xFFBDDBD6)
-                        )
+                val glassDashBg = Brush.linearGradient(
+                    listOf(
+                        Color(0xFFBDDBD6),
+                        Color(0xFFDEEFE9),
+                        Color(0xFFBDDBD6)
                     )
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color.Transparent
-                        ),
-                        border = androidx.compose.foundation.BorderStroke(
-                            1.dp,
-                            Color(0x99E8F2EF)
-                        )
+                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.Transparent
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        Color(0x99E8F2EF)
+                    )
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(brush = glassDashBg, shape = RoundedCornerShape(14.dp))
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(brush = glassDashBg, shape = RoundedCornerShape(14.dp))
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Column(
-                                modifier = Modifier.padding(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Text(
-                                    "일반 모드 도구형 대시보드",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = Color(0xFF0A3D3A),
-                                    fontWeight = FontWeight.ExtraBold
-                                )
-                                SquareToolGrid(
-                                    onTap = { key ->
+                            Text(
+                                "쓸 내용을 고르기",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Color(0xFF0A3D3A),
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                            SquareToolGrid(
+                                onTap = { key ->
+                                    if (key == "linku") {
+                                        onApplyToolTemplate("linku")
+                                        linkUSectionExpanded = !linkUSectionExpanded
+                                    } else {
+                                        linkUSectionExpanded = false
                                         onApplyToolTemplate(key)
                                         activeTemplateEditor = key
-                                    },
-                                    selectedKey = toolsTemplate
-                                )
-                                Text(
-                                    "각 기능 아이콘을 눌러 열린 창에서 읽기/쓰기 모드를 선택할 수 있습니다.",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontSize = 10.sp,
-                                    color = Color(0xFF3A655F),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(end = 16.dp)
-                                )
-                            }
-                            Icon(
-                                imageVector = Icons.Outlined.AutoAwesome,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .align(Alignment.BottomEnd)
-                                    .padding(6.dp)
-                                    .size(14.dp),
-                                tint = Color(0x660A3D3A)
+                                    }
+                                },
+                                selectedKey = toolsTemplate
                             )
                         }
+                        Icon(
+                            imageVector = Icons.Outlined.AutoAwesome,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(6.dp)
+                                .size(14.dp),
+                            tint = Color(0x660A3D3A)
+                        )
                     }
                 }
             }
@@ -487,171 +466,294 @@ fun WriterAppScreen(
                 StatusMessageCard(message = status, tone = tone)
             }
 
-            if (!showTemplateInputPage && isLinkUMode) {
-                Text(
-                    "준비하기",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.ExtraBold
-                )
-
-                if (!showTechnicalDetails) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
-                        )
-                    ) {
-                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            if (allReady) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        Icons.Filled.Check,
-                                        null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(22.dp)
-                                    )
-                                    Spacer(Modifier.width(10.dp))
-                                    Text(
-                                        "웹에서 보내 준 값이 모두 들어왔어요.\n[태그에 쓰기]만 누른 뒤 태그를 대시면 됩니다.",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        lineHeight = 20.sp,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
-                                }
-                            } else {
-                                Text(
-                                    if (isLinkUMode) {
-                                        "웹(Link-U)에서 ‘앱으로 기록’을 쓰면 대부분 자동으로 넣겠습니다. " +
-                                            "빈 항목이 있으면 아래 [상세]에서 직접 붙여 넣을 수 있어요."
-                                    } else {
-                                        "일반 모드는 자동 연동을 쓰지 않습니다. " +
-                                            "아래 [상세]에서 링크/정보를 직접 입력해 주세요."
-                                    },
-                                    style = MaterialTheme.typography.bodySmall,
-                                    lineHeight = 20.sp,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f)
-                                )
-                            }
-                            DraftStatusRow(
-                                ok = hasUid,
-                                title = "태그·제품",
-                                shortLine = if (hasUid) summarizeUidForDisplay(draftUid) else "아직 없음"
-                            )
-                            DraftStatusRow(
-                                ok = hasUrl,
-                                title = "열릴 링크",
-                                shortLine = if (hasUrl) summarizeUrlForDisplay(draftUrl) else "아직 없음"
-                            )
-                            if (isLinkUMode) {
-                                DraftStatusRow(
-                                    ok = hasHandoff,
-                                    title = "한번 쓰는 인증",
-                                    shortLine = if (hasHandoff) summarizeHandoffForDisplay(draftHandoff) else "아직 없음"
-                                )
-                            }
-                        }
-                    }
-                }
-
-                TextButton(
-                    onClick = { showTechnicalDetails = !showTechnicalDetails },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        if (showTechnicalDetails) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .padding(end = 8.dp)
-                            .size(20.dp)
-                    )
-                    Text(if (showTechnicalDetails) "요약 화면만 보기" else "상세보기 · 직접 붙여넣기 (고급)")
-                }
-
+            if (!showTemplateInputPage) {
                 AnimatedVisibility(
-                    visible = showTechnicalDetails,
+                    visible = linkUSectionExpanded,
                     enter = expandVertically() + fadeIn(),
                     exit = shrinkVertically() + fadeOut()
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    OutlinedTextField(
-                        value = draftUid,
-                        onValueChange = onDraftUid,
-                        label = { Text("태그·제품 ID") },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Filled.Fingerprint,
-                                contentDescription = null
-                            )
-                        },
-                        singleLine = true,
-                        enabled = !busy,
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, Color(0x1F0D9488), RoundedCornerShape(16.dp)),
                         shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(
-                            capitalization = KeyboardCapitalization.Characters
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                         )
-                    )
-                    OutlinedTextField(
-                        value = draftUrl,
-                        onValueChange = onDraftUrl,
-                        label = { Text("스캔 시 열릴 링크(URL)") },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Filled.Link,
-                                contentDescription = null
-                            )
-                        },
-                        minLines = 2,
-                        enabled = !busy,
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    if (isLinkUMode) {
-                        FilledTonalButton(
-                            onClick = onFillProfileUrl,
-                            enabled = !busy,
-                            shape = RoundedCornerShape(14.dp),
-                            modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
-                            Icon(
-                                Icons.Filled.TouchApp,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .padding(end = 8.dp)
-                                    .size(20.dp)
+                            Text(
+                                "보호자·웹에서 넘어온 기록",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
-                            Text("번호만 넣고 주소 자동으로 만들기")
+                            Text(
+                                "웹·태그로 열면 값이 채워질 수 있어요. ‘앱으로 기록’이면 대부분 자동입니다.",
+                                style = MaterialTheme.typography.labelSmall,
+                                lineHeight = 16.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            )
+                            CurrentStepFlowRow(
+                                    hasDraft = allReady,
+                                    awaiting = awaitingTag,
+                                    writeSuccess = nfcUi.tagWriteSuccess
+                                )
+                                QuickStartStepsCard(isLinkUMode = true)
+                                Text(
+                                    "준비하기",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+
+                                if (!showTechnicalDetails) {
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(20.dp),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+                                        )
+                                    ) {
+                                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                            if (allReady) {
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Icon(
+                                                        Icons.Filled.Check,
+                                                        null,
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                        modifier = Modifier.size(22.dp)
+                                                    )
+                                                    Spacer(Modifier.width(10.dp))
+                                                    Text(
+                                                        "웹에서 보내 준 값이 모두 들어왔어요.\n[태그에 쓰기]만 누른 뒤 태그를 대시면 됩니다.",
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        lineHeight = 20.sp,
+                                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                                    )
+                                                }
+                                            } else {
+                                                Text(
+                                                    "웹 ‘앱으로 기록’이면 대부분 자동으로 넣힙니다. " +
+                                                        "비어 있으면 [상세]에서 직접 붙여 넣을 수 있어요.",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    lineHeight = 20.sp,
+                                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f)
+                                                )
+                                            }
+                                            DraftStatusRow(
+                                                ok = hasUid,
+                                                title = "태그·제품",
+                                                shortLine = if (hasUid) summarizeUidForDisplay(draftUid) else "아직 없음"
+                                            )
+                                            DraftStatusRow(
+                                                ok = hasUrl,
+                                                title = "열릴 링크",
+                                                shortLine = if (hasUrl) summarizeUrlForDisplay(draftUrl) else "아직 없음"
+                                            )
+                                            DraftStatusRow(
+                                                ok = hasHandoff,
+                                                title = "한번 쓰는 인증",
+                                                shortLine = if (hasHandoff) summarizeHandoffForDisplay(draftHandoff) else "아직 없음"
+                                            )
+                                        }
+                                    }
+                                }
+
+                                TextButton(
+                                    onClick = { showTechnicalDetails = !showTechnicalDetails },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(
+                                        if (showTechnicalDetails) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .padding(end = 8.dp)
+                                            .size(20.dp)
+                                    )
+                                    Text(if (showTechnicalDetails) "요약 화면만 보기" else "상세보기 · 직접 붙여넣기 (고급)")
+                                }
+
+                                AnimatedVisibility(
+                                    visible = showTechnicalDetails,
+                                    enter = expandVertically() + fadeIn(),
+                                    exit = shrinkVertically() + fadeOut()
+                                ) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                        OutlinedTextField(
+                                            value = draftUid,
+                                            onValueChange = onDraftUid,
+                                            label = { Text("태그·제품 ID") },
+                                            leadingIcon = {
+                                                Icon(
+                                                    Icons.Filled.Fingerprint,
+                                                    contentDescription = null
+                                                )
+                                            },
+                                            singleLine = true,
+                                            enabled = !busy,
+                                            shape = RoundedCornerShape(16.dp),
+                                            modifier = Modifier.fillMaxWidth(),
+                                            keyboardOptions = KeyboardOptions(
+                                                capitalization = KeyboardCapitalization.Characters
+                                            )
+                                        )
+                                        OutlinedTextField(
+                                            value = draftUrl,
+                                            onValueChange = onDraftUrl,
+                                            label = { Text("스캔 시 열릴 링크(URL)") },
+                                            leadingIcon = {
+                                                Icon(
+                                                    Icons.Filled.Link,
+                                                    contentDescription = null
+                                                )
+                                            },
+                                            minLines = 2,
+                                            enabled = !busy,
+                                            shape = RoundedCornerShape(16.dp),
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                        FilledTonalButton(
+                                            onClick = onFillProfileUrl,
+                                            enabled = !busy,
+                                            shape = RoundedCornerShape(14.dp),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Icon(
+                                                Icons.Filled.TouchApp,
+                                                contentDescription = null,
+                                                modifier = Modifier
+                                                    .padding(end = 8.dp)
+                                                    .size(20.dp)
+                                            )
+                                            Text("번호만 넣고 주소 자동으로 만들기")
+                                        }
+                                        OutlinedTextField(
+                                            value = draftHandoff,
+                                            onValueChange = onDraftHandoff,
+                                            label = { Text("웹에서 받은 한번용 인증") },
+                                            leadingIcon = {
+                                                Icon(
+                                                    Icons.Filled.Key,
+                                                    contentDescription = null
+                                                )
+                                            },
+                                            supportingText = {
+                                                Text("웹에 나온 긴 문장을 그대로 복사해 붙여 넣어 주세요.")
+                                            },
+                                            minLines = 3,
+                                            maxLines = 6,
+                                            enabled = !busy,
+                                            shape = RoundedCornerShape(16.dp),
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                }
+                                Text(
+                                    "고급 (운영·개발)",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                                TextButton(
+                                    onClick = { onToggleServerFields(!showServerFields) },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Settings,
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .padding(end = 8.dp)
+                                            .size(18.dp),
+                                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                    )
+                                    Text(
+                                        if (showServerFields) {
+                                            "Link-U 서버에 기록하는 설정 · 닫기"
+                                        } else {
+                                            "Link-U 서버에 기록하는 설정 · 열기 (대부분 생략)"
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                                    )
+                                }
+                                AnimatedVisibility(
+                                    visible = showServerFields,
+                                    enter = expandVertically() + fadeIn(),
+                                    exit = shrinkVertically() + fadeOut()
+                                ) {
+                                    Card(
+                                        shape = RoundedCornerShape(20.dp),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                                        ),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Column(
+                                            Modifier.padding(16.dp),
+                                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                                        ) {
+                                            Text(
+                                                "· 태그에 링크만 쓰면 스캔·연락은 됩니다. 꼭 필요한 경우에만 이 설정을 쓰세요.\n" +
+                                                    "· 앱을 배포할 때 서버 주소·암호를 이미 넣어 둔 경우, 쓰기가 끝난 뒤 Link-U에 자동으로 보고될 수 있어 대부분 이 화면을 열지 않아도 됩니다.\n" +
+                                                    "· 관리자 안내로 직접 넣으라는 경우, 또는 개발·테스트로 다른 서버를 쓸 때만 아래에 입력·저장하세요.\n" +
+                                                    "· 보호자 웹의 반려 상세(NFC 태그)만 브라우저로 열려면: petidconnect://nfc/pet?kind=…&pet_id=…&tenant=…(선택) 딥링크(README).",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                lineHeight = 20.sp,
+                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.88f)
+                                            )
+                                            OutlinedTextField(
+                                                value = serverBaseInput,
+                                                onValueChange = onServerBase,
+                                                label = { Text("Link-U 서비스 주소 (https://…)") },
+                                                singleLine = true,
+                                                leadingIcon = {
+                                                    Icon(Icons.Filled.PhoneAndroid, contentDescription = null)
+                                                },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                shape = RoundedCornerShape(12.dp)
+                                            )
+                                            OutlinedTextField(
+                                                value = serverKeyInput,
+                                                onValueChange = onServerKey,
+                                                label = { Text("연결 암호 (관리자 안내)") },
+                                                singleLine = true,
+                                                visualTransformation = PasswordVisualTransformation(),
+                                                leadingIcon = {
+                                                    Icon(Icons.Filled.Key, contentDescription = null)
+                                                },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                shape = RoundedCornerShape(12.dp)
+                                            )
+                                            OutlinedTextField(
+                                                value = profileSiteInput,
+                                                onValueChange = onProfileSite,
+                                                label = { Text("“주소 자동”에 쓸 사이트 (없으면 위 주소)") },
+                                                minLines = 1,
+                                                modifier = Modifier.fillMaxWidth(),
+                                                shape = RoundedCornerShape(12.dp)
+                                            )
+                                            Button(
+                                                onClick = onSaveServer,
+                                                modifier = Modifier.fillMaxWidth(),
+                                                shape = RoundedCornerShape(14.dp)
+                                            ) { Text("저장") }
+                                        }
+                                    }
+                                }
                         }
                     }
-                    if (isLinkUMode) {
-                        OutlinedTextField(
-                            value = draftHandoff,
-                            onValueChange = onDraftHandoff,
-                            label = { Text("웹에서 받은 한번용 인증") },
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Filled.Key,
-                                    contentDescription = null
-                                )
-                            },
-                            supportingText = {
-                                Text("웹에 나온 긴 문장을 그대로 복사해 붙여 넣어 주세요.")
-                            },
-                            minLines = 3,
-                            maxLines = 6,
-                            enabled = !busy,
-                            shape = RoundedCornerShape(16.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
                 }
             }
 
             if (!showTemplateInputPage) {
-                if (isLinkUMode || awaitingTag || nfcUi.tagWriteSuccess) {
+                if (allReady || awaitingTag || nfcUi.tagWriteSuccess) {
                     Spacer(Modifier.height(4.dp))
                     Button(
                         onClick = { onPrepareWrite(null) },
@@ -726,121 +828,14 @@ fun WriterAppScreen(
                     }
                 }
             }
-            FilledTonalButton(
-                onClick = nfcUi.onOpenNfcSettings,
+
+            AppFooterBrand(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(36.dp),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(
-                    Icons.Filled.PhoneAndroid,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .padding(end = 6.dp)
-                        .size(16.dp)
-                )
-                Text("NFC 켜기 (휴대폰 설정)", style = MaterialTheme.typography.labelSmall)
-            }
-
-            if (isLinkUMode) {
-                Text(
-                    "고급 (운영·개발)",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 12.dp)
-                )
-                TextButton(
-                    onClick = { onToggleServerFields(!showServerFields) },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        Icons.Filled.Settings,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .padding(end = 8.dp)
-                            .size(18.dp),
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    )
-                    Text(
-                        if (showServerFields) {
-                            "Link-U 서버에 기록하는 설정 · 닫기"
-                        } else {
-                            "Link-U 서버에 기록하는 설정 · 열기 (대부분 생략)"
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
-                    )
-                }
-                AnimatedVisibility(
-                    visible = showServerFields,
-                    enter = expandVertically() + fadeIn(),
-                    exit = shrinkVertically() + fadeOut()
-                ) {
-                    Card(
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Text(
-                                "· 태그에 링크만 쓰면 스캔·연락은 됩니다. 꼭 필요한 경우에만 이 설정을 쓰세요.\n" +
-                                    "· 앱을 배포할 때 서버 주소·암호를 이미 넣어 둔 경우, 쓰기가 끝난 뒤 Link-U에 자동으로 보고될 수 있어 대부분 이 화면을 열지 않아도 됩니다.\n" +
-                                    "· 관리자 안내로 직접 넣으라는 경우, 또는 개발·테스트로 다른 서버를 쓸 때만 아래에 입력·저장하세요.\n" +
-                                    "· 보호자 웹의 반려 상세(NFC 태그)만 브라우저로 열려면: petidconnect://nfc/pet?kind=…&pet_id=…&tenant=…(선택) 딥링크(README).",
-                                style = MaterialTheme.typography.bodySmall,
-                                lineHeight = 20.sp,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.88f)
-                            )
-                            OutlinedTextField(
-                                value = serverBaseInput,
-                                onValueChange = onServerBase,
-                                label = { Text("Link-U 서비스 주소 (https://…)") },
-                                singleLine = true,
-                                leadingIcon = {
-                                    Icon(Icons.Filled.PhoneAndroid, contentDescription = null)
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            OutlinedTextField(
-                                value = serverKeyInput,
-                                onValueChange = onServerKey,
-                                label = { Text("연결 암호 (관리자 안내)") },
-                                singleLine = true,
-                                visualTransformation = PasswordVisualTransformation(),
-                                leadingIcon = {
-                                    Icon(Icons.Filled.Key, contentDescription = null)
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            OutlinedTextField(
-                                value = profileSiteInput,
-                                onValueChange = onProfileSite,
-                                label = { Text("“주소 자동”에 쓸 사이트 (없으면 위 주소)") },
-                                minLines = 1,
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            Button(
-                                onClick = onSaveServer,
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(14.dp)
-                            ) { Text("저장") }
-                        }
-                    }
-                }
-            }
-
+                    .padding(top = 14.dp)
+            )
             // 하단 내비·제스처 영역을 넘겨도 스크롤로 충분히 읽을 수 있도록
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(24.dp))
         }
         }
 
@@ -881,6 +876,7 @@ private fun SquareToolGrid(
         ToolTileItem("video", "영상 공유", Icons.Outlined.PlayArrow, true),
         ToolTileItem("wifi", "Wi-Fi 연결", Icons.Outlined.Wifi, true),
         ToolTileItem("bluetooth", "블루투스 연결", Icons.Outlined.Bluetooth, true),
+        ToolTileItem("linku", "보호자 연동", Icons.Filled.Link, true),
     )
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
@@ -1014,6 +1010,7 @@ private fun UnifiedTemplateInputPage(
     onClose: () -> Unit,
     onApply: (TemplateDialogResult) -> Unit
 ) {
+    val context = LocalContext.current
     var urlInput by remember(template, draftUrl) {
         mutableStateOf(if (template == "url") draftUrl else "https://")
     }
@@ -1041,6 +1038,28 @@ private fun UnifiedTemplateInputPage(
     var bluetoothMacInput by remember(template, bluetoothMac) {
         mutableStateOf(if (bluetoothMac.isBlank()) "AA:BB:CC:DD:EE:FF" else bluetoothMac)
     }
+    var wifiAssistHint by remember(template) { mutableStateOf<String?>(null) }
+    var wifiScanBusy by remember(template) { mutableStateOf(false) }
+    var wifiScanResults by remember(template) { mutableStateOf<List<String>>(emptyList()) }
+    var wifiListCollapsed by remember(template) { mutableStateOf(false) }
+    val requestLocationPermission = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (!granted) {
+            wifiAssistHint = "주변 Wi-Fi를 보려면 위치 권한이 필요해요."
+            return@rememberLauncherForActivityResult
+        }
+        wifiScanBusy = true
+        val ssids = readNearbyWifiSsids(context)
+        wifiScanResults = ssids
+        wifiScanBusy = false
+        wifiAssistHint = if (ssids.isEmpty()) {
+            "근처 Wi-Fi를 찾지 못했어요. 잠시 후 다시 시도하거나 SSID를 직접 입력해 주세요."
+        } else {
+            "목록에서 SSID를 눌러 자동 입력할 수 있어요."
+        }
+    }
+
 
     val (title, icon) = when (template) {
         "url" -> "모바일 웹 링크" to Icons.Outlined.Language
@@ -1260,23 +1279,76 @@ private fun UnifiedTemplateInputPage(
                     }
                     "wifi" -> {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                            listOf("WPA", "WEP", "nopass").forEach { sec ->
-                                FilledTonalButton(
-                                    onClick = { wifiSecurityInput = sec },
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(10.dp),
-                                    colors = if (wifiSecurityInput.equals(sec, ignoreCase = true)) {
-                                        ButtonDefaults.filledTonalButtonColors(
-                                            containerColor = Color(0xFFF5D54A),
-                                            contentColor = Color(0xFF4F4300)
-                                        )
+                            FilledTonalButton(
+                                onClick = {
+                                    if (!hasFineLocationPermission(context)) {
+                                        requestLocationPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
                                     } else {
-                                        ButtonDefaults.filledTonalButtonColors(
-                                            containerColor = Color(0xFFF7F7F7),
-                                            contentColor = Color(0xFF666666)
-                                        )
+                                        wifiListCollapsed = false
+                                        wifiScanBusy = true
+                                        val ssids = readNearbyWifiSsids(context)
+                                        wifiScanResults = ssids
+                                        wifiScanBusy = false
+                                        wifiAssistHint = if (ssids.isEmpty()) {
+                                            "근처 Wi-Fi를 찾지 못했어요. 잠시 후 다시 시도하거나 SSID를 직접 입력해 주세요."
+                                        } else {
+                                            "목록에서 SSID를 눌러 자동 입력할 수 있어요."
+                                        }
                                     }
-                                ) { Text(sec) }
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = Color(0xFFF7F7F7),
+                                    contentColor = Color(0xFF666666)
+                                )
+                            ) { Text(if (wifiScanBusy) "불러오는 중..." else "주변 Wi-Fi 불러오기") }
+                            FilledTonalButton(
+                                onClick = {
+                                    val ssid = readConnectedWifiSsid(context)
+                                    if (ssid.isNullOrBlank()) {
+                                        wifiAssistHint = "현재 연결된 Wi-Fi 이름을 가져오지 못했어요. 직접 입력해 주세요."
+                                    } else {
+                                        wifiSsidInput = ssid
+                                        wifiAssistHint = "현재 연결된 Wi-Fi 이름을 불러왔어요."
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = Color(0xFFF7F7F7),
+                                    contentColor = Color(0xFF666666)
+                                )
+                            ) { Text("현재 연결 가져오기") }
+                        }
+                        if (!wifiListCollapsed && wifiScanResults.isNotEmpty()) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    "주변 Wi-Fi 목록",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color(0xFF6C7787)
+                                )
+                                wifiScanResults.take(8).forEach { ssid ->
+                                    FilledTonalButton(
+                                        onClick = {
+                                            wifiSsidInput = ssid
+                                            wifiAssistHint = "\"$ssid\"를 SSID에 채웠어요. 비밀번호만 입력해 주세요."
+                                            wifiListCollapsed = true
+                                            wifiScanResults = emptyList()
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = ButtonDefaults.filledTonalButtonColors(
+                                            containerColor = Color(0xFFF7F7F7),
+                                            contentColor = Color(0xFF46566C)
+                                        )
+                                    ) {
+                                        Text(ssid, maxLines = 1)
+                                    }
+                                }
                             }
                         }
                         OutlinedTextField(
@@ -1295,6 +1367,13 @@ private fun UnifiedTemplateInputPage(
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.fillMaxWidth()
                         )
+                        wifiAssistHint?.let { hint ->
+                            Text(
+                                hint,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFF8E8E8E)
+                            )
+                        }
                     }
                     "bluetooth" -> {
                         OutlinedTextField(
@@ -1467,300 +1546,291 @@ private fun ModeSelectOption(
 
 @Composable
 private fun LandingModeScreen(
-    onSelectLinkU: () -> Unit,
-    onSelectTools: () -> Unit
+    onSelectTools: () -> Unit,
+    onOpenNfcSettings: () -> Unit
 ) {
-    val landingScroll = rememberScrollState()
     val brandTeal = Color(0xFF0D9488)
-    val brandIndigo = Color(0xFF4338CA)
-    
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    listOf(Color(0xFFF8FAFC), Color(0xFFF1F5F9))
+                    listOf(Color(0xFFFAFDFB), Color(0xFFECF8F4))
                 )
             )
+            .navigationBarsPadding()
     ) {
-        // Decorative background elements (Scaled down)
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .offset(x = 40.dp, y = (-30).dp)
-                .size(160.dp)
-                .background(brandTeal.copy(alpha = 0.08f), CircleShape)
+                .offset(x = 48.dp, y = (-40).dp)
+                .size(180.dp)
+                .background(brandTeal.copy(alpha = 0.06f), CircleShape)
         )
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .offset(x = (-50).dp, y = 70.dp)
-                .size(200.dp)
-                .background(brandIndigo.copy(alpha = 0.05f), CircleShape)
-        )
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(landingScroll)
-                .navigationBarsPadding()
-                .padding(horizontal = 14.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+                .statusBarsPadding()
+                .padding(horizontal = 20.dp)
         ) {
-            // Header Section (70% Scaled)
-            AnimatedVisibility(
-                visible = true,
-                enter = fadeIn() + expandVertically()
-            ) {
-                Card(
-                    shape = RoundedCornerShape(22.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .shadow(8.dp, RoundedCornerShape(22.dp), spotColor = brandTeal.copy(alpha = 0.15f))
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Image(
-                                painter = painterResource(id = com.petidconnect.nfcwriter.R.drawable.linku_logo),
-                                contentDescription = "Link-U Logo",
-                                modifier = Modifier
-                                    .height(50.dp)
-                                    .padding(vertical = 4.dp)
-                            )
-                        }
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                "NFC Writer Gateway",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = brandTeal,
-                                fontWeight = FontWeight.ExtraBold,
-                                letterSpacing = 0.5.sp
-                            )
-                        }
-                        Text(
-                            "태그(딥링크)로 들어오면 Link-U 모드로 자동 연동됩니다. 일반 실행은 아래에서 모드를 선택해 시작하세요.",
-                            style = MaterialTheme.typography.bodySmall,
-                            lineHeight = 16.sp,
-                            color = Color(0xFF64748B),
-                            fontWeight = FontWeight.Medium,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(2.dp))
-
-            // Tools Mode Card (Moved to TOP, Scaled)
-            LargeModeEntryCard(
-                title = "일반 NFC 도구 모드",
-                description = "누구나 URL/텍스트 NFC 읽기·쓰기 도구로 시작",
-                buttonText = "일반 도구로 시작",
-                icon = Icons.Filled.Settings,
-                onClick = onSelectTools,
-                primary = false
-            )
-
-            // Link-U Mode Card (Moved to BOTTOM, Scaled)
-            LargeModeEntryCard(
-                title = "Link-U 모드",
-                description = "우리 프로그램 태그/웹과 바로 연동되는 기록 흐름",
-                buttonText = "Link-U로 시작",
-                icon = Icons.Filled.Link,
-                onClick = onSelectLinkU,
-                primary = true
-            )
-
-            Spacer(Modifier.height(4.dp))
-
-            // Bottom Tip
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color.White.copy(alpha = 0.5f))
-                    .padding(12.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Tip: NFC가 꺼져 있으면 모드 진입 후 [NFC 켜기] 버튼으로 바로 설정을 열 수 있어요.",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontSize = 10.sp,
-                    color = Color(0xFF94A3B8),
-                    lineHeight = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                )
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            // Footer Section: Logo & Company
+            Spacer(Modifier.weight(1f))
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Image(
                     painter = painterResource(id = com.petidconnect.nfcwriter.R.drawable.linku_logo),
-                    contentDescription = "Link-U Footer Logo",
+                    contentDescription = "앱 로고",
                     modifier = Modifier
-                        .height(32.dp)
-                        .padding(vertical = 4.dp)
+                        .height(64.dp)
+                        .fillMaxWidth(0.75f),
+                    contentScale = ContentScale.Fit
                 )
-                Text(
-                    text = "제작사 (주)와우쓰리디",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF94A3B8),
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.5.sp
+                Spacer(Modifier.height(20.dp))
+                LandingPairedNfcAction(
+                    title = "NFC 켜기",
+                    subtitle = "휴대폰 설정",
+                    leadWithTealText = true,
+                    icon = Icons.Filled.Settings,
+                    iconContentDescription = "NFC 켜기(휴대폰 설정)",
+                    onClick = onOpenNfcSettings
+                )
+                Spacer(Modifier.height(12.dp))
+                LandingPairedNfcAction(
+                    title = "NFC 쓰기",
+                    subtitle = "쓰기 모드",
+                    leadWithTealText = false,
+                    icon = Icons.Filled.Nfc,
+                    iconContentDescription = "NFC 쓰기(쓰기 모드)",
+                    onClick = onSelectTools
                 )
             }
+            Spacer(Modifier.weight(1f))
+            AppFooterBrand(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp)
+            )
         }
     }
 }
 
 @Composable
-private fun LargeModeEntryCard(
-    title: String,
-    description: String,
-    buttonText: String,
-    icon: ImageVector,
-    onClick: () -> Unit,
-    primary: Boolean
-) {
-    val brandTeal = Color(0xFF0D9488)
-    
-    val bgGradient = if (primary) {
-        Brush.linearGradient(listOf(Color(0xFFF0FDFA), Color(0xFFE6FFFA)))
-    } else {
-        Brush.linearGradient(listOf(Color(0xFFF8FAFC), Color(0xFFF1F5F9)))
-    }
-    
-    val iconBg = if (primary) {
-        Brush.linearGradient(listOf(Color(0xFF2DD4BF), Color(0xFF0D9488)))
-    } else {
-        Brush.linearGradient(listOf(Color(0xFF94A3B8), Color(0xFF475569)))
-    }
-    
-    val buttonBg = if (primary) {
-        Brush.linearGradient(listOf(brandTeal, Color(0xFF0F766E)))
-    } else {
-        Brush.linearGradient(listOf(Color(0xFF64748B), Color(0xFF334155)))
-    }
-
-    AnimatedVisibility(
-        visible = true,
-        enter = fadeIn() + expandVertically()
+private fun AppFooterBrand(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Card(
-            shape = RoundedCornerShape(22.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        Image(
+            painter = painterResource(id = com.petidconnect.nfcwriter.R.drawable.linku_logo),
+            contentDescription = "Link-U",
             modifier = Modifier
-                .fillMaxWidth()
-                .shadow(
-                    elevation = if (primary) 10.dp else 6.dp,
-                    shape = RoundedCornerShape(22.dp),
-                    spotColor = if (primary) brandTeal.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.1f)
-                )
-                .background(bgGradient, RoundedCornerShape(22.dp))
-                .border(1.dp, Color.White.copy(alpha = 0.6f), RoundedCornerShape(22.dp))
-        ) {
-            Column(
-                modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
+                .height(20.dp)
+                .fillMaxWidth(0.28f),
+            contentScale = ContentScale.Fit
+        )
+    }
+}
+
+@Composable
+private fun LandingPairedNfcAction(
+    title: String,
+    subtitle: String,
+    leadWithTealText: Boolean,
+    icon: ImageVector,
+    iconContentDescription: String,
+    onClick: () -> Unit
+) {
+    val brandTealBrush = Brush.linearGradient(
+        listOf(Color(0xFF0D9488), Color(0xFF0F766E))
+    )
+    val offWhite = Color(0xFFF0F5F2)
+    val haptics = LocalHapticFeedback.current
+    val shape = RoundedCornerShape(18.dp)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(90.dp)
+            .shadow(8.dp, shape, spotColor = Color(0x330D9488))
+            .clip(shape)
+            .clickable {
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                onClick()
+            }
+    ) {
+        if (leadWithTealText) {
+            Row(Modifier.fillMaxSize()) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(90.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color.White.copy(alpha = 0.4f)),
-                    contentAlignment = Alignment.Center
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .background(brandTealBrush)
+                        .padding(16.dp),
+                    contentAlignment = Alignment.CenterStart
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(iconBg),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(30.dp)
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            title,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Color.White,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                        Text(
+                            subtitle,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFFE0FFFA),
                         )
                     }
                 }
-                
-                Column(modifier = Modifier.padding(horizontal = 2.dp)) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Black,
-                        color = Color(0xFF1E293B),
-                        letterSpacing = (-0.3).sp
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = description,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color(0xFF64748B),
-                        fontWeight = FontWeight.Medium,
-                        lineHeight = 16.sp
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .background(offWhite),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = iconContentDescription,
+                        modifier = Modifier.size(44.dp),
+                        tint = Color(0xFF0D9488)
                     )
                 }
-                
-                Button(
-                    onClick = onClick,
+            }
+        } else {
+            Row(Modifier.fillMaxSize()) {
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(40.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .background(offWhite),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(buttonBg),
-                        contentAlignment = Alignment.Center
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = iconContentDescription,
+                        modifier = Modifier.size(44.dp),
+                        tint = Color(0xFF0D9488)
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .background(brandTealBrush)
+                        .padding(16.dp),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.End,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = buttonText,
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = null,
-                                tint = Color.White.copy(alpha = 0.7f),
-                                modifier = Modifier.size(14.dp)
-                            )
-                        }
+                        Text(
+                            title,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Color.White,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                        Text(
+                            subtitle,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFFE0FFFA)
+                        )
                     }
                 }
             }
         }
+    }
+}
+
+/**
+ * 아이콘 선택 → 정보 입력 → 태그 대기 흐름을 아이콘으로 안내
+ */
+@Composable
+private fun NfcWriteFlowVisualHint() {
+    val ink = Color(0xFF0D9488)
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        ),
+        border = BorderStroke(1.dp, Color(0x140D9488))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 6.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            NfcWriteFlowStepItem(
+                icon = Icons.Filled.Apps,
+                label = "아이콘",
+                contentDescription = "1단계: 도구 아이콘 선택"
+            )
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = ink.copy(alpha = 0.45f)
+            )
+            NfcWriteFlowStepItem(
+                icon = Icons.Filled.Edit,
+                label = "정보",
+                contentDescription = "2단계: 정보 입력 후 확인"
+            )
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = ink.copy(alpha = 0.45f)
+            )
+            NfcWriteFlowStepItem(
+                icon = Icons.Filled.Nfc,
+                label = "태그",
+                contentDescription = "3단계: 태그를 휴대폰에 대기"
+            )
+        }
+    }
+}
+
+@Composable
+private fun NfcWriteFlowStepItem(
+    icon: ImageVector,
+    label: String,
+    contentDescription: String
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(5.dp),
+        modifier = Modifier.width(72.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                .border(1.dp, Color(0x220D9488), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                modifier = Modifier.size(22.dp),
+                tint = Color(0xFF0D9488)
+            )
+        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.78f),
+            maxLines = 1
+        )
     }
 }
 
@@ -1806,6 +1876,34 @@ private fun buildBusinessCardPayload(
     } else {
         "MECARD:$mecardBody;"
     }
+}
+
+private fun readConnectedWifiSsid(context: Context): String? {
+    val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+        ?: return null
+    val raw = runCatching { wifiManager.connectionInfo?.ssid }.getOrNull()?.trim().orEmpty()
+    if (raw.isBlank()) return null
+    val unquoted = raw.removePrefix("\"").removeSuffix("\"")
+    if (unquoted.equals("<unknown ssid>", ignoreCase = true)) return null
+    return unquoted
+}
+
+private fun hasFineLocationPermission(context: Context): Boolean =
+    ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+        PackageManager.PERMISSION_GRANTED
+
+private fun readNearbyWifiSsids(context: Context): List<String> {
+    val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+        ?: return emptyList()
+    runCatching { wifiManager.startScan() }
+    return runCatching { wifiManager.scanResults }
+        .getOrDefault(emptyList())
+        .asSequence()
+        .map { it.SSID.trim() }
+        .filter { it.isNotBlank() && !it.equals("<unknown ssid>", ignoreCase = true) }
+        .distinct()
+        .sorted()
+        .toList()
 }
 
 private fun String.escapeMecard(): String =
@@ -2491,7 +2589,7 @@ private fun WriteSuccessOverlay(
                             containerColor = Color(0xFF0F766E)
                         )
                     ) {
-                        Text("일반 NFC 도구 모드로", fontWeight = FontWeight.ExtraBold)
+                        Text("확인", fontWeight = FontWeight.ExtraBold)
                     }
                 }
                 Icon(

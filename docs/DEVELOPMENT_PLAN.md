@@ -70,3 +70,33 @@ BLE·Find My·NFC 등 **축별 약속 범위**와 대외 문구 가이드는 아
 
 - [`docs/TRACKING_PRODUCT_GOALS.md`](./TRACKING_PRODUCT_GOALS.md)
 - [`docs/IOS_EXPANSION_MASTER_PLAN.md`](./IOS_EXPANSION_MASTER_PLAN.md) — iOS 확장 고도화 개발 계획
+
+---
+
+## 2026-04-25 앱 개발 정리 (최신)
+
+### Android 앱 (`android-native-writer`) 현재 완료
+
+- [x] 진입 UX 단순화: 랜딩을 `NFC 켜기(휴대폰 설정)` + `NFC 쓰기` 2개 메뉴로 정리
+- [x] Link-U 전용 모드 분리 제거: 동일 NFC 쓰기 UI에서 handoff 유무로 동작 분기
+- [x] 일반 NFC 도구 대시보드 강화: URL/명함/SMS/영상/Wi-Fi/블루투스/보호자 연동 타일
+- [x] Link-U 연동 섹션을 대시보드 내부 흐름으로 통합(별도 모드 학습 필요 없음)
+- [x] 불필요한 모드 안내 문구 축소(사용자 행동 중심 문구로 정리)
+- [x] 하단 공통 브랜딩(`Link-U` 로고) 적용
+- [x] Wi-Fi UX 개선
+  - [x] `WPA/WEP/nopass` 수동 선택 제거
+  - [x] 주변 SSID 스캔 + 선택 시 SSID 자동 채움
+  - [x] SSID 선택 후 목록 접고 입력창(SSID+비밀번호) 집중 흐름 적용
+
+### Android 앱 남은 작업 (권장)
+
+- [ ] Wi-Fi 스캔 신뢰도 개선(권한/위치 OFF/제조사 제약 안내 세분화)
+- [ ] Wi-Fi 리스트 품질 개선(신호 강도/보안 타입/정렬 옵션)
+- [ ] 접근성 보강(TalkBack 라벨, 버튼 상태 전환, 포커스 이동)
+- [ ] 문구/아이콘 컴포넌트 공통화(복수 화면 중복 제거)
+- [ ] 실기기 QA 매트릭스 재검증(삼성/샤오미/픽셀, Android 12~15)
+
+### 다음 우선순위
+
+- Android 앱 기능 추가보다, **Link-U 웹앱 고도화**를 우선 진행
+- 웹앱 작업 목록은 [`docs/WEB_APP_ENHANCEMENT_BACKLOG.md`](./WEB_APP_ENHANCEMENT_BACKLOG.md) 기준으로 운영
