@@ -251,7 +251,7 @@ export default function UsersAdminClient({
           <div className="flex items-center gap-2 text-slate-800">
             <UsersRound className="h-5 w-5 text-teal-600" aria-hidden />
             <span className="text-[15px] font-black sm:text-sm">목록</span>
-            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-black text-slate-600">
+            <span suppressHydrationWarning className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-black text-slate-600">
               {total.toLocaleString()}명
             </span>
           </div>
@@ -418,7 +418,7 @@ export default function UsersAdminClient({
                       </select>
                     </td>
                     <td className={cn(adminUi.tableBodyCell, "tabular-nums")}>{Number(u.pet_count)}</td>
-                    <td className={cn(adminUi.tableBodyCell, "text-slate-400")}>
+                    <td suppressHydrationWarning className={cn(adminUi.tableBodyCell, "text-slate-400")}>
                       {new Date(u.createdAt).toLocaleDateString("ko-KR")}
                     </td>
                     <td className="py-3 px-4">

@@ -14,6 +14,10 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: "Link-U",
   },
+  icons: {
+    icon: "/icon.png",
+    apple: "/apple-icon.png",
+  },
 };
 
 export const viewport: Viewport = {
