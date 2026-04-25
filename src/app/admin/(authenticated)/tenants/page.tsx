@@ -1,15 +1,15 @@
 import {
-  adminAddTenantMember,
-  adminChangeTenantMemberRole,
-  adminDeleteTenant,
   getTenantAdminAuditLogs,
-  adminCreateTenantInvite,
-  adminCreateTenantWithOwner,
-  adminRenameTenant,
-  adminRemoveTenantMember,
-  adminUpdateTenantAllowedModes,
-  adminUpdateTenantStatus,
   getTenantsAdminView,
+  adminCreateTenantFormAction,
+  adminUpdateTenantStatusFormAction,
+  adminUpdateTenantAllowedModesFormAction,
+  adminRenameTenantFormAction,
+  adminDeleteTenantFormAction,
+  adminAddTenantMemberFormAction,
+  adminCreateTenantInviteFormAction,
+  adminChangeTenantMemberRoleFormAction,
+  adminRemoveTenantMemberFormAction,
 } from "@/app/actions/admin-tenants";
 import { formatAllowedSubjectKindsSummaryKo, parseAllowedModesForForm } from "@/lib/mode-visibility";
 import { SUBJECT_KINDS, subjectKindMeta } from "@/lib/subject-kind";
@@ -47,12 +47,6 @@ function buildBackQuery(qs: {
   if (qs.email) p.set("email", qs.email);
   if (qs.status && qs.status !== "all") p.set("status", qs.status);
   return p.toString();
-}
-
-function withMessage(baseQs: string, key: "ok" | "err", value: string) {
-  const p = new URLSearchParams(baseQs);
-  p.set(key, value);
-  return `/admin/tenants?${p.toString()}`;
 }
 
 function safeDecode(v: string | undefined): string {
@@ -146,23 +140,7 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
           <Building2 className="w-5 h-5 text-teal-500" />
           <h2 className="text-lg font-black">새 조직 생성</h2>
         </div>
-        <form
-          action={async (formData) => {
-            "use server";
-            const { redirect } = await import("next/navigation");
-            try {
-              const created = await adminCreateTenantWithOwner(formData);
-              const p = new URLSearchParams();
-              p.set("ok", encodeURIComponent(`조직 생성 완료: ${created.tenantName}`));
-              p.set("created_tenant", created.tenantId);
-              redirect(`/admin/tenants?${p.toString()}`);
-            } catch (e) {
-              const msg = e instanceof Error ? e.message : "조직 생성 실패";
-              redirect(withMessage(String(formData.get("return_qs") ?? ""), "err", encodeURIComponent(msg)));
-            }
-          }}
-          className="space-y-4"
-        >
+        <form action={adminCreateTenantFormAction} className="space-y-4">
           <input type="hidden" name="return_qs" value={backQs} />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <input
@@ -254,20 +232,7 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
                     허브에서 멤버·초대·감사 로그
                   </Link>
                 </div>
-                <form
-                  action={async (formData) => {
-                    "use server";
-                    const { redirect } = await import("next/navigation");
-                    try {
-                      await adminUpdateTenantStatus(formData);
-                    } catch (e) {
-                      const msg = e instanceof Error ? e.message : "상태 변경 실패";
-                      redirect(withMessage(String(formData.get("return_qs") ?? ""), "err", encodeURIComponent(msg)));
-                    }
-                    redirect(withMessage(String(formData.get("return_qs") ?? ""), "ok", encodeURIComponent("조직 상태 변경 완료")));
-                  }}
-                  className="flex items-center gap-2"
-                >
+                <form action={adminUpdateTenantStatusFormAction} className="flex items-center gap-2">
                   <input type="hidden" name="tenant_id" value={tenant.id} />
                   <input type="hidden" name="return_qs" value={backQs} />
                   <select name="status" defaultValue={tenant.status} className="min-h-11 touch-manipulation rounded-xl border border-slate-200 px-3 text-sm font-bold sm:h-9 sm:text-xs">
@@ -280,26 +245,7 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
                 </form>
               </div>
 
-              <form
-                action={async (formData) => {
-                  "use server";
-                  const { redirect } = await import("next/navigation");
-                  try {
-                    await adminUpdateTenantAllowedModes(formData);
-                  } catch (e) {
-                    const msg = e instanceof Error ? e.message : "허용 모드 저장 실패";
-                    redirect(withMessage(String(formData.get("return_qs") ?? ""), "err", encodeURIComponent(msg)));
-                  }
-                  redirect(
-                    withMessage(
-                      String(formData.get("return_qs") ?? ""),
-                      "ok",
-                      encodeURIComponent("보호자 허용 모드가 저장되었습니다.")
-                    )
-                  );
-                }}
-                className="rounded-2xl border border-amber-100 bg-amber-50/50 p-4 space-y-3"
-              >
+              <form action={adminUpdateTenantAllowedModesFormAction} className="rounded-2xl border border-amber-100 bg-amber-50/50 p-4 space-y-3">
                 <input type="hidden" name="tenant_id" value={tenant.id} />
                 <input type="hidden" name="return_qs" value={backQs} />
                 <p className="text-[11px] font-black uppercase text-amber-800">보호자 허용 모드 (인라인 편집)</p>
@@ -338,20 +284,7 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
                 </button>
               </form>
 
-              <form
-                action={async (formData) => {
-                  "use server";
-                  const { redirect } = await import("next/navigation");
-                  try {
-                    await adminRenameTenant(formData);
-                  } catch (e) {
-                    const msg = e instanceof Error ? e.message : "조직명 변경 실패";
-                    redirect(withMessage(String(formData.get("return_qs") ?? ""), "err", encodeURIComponent(msg)));
-                  }
-                  redirect(withMessage(String(formData.get("return_qs") ?? ""), "ok", encodeURIComponent("조직명 변경 완료")));
-                }}
-                className="grid grid-cols-1 lg:grid-cols-4 gap-2"
-              >
+              <form action={adminRenameTenantFormAction} className="grid grid-cols-1 lg:grid-cols-4 gap-2">
                 <input type="hidden" name="tenant_id" value={tenant.id} />
                 <input type="hidden" name="return_qs" value={backQs} />
                 <input
@@ -366,20 +299,7 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
                 </button>
               </form>
 
-              <form
-                action={async (formData) => {
-                  "use server";
-                  const { redirect } = await import("next/navigation");
-                  try {
-                    await adminDeleteTenant(formData);
-                  } catch (e) {
-                    const msg = e instanceof Error ? e.message : "조직 삭제 실패";
-                    redirect(withMessage(String(formData.get("return_qs") ?? ""), "err", encodeURIComponent(msg)));
-                  }
-                  redirect(withMessage(String(formData.get("return_qs") ?? ""), "ok", encodeURIComponent("조직 삭제 완료")));
-                }}
-                className="rounded-2xl border border-rose-200/80 bg-rose-50/60 p-4 space-y-2"
-              >
+              <form action={adminDeleteTenantFormAction} className="rounded-2xl border border-rose-200/80 bg-rose-50/60 p-4 space-y-2">
                 <input type="hidden" name="tenant_id" value={tenant.id} />
                 <input type="hidden" name="return_qs" value={backQs} />
                 <p className="text-[11px] font-black uppercase text-rose-700">위험 작업 · 조직 삭제</p>
@@ -402,20 +322,7 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
                 </div>
               </form>
 
-              <form
-                action={async (formData) => {
-                  "use server";
-                  const { redirect } = await import("next/navigation");
-                  try {
-                    await adminAddTenantMember(formData);
-                  } catch (e) {
-                    const msg = e instanceof Error ? e.message : "멤버 추가 실패";
-                    redirect(withMessage(String(formData.get("return_qs") ?? ""), "err", encodeURIComponent(msg)));
-                  }
-                  redirect(withMessage(String(formData.get("return_qs") ?? ""), "ok", encodeURIComponent("멤버 저장 완료")));
-                }}
-                className="grid grid-cols-1 lg:grid-cols-4 gap-2"
-              >
+              <form action={adminAddTenantMemberFormAction} className="grid grid-cols-1 lg:grid-cols-4 gap-2">
                 <input type="hidden" name="tenant_id" value={tenant.id} />
                 <input type="hidden" name="return_qs" value={backQs} />
                 <input
@@ -436,24 +343,7 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
                 </button>
               </form>
 
-              <form
-                action={async (formData) => {
-                  "use server";
-                  const { redirect } = await import("next/navigation");
-                  try {
-                    const result = await adminCreateTenantInvite(formData);
-                    const p = new URLSearchParams(String(formData.get("return_qs") ?? ""));
-                    p.set("ok", encodeURIComponent("초대 토큰 발급 완료"));
-                    p.set("invite_token", encodeURIComponent(result.token));
-                    p.set("invite_exp", encodeURIComponent(result.expiresAt));
-                    redirect(`/admin/tenants?${p.toString()}`);
-                  } catch (e) {
-                    const msg = e instanceof Error ? e.message : "초대 발급 실패";
-                    redirect(withMessage(String(formData.get("return_qs") ?? ""), "err", encodeURIComponent(msg)));
-                  }
-                }}
-                className="grid grid-cols-1 lg:grid-cols-4 gap-2"
-              >
+              <form action={adminCreateTenantInviteFormAction} className="grid grid-cols-1 lg:grid-cols-4 gap-2">
                 <input type="hidden" name="tenant_id" value={tenant.id} />
                 <input type="hidden" name="return_qs" value={backQs} />
                 <input
@@ -512,20 +402,7 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
                         <td className="px-3 py-3 text-xs font-semibold text-slate-400">{new Date(m.created_at).toLocaleString("ko-KR")}</td>
                         <td className="px-3 py-3">
                           <div className="flex items-center justify-end gap-2">
-                            <form
-                              action={async (formData) => {
-                                "use server";
-                                const { redirect } = await import("next/navigation");
-                                try {
-                                  await adminChangeTenantMemberRole(formData);
-                                } catch (e) {
-                                  const msg = e instanceof Error ? e.message : "권한 변경 실패";
-                                  redirect(withMessage(String(formData.get("return_qs") ?? ""), "err", encodeURIComponent(msg)));
-                                }
-                                redirect(withMessage(String(formData.get("return_qs") ?? ""), "ok", encodeURIComponent("권한 변경 완료")));
-                              }}
-                              className="flex items-center gap-2"
-                            >
+                            <form action={adminChangeTenantMemberRoleFormAction} className="flex items-center gap-2">
                               <input type="hidden" name="tenant_id" value={tenant.id} />
                               <input type="hidden" name="user_id" value={m.user_id} />
                               <input type="hidden" name="return_qs" value={backQs} />
@@ -539,19 +416,7 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
                               </button>
                             </form>
 
-                            <form
-                              action={async (formData) => {
-                                "use server";
-                                const { redirect } = await import("next/navigation");
-                                try {
-                                  await adminRemoveTenantMember(formData);
-                                } catch (e) {
-                                  const msg = e instanceof Error ? e.message : "멤버 제거 실패";
-                                  redirect(withMessage(String(formData.get("return_qs") ?? ""), "err", encodeURIComponent(msg)));
-                                }
-                                redirect(withMessage(String(formData.get("return_qs") ?? ""), "ok", encodeURIComponent("멤버 제거 완료")));
-                              }}
-                            >
+                            <form action={adminRemoveTenantMemberFormAction}>
                               <input type="hidden" name="tenant_id" value={tenant.id} />
                               <input type="hidden" name="user_id" value={m.user_id} />
                               <input type="hidden" name="return_qs" value={backQs} />

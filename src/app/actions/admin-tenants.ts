@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { nanoid } from "nanoid";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { getAuth } from "@/lib/auth";
@@ -817,4 +818,133 @@ export async function getTenantOrgAuditLogs(
     .all<TenantAuditLogRow>()
     .catch(() => ({ results: [] as TenantAuditLogRow[] }));
   return rows.results ?? [];
+}
+
+// --- Form Action Wrappers (Stable IDs for Next.js 15) ---
+
+function internalWithMessage(baseQs: string, key: "ok" | "err", value: string) {
+  const p = new URLSearchParams(baseQs);
+  p.set(key, value);
+  return `/admin/tenants?${p.toString()}`;
+}
+
+function isNextRedirectError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const maybe = err as { digest?: unknown };
+  return typeof maybe.digest === "string" && maybe.digest.startsWith("NEXT_REDIRECT");
+}
+
+export async function adminCreateTenantFormAction(formData: FormData) {
+  const backQs = String(formData.get("return_qs") ?? "");
+  try {
+    const created = await adminCreateTenantWithOwner(formData);
+    const p = new URLSearchParams();
+    p.set("ok", encodeURIComponent(`조직 생성 완료: ${created.tenantName}`));
+    p.set("created_tenant", created.tenantId);
+    redirect(`/admin/tenants?${p.toString()}`);
+  } catch (e) {
+    if (isNextRedirectError(e)) throw e;
+    const msg = e instanceof Error ? e.message : "조직 생성 실패";
+    redirect(internalWithMessage(backQs, "err", encodeURIComponent(msg)));
+  }
+}
+
+export async function adminUpdateTenantStatusFormAction(formData: FormData) {
+  const backQs = String(formData.get("return_qs") ?? "");
+  try {
+    await adminUpdateTenantStatus(formData);
+    redirect(internalWithMessage(backQs, "ok", encodeURIComponent("조직 상태 변경 완료")));
+  } catch (e) {
+    if (isNextRedirectError(e)) throw e;
+    const msg = e instanceof Error ? e.message : "상태 변경 실패";
+    redirect(internalWithMessage(backQs, "err", encodeURIComponent(msg)));
+  }
+}
+
+export async function adminUpdateTenantAllowedModesFormAction(formData: FormData) {
+  const backQs = String(formData.get("return_qs") ?? "");
+  try {
+    await adminUpdateTenantAllowedModes(formData);
+    redirect(internalWithMessage(backQs, "ok", encodeURIComponent("보호자 허용 모드가 저장되었습니다.")));
+  } catch (e) {
+    if (isNextRedirectError(e)) throw e;
+    const msg = e instanceof Error ? e.message : "허용 모드 저장 실패";
+    redirect(internalWithMessage(backQs, "err", encodeURIComponent(msg)));
+  }
+}
+
+export async function adminRenameTenantFormAction(formData: FormData) {
+  const backQs = String(formData.get("return_qs") ?? "");
+  try {
+    await adminRenameTenant(formData);
+    redirect(internalWithMessage(backQs, "ok", encodeURIComponent("조직명 변경 완료")));
+  } catch (e) {
+    if (isNextRedirectError(e)) throw e;
+    const msg = e instanceof Error ? e.message : "조직명 변경 실패";
+    redirect(internalWithMessage(backQs, "err", encodeURIComponent(msg)));
+  }
+}
+
+export async function adminDeleteTenantFormAction(formData: FormData) {
+  const backQs = String(formData.get("return_qs") ?? "");
+  try {
+    await adminDeleteTenant(formData);
+    redirect(internalWithMessage(backQs, "ok", encodeURIComponent("조직 삭제 완료")));
+  } catch (e) {
+    if (isNextRedirectError(e)) throw e;
+    const msg = e instanceof Error ? e.message : "조직 삭제 실패";
+    redirect(internalWithMessage(backQs, "err", encodeURIComponent(msg)));
+  }
+}
+
+export async function adminAddTenantMemberFormAction(formData: FormData) {
+  const backQs = String(formData.get("return_qs") ?? "");
+  try {
+    await adminAddTenantMember(formData);
+    redirect(internalWithMessage(backQs, "ok", encodeURIComponent("멤버 저장 완료")));
+  } catch (e) {
+    if (isNextRedirectError(e)) throw e;
+    const msg = e instanceof Error ? e.message : "멤버 추가 실패";
+    redirect(internalWithMessage(backQs, "err", encodeURIComponent(msg)));
+  }
+}
+
+export async function adminCreateTenantInviteFormAction(formData: FormData) {
+  const backQs = String(formData.get("return_qs") ?? "");
+  try {
+    const result = await adminCreateTenantInvite(formData);
+    const p = new URLSearchParams(backQs);
+    p.set("ok", encodeURIComponent("초대 토큰 발급 완료"));
+    p.set("invite_token", encodeURIComponent(result.token));
+    p.set("invite_exp", encodeURIComponent(result.expiresAt));
+    redirect(`/admin/tenants?${p.toString()}`);
+  } catch (e) {
+    if (isNextRedirectError(e)) throw e;
+    const msg = e instanceof Error ? e.message : "초대 발급 실패";
+    redirect(internalWithMessage(backQs, "err", encodeURIComponent(msg)));
+  }
+}
+
+export async function adminChangeTenantMemberRoleFormAction(formData: FormData) {
+  const backQs = String(formData.get("return_qs") ?? "");
+  try {
+    await adminChangeTenantMemberRole(formData);
+    redirect(internalWithMessage(backQs, "ok", encodeURIComponent("권한 변경 완료")));
+  } catch (e) {
+    if (isNextRedirectError(e)) throw e;
+    const msg = e instanceof Error ? e.message : "권한 변경 실패";
+    redirect(internalWithMessage(backQs, "err", encodeURIComponent(msg)));
+  }
+}
+
+export async function adminRemoveTenantMemberFormAction(formData: FormData) {
+  const backQs = String(formData.get("return_qs") ?? "");
+  try {
+    await adminRemoveTenantMember(formData);
+    redirect(internalWithMessage(backQs, "ok", encodeURIComponent("멤버 제거 완료")));
+  } catch (e) {
+    if (isNextRedirectError(e)) throw e;
+    const msg = e instanceof Error ? e.message : "멤버 제거 실패";
+    redirect(internalWithMessage(backQs, "err", encodeURIComponent(msg)));
+  }
 }
