@@ -17,6 +17,11 @@ const MAX_PASSWORD_LEN = 128;
 const CREDENTIAL_PROVIDER = "credential" as const;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const DEFAULT_PLAN_OPTIONS: PlanCodeOption[] = [
+  { code: "free", name: "무료" },
+  { code: "starter", name: "스타터" },
+  { code: "business", name: "비즈니스" },
+];
 
 export type AdminUserListRow = {
   id: string;
@@ -98,8 +103,12 @@ export async function listPlanCodeOptionsAdmin(): Promise<PlanCodeOption[]> {
   const db = getDB();
   const { results } = await db
     .prepare("SELECT code, name FROM plans ORDER BY sort_order ASC, code ASC")
-    .all<PlanCodeOption>();
-  return (results ?? []) as PlanCodeOption[];
+    .all<PlanCodeOption>()
+    .catch(() => ({ results: [] as PlanCodeOption[] }));
+
+  const rows = (results ?? []).filter((r) => (r.code ?? "").trim().length > 0);
+  if (rows.length > 0) return rows as PlanCodeOption[];
+  return DEFAULT_PLAN_OPTIONS;
 }
 
 export async function listUsersAdmin(params: ListUsersAdminParams = {}) {

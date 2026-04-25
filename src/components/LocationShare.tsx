@@ -22,9 +22,10 @@ export function LocationShare({
   onStatusChange?: (status: "idle" | "loading" | "success" | "error") => void;
 }) {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [locationConsentChecked, setLocationConsentChecked] = useState(false);
   const searchParams = useSearchParams();
   const activeTag = tagId || searchParams.get("tag");
-  const canSend = enabled && Boolean(activeTag);
+  const canSend = enabled && Boolean(activeTag) && locationConsentChecked;
   const helperText = useMemo(() => {
     if (!enabled) {
       const h = disabledHint?.trim();
@@ -46,7 +47,12 @@ export function LocationShare({
   };
 
   const handleShare = async () => {
-    if (!canSend) return;
+    if (!enabled || !activeTag) return;
+    if (!locationConsentChecked) {
+      setStatus("error");
+      onStatusChange?.("error");
+      return;
+    }
     const ua = typeof navigator !== "undefined" ? navigator.userAgent : null;
     void logFinderAction({
       action: "location_share_click",
@@ -129,6 +135,15 @@ export function LocationShare({
 
   return (
     <div className="w-full">
+      <label className="mb-2 flex items-start gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold text-slate-600">
+        <input
+          type="checkbox"
+          checked={locationConsentChecked}
+          onChange={(e) => setLocationConsentChecked(e.target.checked)}
+          className="mt-0.5 h-3.5 w-3.5"
+        />
+        현재 위치를 가족에게 전달하는 것에 동의합니다. (동의 후에만 위치 전송 버튼이 활성화됩니다.)
+      </label>
       <AnimatePresence mode="wait">
         {status === "success" ? (
           <motion.div

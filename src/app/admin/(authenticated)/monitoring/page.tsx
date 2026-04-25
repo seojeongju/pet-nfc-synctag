@@ -2,7 +2,7 @@
 import {
   getMapTelemetryAlertState,
   getMapTelemetryThresholdAudits,
-  getLandingAutoRouteEvents,
+  getLandingAutoRouteEventsPage,
   getMapTelemetryHealthSummary,
   getMapTelemetryThresholds,
   getMapTelemetryTrend,
@@ -10,8 +10,8 @@ import {
   getLowBatteryCandidates,
   getMonitoringSummary,
   getRecentBleEvents,
-  getRecentNfcScans,
-  getUnknownTagAccesses,
+  getRecentNfcScansPage,
+  getUnknownTagAccessesPage,
 } from "@/lib/admin-monitoring-data";
 
 export const runtime = "edge";
@@ -19,11 +19,15 @@ export const runtime = "edge";
 export default async function AdminMonitoringPage({
   searchParams,
 }: {
-  searchParams: Promise<{ period?: string }>;
+  searchParams: Promise<{ period?: string; np?: string; up?: string; ap?: string }>;
 }) {
   const sp = await searchParams;
   const period = sp.period === "1h" || sp.period === "7d" ? sp.period : "24h";
-  const [summary, mapHealth, mapThresholds, mapAlertState, mapThresholdAudits, mapTrend, recentNfc, unknownAccess, autoRouteEvents, recentBle, lowBattery, nativeRejectTop] = await Promise.all([
+  const nfcPage = Math.max(1, Number(sp.np) || 1);
+  const unknownPage = Math.max(1, Number(sp.up) || 1);
+  const autoRoutePage = Math.max(1, Number(sp.ap) || 1);
+
+  const [summary, mapHealth, mapThresholds, mapAlertState, mapThresholdAudits, mapTrend, recentNfcPage, unknownAccessPage, autoRouteEventsPage, recentBle, lowBattery, nativeRejectTop] = await Promise.all([
     getMonitoringSummary().catch(() => ({
       nfcScans24h: 0,
       nfcScans7d: 0,
@@ -76,9 +80,9 @@ export default async function AdminMonitoringPage({
     getMapTelemetryAlertState().catch(() => ({ acknowledgedUntil: null })),
     getMapTelemetryThresholdAudits(10).catch(() => []),
     getMapTelemetryTrend(period).catch(() => []),
-    getRecentNfcScans(40).catch(() => []),
-    getUnknownTagAccesses(30).catch(() => []),
-    getLandingAutoRouteEvents(30).catch(() => []),
+    getRecentNfcScansPage({ page: nfcPage, pageSize: 10 }).catch(() => ({ rows: [], total: 0, page: 1, pageSize: 10 })),
+    getUnknownTagAccessesPage({ page: unknownPage, pageSize: 10 }).catch(() => ({ rows: [], total: 0, page: 1, pageSize: 10 })),
+    getLandingAutoRouteEventsPage({ page: autoRoutePage, pageSize: 10 }).catch(() => ({ rows: [], total: 0, page: 1, pageSize: 10 })),
     getRecentBleEvents(40).catch(() => []),
     getLowBatteryCandidates(30).catch(() => []),
     getNativeRejectTopReasons(5).catch(() => []),
@@ -93,9 +97,9 @@ export default async function AdminMonitoringPage({
       mapThresholdAudits={mapThresholdAudits}
       mapTrend={mapTrend}
       period={period}
-      recentNfc={recentNfc}
-      unknownAccess={unknownAccess}
-      autoRouteEvents={autoRouteEvents}
+      recentNfcPage={recentNfcPage}
+      unknownAccessPage={unknownAccessPage}
+      autoRouteEventsPage={autoRouteEventsPage}
       recentBle={recentBle}
       lowBattery={lowBattery}
       nativeRejectTop={nativeRejectTop}

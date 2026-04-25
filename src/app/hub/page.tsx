@@ -21,6 +21,7 @@ import { listTenantsForUser } from "@/lib/tenant-membership";
 import { resolvePersonalPlan } from "@/lib/plan-resolution";
 import { getTenantPlanUsageSummary } from "@/lib/tenant-quota";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
+import { getUserConsentStatus } from "@/lib/privacy-consent";
 import {
   getEffectiveAllowedSubjectKinds,
   getHubRedirectForGuardian,
@@ -94,6 +95,10 @@ export default async function HubPage({
 
   if (!session) {
     redirect("/login");
+  }
+  const consent = await getUserConsentStatus(session.user.id);
+  if (!consent.hasRequired) {
+    redirect(`/consent?next=${encodeURIComponent("/hub")}`);
   }
 
   const sp = await searchParams;

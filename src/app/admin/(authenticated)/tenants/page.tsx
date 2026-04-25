@@ -1,6 +1,7 @@
 import {
   adminAddTenantMember,
   adminChangeTenantMemberRole,
+  adminDeleteTenant,
   getTenantAdminAuditLogs,
   adminCreateTenantInvite,
   adminCreateTenantWithOwner,
@@ -25,6 +26,7 @@ type SearchParams = Promise<{
   q?: string;
   email?: string;
   status?: "all" | "active" | "suspended";
+  created_tenant?: string;
   invite_token?: string;
   invite_exp?: string;
 }>;
@@ -53,6 +55,15 @@ function withMessage(baseQs: string, key: "ok" | "err", value: string) {
   return `/admin/tenants?${p.toString()}`;
 }
 
+function safeDecode(v: string | undefined): string {
+  if (!v) return "";
+  try {
+    return decodeURIComponent(v);
+  } catch {
+    return v;
+  }
+}
+
 export default async function AdminTenantsPage({ searchParams }: { searchParams: SearchParams }) {
   const qs = await searchParams;
   const q = String(qs.q ?? "").trim();
@@ -79,18 +90,18 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
 
       {qs.err ? (
         <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-600">
-          {decodeURIComponent(qs.err)}
+          {safeDecode(qs.err)}
         </div>
       ) : null}
       {qs.ok ? (
         <div className="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm font-bold text-teal-700">
-          {decodeURIComponent(qs.ok)}
+          {safeDecode(qs.ok)}
         </div>
       ) : null}
       {qs.invite_token ? (
         <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-bold text-indigo-700 break-all">
-          초대 토큰 발급 완료: <span className="font-black">{decodeURIComponent(qs.invite_token)}</span>
-          {qs.invite_exp ? ` (만료: ${decodeURIComponent(qs.invite_exp)})` : ""}
+          초대 토큰 발급 완료: <span className="font-black">{safeDecode(qs.invite_token)}</span>
+          {qs.invite_exp ? ` (만료: ${safeDecode(qs.invite_exp)})` : ""}
         </div>
       ) : null}
 
@@ -140,12 +151,15 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
             "use server";
             const { redirect } = await import("next/navigation");
             try {
-              await adminCreateTenantWithOwner(formData);
+              const created = await adminCreateTenantWithOwner(formData);
+              const p = new URLSearchParams();
+              p.set("ok", encodeURIComponent(`조직 생성 완료: ${created.tenantName}`));
+              p.set("created_tenant", created.tenantId);
+              redirect(`/admin/tenants?${p.toString()}`);
             } catch (e) {
               const msg = e instanceof Error ? e.message : "조직 생성 실패";
               redirect(withMessage(String(formData.get("return_qs") ?? ""), "err", encodeURIComponent(msg)));
             }
-            redirect(withMessage(String(formData.get("return_qs") ?? ""), "ok", encodeURIComponent("조직 생성 완료")));
           }}
           className="space-y-4"
         >
@@ -219,7 +233,13 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
           tenants.map((tenant) => {
             const modeForm = parseAllowedModesForForm(tenant.allowed_subject_kinds);
             return (
-            <article key={tenant.id} className="rounded-3xl border border-slate-100 bg-white p-5 lg:p-6 shadow-sm space-y-4">
+            <article
+              key={tenant.id}
+              className={cn(
+                "rounded-3xl border border-slate-100 bg-white p-5 lg:p-6 shadow-sm space-y-4",
+                qs.created_tenant === tenant.id && "ring-2 ring-teal-300/70"
+              )}
+            >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-lg font-black text-slate-900">{tenant.name}</p>
@@ -344,6 +364,42 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
                 <button type="submit" className="min-h-12 touch-manipulation rounded-xl bg-slate-900 text-[15px] font-black text-white hover:bg-teal-600 sm:h-10 sm:text-sm">
                   조직명 저장
                 </button>
+              </form>
+
+              <form
+                action={async (formData) => {
+                  "use server";
+                  const { redirect } = await import("next/navigation");
+                  try {
+                    await adminDeleteTenant(formData);
+                  } catch (e) {
+                    const msg = e instanceof Error ? e.message : "조직 삭제 실패";
+                    redirect(withMessage(String(formData.get("return_qs") ?? ""), "err", encodeURIComponent(msg)));
+                  }
+                  redirect(withMessage(String(formData.get("return_qs") ?? ""), "ok", encodeURIComponent("조직 삭제 완료")));
+                }}
+                className="rounded-2xl border border-rose-200/80 bg-rose-50/60 p-4 space-y-2"
+              >
+                <input type="hidden" name="tenant_id" value={tenant.id} />
+                <input type="hidden" name="return_qs" value={backQs} />
+                <p className="text-[11px] font-black uppercase text-rose-700">위험 작업 · 조직 삭제</p>
+                <p className="text-[12px] font-semibold text-rose-800/80">
+                  삭제하려면 조직명 <span className="font-black">{tenant.name}</span> 을(를) 정확히 입력하세요.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <input
+                    name="confirm_name"
+                    required
+                    placeholder={tenant.name}
+                    className="min-h-12 touch-manipulation rounded-xl border border-rose-200 px-3 text-base font-semibold sm:h-10 sm:text-sm sm:col-span-2"
+                  />
+                  <button
+                    type="submit"
+                    className="min-h-12 touch-manipulation rounded-xl bg-rose-600 text-[15px] font-black text-white hover:bg-rose-700 sm:h-10 sm:text-sm"
+                  >
+                    조직 삭제
+                  </button>
+                </div>
               </form>
 
               <form

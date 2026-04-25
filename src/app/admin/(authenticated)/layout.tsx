@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
 import { AdminSidebarNav } from "@/components/admin/layout/AdminSidebarNav";
 import { AdminHeaderBar } from "@/components/admin/layout/AdminHeaderBar";
+import { getUserConsentStatus } from "@/lib/privacy-consent";
 
 export const runtime = "edge";
 
@@ -29,6 +30,10 @@ export default async function AdminAuthenticatedLayout({
 
   if (!session || !isPlatformAdminRole(roleRow?.role)) {
     redirect("/admin/login");
+  }
+  const consent = await getUserConsentStatus(session.user.id);
+  if (!consent.hasRequired) {
+    redirect(`/consent?next=${encodeURIComponent("/admin")}`);
   }
 
   return (

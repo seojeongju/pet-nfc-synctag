@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition, type ComponentType, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { AdminCard } from "@/components/admin/ui/AdminCard";
+import { AdminPagination } from "@/components/admin/ui/AdminPagination";
 import { CardContent } from "@/components/ui/card";
 import {
   AdminTableHeadCell,
@@ -32,6 +33,7 @@ import type {
   MapTelemetryThresholdAuditRow,
   MapTelemetryThresholds,
   MapTelemetryTrendPoint,
+  MonitoringPageResult,
   RecentBleRow,
   RecentNfcScanRow,
   UnknownAccessRow,
@@ -81,9 +83,9 @@ export default function AdminMonitoringClient({
   mapThresholdAudits,
   mapTrend,
   period,
-  recentNfc,
-  unknownAccess,
-  autoRouteEvents,
+  recentNfcPage,
+  unknownAccessPage,
+  autoRouteEventsPage,
   recentBle,
   lowBattery,
   nativeRejectTop,
@@ -95,9 +97,9 @@ export default function AdminMonitoringClient({
   mapThresholdAudits: MapTelemetryThresholdAuditRow[];
   mapTrend: MapTelemetryTrendPoint[];
   period: "1h" | "24h" | "7d";
-  recentNfc: RecentNfcScanRow[];
-  unknownAccess: UnknownAccessRow[];
-  autoRouteEvents: LandingAutoRouteRow[];
+  recentNfcPage: MonitoringPageResult<RecentNfcScanRow>;
+  unknownAccessPage: MonitoringPageResult<UnknownAccessRow>;
+  autoRouteEventsPage: MonitoringPageResult<LandingAutoRouteRow>;
   recentBle: RecentBleRow[];
   lowBattery: LowBatteryRow[];
   nativeRejectTop: NativeRejectReasonRow[];
@@ -113,6 +115,21 @@ export default function AdminMonitoringClient({
   const [thresholdForm, setThresholdForm] = useState(mapThresholds);
   const chartRef = useRef<SVGSVGElement | null>(null);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+
+  const buildMonitoringHref = (next: { np?: number; up?: number; ap?: number; period?: "1h" | "24h" | "7d" }) => {
+    const p = new URLSearchParams();
+    const nextPeriod = next.period ?? period;
+    if (nextPeriod !== "24h") p.set("period", nextPeriod);
+
+    const np = next.np ?? recentNfcPage.page;
+    const up = next.up ?? unknownAccessPage.page;
+    const ap = next.ap ?? autoRouteEventsPage.page;
+    if (np > 1) p.set("np", String(np));
+    if (up > 1) p.set("up", String(up));
+    if (ap > 1) p.set("ap", String(ap));
+    const qs = p.toString();
+    return qs ? `/admin/monitoring?${qs}` : "/admin/monitoring";
+  };
 
   const runLookup = () => {
     setDiagError(null);
@@ -379,19 +396,19 @@ export default function AdminMonitoringClient({
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">지도 건강도 ({mapHealth.windowLabel})</p>
             <div className="flex items-center gap-1">
               <a
-                href="/admin/monitoring?period=1h"
+                href={buildMonitoringHref({ period: "1h" })}
                 className={cn("px-2 py-1 rounded-lg text-[10px] font-black", period === "1h" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500")}
               >
                 1시간
               </a>
               <a
-                href="/admin/monitoring?period=24h"
+                href={buildMonitoringHref({ period: "24h" })}
                 className={cn("px-2 py-1 rounded-lg text-[10px] font-black", period === "24h" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500")}
               >
                 24시간
               </a>
               <a
-                href="/admin/monitoring?period=7d"
+                href={buildMonitoringHref({ period: "7d" })}
                 className={cn("px-2 py-1 rounded-lg text-[10px] font-black", period === "7d" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500")}
               >
                 7일
@@ -673,6 +690,9 @@ export default function AdminMonitoringClient({
 
       <div className="grid lg:grid-cols-3 gap-6">
         <Section title="최근 NFC 스캔" subtitle="등록 태그 기준 (위치는 동의 시)" icon={Activity}>
+          <p className="px-2 pb-1 text-[10px] font-black text-slate-400">
+            총 {recentNfcPage.total}건 · {recentNfcPage.page}/{Math.max(1, Math.ceil(recentNfcPage.total / recentNfcPage.pageSize))}페이지
+          </p>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-[10px] lg:text-xs">
               <thead>
@@ -683,14 +703,14 @@ export default function AdminMonitoringClient({
                 </AdminTableHeadRow>
               </thead>
               <tbody>
-                {recentNfc.length === 0 ? (
+                {recentNfcPage.rows.length === 0 ? (
                   <AdminTableRow>
                     <td colSpan={3} className="p-4 text-slate-400 text-center">
                       데이터 없음
                     </td>
                   </AdminTableRow>
                 ) : (
-                  recentNfc.map((r) => (
+                  recentNfcPage.rows.map((r) => (
                     <AdminTableRow key={r.id}>
                       <td className="p-2 font-mono truncate max-w-[140px]">{r.tag_id}</td>
                       <td className="p-2 whitespace-nowrap">{r.scanned_at}</td>
@@ -701,9 +721,22 @@ export default function AdminMonitoringClient({
               </tbody>
             </table>
           </div>
+          {recentNfcPage.total > 0 ? (
+            <div className="px-2 pt-2">
+              <AdminPagination
+                aria-label="최근 NFC 스캔 페이지"
+                currentPage={recentNfcPage.page}
+                totalPages={Math.max(1, Math.ceil(recentNfcPage.total / recentNfcPage.pageSize))}
+                buildHref={(p) => buildMonitoringHref({ np: p })}
+              />
+            </div>
+          ) : null}
         </Section>
 
         <Section title="미등록 NFC 시도" subtitle="DB에 없는 UID" icon={ShieldAlert}>
+          <p className="px-2 pb-1 text-[10px] font-black text-slate-400">
+            총 {unknownAccessPage.total}건 · {unknownAccessPage.page}/{Math.max(1, Math.ceil(unknownAccessPage.total / unknownAccessPage.pageSize))}페이지
+          </p>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-[10px] lg:text-xs">
               <thead>
@@ -714,14 +747,14 @@ export default function AdminMonitoringClient({
                 </AdminTableHeadRow>
               </thead>
               <tbody>
-                {unknownAccess.length === 0 ? (
+                {unknownAccessPage.rows.length === 0 ? (
                   <AdminTableRow>
                     <td colSpan={3} className="p-4 text-slate-400 text-center">
                       기록 없음
                     </td>
                   </AdminTableRow>
                 ) : (
-                  unknownAccess.map((r) => (
+                  unknownAccessPage.rows.map((r) => (
                     <AdminTableRow key={r.id}>
                       <td className="p-2 font-mono truncate max-w-[160px]">{r.tag_uid}</td>
                       <td className="p-2 whitespace-nowrap">{r.created_at}</td>
@@ -732,9 +765,22 @@ export default function AdminMonitoringClient({
               </tbody>
             </table>
           </div>
+          {unknownAccessPage.total > 0 ? (
+            <div className="px-2 pt-2">
+              <AdminPagination
+                aria-label="미등록 NFC 시도 페이지"
+                currentPage={unknownAccessPage.page}
+                totalPages={Math.max(1, Math.ceil(unknownAccessPage.total / unknownAccessPage.pageSize))}
+                buildHref={(p) => buildMonitoringHref({ up: p })}
+              />
+            </div>
+          ) : null}
         </Section>
 
         <Section title="랜딩 자동 진입 로그" subtitle="source · mode · 로그인 여부" icon={Search}>
+          <p className="px-2 pb-1 text-[10px] font-black text-slate-400">
+            총 {autoRouteEventsPage.total}건 · {autoRouteEventsPage.page}/{Math.max(1, Math.ceil(autoRouteEventsPage.total / autoRouteEventsPage.pageSize))}페이지
+          </p>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-[10px] lg:text-xs">
               <thead>
@@ -746,14 +792,14 @@ export default function AdminMonitoringClient({
                 </AdminTableHeadRow>
               </thead>
               <tbody>
-                {autoRouteEvents.length === 0 ? (
+                {autoRouteEventsPage.rows.length === 0 ? (
                   <AdminTableRow>
                     <td colSpan={4} className="p-4 text-slate-400 text-center">
                       기록 없음
                     </td>
                   </AdminTableRow>
                 ) : (
-                  autoRouteEvents.map((r) => (
+                  autoRouteEventsPage.rows.map((r) => (
                     <AdminTableRow key={r.id}>
                       <td className="p-2 font-mono">{r.source}</td>
                       <td className="p-2 font-mono">{r.resolved_kind}</td>
@@ -765,6 +811,16 @@ export default function AdminMonitoringClient({
               </tbody>
             </table>
           </div>
+          {autoRouteEventsPage.total > 0 ? (
+            <div className="px-2 pt-2">
+              <AdminPagination
+                aria-label="랜딩 자동 진입 로그 페이지"
+                currentPage={autoRouteEventsPage.page}
+                totalPages={Math.max(1, Math.ceil(autoRouteEventsPage.total / autoRouteEventsPage.pageSize))}
+                buildHref={(p) => buildMonitoringHref({ ap: p })}
+              />
+            </div>
+          ) : null}
         </Section>
       </div>
 

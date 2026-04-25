@@ -428,7 +428,9 @@ export async function getTenantOrgManageContext(tenantId: string): Promise<{
   return { view, isPlatformAdmin: actor.isPlatformAdmin };
 }
 
-export async function adminCreateTenantWithOwner(formData: FormData) {
+export async function adminCreateTenantWithOwner(
+  formData: FormData
+): Promise<{ tenantId: string; tenantName: string }> {
   const { actorEmail } = await requirePlatformAdmin();
   const db = getDB();
 
@@ -472,6 +474,37 @@ export async function adminCreateTenantWithOwner(formData: FormData) {
     slug,
     ownerEmail: owner.email,
     allowed_subject_kinds: allowedJson,
+  });
+  revalidateTenantSurfaces(tenantId);
+  return { tenantId, tenantName: name };
+}
+
+export async function adminDeleteTenant(formData: FormData) {
+  const { actorEmail } = await requirePlatformAdmin();
+  const db = getDB();
+  const tenantId = String(formData.get("tenant_id") ?? "").trim();
+  const confirmText = String(formData.get("confirm_name") ?? "").trim();
+  if (!tenantId) throw new Error("조직 정보가 올바르지 않습니다.");
+
+  const t = await db
+    .prepare("SELECT id, name FROM tenants WHERE id = ?")
+    .bind(tenantId)
+    .first<{ id: string; name: string }>();
+  if (!t) {
+    throw new Error("삭제할 조직을 찾을 수 없습니다.");
+  }
+  if (!confirmText || confirmText !== t.name) {
+    throw new Error("삭제 확인용 조직명을 정확히 입력하세요.");
+  }
+
+  await ensureTenantInvitesTable();
+  await db.prepare("DELETE FROM tenant_invites WHERE tenant_id = ?").bind(tenantId).run();
+  await db.prepare("DELETE FROM tenant_members WHERE tenant_id = ?").bind(tenantId).run();
+  await db.prepare("DELETE FROM tenants WHERE id = ?").bind(tenantId).run();
+
+  await writeAdminAudit(actorEmail, "tenant_delete_by_admin", {
+    tenantId,
+    tenantName: t.name,
   });
   revalidateTenantSurfaces(tenantId);
 }

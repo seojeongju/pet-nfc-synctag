@@ -502,6 +502,25 @@ export type RecentNfcScanRow = {
   has_location: number;
 };
 
+export type MonitoringPageResult<T> = {
+  rows: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+function normalizePage(page?: number): number {
+  const p = Number(page) || 1;
+  if (!Number.isFinite(p) || p < 1) return 1;
+  return Math.floor(p);
+}
+
+function normalizePageSize(size?: number, defaults = 10, min = 5, max = 100): number {
+  let v = Number(size) || defaults;
+  if (!Number.isFinite(v)) v = defaults;
+  return Math.min(max, Math.max(min, Math.floor(v)));
+}
+
 export async function getRecentNfcScans(limit = 40) {
   const db = getDB();
   const safe = Math.max(1, Math.min(limit, 100));
@@ -514,6 +533,33 @@ export async function getRecentNfcScans(limit = 40) {
     .bind(safe)
     .all<RecentNfcScanRow>();
   return results ?? [];
+}
+
+export async function getRecentNfcScansPage(params: {
+  page?: number;
+  pageSize?: number;
+} = {}): Promise<MonitoringPageResult<RecentNfcScanRow>> {
+  const db = getDB();
+  const pageSize = normalizePageSize(params.pageSize, 10, 5, 50);
+  const pageRaw = normalizePage(params.page);
+  const totalRow = await db
+    .prepare("SELECT COUNT(*) AS c FROM scan_logs")
+    .first<{ c: number }>()
+    .catch(() => ({ c: 0 }));
+  const total = Number(totalRow?.c ?? 0);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const page = Math.min(pageRaw, totalPages);
+  const offset = (page - 1) * pageSize;
+  const { results } = await db
+    .prepare(
+      "SELECT id, tag_id, scanned_at, latitude, longitude, " +
+        "CASE WHEN latitude IS NOT NULL AND longitude IS NOT NULL THEN 1 ELSE 0 END AS has_location " +
+        "FROM scan_logs ORDER BY datetime(scanned_at) DESC LIMIT ? OFFSET ?"
+    )
+    .bind(pageSize, offset)
+    .all<RecentNfcScanRow>()
+    .catch(() => ({ results: [] as RecentNfcScanRow[] }));
+  return { rows: results ?? [], total, page, pageSize };
 }
 
 export type UnknownAccessRow = {
@@ -546,6 +592,32 @@ export async function getUnknownTagAccesses(limit = 30) {
   return results ?? [];
 }
 
+export async function getUnknownTagAccessesPage(params: {
+  page?: number;
+  pageSize?: number;
+} = {}): Promise<MonitoringPageResult<UnknownAccessRow>> {
+  const db = getDB();
+  const pageSize = normalizePageSize(params.pageSize, 10, 5, 50);
+  const pageRaw = normalizePage(params.page);
+  const totalRow = await db
+    .prepare("SELECT COUNT(*) AS c FROM unknown_tag_accesses")
+    .first<{ c: number }>()
+    .catch(() => ({ c: 0 }));
+  const total = Number(totalRow?.c ?? 0);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const page = Math.min(pageRaw, totalPages);
+  const offset = (page - 1) * pageSize;
+  const { results } = await db
+    .prepare(
+      "SELECT id, tag_uid, ip_address, created_at FROM unknown_tag_accesses " +
+        "ORDER BY datetime(created_at) DESC LIMIT ? OFFSET ?"
+    )
+    .bind(pageSize, offset)
+    .all<UnknownAccessRow>()
+    .catch(() => ({ results: [] as UnknownAccessRow[] }));
+  return { rows: results ?? [], total, page, pageSize };
+}
+
 export async function getLandingAutoRouteEvents(limit = 30) {
   const db = getDB();
   const safe = Math.max(1, Math.min(limit, 100));
@@ -558,6 +630,32 @@ export async function getLandingAutoRouteEvents(limit = 30) {
     .all<LandingAutoRouteRow>()
     .catch(() => ({ results: [] as LandingAutoRouteRow[] }));
   return results ?? [];
+}
+
+export async function getLandingAutoRouteEventsPage(params: {
+  page?: number;
+  pageSize?: number;
+} = {}): Promise<MonitoringPageResult<LandingAutoRouteRow>> {
+  const db = getDB();
+  const pageSize = normalizePageSize(params.pageSize, 10, 5, 50);
+  const pageRaw = normalizePage(params.page);
+  const totalRow = await db
+    .prepare("SELECT COUNT(*) AS c FROM landing_auto_route_events")
+    .first<{ c: number }>()
+    .catch(() => ({ c: 0 }));
+  const total = Number(totalRow?.c ?? 0);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const page = Math.min(pageRaw, totalPages);
+  const offset = (page - 1) * pageSize;
+  const { results } = await db
+    .prepare(
+      "SELECT id, source, resolved_kind, authenticated, ip_address, created_at FROM landing_auto_route_events " +
+        "ORDER BY datetime(created_at) DESC LIMIT ? OFFSET ?"
+    )
+    .bind(pageSize, offset)
+    .all<LandingAutoRouteRow>()
+    .catch(() => ({ results: [] as LandingAutoRouteRow[] }));
+  return { rows: results ?? [], total, page, pageSize };
 }
 
 export type RecentBleRow = {

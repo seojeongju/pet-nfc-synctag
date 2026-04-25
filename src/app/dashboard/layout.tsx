@@ -3,6 +3,8 @@ import { DashboardNavBar } from "@/components/dashboard/DashboardNavBar";
 import { DashboardBottomNav } from "@/components/dashboard/DashboardBottomNav";
 import { getLandingSessionState, type LandingSessionState } from "@/lib/landing-session";
 import { getOrgManageHrefForUser } from "@/lib/org-manage-href";
+import { getUserConsentStatus } from "@/lib/privacy-consent";
+import { redirect } from "next/navigation";
 
 export const runtime = "edge";
 
@@ -16,6 +18,12 @@ export default async function DashboardLayout({
     landing = await getLandingSessionState();
   } catch (e) {
     console.error("[dashboard/layout] getLandingSessionState", e);
+  }
+  if (landing.session?.user?.id) {
+    const consent = await getUserConsentStatus(landing.session.user.id);
+    if (!consent.hasRequired) {
+      redirect(`/consent?next=${encodeURIComponent("/dashboard")}`);
+    }
   }
 
   const orgManageHref = await getOrgManageHrefForUser(landing.session?.user?.id).catch(() => null);

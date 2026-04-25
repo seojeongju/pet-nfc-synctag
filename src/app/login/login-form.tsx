@@ -130,6 +130,9 @@ export function LoginForm() {
   const [signupName, setSignupName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [agreePrivacy, setAgreePrivacy] = useState(false);
+  const [agreeLocation, setAgreeLocation] = useState(false);
   const [signupLoading, setSignupLoading] = useState(false);
   const [signupError, setSignupError] = useState("");
   const [signupSuccess, setSignupSuccess] = useState("");
@@ -153,11 +156,16 @@ export function LoginForm() {
    *   callbackURL을 직접 최종 목적지로 설정합니다.
    */
   const handleLogin = async (provider: "google" | "kakao") => {
+    if (!agreeTerms || !agreePrivacy || !agreeLocation) {
+      setSignupError("로그인 전 필수 동의 3가지를 모두 체크해 주세요.");
+      return;
+    }
     // 구글만 /auth/complete 브리지를 경유 (카카오는 기존 방식 유지)
+    const consentNext = `/consent?next=${encodeURIComponent(callbackURL)}`;
     const resolvedCallbackURL =
       provider === "google"
-        ? `/auth/complete?next=${encodeURIComponent(callbackURL)}`
-        : callbackURL;
+        ? `/auth/complete?next=${encodeURIComponent(consentNext)}`
+        : consentNext;
 
     await signIn.social({
       provider,
@@ -184,6 +192,10 @@ export function LoginForm() {
       setSignupError("비밀번호는 8자 이상으로 입력해 주세요.");
       return;
     }
+    if (!agreeTerms || !agreePrivacy || !agreeLocation) {
+      setSignupError("회원가입 전 필수 동의 3가지를 모두 체크해 주세요.");
+      return;
+    }
 
     setSignupLoading(true);
     try {
@@ -191,7 +203,7 @@ export function LoginForm() {
         name: signupName.trim(),
         email: signupEmail.trim(),
         password: signupPassword,
-        callbackURL: signupRedirectUrl,
+        callbackURL: `/consent?next=${encodeURIComponent(signupRedirectUrl)}`,
       });
       const signupResultError = result?.error;
       if (signupResultError) {
@@ -362,11 +374,6 @@ export function LoginForm() {
                   minLength={8}
                 />
 
-                {signupError ? (
-                  <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] font-bold text-rose-600">
-                    {signupError}
-                  </p>
-                ) : null}
                 {signupSuccess ? (
                   <p className="rounded-xl border border-teal-200 bg-teal-50 px-3 py-2 text-[11px] font-bold text-teal-700">
                     {signupSuccess}
@@ -383,9 +390,29 @@ export function LoginForm() {
               </form>
             )}
 
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 space-y-1.5">
+              <label className="flex items-start gap-2 text-[11px] font-bold text-slate-700">
+                <input type="checkbox" checked={agreeTerms} onChange={(e) => setAgreeTerms(e.target.checked)} className="mt-0.5 h-3.5 w-3.5" />
+                (필수) 이용약관 동의 <Link href="/legal/terms" className="underline text-teal-700">보기</Link>
+              </label>
+              <label className="flex items-start gap-2 text-[11px] font-bold text-slate-700">
+                <input type="checkbox" checked={agreePrivacy} onChange={(e) => setAgreePrivacy(e.target.checked)} className="mt-0.5 h-3.5 w-3.5" />
+                (필수) 개인정보 처리방침 동의 <Link href="/legal/privacy" className="underline text-teal-700">보기</Link>
+              </label>
+              <label className="flex items-start gap-2 text-[11px] font-bold text-slate-700">
+                <input type="checkbox" checked={agreeLocation} onChange={(e) => setAgreeLocation(e.target.checked)} className="mt-0.5 h-3.5 w-3.5" />
+                (필수) 위치·모니터링 데이터 처리 동의
+              </label>
+            </div>
+            {signupError ? (
+              <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] font-bold text-rose-600">
+                {signupError}
+              </p>
+            ) : null}
+
             <div className="pt-6 text-center">
               <p className="text-[10px] text-slate-300 font-medium leading-relaxed">
-                로그인 시 서비스 이용약관 및 개인정보 처리방침에 동의하는 것으로 간주됩니다.
+                간편 로그인/회원가입 전 필수 동의 체크가 필요하며, 최초 로그인 후 동의 내역이 계정에 저장됩니다.
               </p>
             </div>
           </CardContent>
