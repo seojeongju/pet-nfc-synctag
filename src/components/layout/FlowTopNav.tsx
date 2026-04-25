@@ -54,16 +54,18 @@ export function FlowTopNavContent({
           : "/";
 
   const useHardNav = variant === "dashboard";
+  const isDashboard = variant === "dashboard";
 
   return (
     <div
       className={cn(
         "flex min-h-12 flex-wrap items-center justify-between gap-x-2.5 gap-y-2 py-2.5 text-xs font-bold text-slate-600",
+        isDashboard && "gap-y-1.5 py-2",
         maxWClass(variant),
         className
       )}
     >
-      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+      <div className={cn("flex min-w-0 flex-1 items-center gap-2 sm:gap-3", isDashboard && "basis-full")}>
         {useHardNav ? (
           <a
             href={modeSelectHref}
@@ -86,7 +88,7 @@ export function FlowTopNavContent({
             <span className="block truncate text-[10px] font-black uppercase tracking-wide text-slate-500 min-[390px]:text-[11px]">
               {currentModeLabel}
             </span>
-            {currentModeDescription ? (
+            {currentModeDescription && !isDashboard ? (
               <span className="block max-w-[11rem] truncate text-[10px] font-bold text-slate-400 min-[390px]:max-w-[13rem]">
                 {currentModeDescription}
               </span>
@@ -96,7 +98,10 @@ export function FlowTopNavContent({
       </div>
 
       <nav
-        className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1 sm:gap-x-3"
+        className={cn(
+          "flex flex-wrap items-center justify-end gap-x-2 gap-y-1 sm:gap-x-3",
+          isDashboard && "w-full justify-between"
+        )}
         aria-label="전역 이동"
       >
         {session && !useHardNav ? (
@@ -140,7 +145,10 @@ export function FlowTopNavContent({
             )}
           >
             <Shield className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            {isAdmin ? "관리자" : "관리자 로그인"}
+            <span className={cn(isDashboard && "hidden min-[430px]:inline")}>
+              {isAdmin ? "관리자" : "관리자 로그인"}
+            </span>
+            <span className={cn("min-[430px]:hidden", !isDashboard && "hidden")}>관리자</span>
           </a>
         ) : (
           <Link
@@ -163,7 +171,8 @@ export function FlowTopNavContent({
               className="inline-flex items-center gap-1 rounded-full px-2 py-1 font-black text-rose-600 hover:bg-rose-50 min-[390px]:px-2.5"
             >
               <LogOut className="h-3.5 w-3.5 shrink-0" aria-hidden />
-              로그아웃
+              <span className={cn(isDashboard && "hidden min-[430px]:inline")}>로그아웃</span>
+              <span className={cn("min-[430px]:hidden", !isDashboard && "hidden")}>나가기</span>
             </a>
           ) : (
             <Link

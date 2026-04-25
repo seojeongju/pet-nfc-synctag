@@ -93,16 +93,21 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
       />
       <div className="border-t border-slate-100">
         <div className="container flex max-w-5xl flex-col gap-2 px-4 py-2.5 xl:flex-row xl:items-center xl:justify-between xl:py-2">
-          <div className="flex min-w-0 items-center justify-between gap-3 xl:justify-start">
-            <a href="/hub" className="flex min-w-0 items-center gap-2 font-bold text-xl text-primary hover:opacity-90">
+          <div className="flex min-w-0 items-center justify-between gap-2.5 xl:justify-start">
+            <a
+              href="/hub"
+              className="flex min-w-0 max-w-[10rem] items-center gap-1.5 font-bold text-xl text-primary hover:opacity-90 min-[390px]:max-w-[12rem]"
+            >
               <PawPrint className="h-6 w-6 shrink-0" />
               <span className="truncate">링크유 Link-U</span>
             </a>
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex min-w-0 items-center justify-end gap-1.5">
               <DashboardContextualHelp />
               <DashboardAnnouncementBell />
               {session?.user?.name ? (
-                <span className="truncate text-xs font-bold text-slate-400 xl:hidden">{session.user.name}</span>
+                <span className="max-w-[9.5rem] truncate text-xs font-bold text-slate-400 xl:hidden min-[390px]:max-w-[12rem]">
+                  {session.user.name}
+                </span>
               ) : null}
             </div>
           </div>
