@@ -13,7 +13,8 @@ import { TENANT_AUDIT_ACTIONS } from "@/lib/tenant-audit-constants";
 import { auditActionLabelKo, formatTenantAuditRow } from "@/lib/tenant-audit-format";
 import { Building2, ChevronLeft, FileDown, ScrollText, ShieldCheck, UserPlus2 } from "lucide-react";
 import Link from "next/link";
-import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
+import { SUBJECT_KINDS, subjectKindMeta } from "@/lib/subject-kind";
+import { parseAllowedModesForForm } from "@/lib/mode-visibility";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 
@@ -69,29 +70,6 @@ export default async function TenantOrgManagePage({
 
   const { view: tenant, isPlatformAdmin } = data;
 
-  const parseAllowedModesForForm = (raw: string | null): { unrestricted: boolean; selected: SubjectKind[] } => {
-    if (raw == null || !String(raw).trim()) {
-      return { unrestricted: true, selected: [] };
-    }
-    try {
-      const v = JSON.parse(raw) as unknown;
-      if (!Array.isArray(v) || v.length === 0) {
-        return { unrestricted: true, selected: [] };
-      }
-      const selected = v.filter(
-        (x): x is SubjectKind => typeof x === "string" && (SUBJECT_KINDS as readonly string[]).includes(x)
-      );
-      if (selected.length === 0) {
-        return { unrestricted: true, selected: [] };
-      }
-      if (selected.length >= SUBJECT_KINDS.length) {
-        return { unrestricted: true, selected };
-      }
-      return { unrestricted: false, selected };
-    } catch {
-      return { unrestricted: true, selected: [] };
-    }
-  };
   const modeForm = parseAllowedModesForForm(tenant.allowed_subject_kinds);
 
   const auditActionRaw = typeof qs.audit_action === "string" ? qs.audit_action.trim() : "";

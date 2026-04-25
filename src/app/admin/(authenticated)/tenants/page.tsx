@@ -6,10 +6,12 @@ import {
   adminCreateTenantWithOwner,
   adminRenameTenant,
   adminRemoveTenantMember,
+  adminUpdateTenantAllowedModes,
   adminUpdateTenantStatus,
   getTenantsAdminView,
 } from "@/app/actions/admin-tenants";
-import { formatAllowedSubjectKindsSummaryKo } from "@/lib/mode-visibility";
+import { formatAllowedSubjectKindsSummaryKo, parseAllowedModesForForm } from "@/lib/mode-visibility";
+import { SUBJECT_KINDS, subjectKindMeta } from "@/lib/subject-kind";
 import { Building2, Search, ShieldCheck, UserPlus2, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -59,6 +61,7 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
   const tenants = await getTenantsAdminView({ q, email, status });
   const auditLogs = await getTenantAdminAuditLogs(60);
   const backQs = buildBackQuery({ q, email, status });
+  const newOrgModeForm = parseAllowedModesForForm(null);
 
   return (
     <div className={cn(adminUi.pageContainer, adminUi.pageBottomSafe, "space-y-6 pb-12 font-outfit")}>
@@ -70,7 +73,7 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
           조직 · 멤버 관리
         </h1>
         <p className="text-[15px] font-semibold leading-relaxed text-slate-600 sm:text-sm sm:font-medium sm:text-slate-500">
-          조직 생성, 멤버 추가, role(owner/admin/member) 변경/삭제를 관리합니다.
+          조직 생성(허용 모드 지정) · 멤버/역할 · 보호자에게 열릴 Link-U 모드까지 이 화면에서 처리할 수 있어요.
         </p>
       </header>
 
@@ -144,25 +147,63 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
             }
             redirect(withMessage(String(formData.get("return_qs") ?? ""), "ok", encodeURIComponent("조직 생성 완료")));
           }}
-          className="grid grid-cols-1 lg:grid-cols-3 gap-3"
+          className="space-y-4"
         >
           <input type="hidden" name="return_qs" value={backQs} />
-          <input
-            name="name"
-            required
-            placeholder="조직명"
-            className="min-h-[48px] touch-manipulation rounded-2xl border border-slate-200 px-4 text-base font-semibold sm:h-11 sm:text-sm"
-          />
-          <input
-            name="owner_email"
-            required
-            type="email"
-            placeholder="소유자 이메일"
-            className="min-h-[48px] touch-manipulation rounded-2xl border border-slate-200 px-4 text-base font-semibold sm:h-11 sm:text-sm"
-          />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <input
+              name="name"
+              required
+              placeholder="조직명"
+              className="min-h-[48px] touch-manipulation rounded-2xl border border-slate-200 px-4 text-base font-semibold sm:h-11 sm:text-sm"
+            />
+            <input
+              name="owner_email"
+              required
+              type="email"
+              placeholder="소유자 이메일(가입된 계정)"
+              className="min-h-[48px] touch-manipulation rounded-2xl border border-slate-200 px-4 text-base font-semibold sm:h-11 sm:text-sm"
+            />
+          </div>
+          <div className="rounded-2xl border border-amber-100 bg-amber-50/50 p-4 space-y-3">
+            <div>
+              <p className="text-[11px] font-black uppercase text-amber-800">보호자에게 보이는 Link-U 모드</p>
+              <p className="text-[11px] font-semibold text-amber-900/80 mt-1">
+                전체 허용이면 소속 보호자는 허브에서 5가지 모드를 볼 수 있어요. 특정 제품만 쓰면 제한하세요. (생성 직후에도
+                아래 조직 카드에서 변경 가능)
+              </p>
+            </div>
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                name="unrestricted"
+                value="1"
+                defaultChecked={newOrgModeForm.unrestricted}
+                className="mt-1 h-4 w-4 rounded border-amber-300"
+              />
+              <span className="text-sm font-bold text-slate-800">전체 모드 허용 (제한 없음)</span>
+            </label>
+            <div className="pl-6 space-y-2 border-t border-amber-100/80 pt-3">
+              <p className="text-[10px] font-black text-slate-500 uppercase">또는 허용할 모드만 선택</p>
+              <div className="flex flex-wrap gap-x-4 gap-y-2">
+                {SUBJECT_KINDS.map((k) => (
+                  <label key={k} className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                    <input
+                      type="checkbox"
+                      name="mode"
+                      value={k}
+                      defaultChecked={!newOrgModeForm.unrestricted && newOrgModeForm.selected.includes(k)}
+                      className="h-3.5 w-3.5 rounded border-slate-300"
+                    />
+                    {subjectKindMeta[k].label}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
           <button
             type="submit"
-            className="min-h-[48px] touch-manipulation rounded-2xl bg-slate-900 text-[15px] font-black text-white hover:bg-teal-600 sm:h-11 sm:text-sm"
+            className="min-h-[48px] w-full touch-manipulation rounded-2xl bg-slate-900 text-[15px] font-black text-white hover:bg-teal-600 sm:h-11"
           >
             조직 생성
           </button>
@@ -175,20 +216,22 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
             등록된 조직이 없습니다.
           </div>
         ) : (
-          tenants.map((tenant) => (
+          tenants.map((tenant) => {
+            const modeForm = parseAllowedModesForForm(tenant.allowed_subject_kinds);
+            return (
             <article key={tenant.id} className="rounded-3xl border border-slate-100 bg-white p-5 lg:p-6 shadow-sm space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-lg font-black text-slate-900">{tenant.name}</p>
                   <p className="text-xs font-bold text-slate-400">slug: {tenant.slug} · members: {tenant.member_count}</p>
-                  <p className="text-xs font-bold text-slate-600 mt-1">
-                    보호자 허용 모드: {formatAllowedSubjectKindsSummaryKo(tenant.allowed_subject_kinds)}
+                  <p className="text-xs font-bold text-slate-500 mt-1">
+                    현재 요약: {formatAllowedSubjectKindsSummaryKo(tenant.allowed_subject_kinds)}
                   </p>
                   <Link
                     href={`/hub/org/${encodeURIComponent(tenant.id)}/manage`}
                     className="inline-block mt-1 text-[11px] font-black text-teal-600 hover:underline"
                   >
-                    조직 상세(허브) · 허용 모드 편집
+                    허브에서 멤버·초대·감사 로그
                   </Link>
                 </div>
                 <form
@@ -216,6 +259,64 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
                   </button>
                 </form>
               </div>
+
+              <form
+                action={async (formData) => {
+                  "use server";
+                  const { redirect } = await import("next/navigation");
+                  try {
+                    await adminUpdateTenantAllowedModes(formData);
+                  } catch (e) {
+                    const msg = e instanceof Error ? e.message : "허용 모드 저장 실패";
+                    redirect(withMessage(String(formData.get("return_qs") ?? ""), "err", encodeURIComponent(msg)));
+                  }
+                  redirect(
+                    withMessage(
+                      String(formData.get("return_qs") ?? ""),
+                      "ok",
+                      encodeURIComponent("보호자 허용 모드가 저장되었습니다.")
+                    )
+                  );
+                }}
+                className="rounded-2xl border border-amber-100 bg-amber-50/50 p-4 space-y-3"
+              >
+                <input type="hidden" name="tenant_id" value={tenant.id} />
+                <input type="hidden" name="return_qs" value={backQs} />
+                <p className="text-[11px] font-black uppercase text-amber-800">보호자 허용 모드 (인라인 편집)</p>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="unrestricted"
+                    value="1"
+                    defaultChecked={modeForm.unrestricted}
+                    className="mt-1 h-4 w-4 rounded border-amber-300"
+                  />
+                  <span className="text-sm font-bold text-slate-800">전체 모드 허용 (제한 없음)</span>
+                </label>
+                <div className="pl-6 space-y-2 border-t border-amber-100/80 pt-3">
+                  <p className="text-[10px] font-black text-slate-500 uppercase">또는 허용할 모드만 선택</p>
+                  <div className="flex flex-wrap gap-x-4 gap-y-2">
+                    {SUBJECT_KINDS.map((k) => (
+                      <label key={k} className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                        <input
+                          type="checkbox"
+                          name="mode"
+                          value={k}
+                          defaultChecked={!modeForm.unrestricted && modeForm.selected.includes(k)}
+                          className="h-3.5 w-3.5 rounded border-slate-300"
+                        />
+                        {subjectKindMeta[k].label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  className="h-9 rounded-xl bg-amber-700 text-white text-xs font-black px-4 hover:bg-amber-800"
+                >
+                  허용 모드 저장
+                </button>
+              </form>
 
               <form
                 action={async (formData) => {
@@ -410,7 +511,8 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
                 </table>
               </div>
             </article>
-          ))
+            );
+          })
         )}
       </section>
 

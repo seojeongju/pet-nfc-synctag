@@ -151,6 +151,34 @@ export function formatAllowedSubjectKindsSummaryKo(raw: string | null | undefine
   }
 }
 
+/** 허브·어드민 조직 폼의 기본값(전체 vs 부분 모드) */
+export function parseAllowedModesForForm(raw: string | null): {
+  unrestricted: boolean;
+  selected: SubjectKind[];
+} {
+  if (raw == null || !String(raw).trim()) {
+    return { unrestricted: true, selected: [] };
+  }
+  try {
+    const v = JSON.parse(String(raw)) as unknown;
+    if (!Array.isArray(v) || v.length === 0) {
+      return { unrestricted: true, selected: [] };
+    }
+    const selected = v.filter(
+      (x): x is SubjectKind => typeof x === "string" && (SUBJECT_KINDS as readonly string[]).includes(x)
+    );
+    if (selected.length === 0) {
+      return { unrestricted: true, selected: [] };
+    }
+    if (selected.length >= SUBJECT_KINDS.length) {
+      return { unrestricted: true, selected };
+    }
+    return { unrestricted: false, selected };
+  } catch {
+    return { unrestricted: true, selected: [] };
+  }
+}
+
 export function getHubRedirectForGuardian(allowed: SubjectKind[]): string | null {
   if (allowed.length === 1) {
     return getSingleModeDashboardPath(allowed[0]!);

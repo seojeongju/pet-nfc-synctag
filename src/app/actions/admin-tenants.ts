@@ -454,10 +454,12 @@ export async function adminCreateTenantWithOwner(formData: FormData) {
     slug = `${slugify(name)}-${nanoid(8)}`;
   }
 
+  const allowedJson = allowedSubjectKindsJsonFromForm(formData);
+
   await db.prepare(
-    `INSERT INTO tenants (id, name, slug, status, created_at, updated_at)
-     VALUES (?, ?, ?, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
-  ).bind(tenantId, name, slug).run();
+    `INSERT INTO tenants (id, name, slug, status, allowed_subject_kinds, created_at, updated_at)
+     VALUES (?, ?, ?, 'active', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+  ).bind(tenantId, name, slug, allowedJson).run();
 
   await db.prepare(
     `INSERT INTO tenant_members (tenant_id, user_id, role, created_at)
@@ -469,6 +471,7 @@ export async function adminCreateTenantWithOwner(formData: FormData) {
     name,
     slug,
     ownerEmail: owner.email,
+    allowed_subject_kinds: allowedJson,
   });
   revalidateTenantSurfaces(tenantId);
 }
@@ -621,6 +624,27 @@ export async function adminRenameTenant(formData: FormData) {
 }
 
 /**
+ * 폼: unrestricted 체크 → NULL(전체). 아니면 선택한 mode[] 를 JSON. 전체 수 선택이면 NULL.
+ * @throws Error 제한 모드인데 0개 선택
+ */
+function allowedSubjectKindsJsonFromForm(formData: FormData): string | null {
+  const unrestricted =
+    formData.get("unrestricted") === "1" ||
+    formData.get("unrestricted") === "on" ||
+    formData.get("unrestricted") === "true";
+  if (unrestricted) return null;
+  const selected = formData
+    .getAll("mode")
+    .map((x) => String(x).trim())
+    .filter((x) => (SUBJECT_KINDS as readonly string[]).includes(x)) as SubjectKind[];
+  if (selected.length === 0) {
+    throw new Error("‘전체 모드 허용’에 체크하거나, 허용할 모드를 한 개 이상 선택하세요.");
+  }
+  if (selected.length >= SUBJECT_KINDS.length) return null;
+  return JSON.stringify(SUBJECT_KINDS.filter((k) => selected.includes(k)));
+}
+
+/**
  * 보호자에게 보이는 Link-U 모드(메뉴) 범위. 전체 허용이면 NULL, 아니면 JSON 배열(예: ["pet"]).
  */
 export async function adminUpdateTenantAllowedModes(formData: FormData) {
@@ -631,29 +655,7 @@ export async function adminUpdateTenantAllowedModes(formData: FormData) {
   const actor = await requirePlatformOrTenantOrgAdmin(tenantId);
   const db = getDB();
 
-  const unrestricted =
-    formData.get("unrestricted") === "1" ||
-    formData.get("unrestricted") === "on" ||
-    formData.get("unrestricted") === "true";
-
-  let allowedJson: string | null = null;
-  if (unrestricted) {
-    allowedJson = null;
-  } else {
-    const selected = formData
-      .getAll("mode")
-      .map((x) => String(x).trim())
-      .filter((x) => (SUBJECT_KINDS as readonly string[]).includes(x)) as SubjectKind[];
-    if (selected.length === 0) {
-      throw new Error("‘전체 모드 허용’에 체크하거나, 허용할 모드를 한 개 이상 선택하세요.");
-    }
-    if (selected.length >= SUBJECT_KINDS.length) {
-      allowedJson = null;
-    } else {
-      const ordered = SUBJECT_KINDS.filter((k) => selected.includes(k));
-      allowedJson = JSON.stringify(ordered);
-    }
-  }
+  const allowedJson = allowedSubjectKindsJsonFromForm(formData);
 
   await db
     .prepare(
