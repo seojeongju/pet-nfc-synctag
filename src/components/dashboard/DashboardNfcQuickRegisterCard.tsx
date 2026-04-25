@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { linkTagSafe, prepareGuardianNfcNativeHandoff } from "@/app/actions/tag";
-import { CheckCircle, AlertCircle, Smartphone } from "lucide-react";
+import { CheckCircle, AlertCircle, Smartphone, ScanLine, TriangleAlert, PenLine, BadgeCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type SubjectKind } from "@/lib/subject-kind";
 import { OpenNativePetNfcSectionButton } from "@/components/pet/OpenNativePetNfcSectionButton";
@@ -457,25 +457,57 @@ export function DashboardNfcQuickRegisterCard({
               </Button>
             ) : null}
             {!webNfcSupported ? (
-              <p className="text-[11px] font-bold text-slate-400">
-                현재 기기/브라우저는 NFC 스캔을 지원하지 않아 UID 수동 입력으로 등록할 수 있습니다.
-              </p>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="flex items-start gap-2">
+                  <ScanLine className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-black text-slate-700">NFC 스캔 미지원 브라우저</p>
+                    <p className="mt-0.5 text-[11px] font-bold text-slate-500 leading-relaxed">
+                      현재 기기에서는 NFC 스캔이 어려워요. 위 입력칸에 UID를 직접 넣어 등록해 주세요.
+                    </p>
+                  </div>
+                </div>
+              </div>
             ) : (
-              <p className="text-[11px] font-bold text-slate-400">
-                안드로이드 Chrome에서 NFC 스캔 버튼을 누른 뒤 태그를 휴대폰 뒷면에 가깝게 대 주세요.
-              </p>
+              <div className="rounded-xl border border-teal-100 bg-teal-50/60 p-3">
+                <div className="flex items-start gap-2">
+                  <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-teal-600" />
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-black text-teal-800">빠른 스캔 안내</p>
+                    <p className="mt-0.5 text-[11px] font-bold text-teal-700/90 leading-relaxed">
+                      안드로이드 Chrome에서 NFC 스캔 버튼을 누른 뒤, 태그를 휴대폰 뒷면에 가까이 대 주세요.
+                    </p>
+                  </div>
+                </div>
+              </div>
             )}
             {!webNfcWriteSupported ? (
-              <p className="text-[11px] font-bold text-amber-600">
-                이 브라우저에서는 태그에 주소를 바로 쓸 수 없을 수 있어요.
-                {SHOW_NFC_NATIVE_HANDOFF
-                  ? " 위의 '앱으로 태그 주소 기록' 버튼으로 전용 앱을 열어 진행해 주세요."
-                  : " 위의 '앱 설치/열기'를 누르면 전용 앱이 열리고, 앱에서 태그에 주소를 기록할 수 있어요. 앱이 없다면 아래 '스토어에서 설치하기'를 이용해 주세요."}
-              </p>
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+                <div className="flex items-start gap-2">
+                  <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-black text-amber-800">브라우저 직접 기록 제한</p>
+                    <p className="mt-0.5 text-[11px] font-bold text-amber-700 leading-relaxed">
+                      이 브라우저에서는 태그 주소를 바로 쓰기 어려울 수 있어요.
+                      {SHOW_NFC_NATIVE_HANDOFF
+                        ? " 위의 '앱으로 태그 주소 기록' 버튼으로 전용 앱을 열어 진행해 주세요."
+                        : " 위의 '앱 설치/열기'를 누르면 전용 앱이 열리고, 앱에서 태그에 주소를 기록할 수 있어요. 앱이 없다면 아래 '스토어에서 설치하기'를 이용해 주세요."}
+                    </p>
+                  </div>
+                </div>
+              </div>
             ) : (
-              <p className="text-[11px] font-bold text-slate-400">
-                주소를 직접 입력하지 않아도 됩니다. 버튼을 누른 뒤 태그를 폰 뒷면에 대면 서비스가 알아서 기록해요.
-              </p>
+              <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-3">
+                <div className="flex items-start gap-2">
+                  <PenLine className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-black text-emerald-800">자동 주소 기록 지원</p>
+                    <p className="mt-0.5 text-[11px] font-bold text-emerald-700/90 leading-relaxed">
+                      주소를 직접 입력하지 않아도 됩니다. 버튼을 누른 뒤 태그를 폰 뒷면에 대면 서비스가 자동 기록해요.
+                    </p>
+                  </div>
+                </div>
+              </div>
             )}
             {!webNfcWriteSupported && NFC_NATIVE_APP_STORE_URL ? (
               <a
