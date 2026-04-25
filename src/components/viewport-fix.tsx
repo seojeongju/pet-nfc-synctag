@@ -12,7 +12,7 @@
  */
 
 import { useEffect } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 const VIEWPORT_CONTENT =
   "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover";
@@ -52,7 +52,6 @@ function forceViewportRecalc() {
 
 export function ViewportFix() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
 
   useEffect(() => {
     // 초기 마운트 시 1회 실행
@@ -94,7 +93,7 @@ export function ViewportFix() {
     // OAuth 콜백 후 router.replace로 들어온 "첫 화면"에서도 즉시 보정
     resetViewportMeta();
     forceViewportRecalc();
-  }, [pathname, searchParams]);
+  }, [pathname]);
 
   // 렌더링 없음 — 동작만 수행하는 순수 효과 컴포넌트
   return null;
