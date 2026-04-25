@@ -53,7 +53,12 @@ export function DashboardContextualHelp() {
 
   const { title, body } = helpCopy(parsed, meta);
   return (
-    <AdminHelpDialog title={title} triggerLabel="도움말" triggerClassName="shadow-none">
+    <AdminHelpDialog
+      title={title}
+      triggerLabel="도움말"
+      iconOnly
+      triggerClassName="shadow-none"
+    >
       {body}
     </AdminHelpDialog>
   );
