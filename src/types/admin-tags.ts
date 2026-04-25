@@ -30,6 +30,22 @@ export type TagsInventoryPageResult = {
   pageSize: number;
 };
 
+/** tags.batch_id 기준 집계 행(인벤토리·대시보드 공통) */
+export type TagBatchSummaryRow = {
+  batch_id: string;
+  total_count: number;
+  active_count: number;
+  unsold_count: number;
+  latest_created_at: string;
+};
+
+export type TagBatchesPageResult = {
+  rows: TagBatchSummaryRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
 export type TagOpsStats = {
   totalCount: number;
   activeCount: number;
@@ -40,13 +56,7 @@ export type TagOpsStats = {
   webWriteFailures7d: number;
   nativeWriteSuccessFromWebFail7d: number;
   nativeRecoveryRate7d: number;
-  batches: Array<{
-    batch_id: string;
-    total_count: number;
-    active_count: number;
-    unsold_count: number;
-    latest_created_at: string;
-  }>;
+  batches: TagBatchSummaryRow[];
 };
 
 export type TagLinkLogRow = {
@@ -57,6 +67,13 @@ export type TagLinkLogRow = {
   created_at: string;
   pet_name?: string | null;
   owner_email?: string | null;
+};
+
+export type TagLinkLogsPageResult = {
+  rows: TagLinkLogRow[];
+  total: number;
+  page: number;
+  pageSize: number;
 };
 
 export type AdminAuditLogRow = {

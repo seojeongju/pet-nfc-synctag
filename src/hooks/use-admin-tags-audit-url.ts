@@ -27,6 +27,9 @@ export function useAdminTagsAuditUrl() {
   const [auditSortOrder, setAuditSortOrder] = useState<AuditSortOrder>("desc");
   const [auditPage, setAuditPage] = useState(1);
 
+  const linkPageFromUrl = searchParams.get("lpage");
+  const linkPageSizeFromUrl = searchParams.get("lps");
+
   useEffect(() => {
     const success = (searchParams.get("success") as AuditSuccessFilter) || "all";
     const days = Number(searchParams.get("days") || 30) as AuditDaysFilter;
@@ -67,6 +70,14 @@ export function useAdminTagsAuditUrl() {
     params.set("sortBy", auditSortBy);
     params.set("sortOrder", auditSortOrder);
     params.set("page", String(auditPage));
+    /** 상단「태그 연결·해제」목록 — 감사 `page`와 독립 (lpage / lps) */
+    if (linkPageFromUrl && Math.max(1, Number(linkPageFromUrl) || 1) > 1) {
+      params.set("lpage", linkPageFromUrl);
+    }
+    if (linkPageSizeFromUrl) {
+      const n = Math.min(100, Math.max(5, Math.floor(Number(linkPageSizeFromUrl) || 20)));
+      if (n !== 20) params.set("lps", String(n));
+    }
     router.replace(`/admin/nfc-tags/history?${params.toString()}`);
   }, [
     auditSuccessFilter,
@@ -79,6 +90,8 @@ export function useAdminTagsAuditUrl() {
     auditSortBy,
     auditSortOrder,
     auditPage,
+    linkPageFromUrl,
+    linkPageSizeFromUrl,
     router,
   ]);
 

@@ -1,18 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { CardContent } from "@/components/ui/card";
 import { AdminCard } from "@/components/admin/ui/AdminCard";
 import { 
-  Users, Package, CheckCircle, ArrowUpRight, 
+  Users, Package, ArrowUpRight, 
   Shield, Layers, Activity, Database, AlertTriangle, CheckCircle2,
-  LayoutGrid, ListPlus, Smartphone, History, ArrowRight, Siren
+  LayoutGrid, ListPlus, Smartphone, History, ArrowRight, Siren, Boxes
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { adminUi } from "@/styles/admin/ui";
 import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
+import type { TagOpsStats } from "@/types/admin-tags";
+import { getAdminActionDisplayLabel } from "@/lib/admin-action-labels";
 
 const NFC_QUICK_LINKS = [
   {
@@ -62,6 +64,36 @@ const NFC_QUICK_LINKS = [
   },
 ] as const;
 
+const THRESHOLD_STORAGE_KEY = "pet-id-admin-dashboard-thresholds-v1";
+
+type ThresholdState = { unsold: number; activation: number; failed: number };
+const DEFAULT_THRESHOLDS: ThresholdState = { unsold: 100, activation: 40, failed: 1 };
+
+function loadThresholdsFromStorage(): ThresholdState {
+  if (typeof window === "undefined") return DEFAULT_THRESHOLDS;
+  try {
+    const raw = localStorage.getItem(THRESHOLD_STORAGE_KEY);
+    if (!raw) return DEFAULT_THRESHOLDS;
+    const p = JSON.parse(raw) as Partial<ThresholdState>;
+    return {
+      unsold: Math.max(1, Number(p.unsold) || DEFAULT_THRESHOLDS.unsold),
+      activation: Math.min(100, Math.max(1, Number(p.activation) || DEFAULT_THRESHOLDS.activation)),
+      failed: Math.max(1, Number(p.failed) || DEFAULT_THRESHOLDS.failed),
+    };
+  } catch {
+    return DEFAULT_THRESHOLDS;
+  }
+}
+
+function saveThresholdsToStorage(t: ThresholdState) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(THRESHOLD_STORAGE_KEY, JSON.stringify(t));
+  } catch {
+    /* ignore */
+  }
+}
+
 interface AdminDashboardClientProps {
   stats: {
     totalTags: number;
@@ -69,19 +101,13 @@ interface AdminDashboardClientProps {
     activeTags: number;
     totalUsers: number;
   };
-  ops: {
-    activationRate: number;
-    recentLinks: number;
-    failedRegistrations7d: number;
-    webWriteFailures7d: number;
-    nativeWriteSuccessFromWebFail7d: number;
-    nativeRecoveryRate7d: number;
-  };
+  ops: TagOpsStats;
   failureTop: Array<{
     action: string;
     failure_count: number;
   }>;
   petsBySubjectKind: Record<SubjectKind, number>;
+  dataAsOf: string;
 }
 
 export default function AdminDashboardClient({
@@ -89,10 +115,48 @@ export default function AdminDashboardClient({
   ops,
   failureTop,
   petsBySubjectKind,
+  dataAsOf,
 }: AdminDashboardClientProps) {
-  const [unsoldThreshold, setUnsoldThreshold] = useState(100);
-  const [activationThreshold, setActivationThreshold] = useState(40);
-  const [failedThreshold, setFailedThreshold] = useState(1);
+  const [thresholds, setThresholds] = useState<ThresholdState>(DEFAULT_THRESHOLDS);
+
+  useEffect(() => {
+    setThresholds(loadThresholdsFromStorage());
+  }, []);
+
+  const setThresholdField = (key: keyof ThresholdState, value: number) => {
+    setThresholds((prev) => {
+      const next: ThresholdState = {
+        ...prev,
+        [key]:
+          key === "activation"
+            ? Math.min(100, Math.max(1, value))
+            : Math.max(1, value),
+      };
+      saveThresholdsToStorage(next);
+      return next;
+    });
+  };
+
+  const unsoldThreshold = thresholds.unsold;
+  const activationThreshold = thresholds.activation;
+  const failedThreshold = thresholds.failed;
+
+  const dataAsOfLabel = useMemo(() => {
+    try {
+      return new Date(dataAsOf).toLocaleString("ko-KR", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+    } catch {
+      return dataAsOf;
+    }
+  }, [dataAsOf]);
+
+  const totalPetsCount = useMemo(
+    () => SUBJECT_KINDS.reduce((a, k) => a + petsBySubjectKind[k], 0),
+    [petsBySubjectKind]
+  );
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -108,14 +172,23 @@ export default function AdminDashboardClient({
     visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] as const } }
   };
 
-  const statCards = [
+  const statCards: Array<{
+    title: string;
+    value: number;
+    icon: typeof Database;
+    color: string;
+    glowColor: string;
+    description: string;
+    href: string;
+  }> = [
     {
       title: "전체 태그 수",
       value: stats.totalTags,
       icon: Database,
       color: "text-indigo-400",
       glowColor: "bg-indigo-500/20",
-      description: "전체 시스템 등록 태그"
+      description: "인벤토리 기준 총 UID",
+      href: "/admin/nfc-tags",
     },
     {
       title: "미판매 태그",
@@ -123,7 +196,8 @@ export default function AdminDashboardClient({
       icon: Package,
       color: "text-amber-400",
       glowColor: "bg-amber-500/20",
-      description: "판매 대기 중인 제품"
+      description: "status=unsold",
+      href: "/admin/nfc-tags/inventory?status=unsold",
     },
     {
       title: "활성 태그",
@@ -131,7 +205,8 @@ export default function AdminDashboardClient({
       icon: Shield,
       color: "text-teal-400",
       glowColor: "bg-teal-500/20",
-      description: "실제 보호자가 등록한 수"
+      description: "status=active(연결됨)",
+      href: "/admin/nfc-tags/inventory?status=active",
     },
     {
       title: "전체 사용자",
@@ -139,8 +214,9 @@ export default function AdminDashboardClient({
       icon: Users,
       color: "text-sky-400",
       glowColor: "bg-sky-500/20",
-      description: "시스템 가입자 수"
-    }
+      description: "better-auth user 행",
+      href: "/admin/users",
+    },
   ];
   const anomalies = useMemo(
     () =>
@@ -182,7 +258,11 @@ export default function AdminDashboardClient({
   const primaryActions = useMemo(() => {
     const items: Array<{ label: string; href: string; icon: typeof Activity }> = [];
     if (ops.failedRegistrations7d >= failedThreshold) {
-      items.push({ label: "등록 실패 로그 확인", href: "/admin/nfc-tags/history?action=register_bulk_tags", icon: AlertTriangle });
+      items.push({
+        label: "UID 등록 실패 감사 로그",
+        href: "/admin/nfc-tags/history?action=bulk_register&success=failed&days=7",
+        icon: AlertTriangle,
+      });
     }
     if (stats.unsoldTags >= unsoldThreshold) {
       items.push({ label: "미판매 재고 점검", href: "/admin/nfc-tags/inventory", icon: Package });
@@ -235,10 +315,26 @@ export default function AdminDashboardClient({
               </p>
           </div>
           
-          <div className="flex items-center gap-3">
-             <div className="px-4 py-2.5 bg-white rounded-2xl flex items-center gap-2.5 border border-slate-100 shadow-sm">
-                <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
-                <span className="text-[11px] font-bold text-slate-600">실시간 상태: 정상</span>
+          <div className="flex flex-col items-end gap-1">
+             <div
+               className={cn(
+                 "px-4 py-2.5 bg-white rounded-2xl flex items-center gap-2.5 border shadow-sm",
+                 riskLevel === "danger" && "border-rose-200",
+                 riskLevel === "warning" && "border-amber-200",
+                 riskLevel === "ok" && "border-slate-100"
+               )}
+             >
+                <span
+                  className={cn(
+                    "h-2 w-2 rounded-full",
+                    riskLevel === "danger" && "bg-rose-500 animate-pulse",
+                    riskLevel === "warning" && "bg-amber-500",
+                    riskLevel === "ok" && "bg-teal-500"
+                  )}
+                />
+                <span className="text-[11px] font-bold text-slate-700">
+                  운영 {riskLabel} · 지표 {dataAsOfLabel} 기준
+                </span>
              </div>
           </div>
         </motion.div>
@@ -270,26 +366,29 @@ export default function AdminDashboardClient({
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 lg:gap-6">
-          {statCards.map((card, idx) => {
+          {statCards.map((card) => {
             const StatIcon = card.icon;
             return (
-            <motion.div key={idx} variants={itemVariants}>
-              <AdminCard variant="kpi" className="shadow-xl rounded-[32px] overflow-hidden group hover:bg-slate-50 transition-all duration-500 hover:-translate-y-1">
-                <CardContent className="p-4 sm:p-6">
-                  <div className="flex items-center justify-between mb-3 sm:mb-5">
-                    <div className={cn("w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center transition-all duration-500 group-hover:scale-110", card.glowColor, card.color)}>
-                       <StatIcon className="w-5 h-5 sm:w-6 sm:h-6" />
+            <motion.div key={card.href} variants={itemVariants}>
+              <Link href={card.href} prefetch={false} className="block h-full">
+                <AdminCard variant="kpi" className="shadow-xl rounded-[32px] overflow-hidden group hover:bg-slate-50 transition-all duration-500 hover:-translate-y-1 h-full">
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="flex items-center justify-between mb-3 sm:mb-5">
+                      <div className={cn("w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center transition-all duration-500 group-hover:scale-110", card.glowColor, card.color)}>
+                         <StatIcon className="w-5 h-5 sm:w-6 sm:h-6" />
+                      </div>
+                      <div className="h-7 w-7 rounded-full border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-teal-500 transition-colors" aria-hidden>
+                         <ArrowUpRight className="w-4 h-4" />
+                      </div>
                     </div>
-                    <div className="h-7 w-7 rounded-full border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-teal-500 transition-colors">
-                       <ArrowUpRight className="w-4 h-4" />
+                    <div className="space-y-1 text-left">
+                      <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-tight sm:tracking-widest leading-tight">{card.title}</p>
+                      <h2 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tighter tabular-nums">{card.value.toLocaleString()}</h2>
+                      <p className="text-[10px] font-bold text-slate-400 pt-0.5 line-clamp-2">{card.description}</p>
                     </div>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-tight sm:tracking-widest leading-tight">{card.title}</p>
-                    <h2 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tighter tabular-nums">{card.value.toLocaleString()}</h2>
-                  </div>
-                </CardContent>
-              </AdminCard>
+                  </CardContent>
+                </AdminCard>
+              </Link>
             </motion.div>
             );
           })}
@@ -410,16 +509,31 @@ export default function AdminDashboardClient({
         <motion.div variants={itemVariants}>
           <AdminCard variant="subtle">
             <CardContent className="p-5 space-y-3">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                관리 대상 등록 (모드별)
-              </p>
+              <div className="flex flex-wrap items-end justify-between gap-2">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  관리 대상 등록 (모드별)
+                </p>
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span className="font-black text-slate-600 tabular-nums">
+                    합계 {totalPetsCount.toLocaleString()} (pets)
+                  </span>
+                  <Link
+                    href="/admin/users"
+                    prefetch={false}
+                    className="font-black text-teal-600 hover:text-teal-800"
+                  >
+                    사용자
+                    <ArrowUpRight className="inline h-3 w-3 align-text-bottom" />
+                  </Link>
+                </div>
+              </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {SUBJECT_KINDS.map((kind) => (
                   <div
                     key={kind}
                     className="rounded-2xl border border-slate-100 bg-white px-3 py-3 text-center"
                   >
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-tight">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-tight line-clamp-2">
                       {subjectKindMeta[kind].label}
                     </p>
                     <p className="text-xl font-black text-slate-900 tabular-nums mt-1">
@@ -432,10 +546,51 @@ export default function AdminDashboardClient({
           </AdminCard>
         </motion.div>
 
+        {ops.batches.length > 0 ? (
+          <motion.div variants={itemVariants}>
+            <AdminCard variant="subtle" className="border border-slate-200/80">
+              <CardContent className="p-5 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    최근 입고 배치 (태그·batch_id)
+                  </p>
+                  <Link
+                    href="/admin/nfc-tags/inventory"
+                    prefetch={false}
+                    className="text-[10px] font-black text-teal-600 hover:text-teal-800"
+                  >
+                    전체 인벤토리
+                    <ArrowRight className="inline h-3 w-3" />
+                  </Link>
+                </div>
+                <ul className="space-y-2" aria-label="최근 배치">
+                  {ops.batches.map((b) => (
+                    <li key={b.batch_id}>
+                      <Link
+                        href={`/admin/nfc-tags/inventory?batch=${encodeURIComponent(b.batch_id)}`}
+                        prefetch={false}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-100 bg-white px-3 py-2.5 text-left transition hover:border-teal-200 hover:bg-teal-50/40"
+                      >
+                        <span className="flex min-w-0 items-center gap-2">
+                          <Boxes className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
+                          <span className="truncate text-xs font-black text-slate-800">{b.batch_id}</span>
+                        </span>
+                        <span className="shrink-0 text-[10px] font-bold text-slate-500 tabular-nums">
+                          총 {b.total_count} · 활성 {b.active_count} · 미판매 {b.unsold_count}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </AdminCard>
+          </motion.div>
+        ) : null}
+
         <motion.div variants={itemVariants}>
           <AdminCard variant="subtle" className="rounded-3xl">
             <CardContent className="p-5">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">최근 이상 이벤트</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">최근 이상 이벤트 (임계치·실데이터)</p>
               {anomalies.length > 0 ? (
                 <ul className="space-y-2">
                   {anomalies.map((item) => (
@@ -452,7 +607,7 @@ export default function AdminDashboardClient({
         <motion.div variants={itemVariants}>
           <AdminCard variant="subtle">
             <CardContent className="p-5 space-y-4">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">이상 탐지 임계치 설정</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">이상 탐지 임계치 (이 브라우저에 저장)</p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <label className="text-xs font-bold text-slate-500 space-y-1">
                   미판매 재고 기준
@@ -460,7 +615,9 @@ export default function AdminDashboardClient({
                     type="number"
                     min={1}
                     value={unsoldThreshold}
-                    onChange={(e) => setUnsoldThreshold(Number(e.target.value) || 1)}
+                    onChange={(e) =>
+                      setThresholdField("unsold", Number(e.target.value) || 1)
+                    }
                     className={cn(adminUi.input, "w-full text-slate-800")}
                   />
                 </label>
@@ -471,7 +628,9 @@ export default function AdminDashboardClient({
                     min={1}
                     max={100}
                     value={activationThreshold}
-                    onChange={(e) => setActivationThreshold(Number(e.target.value) || 1)}
+                    onChange={(e) =>
+                      setThresholdField("activation", Number(e.target.value) || 1)
+                    }
                     className={cn(adminUi.input, "w-full text-slate-800")}
                   />
                 </label>
@@ -481,7 +640,9 @@ export default function AdminDashboardClient({
                     type="number"
                     min={1}
                     value={failedThreshold}
-                    onChange={(e) => setFailedThreshold(Number(e.target.value) || 1)}
+                    onChange={(e) =>
+                      setThresholdField("failed", Number(e.target.value) || 1)
+                    }
                     className={cn(adminUi.input, "w-full text-slate-800")}
                   />
                 </label>
@@ -497,10 +658,20 @@ export default function AdminDashboardClient({
               {failureTop.length > 0 ? (
                 <div className="space-y-2">
                   {failureTop.map((item) => (
-                    <div key={item.action} className="flex items-center justify-between rounded-xl bg-rose-50 px-3 py-2">
-                      <span className="text-xs font-black text-rose-500">{item.action}</span>
-                      <span className="text-xs font-black text-rose-700">{item.failure_count}건</span>
-                    </div>
+                    <Link
+                      key={item.action}
+                      href={`/admin/nfc-tags/history?action=${encodeURIComponent(item.action)}&success=failed&days=7`}
+                      prefetch={false}
+                      className="flex items-center justify-between gap-2 rounded-xl bg-rose-50 px-3 py-2 transition hover:bg-rose-100/80"
+                    >
+                      <span className="min-w-0 text-left text-xs font-black text-rose-600 break-words">
+                        {getAdminActionDisplayLabel(item.action)}
+                        <span className="ml-1 text-[10px] font-bold text-rose-400/90">({item.action})</span>
+                      </span>
+                      <span className="shrink-0 text-xs font-black text-rose-800 tabular-nums">
+                        {item.failure_count}건
+                      </span>
+                    </Link>
                   ))}
                 </div>
               ) : (
@@ -540,6 +711,10 @@ export default function AdminDashboardClient({
             <div className="absolute top-0 right-0 w-40 h-40 bg-teal-500/5 rounded-full blur-[80px] group-hover:bg-teal-500/10 transition-all duration-700" />
           </AdminCard>
         </motion.div>
+
+        <p className="px-1 text-center text-[10px] font-bold text-slate-400" role="status">
+          서버 집계 기준 시각: {dataAsOfLabel} · 수치는 D1·감사 로그를 사용합니다
+        </p>
       </motion.div>
     </div>
   );

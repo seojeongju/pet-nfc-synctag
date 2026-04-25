@@ -9,10 +9,13 @@ import AdminDashboardClient from "@/components/admin/AdminDashboardClient";
 export const runtime = "edge";
 
 export default async function AdminPage() {
-    const stats = await getAdminStats();
-    const ops = await getTagOpsStats();
-    const failureTop = await getAdminFailureTopActions(7, 5);
-    const petsBySubjectKind = await getPetsSubjectKindCounts();
+    const [stats, ops, failureTop, petsBySubjectKind] = await Promise.all([
+        getAdminStats(),
+        getTagOpsStats(),
+        getAdminFailureTopActions(7, 5),
+        getPetsSubjectKindCounts(),
+    ]);
+    const dataAsOf = new Date().toISOString();
 
     return (
         <AdminDashboardClient
@@ -20,6 +23,7 @@ export default async function AdminPage() {
             ops={ops}
             failureTop={failureTop}
             petsBySubjectKind={petsBySubjectKind}
+            dataAsOf={dataAsOf}
         />
     );
 }

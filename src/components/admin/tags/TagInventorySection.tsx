@@ -2,31 +2,61 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Database, BarChart3, ChevronLeft, ChevronRight } from "lucide-react";
+import { Database, BarChart3, Boxes } from "lucide-react";
 import { AdminCard } from "@/components/admin/ui/AdminCard";
 import { AdminTableHeadCell, AdminTableHeadRow } from "@/components/admin/ui/AdminTable";
+import { AdminPagination } from "@/components/admin/ui/AdminPagination";
 import { Button } from "@/components/ui/button";
 import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
-import type { AdminTag, TagOpsStats, TagsInventoryStatusFilter } from "@/types/admin-tags";
+import type {
+  AdminTag,
+  TagBatchesPageResult,
+  TagBatchSummaryRow,
+  TagsInventoryStatusFilter,
+} from "@/types/admin-tags";
 import { TagProductRow } from "./TagProductRow";
 
-function buildInventoryHref(vars: {
+export type TagInventoryQueryState = {
   q: string;
   status: TagsInventoryStatusFilter;
   batch: string;
   page: number;
   pageSize: number;
-}) {
+  bpage: number;
+  bpageSize: number;
+};
+
+/** 쿼리·페이지·배치 페이지 URL 생성 (RSC/클라 공통) */
+export function buildInventorySearchHref(
+  s: TagInventoryQueryState,
+  patch?: Partial<TagInventoryQueryState>
+): string {
+  const m: TagInventoryQueryState = { ...s, ...patch };
   const p = new URLSearchParams();
-  if (vars.q.trim()) p.set("q", vars.q.trim());
-  if (vars.status !== "all") p.set("status", vars.status);
-  if (vars.batch.trim()) p.set("batch", vars.batch.trim());
-  if (vars.pageSize !== 20) p.set("pageSize", String(vars.pageSize));
-  if (vars.page > 1) p.set("page", String(vars.page));
+  if (m.q.trim()) p.set("q", m.q.trim());
+  if (m.status !== "all") p.set("status", m.status);
+  if (m.batch.trim()) p.set("batch", m.batch.trim());
+  if (m.page > 1) p.set("page", String(m.page));
+  if (m.pageSize !== 20) p.set("pageSize", String(m.pageSize));
+  if (m.bpage > 1) p.set("bpage", String(m.bpage));
+  if (m.bpageSize !== 5) p.set("bpageSize", String(m.bpageSize));
   const qs = p.toString();
   return qs ? `/admin/nfc-tags/inventory?${qs}` : "/admin/nfc-tags/inventory";
 }
+
+type TagInventorySectionProps = {
+  tags: AdminTag[];
+  total: number;
+  page: number;
+  pageSize: number;
+  initialQ: string;
+  initialStatus: TagsInventoryStatusFilter;
+  initialBatch: string;
+  batchOptions: string[];
+  /** 배치 ID별 집계(페이징) */
+  batchPage: TagBatchesPageResult;
+};
 
 export function TagInventorySection({
   tags,
@@ -37,30 +67,42 @@ export function TagInventorySection({
   initialStatus,
   initialBatch,
   batchOptions,
-  opsStats,
-}: {
-  tags: AdminTag[];
-  total: number;
-  page: number;
-  pageSize: number;
-  initialQ: string;
-  initialStatus: TagsInventoryStatusFilter;
-  initialBatch: string;
-  batchOptions: string[];
-  opsStats: TagOpsStats;
-}) {
+  batchPage,
+}: TagInventorySectionProps) {
   const router = useRouter();
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize) || 1);
   const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const rangeEnd = Math.min(page * pageSize, total);
+
+  const bTotal = batchPage.total;
+  const bPage = batchPage.page;
+  const bPageSize = batchPage.pageSize;
+  const batchRows: TagBatchSummaryRow[] = batchPage.rows;
+  const bTotalPages = bTotal === 0 ? 1 : Math.max(1, Math.ceil(bTotal / bPageSize) || 1);
+  const bRangeStart = bTotal === 0 ? 0 : (bPage - 1) * bPageSize + 1;
+  const bRangeEnd = Math.min(bPage * bPageSize, bTotal);
+
+  const base: TagInventoryQueryState = {
+    q: initialQ,
+    status: initialStatus,
+    batch: initialBatch,
+    page,
+    pageSize,
+    bpage: bPage,
+    bpageSize: bPageSize,
+  };
 
   return (
     <AdminCard variant="section" className="h-full space-y-6">
       <form
+        id="tag-inventory-filter"
         method="get"
         action="/admin/nfc-tags/inventory"
         className="space-y-4 border-b border-slate-100 pb-6"
       >
+        <input type="hidden" name="page" value="1" />
+        <input type="hidden" name="bpage" value="1" />
+        <input type="hidden" name="bpageSize" value={String(bPageSize)} />
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end sm:gap-6">
           <div className="space-y-1">
             <h3 className="flex items-center gap-2 text-xl font-black text-slate-900">
@@ -68,12 +110,12 @@ export function TagInventorySection({
               자산 목록
             </h3>
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-              검색·필터·페이지 (총 {total.toLocaleString()}건 · {rangeStart}–{rangeEnd} 표시)
+              검색·필터·페이지 (총 {total.toLocaleString()}건 · {rangeStart}–{rangeEnd}번째 표시)
             </p>
           </div>
           <div className="flex flex-wrap items-end gap-2 sm:justify-end">
             <label className="flex min-w-[100px] flex-col gap-1">
-              <span className="text-[10px] font-black uppercase text-slate-400">페이지당</span>
+              <span className="text-[10px] font-black uppercase text-slate-400">자산·페이지당</span>
               <select
                 name="pageSize"
                 defaultValue={String(pageSize)}
@@ -85,7 +127,10 @@ export function TagInventorySection({
                 <option value="100">100</option>
               </select>
             </label>
-            <Button type="submit" className={cn("h-10 rounded-xl px-4 text-xs font-black", adminUi.darkButton)}>
+            <Button
+              type="submit"
+              className={cn("h-10 rounded-xl px-4 text-xs font-black", adminUi.darkButton)}
+            >
               적용
             </Button>
           </div>
@@ -185,79 +230,100 @@ export function TagInventorySection({
         </table>
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex flex-col items-center justify-between gap-3 border-t border-slate-100 pt-4 sm:flex-row">
-          <Link
-            href={buildInventoryHref({
-              q: initialQ,
-              status: initialStatus,
-              batch: initialBatch,
-              page: Math.max(1, page - 1),
-              pageSize,
-            })}
-            className={cn(
-              "inline-flex min-h-11 items-center gap-1 rounded-2xl border border-slate-200 bg-white px-4 text-xs font-black touch-manipulation hover:bg-slate-50",
-              page <= 1 && "pointer-events-none opacity-40"
-            )}
-            aria-disabled={page <= 1}
-          >
-            <ChevronLeft className="h-4 w-4" aria-hidden />
-            이전
-          </Link>
-          <span className="text-xs font-black tabular-nums text-slate-600">
-            {page} / {totalPages}
-          </span>
-          <Link
-            href={buildInventoryHref({
-              q: initialQ,
-              status: initialStatus,
-              batch: initialBatch,
-              page: Math.min(totalPages, page + 1),
-              pageSize,
-            })}
-            className={cn(
-              "inline-flex min-h-11 items-center gap-1 rounded-2xl border border-slate-200 bg-white px-4 text-xs font-black touch-manipulation hover:bg-slate-50",
-              page >= totalPages && "pointer-events-none opacity-40"
-            )}
-            aria-disabled={page >= totalPages}
-          >
-            다음
-            <ChevronRight className="h-4 w-4" aria-hidden />
-          </Link>
+      <div
+        className="flex flex-col items-stretch justify-between gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center"
+        data-section="tag-inventory-asset-pages"
+      >
+        <p className="order-2 text-center text-xs font-bold tabular-nums text-slate-500 sm:order-1 sm:text-left">
+          페이지 {page} / {totalPages} · {total.toLocaleString()}건 중 {rangeStart}–{rangeEnd}
+        </p>
+        <div className="order-1 sm:order-2 sm:flex-1 sm:justify-end">
+          <AdminPagination
+            aria-label="자산 목록 페이지"
+            currentPage={page}
+            totalPages={totalPages}
+            buildHref={(p) => buildInventorySearchHref(base, { page: p })}
+            className="sm:justify-end"
+          />
         </div>
-      )}
+      </div>
 
       <div className="space-y-4 border-t border-slate-100 pt-4">
-        <div className="flex items-center gap-2 text-slate-700">
-          <BarChart3 className="h-4 w-4 text-teal-400" />
-          <h4 className="text-sm font-black">최근 배치 등록 통계</h4>
-        </div>
+        <form
+          method="get"
+          action="/admin/nfc-tags/inventory"
+          className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between"
+        >
+          <input type="hidden" name="q" value={initialQ} />
+          <input type="hidden" name="status" value={initialStatus} />
+          <input type="hidden" name="batch" value={initialBatch} />
+          <input type="hidden" name="page" value={String(page)} />
+          <input type="hidden" name="pageSize" value={String(pageSize)} />
+          <input type="hidden" name="bpage" value="1" />
+          <div className="flex items-center gap-2 text-slate-700">
+            <BarChart3 className="h-4 w-4 shrink-0 text-teal-400" />
+            <h4 className="text-sm font-black">최근 배치 등록 통계</h4>
+          </div>
+          <div className="flex flex-wrap items-end gap-2 sm:ml-auto">
+            <label className="flex min-w-[100px] flex-col gap-1">
+              <span className="text-[10px] font-black uppercase text-slate-400">배치·페이지당</span>
+              <select
+                name="bpageSize"
+                defaultValue={String(bPageSize)}
+                className={cn(adminUi.input, "h-10 min-w-[88px] rounded-xl text-xs font-bold")}
+              >
+                <option value="3">3</option>
+                <option value="5">5</option>
+                <option value="8">8</option>
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="30">30</option>
+              </select>
+            </label>
+            <Button
+              type="submit"
+              className={cn("h-10 rounded-xl px-4 text-xs font-black", adminUi.darkButton)}
+            >
+              적용
+            </Button>
+          </div>
+        </form>
+
+        <p className="text-[10px] font-bold text-slate-500">
+          배치 수 {bTotal.toLocaleString()}건 · {bRangeStart}–{bRangeEnd}번째 표시
+        </p>
+
         <div className="space-y-2">
-          {(opsStats?.batches ?? []).length > 0 ? (
-            (opsStats?.batches ?? []).map((batch) => (
+          {batchRows.length > 0 ? (
+            batchRows.map((brow) => (
               <div
-                key={batch.batch_id}
+                key={brow.batch_id}
                 className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 sm:flex-row sm:items-center sm:gap-4"
               >
-                <div>
-                  <p className="text-xs font-black text-slate-900">{batch.batch_id}</p>
+                <div className="min-w-0">
+                  <p className="flex items-center gap-1.5 text-xs font-black text-slate-900">
+                    <Boxes className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
+                    <span className="truncate">{brow.batch_id}</span>
+                  </p>
                   <p className="text-[10px] font-bold text-slate-500">
-                    {new Date(batch.latest_created_at).toLocaleString()}
+                    {new Date(brow.latest_created_at).toLocaleString("ko-KR", {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3 text-[10px] font-black uppercase sm:gap-4">
-                  <span className="text-slate-300">총 {batch.total_count}</span>
-                  <span className="text-teal-400">활성 {batch.active_count}</span>
-                  <span className="text-amber-400">미판매 {batch.unsold_count}</span>
+                  <span className="text-slate-500">총 {brow.total_count}</span>
+                  <span className="text-teal-600">활성 {brow.active_count}</span>
+                  <span className="text-amber-600">미판매 {brow.unsold_count}</span>
                   <Link
-                    href={buildInventoryHref({
-                      q: initialQ,
-                      status: initialStatus,
-                      batch: batch.batch_id,
+                    href={buildInventorySearchHref(base, {
+                      batch: brow.batch_id,
                       page: 1,
-                      pageSize,
+                      bpage: 1,
                     })}
-                    className="rounded-lg border border-teal-200 bg-white px-2 py-1 text-teal-700 hover:bg-teal-50"
+                    prefetch={false}
+                    className="rounded-lg border border-teal-200 bg-white px-2.5 py-1.5 text-teal-700 hover:bg-teal-50"
                   >
                     이 배치만 보기
                   </Link>
@@ -266,10 +332,26 @@ export function TagInventorySection({
             ))
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-xs font-bold text-slate-500">
-              표시할 배치 통계가 없습니다.
+              등록된 batch_id가 없습니다. UID를 일괄 등록해 보세요.
             </div>
           )}
         </div>
+
+        {bTotal > 0 && (
+          <div className="border-t border-slate-100 pt-4" data-section="tag-inventory-batch-pages">
+            <div className="mb-2 flex flex-col items-center justify-between gap-2 sm:flex-row">
+              <p className="text-center text-xs font-bold tabular-nums text-slate-500 sm:text-left">
+                배치 페이지 {bPage} / {bTotalPages}
+              </p>
+            </div>
+            <AdminPagination
+              aria-label="배치 등록 통계 페이지"
+              currentPage={bPage}
+              totalPages={bTotalPages}
+              buildHref={(bp) => buildInventorySearchHref(base, { bpage: bp })}
+            />
+          </div>
+        )}
       </div>
     </AdminCard>
   );

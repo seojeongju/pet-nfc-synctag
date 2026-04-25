@@ -1,7 +1,7 @@
 import {
   getTagInventoryBatchOptions,
   getTagsInventoryPage,
-  getTagOpsStats,
+  getTagBatchesPage,
 } from "@/app/actions/admin";
 import { AdminPageIntro } from "@/components/admin/layout/AdminPageIntro";
 import { TagInventorySection } from "@/components/admin/tags/TagInventorySection";
@@ -17,6 +17,9 @@ type Search = {
   batch?: string;
   page?: string;
   pageSize?: string;
+  /** 배치 집계 페이징(자산 `page`와 별도) */
+  bpage?: string;
+  bpageSize?: string;
 };
 
 function parseStatus(raw: string | undefined): TagsInventoryStatusFilter {
@@ -38,9 +41,14 @@ export default async function AdminNfcTagsInventoryPage({
   if (!Number.isFinite(pageSize)) pageSize = 20;
   pageSize = Math.min(100, Math.max(10, Math.floor(pageSize)));
 
-  const [inventory, opsStats, batchOptions] = await Promise.all([
+  const bpage = Math.max(1, Number(sp.bpage) || 1);
+  let bpageSize = Number(sp.bpageSize) || 5;
+  if (!Number.isFinite(bpageSize)) bpageSize = 5;
+  bpageSize = Math.min(30, Math.max(3, Math.floor(bpageSize)));
+
+  const [inventory, batchPage, batchOptions] = await Promise.all([
     getTagsInventoryPage({ q, status, batch, page, pageSize }),
-    getTagOpsStats(),
+    getTagBatchesPage({ page: bpage, pageSize: bpageSize }),
     getTagInventoryBatchOptions(),
   ]);
 
@@ -50,7 +58,7 @@ export default async function AdminNfcTagsInventoryPage({
         <div className="mb-8 space-y-6">
           <AdminPageIntro
             title="③ 태그 인벤토리"
-            subtitle="UID·모드·MAC·재고 등 마스터 데이터 관리. 검색·필터·페이지로 대량 목록을 다룹니다."
+            subtitle="UID·모드·MAC·재고 등 마스터 데이터 관리. 자산 목록은 page·pageSize, 배치 집계는 bpage·bpageSize 쿼리로 각각 페이징됩니다."
             crumbs={[
               { label: "관리자", href: "/admin" },
               { label: "Pet-ID NFC", href: "/admin/nfc-tags" },
@@ -67,7 +75,7 @@ export default async function AdminNfcTagsInventoryPage({
           initialStatus={status}
           initialBatch={batch}
           batchOptions={batchOptions}
-          opsStats={opsStats}
+          batchPage={batchPage}
         />
       </div>
     </div>

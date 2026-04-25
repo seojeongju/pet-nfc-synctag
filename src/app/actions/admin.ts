@@ -11,6 +11,10 @@ import { isValidTagUidFormat, normalizeTagUid } from "@/lib/tag-uid-format";
 import { mintNativeHandoffToken } from "@/lib/nfc-native-security";
 import type {
     AdminTag,
+    TagBatchesPageResult,
+    TagBatchSummaryRow,
+    TagLinkLogRow,
+    TagLinkLogsPageResult,
     TagsInventoryPageParams,
     TagsInventoryPageResult,
     TagsInventoryStatusFilter,
@@ -275,10 +279,77 @@ export async function getTagInventoryBatchOptions(): Promise<string[]> {
     return (results ?? []).map((r) => r.batch_id).filter(Boolean);
 }
 
+const BATCH_INVENTORY_PAGE_DEFAULT = 5;
+const BATCH_INVENTORY_PAGE_MAX = 50;
+const BATCH_INVENTORY_PAGE_MIN = 3;
+
+/**
+ * 인벤토리「배치 등록 통계」용: batch_id별 집계를 페이지로 나눔
+ */
+export async function getTagBatchesPage(
+    params: { page?: number; pageSize?: number } = {}
+): Promise<TagBatchesPageResult> {
+    await assertAdminRole();
+    const db = getDB();
+    const pageRaw = Math.max(1, Number(params.page) || 1);
+    let pageSize = Number(params.pageSize) || BATCH_INVENTORY_PAGE_DEFAULT;
+    if (!Number.isFinite(pageSize)) pageSize = BATCH_INVENTORY_PAGE_DEFAULT;
+    pageSize = Math.min(
+        BATCH_INVENTORY_PAGE_MAX,
+        Math.max(BATCH_INVENTORY_PAGE_MIN, Math.floor(pageSize))
+    );
+
+    const countRow = await db
+        .prepare(
+            `SELECT COUNT(*) AS c FROM (
+         SELECT 1 AS x FROM tags
+         WHERE batch_id IS NOT NULL AND trim(COALESCE(batch_id, '')) != ''
+         GROUP BY batch_id
+       )`
+        )
+        .first<{ c: number }>()
+        .catch(() => ({ c: 0 }));
+    const total = Math.max(0, Math.floor(Number(countRow?.c ?? 0)));
+
+    const totalPages = total === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
+    let safePage = pageRaw;
+    if (safePage > totalPages) safePage = totalPages;
+    if (safePage < 1) safePage = 1;
+    const offset = (safePage - 1) * pageSize;
+
+    const { results } = await db
+        .prepare(
+            `SELECT * FROM (
+         SELECT
+           batch_id,
+           COUNT(*) AS total_count,
+           SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active_count,
+           SUM(CASE WHEN status = 'unsold' THEN 1 ELSE 0 END) AS unsold_count,
+           MAX(created_at) AS latest_created_at
+         FROM tags
+         WHERE batch_id IS NOT NULL AND trim(COALESCE(batch_id, '')) != ''
+         GROUP BY batch_id
+       ) AS bat
+       ORDER BY bat.latest_created_at DESC
+       LIMIT ? OFFSET ?`
+        )
+        .bind(pageSize, offset)
+        .all<TagBatchSummaryRow>()
+        .catch(() => ({ results: [] as TagBatchSummaryRow[] }));
+
+    return {
+        rows: results ?? [],
+        total,
+        page: safePage,
+        pageSize,
+    };
+}
+
 /**
  * 관리자 대시보드용 통계 데이터를 가져옵니다
  */
 export async function getAdminStats() {
+    await assertAdminRole();
     const db = getDB();
     type CountRow = Record<string, number>;
     type BatchResult = { results: CountRow[] };
@@ -300,6 +371,7 @@ export async function getAdminStats() {
 
 /** 관리 대상(pets) subject_kind별 건수 — COALESCE(subject_kind,'pet') 기준 */
 export async function getPetsSubjectKindCounts() {
+    await assertAdminRole();
     const db = getDB();
     const { results } = await db
         .prepare(
@@ -318,6 +390,7 @@ export async function getPetsSubjectKindCounts() {
 }
 
 export async function getTagOpsStats() {
+    await assertAdminRole();
     const db = getDB();
     const total = await db.prepare("SELECT COUNT(*) AS value FROM tags").first<{ value: number }>();
     const active = await db.prepare("SELECT COUNT(*) AS value FROM tags WHERE status = 'active'").first<{ value: number }>();
@@ -396,12 +469,41 @@ export async function getTagOpsStats() {
     };
 }
 
-export async function getTagLinkLogs(limit = 30) {
-    const db = getDB();
-    const safeLimit = Math.max(1, Math.min(limit, 200));
+const TAG_LINK_LOGS_PAGE_DEFAULT = 20;
+const TAG_LINK_LOGS_PAGE_MAX = 100;
+const TAG_LINK_LOGS_PAGE_MIN = 5;
 
-    const logs = await db.prepare(`
-        SELECT
+/**
+ * tag_link_logs(연결/해제) — 인벤토리 감사 `page`와 겹치지 않도록 별도 페이징
+ */
+export async function getTagLinkLogsPage(
+    params: { page?: number; pageSize?: number } = {}
+): Promise<TagLinkLogsPageResult> {
+    await assertAdminRole();
+    const db = getDB();
+    const pageRaw = Math.max(1, Number(params.page) || 1);
+    let pageSize = Number(params.pageSize) || TAG_LINK_LOGS_PAGE_DEFAULT;
+    if (!Number.isFinite(pageSize)) pageSize = TAG_LINK_LOGS_PAGE_DEFAULT;
+    pageSize = Math.min(
+        TAG_LINK_LOGS_PAGE_MAX,
+        Math.max(TAG_LINK_LOGS_PAGE_MIN, Math.floor(pageSize))
+    );
+
+    const countRow = await db
+        .prepare("SELECT COUNT(*) AS c FROM tag_link_logs")
+        .first<{ c: number }>()
+        .catch(() => ({ c: 0 }));
+    const total = Math.max(0, Math.floor(Number(countRow?.c ?? 0)));
+
+    const totalPages = total === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
+    let safePage = pageRaw;
+    if (safePage > totalPages) safePage = totalPages;
+    if (safePage < 1) safePage = 1;
+    const offset = (safePage - 1) * pageSize;
+
+    const { results } = await db
+        .prepare(
+            `SELECT
             l.id,
             l.tag_id,
             l.pet_id,
@@ -413,29 +515,18 @@ export async function getTagLinkLogs(limit = 30) {
         LEFT JOIN pets p ON l.pet_id = p.id
         LEFT JOIN user u ON p.owner_id = u.id
         ORDER BY l.created_at DESC
-        LIMIT ?
-    `)
-    .bind(safeLimit)
-    .all<{
-        id: number;
-        tag_id: string;
-        pet_id: string;
-        action: "link" | "unlink";
-        created_at: string;
-        pet_name?: string | null;
-        owner_email?: string | null;
-    }>()
-    .catch(() => ({ results: [] as Array<{
-        id: number;
-        tag_id: string;
-        pet_id: string;
-        action: "link" | "unlink";
-        created_at: string;
-        pet_name?: string | null;
-        owner_email?: string | null;
-    }> }));
+        LIMIT ? OFFSET ?`
+        )
+        .bind(pageSize, offset)
+        .all<TagLinkLogRow>()
+        .catch(() => ({ results: [] as TagLinkLogRow[] }));
 
-    return logs.results;
+    return {
+        rows: results ?? [],
+        total,
+        page: safePage,
+        pageSize,
+    };
 }
 
 export async function getAdminAuditLogs(params?: {
@@ -535,6 +626,7 @@ export async function getAdminAuditLogs(params?: {
 }
 
 export async function getAdminFailureTopActions(days = 7, limit = 5) {
+    await assertAdminRole();
     const db = getDB();
     const safeDays = Math.max(1, Math.min(days, 365));
     const safeLimit = Math.max(1, Math.min(limit, 20));

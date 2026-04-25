@@ -153,8 +153,17 @@ export async function listUsersAdmin(params: ListUsersAdminParams = {}) {
     .bind(...listBinds)
     .all<AdminUserListRow>();
 
+  const rows = (results ?? []).map((u) => {
+    const ev = u.emailVerified as number | boolean | Date;
+    return {
+    ...u,
+    pet_count: Number(u.pet_count ?? 0),
+    // Date 객체가 넘어올 경우 직렬화 에러를 방지하기 위해 숫자로 변환
+    emailVerified: ev instanceof Date ? ev.getTime() : ev,
+  }}) as AdminUserListRow[];
+
   return {
-    rows: (results ?? []) as AdminUserListRow[],
+    rows,
     total,
     page,
     pageSize,

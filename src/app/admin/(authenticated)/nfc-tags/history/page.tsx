@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { getTagLinkLogs, getAdminAuditLogs } from "@/app/actions/admin";
+import { getTagLinkLogsPage, getAdminAuditLogs } from "@/app/actions/admin";
 import type { AdminAuditLogRow } from "@/types/admin-tags";
 import { TagLinkLogsSection } from "@/components/admin/tags/TagLinkLogsSection";
 import { AdminAuditLogsPanel } from "@/components/admin/tags/AdminAuditLogsPanel";
@@ -16,6 +16,13 @@ export default async function AdminNfcTagsHistoryPage({
 }) {
   const params = await searchParams;
 
+  const lpageRaw = Array.isArray(params.lpage) ? params.lpage[0] : params.lpage;
+  const lpsRaw = Array.isArray(params.lps) ? params.lps[0] : params.lps;
+  const linkPage = Math.max(1, Number(lpageRaw) || 1);
+  let linkPageSize = Number(lpsRaw) || 20;
+  if (!Number.isFinite(linkPageSize)) linkPageSize = 20;
+  linkPageSize = Math.min(100, Math.max(5, Math.floor(linkPageSize)));
+
   const auditSuccessFilter = (params.success as "all" | "success" | "failed") || "all";
   const auditDaysFilter = Number(params.days) || 30;
   const auditActorFilter = (params.actor as string) || "";
@@ -28,8 +35,8 @@ export default async function AdminNfcTagsHistoryPage({
   const auditPage = Number(params.page) || 1;
   const auditPageSize = 10;
 
-  const [linkLogs, audits] = await Promise.all([
-    getTagLinkLogs(30),
+  const [linkPageResult, audits] = await Promise.all([
+    getTagLinkLogsPage({ page: linkPage, pageSize: linkPageSize }),
     getAdminAuditLogs({
       limit: auditPageSize,
       page: auditPage,
@@ -52,7 +59,7 @@ export default async function AdminNfcTagsHistoryPage({
           <div className="mb-8 space-y-6">
             <AdminPageIntro
               title="④ 연결·감사 이력"
-              subtitle="위는 태그–펫 연결 이력, 아래는 관리자 감사 로그입니다. 감사 필터는 URL과 동기화되며 모바일에서는 카드 목록으로 표시됩니다."
+              subtitle="위(연결/해제)는 lpage·lps, 아래(감사)는 page·필터·days로 URL이 달리며 각각 독립 페이징됩니다."
               crumbs={[
                 { label: "관리자", href: "/admin" },
                 { label: "Pet-ID NFC", href: "/admin/nfc-tags" },
@@ -62,7 +69,7 @@ export default async function AdminNfcTagsHistoryPage({
           </div>
         </div>
         <div className={adminUi.nfcTagsPageBody}>
-          <TagLinkLogsSection linkLogs={linkLogs} />
+          <TagLinkLogsSection linkPage={linkPageResult} />
         </div>
         <div className={adminUi.nfcTagsPageBody}>
           <AdminAuditLogsPanel auditLogs={audits.rows as AdminAuditLogRow[]} auditTotalCount={audits.total} />
