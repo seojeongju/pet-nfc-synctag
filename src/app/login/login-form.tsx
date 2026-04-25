@@ -476,30 +476,32 @@ export function LoginForm() {
               </form>
             )}
 
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 space-y-1.5">
-              <label className="flex items-start gap-2 text-[11px] font-black text-slate-900">
-                <input
-                  type="checkbox"
-                  checked={allAgreed}
-                  onChange={(e) => handleToggleAllAgree(e.target.checked)}
-                  className="mt-0.5 h-3.5 w-3.5"
-                />
-                전체 동의 (필수 3항목)
-              </label>
-              <div className="my-1 h-px bg-slate-200" />
-              <label className="flex items-start gap-2 text-[11px] font-bold text-slate-700">
-                <input type="checkbox" checked={agreeTerms} onChange={(e) => setAgreeTerms(e.target.checked)} className="mt-0.5 h-3.5 w-3.5" />
-                (필수) 이용약관 동의 <Link href="/legal/terms" className="underline text-teal-700">보기</Link>
-              </label>
-              <label className="flex items-start gap-2 text-[11px] font-bold text-slate-700">
-                <input type="checkbox" checked={agreePrivacy} onChange={(e) => setAgreePrivacy(e.target.checked)} className="mt-0.5 h-3.5 w-3.5" />
-                (필수) 개인정보 처리방침 동의 <Link href="/legal/privacy" className="underline text-teal-700">보기</Link>
-              </label>
-              <label className="flex items-start gap-2 text-[11px] font-bold text-slate-700">
-                <input type="checkbox" checked={agreeLocation} onChange={(e) => setAgreeLocation(e.target.checked)} className="mt-0.5 h-3.5 w-3.5" />
-                (필수) 위치·모니터링 데이터 처리 동의
-              </label>
-            </div>
+            {authTab === "signup" ? (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 space-y-1.5">
+                <label className="flex items-start gap-2 text-[11px] font-black text-slate-900">
+                  <input
+                    type="checkbox"
+                    checked={allAgreed}
+                    onChange={(e) => handleToggleAllAgree(e.target.checked)}
+                    className="mt-0.5 h-3.5 w-3.5"
+                  />
+                  전체 동의 (필수 3항목)
+                </label>
+                <div className="my-1 h-px bg-slate-200" />
+                <label className="flex items-start gap-2 text-[11px] font-bold text-slate-700">
+                  <input type="checkbox" checked={agreeTerms} onChange={(e) => setAgreeTerms(e.target.checked)} className="mt-0.5 h-3.5 w-3.5" />
+                  (필수) 이용약관 동의 <Link href="/legal/terms" className="underline text-teal-700">보기</Link>
+                </label>
+                <label className="flex items-start gap-2 text-[11px] font-bold text-slate-700">
+                  <input type="checkbox" checked={agreePrivacy} onChange={(e) => setAgreePrivacy(e.target.checked)} className="mt-0.5 h-3.5 w-3.5" />
+                  (필수) 개인정보 처리방침 동의 <Link href="/legal/privacy" className="underline text-teal-700">보기</Link>
+                </label>
+                <label className="flex items-start gap-2 text-[11px] font-bold text-slate-700">
+                  <input type="checkbox" checked={agreeLocation} onChange={(e) => setAgreeLocation(e.target.checked)} className="mt-0.5 h-3.5 w-3.5" />
+                  (필수) 위치·모니터링 데이터 처리 동의
+                </label>
+              </div>
+            ) : null}
             {signupError ? (
               <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] font-bold text-rose-600">
                 {signupError}
@@ -508,7 +510,7 @@ export function LoginForm() {
 
             <div className="pt-6 text-center">
               <p className="text-[10px] text-slate-300 font-medium leading-relaxed">
-                최초 로그인/회원가입 시 동의 내역이 계정에 저장되며, 이미 동의한 계정은 재로그인 시 다시 요청하지 않습니다.
+                최초 로그인 시 필요한 동의는 계정 상태에 따라 자동 처리되며, 이미 동의한 계정은 재로그인 시 다시 요청하지 않습니다.
               </p>
             </div>
           </CardContent>
