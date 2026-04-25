@@ -7,7 +7,6 @@ import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { Bell, MapPin, Clock, PawPrint, Bluetooth, Cpu, Tag } from "lucide-react";
-import { ScanUserAgentBlock } from "@/components/dashboard/ScanUserAgentBlock";
 import { extractBleRawMeta } from "@/lib/ble-raw-payload";
 import { cn } from "@/lib/utils";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
@@ -264,20 +263,17 @@ export default async function ScansPage({
                                                 </a>
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-3 text-xs">
-                                                <a
-                                                    href={`https://map.kakao.com/link/map/발견위치,${log.latitude},${log.longitude}`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="flex items-center gap-2 p-2 rounded-xl bg-slate-50 text-slate-600 hover:bg-teal-50 hover:text-teal-600 transition-colors"
-                                                >
-                                                    <MapPin className="w-4 h-4 text-rose-400" />
-                                                    <span className="truncate underline underline-offset-2">
-                                                        {formatScanCoords(log.latitude, log.longitude)}
-                                                    </span>
-                                                </a>
-                                                <ScanUserAgentBlock userAgent={log.user_agent} />
-                                            </div>
+                                            <a
+                                                href={`https://map.kakao.com/link/map/발견위치,${log.latitude},${log.longitude}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex min-w-0 items-center gap-2 rounded-xl bg-slate-50 p-2 text-xs text-slate-600 transition-colors hover:bg-teal-50 hover:text-teal-600"
+                                            >
+                                                <MapPin className="h-4 w-4 shrink-0 text-rose-400" />
+                                                <span className="min-w-0 truncate underline underline-offset-2">
+                                                    {formatScanCoords(log.latitude, log.longitude)}
+                                                </span>
+                                            </a>
                                             
                                             {log.ip_address && (
                                                 <div className="text-[10px] text-slate-300 px-1 italic">
