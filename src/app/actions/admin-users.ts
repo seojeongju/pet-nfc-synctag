@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { hashPassword } from "better-auth/crypto";
 import { headers } from "next/headers";
+import { cache } from "react";
 import { nanoid } from "nanoid";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { getAuth } from "@/lib/auth";
@@ -103,6 +104,62 @@ async function d1TableExists(db: ReturnType<typeof getDB>, name: string): Promis
   return row != null;
 }
 
+async function d1TableColumnSet(
+  db: ReturnType<typeof getDB>,
+  table: "user" | "pets"
+): Promise<Set<string>> {
+  const { results } = await db
+    .prepare(`PRAGMA table_info(${table})`)
+    .all<{ name?: string }>()
+    .catch(() => ({ results: [] as { name?: string }[] }));
+  return new Set((results ?? []).map((c) => (c.name ?? "").trim()).filter(Boolean));
+}
+
+function isSafeIdent(name: string): boolean {
+  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(name);
+}
+
+function firstExistingColumn(
+  colSet: Set<string>,
+  candidates: readonly [string, string?][]
+): string | null {
+  for (const c of candidates) {
+    if (isSafeIdent(c[0]) && colSet.has(c[0])) return c[0];
+    if (c[1] && isSafeIdent(c[1]) && colSet.has(c[1])) return c[1]!;
+  }
+  return null;
+}
+
+type UserTableColNames = {
+  emailVerified: string;
+  subscriptionStatus: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+async function loadUserTableColNamesImpl(db: ReturnType<typeof getDB>): Promise<UserTableColNames> {
+  const colSet = await d1TableColumnSet(db, "user");
+  const emailVerified = firstExistingColumn(colSet, [
+    ["emailVerified", "email_verified"],
+  ]);
+  const subscriptionStatus = firstExistingColumn(colSet, [
+    ["subscriptionStatus", "subscription_status"],
+  ]);
+  const createdAt = firstExistingColumn(colSet, [["createdAt", "created_at"]]);
+  const updatedAt = firstExistingColumn(colSet, [["updatedAt", "updated_at"]]);
+  if (!emailVerified || !createdAt || !updatedAt) {
+    throw new Error(
+      "user 테이블에 필요한 컬럼이 없습니다. (emailVerified, createdAt, updatedAt 계열이 필요합니다.)"
+    );
+  }
+  return { emailVerified, subscriptionStatus, createdAt, updatedAt };
+}
+
+/** D1/레거시 스키마(camelCase vs snake_case) 차이를 같은 요청 내에서 한 번만 조회 */
+const getUserTableColNames = cache(async () => {
+  return loadUserTableColNamesImpl(getDB());
+});
+
 function normalizeEmailInput(raw: string): string {
   return raw.trim().toLowerCase();
 }
@@ -124,10 +181,18 @@ export async function listUsersAdmin(params: ListUsersAdminParams = {}) {
   await requirePlatformAdminActor();
 
   const db = getDB();
+  const colNames = await getUserTableColNames();
   const hasPetsTable = await d1TableExists(db, "pets");
-  const petCountSql = hasPetsTable
-    ? "(SELECT COUNT(*) FROM pets WHERE owner_id = u.id)"
-    : "0";
+  let petCountSql = "0";
+  if (hasPetsTable) {
+    const petCols = await d1TableColumnSet(db, "pets");
+    if (petCols.has("owner_id")) {
+      petCountSql = "(SELECT COUNT(*) FROM pets WHERE owner_id = u.id)";
+    }
+  }
+  const subSelect = colNames.subscriptionStatus
+    ? `u.${colNames.subscriptionStatus}`
+    : "NULL";
   const qRaw = (params.q ?? "").trim().slice(0, 120);
   const roleFilter = params.role === "user" || params.role === "platform_admin" ? params.role : "all";
   let page = Number(params.page) || 1;
@@ -165,11 +230,13 @@ export async function listUsersAdmin(params: ListUsersAdminParams = {}) {
   const listBinds = [...binds, pageSize, offset];
   const { results } = await db
     .prepare(
-      `SELECT u.id, u.email, u.name, u.emailVerified, u.image, u.role, u.subscriptionStatus, u.createdAt,
+      `SELECT u.id, u.email, u.name, u.${colNames.emailVerified} AS emailVerified, u.image, u.role,
+              ${subSelect} AS subscriptionStatus,
+              u.${colNames.createdAt} AS createdAt,
               ${petCountSql} AS pet_count
        FROM user u
        ${whereSql}
-       ORDER BY u.createdAt DESC
+       ORDER BY u.${colNames.createdAt} DESC
        LIMIT ? OFFSET ?`
     )
     .bind(...listBinds)
@@ -198,6 +265,7 @@ export async function listUsersAdmin(params: ListUsersAdminParams = {}) {
 export async function updateUserPlatformRole(targetUserId: string, nextRole: PlatformUserRole) {
   const { actorId, actorEmail } = await requirePlatformAdminActor();
   const db = getDB();
+  const { updatedAt: updatedAtCol } = await getUserTableColNames();
 
   const trimmedId = targetUserId?.trim();
   if (!trimmedId) {
@@ -227,7 +295,9 @@ export async function updateUserPlatformRole(targetUserId: string, nextRole: Pla
   const storedRole = nextRole === "platform_admin" ? PLATFORM_ADMIN_ROLE : "user";
 
   await db
-    .prepare("UPDATE user SET role = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?")
+    .prepare(
+      `UPDATE user SET role = ?, ${updatedAtCol} = CURRENT_TIMESTAMP WHERE id = ?`
+    )
     .bind(storedRole, trimmedId)
     .run();
 
@@ -246,6 +316,7 @@ export async function updateUserPlatformRole(targetUserId: string, nextRole: Pla
 export async function updateUserEmailAdmin(targetUserId: string, newEmailRaw: string) {
   const { actorId, actorEmail } = await requirePlatformAdminActor();
   const db = getDB();
+  const { updatedAt: updatedAtCol } = await getUserTableColNames();
   const id = targetUserId?.trim();
   if (!id) {
     throw new Error("대상 사용자가 없습니다.");
@@ -276,7 +347,9 @@ export async function updateUserEmailAdmin(targetUserId: string, newEmailRaw: st
 
   const prev = target.email;
   await db
-    .prepare("UPDATE user SET email = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?")
+    .prepare(
+      `UPDATE user SET email = ?, ${updatedAtCol} = CURRENT_TIMESTAMP WHERE id = ?`
+    )
     .bind(newEmail, id)
     .run();
 
@@ -388,6 +461,10 @@ async function resolveValidPlanCode(db: ReturnType<typeof getDB>, raw: string): 
 export async function updateUserSubscriptionStatusAdmin(targetUserId: string, subscriptionCode: string) {
   const { actorId, actorEmail } = await requirePlatformAdminActor();
   const db = getDB();
+  const { updatedAt: updatedAtCol, subscriptionStatus: subCol } = await getUserTableColNames();
+  if (!subCol) {
+    throw new Error("이 데이터베이스의 user 테이블에 구독(플랜) 컬럼이 없습니다.");
+  }
   const id = targetUserId?.trim();
   if (!id) {
     throw new Error("대상 사용자가 없습니다.");
@@ -396,7 +473,9 @@ export async function updateUserSubscriptionStatusAdmin(targetUserId: string, su
   const code = await resolveValidPlanCode(db, subscriptionCode);
 
   const target = await db
-    .prepare("SELECT id, email, subscriptionStatus FROM user WHERE id = ?")
+    .prepare(
+      `SELECT id, email, ${subCol} AS subscriptionStatus FROM user WHERE id = ?`
+    )
     .bind(id)
     .first<{ id: string; email: string | null; subscriptionStatus: string | null }>();
   if (!target) {
@@ -409,7 +488,9 @@ export async function updateUserSubscriptionStatusAdmin(targetUserId: string, su
   }
 
   await db
-    .prepare("UPDATE user SET subscriptionStatus = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?")
+    .prepare(
+      `UPDATE user SET ${subCol} = ?, ${updatedAtCol} = CURRENT_TIMESTAMP WHERE id = ?`
+    )
     .bind(code, id)
     .run();
 
