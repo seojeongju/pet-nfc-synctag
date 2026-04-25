@@ -56,6 +56,8 @@ type KakaoMarkerClusterer = {
   getClusters?: () => Array<{ getCenter: () => KakaoLatLng }>;
 };
 type KakaoMapInstance = {
+  /** 컨테이너 크기 변화 후 타일/레이아웃 갱신 (Kakao Map v2) */
+  relayout: () => void;
   setBounds: (bounds: KakaoBounds) => void;
   setCenter?: (pos: KakaoLatLng) => void;
   panTo?: (pos: KakaoLatLng) => void;

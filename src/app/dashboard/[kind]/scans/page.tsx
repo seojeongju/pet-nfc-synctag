@@ -1,5 +1,5 @@
 import { getAuth } from "@/lib/auth";
-import { getScanLogsWithDb } from "@/lib/scan-logs-db";
+import { getScanLogsWithDb, getScanLogsCountWithDb } from "@/lib/scan-logs-db";
 import { listBleLocationEventsForOwner } from "@/lib/ble-location-events-db";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { headers } from "next/headers";
@@ -12,7 +12,6 @@ import { extractBleRawMeta } from "@/lib/ble-raw-payload";
 import { cn } from "@/lib/utils";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
 import { requireTenantMember } from "@/lib/tenant-membership";
-import { rethrowNextControlFlowErrors } from "@/lib/next-redirect-guard";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
