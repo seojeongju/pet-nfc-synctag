@@ -9,7 +9,9 @@ import {
   adminUpdateTenantStatus,
   getTenantsAdminView,
 } from "@/app/actions/admin-tenants";
+import { formatAllowedSubjectKindsSummaryKo } from "@/lib/mode-visibility";
 import { Building2, Search, ShieldCheck, UserPlus2, UsersRound } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { adminUi } from "@/styles/admin/ui";
 
@@ -179,6 +181,15 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
                 <div>
                   <p className="text-lg font-black text-slate-900">{tenant.name}</p>
                   <p className="text-xs font-bold text-slate-400">slug: {tenant.slug} · members: {tenant.member_count}</p>
+                  <p className="text-xs font-bold text-slate-600 mt-1">
+                    보호자 허용 모드: {formatAllowedSubjectKindsSummaryKo(tenant.allowed_subject_kinds)}
+                  </p>
+                  <Link
+                    href={`/hub/org/${encodeURIComponent(tenant.id)}/manage`}
+                    className="inline-block mt-1 text-[11px] font-black text-teal-600 hover:underline"
+                  >
+                    조직 상세(허브) · 허용 모드 편집
+                  </Link>
                 </div>
                 <form
                   action={async (formData) => {

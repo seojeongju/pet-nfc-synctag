@@ -59,7 +59,7 @@ export function FlowTopNavContent({
             className="inline-flex shrink-0 items-center gap-1 rounded-full border border-teal-100 bg-teal-50/80 px-2 py-1 font-black text-teal-700 hover:bg-teal-100 min-[390px]:px-2.5"
           >
             <Home className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            모드 선택
+            {variant === "dashboard" ? "허브·모드" : "모드 선택"}
           </a>
         ) : (
           <Link
@@ -67,7 +67,7 @@ export function FlowTopNavContent({
             className="inline-flex shrink-0 items-center gap-1 rounded-full border border-teal-100 bg-teal-50/80 px-2 py-1 font-black text-teal-700 hover:bg-teal-100 min-[390px]:px-2.5"
           >
             <Home className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            모드 선택
+            {variant === "dashboard" ? "허브·모드" : "모드 선택"}
           </Link>
         )}
         {currentModeLabel ? (

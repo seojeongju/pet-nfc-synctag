@@ -1,5 +1,5 @@
 import type { D1Database } from "@cloudflare/workers-types";
-import { SUBJECT_KINDS, type SubjectKind, parseSubjectKind } from "@/lib/subject-kind";
+import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind, parseSubjectKind } from "@/lib/subject-kind";
 
 const ALL_KINDS: SubjectKind[] = [...SUBJECT_KINDS];
 
@@ -124,6 +124,31 @@ export async function isSubjectKindAllowedForTenant(
  */
 export function getSingleModeDashboardPath(kind: SubjectKind): string {
   return `/dashboard/${encodeURIComponent(kind)}`;
+}
+
+/** UI용: tenants.allowed_subject_kinds JSON 또는 NULL */
+export function formatAllowedSubjectKindsSummaryKo(raw: string | null | undefined): string {
+  if (raw == null || !String(raw).trim()) {
+    return "전체 모드";
+  }
+  try {
+    const v = JSON.parse(String(raw)) as unknown;
+    if (!Array.isArray(v) || v.length === 0) {
+      return "전체 모드";
+    }
+    const kinds = v.filter(
+      (x): x is SubjectKind => typeof x === "string" && (SUBJECT_KINDS as readonly string[]).includes(x)
+    );
+    if (kinds.length === 0) {
+      return "전체 모드";
+    }
+    if (kinds.length >= SUBJECT_KINDS.length) {
+      return "전체 모드";
+    }
+    return kinds.map((k) => subjectKindMeta[k].label).join(" · ");
+  } catch {
+    return "—";
+  }
 }
 
 export function getHubRedirectForGuardian(allowed: SubjectKind[]): string | null {
