@@ -437,7 +437,7 @@ export default function PetDashboard({
             tenantSuspended={tenantSuspended}
             linkedTagCount={linkedTagCount}
             emptyRegisterHint={meta.emptyRegisterHint}
-            subtitle="NFC 스캔으로 UID를 자동 인식해 바로 등록할 수 있어요."
+            subtitle="태그를 스캔하거나 UID를 입력해 연결하고, 태그 주소 기록까지 한 번에 진행해요."
             onSelectedSubjectIdChange={setNfcSelectedSubjectId}
             onTagLinkSessionSuccess={() => setTagLinkedInSession(true)}
           />

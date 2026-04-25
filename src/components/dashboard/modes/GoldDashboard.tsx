@@ -233,7 +233,7 @@ export default function GoldDashboard({
             tenantSuspended={tenantSuspended}
             linkedTagCount={linkedTagCount}
             emptyRegisterHint={meta.emptyRegisterHint}
-            subtitle="제품 태그를 스캔하거나 UID로 가치(프로필)에 연결하세요. 웹 NDEF·네이티브 앱 흐름은 반려 모드와 같아요."
+            subtitle="태그를 스캔하거나 UID를 입력해 연결하고, 태그 주소 기록까지 한 번에 진행해요."
           />
         </motion.section>
 

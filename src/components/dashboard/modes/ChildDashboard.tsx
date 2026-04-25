@@ -233,7 +233,7 @@ export default function ChildDashboard({
             tenantSuspended={tenantSuspended}
             linkedTagCount={linkedTagCount}
             emptyRegisterHint={meta.emptyRegisterHint}
-            subtitle="NFC 스캔·UID로 아이 프로필에 인식표를 연결하세요. 웹/앱·태그 URL 기록 흐름은 반려 모드와 같아요."
+            subtitle="태그를 스캔하거나 UID를 입력해 연결하고, 태그 주소 기록까지 한 번에 진행해요."
           />
         </motion.section>
 

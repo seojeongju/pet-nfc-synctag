@@ -5,4 +5,4 @@ export const authClient = createAuthClient({
     // 이는 로컬 개발 환경과 Cloudflare 운영 환경 모두에서 가장 안정적으로 작동하는 방식입니다.
 });
 
-export const { signIn, signOut, useSession } = authClient;
+export const { signIn, signUp, signOut, useSession } = authClient;

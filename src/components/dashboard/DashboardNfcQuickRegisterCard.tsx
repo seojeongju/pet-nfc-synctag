@@ -369,7 +369,7 @@ export function DashboardNfcQuickRegisterCard({
             <Smartphone className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-base font-black text-slate-900">NFC 빠른 등록</h3>
+            <h3 className="text-base font-black text-slate-900">NFC 연결 관리</h3>
             <p className="text-[11px] font-bold text-slate-400">{subtitle}</p>
           </div>
         </div>
@@ -489,7 +489,7 @@ export function DashboardNfcQuickRegisterCard({
               <OpenNativePetNfcSectionButton kind={subjectKind} petId={selectedSubjectId} tenantId={tenantId ?? null} />
             ) : null}
             {linkedTagCount > 0 ? (
-              <p className="text-[11px] font-bold text-teal-600">현재 연결된 NFC 태그: {linkedTagCount}개</p>
+              <p className="text-[11px] font-bold text-teal-600">연결된 태그: {linkedTagCount}개</p>
             ) : null}
           </>
         ) : (

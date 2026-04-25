@@ -193,12 +193,16 @@ export default async function PetDetailPage({
                 <div className="w-8 h-8 rounded-[10px] bg-teal-50 flex items-center justify-center text-teal-500">
                   <Nfc className="w-4 h-4" />
                 </div>
-                <p className="text-sm font-black text-slate-800">NFC 태그</p>
+                <p className="text-sm font-black text-slate-800">NFC 연결 관리</p>
               </div>
               <span className="text-[10px] font-black text-teal-600 bg-teal-50 px-2 py-1 rounded-full">
-                {tags.length}개 연결
+                연결된 태그 {tags.length}개
               </span>
             </div>
+
+            <p className="text-[11px] font-bold text-slate-500">
+              태그를 스캔하거나 UID를 입력해 연결하고, 태그 주소 기록까지 한 번에 진행해요.
+            </p>
 
             <TagManageCard
               petId={pet.id}

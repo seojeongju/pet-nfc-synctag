@@ -185,6 +185,15 @@ export default function LiveLocationMap({
         level,
       };
       mapInstanceRef.current = new window.kakao.maps.Map(container, options);
+      
+      // 초기 레이아웃 보정
+      setTimeout(() => {
+        mapInstanceRef.current?.relayout();
+        if (mapInstanceRef.current?.setCenter) {
+            mapInstanceRef.current.setCenter(options.center);
+        }
+      }, 50);
+
       if (window.kakao.maps.MarkerClusterer) {
         clustererRef.current = new window.kakao.maps.MarkerClusterer({
           map: mapInstanceRef.current,
@@ -316,7 +325,19 @@ export default function LiveLocationMap({
     const onVisibility = () => setIsDocumentVisible(document.visibilityState === "visible");
     onVisibility();
     document.addEventListener("visibilitychange", onVisibility);
-    return () => document.removeEventListener("visibilitychange", onVisibility);
+    
+    // 지도가 있는 경우 창 크기 변경 시 relayout 호출
+    const onResize = () => {
+        if (mapInstanceRef.current) {
+            mapInstanceRef.current.relayout();
+        }
+    };
+    window.addEventListener("resize", onResize);
+
+    return () => {
+        document.removeEventListener("visibilitychange", onVisibility);
+        window.removeEventListener("resize", onResize);
+    };
   }, []);
 
   useEffect(() => {
@@ -859,8 +880,9 @@ export default function LiveLocationMap({
       <div className="absolute bottom-4 left-4 z-[22] hidden md:block">{telemetryPanel}</div>
 
       <div ref={mapContainerRef} className="h-[350px] w-full bg-slate-50 transition-all" />
-
-      {(!sdkLoaded || configStatus !== "ready" || scriptLoadFailed) && (
+      
+      {/* 지도가 완전히 준비될 때까지 로딩 표시 유지 */}
+      {(!mapReady || !sdkLoaded || configStatus !== "ready" || scriptLoadFailed) && (
         <div className="absolute inset-0 z-10 bg-slate-50/70 backdrop-blur-sm flex flex-col items-center justify-center text-center p-8">
             <div className="w-16 h-16 rounded-[24px] bg-white shadow-xl flex items-center justify-center text-teal-500 mb-6">
                 <Activity className="w-8 h-8 animate-pulse" />
@@ -910,7 +932,7 @@ export default function LiveLocationMap({
           onLoad={() => {
             setScriptLoadFailed(false);
             setSdkLoaded(true);
-            setTimeout(initMap, 200);
+            initMap();
           }}
           onError={() => setScriptLoadFailed(true)}
         />
