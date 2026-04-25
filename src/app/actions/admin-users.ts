@@ -94,6 +94,15 @@ async function writeAdminAudit(actorEmail: string, action: string, payload: unkn
     .catch(() => {});
 }
 
+async function d1TableExists(db: ReturnType<typeof getDB>, name: string): Promise<boolean> {
+  const row = await db
+    .prepare("SELECT 1 AS x FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1")
+    .bind(name)
+    .first<{ x?: number }>()
+    .catch(() => null);
+  return row != null;
+}
+
 function normalizeEmailInput(raw: string): string {
   return raw.trim().toLowerCase();
 }
@@ -115,6 +124,10 @@ export async function listUsersAdmin(params: ListUsersAdminParams = {}) {
   await requirePlatformAdminActor();
 
   const db = getDB();
+  const hasPetsTable = await d1TableExists(db, "pets");
+  const petCountSql = hasPetsTable
+    ? "(SELECT COUNT(*) FROM pets WHERE owner_id = u.id)"
+    : "0";
   const qRaw = (params.q ?? "").trim().slice(0, 120);
   const roleFilter = params.role === "user" || params.role === "platform_admin" ? params.role : "all";
   let page = Number(params.page) || 1;
@@ -153,7 +166,7 @@ export async function listUsersAdmin(params: ListUsersAdminParams = {}) {
   const { results } = await db
     .prepare(
       `SELECT u.id, u.email, u.name, u.emailVerified, u.image, u.role, u.subscriptionStatus, u.createdAt,
-              (SELECT COUNT(*) FROM pets WHERE owner_id = u.id) AS pet_count
+              ${petCountSql} AS pet_count
        FROM user u
        ${whereSql}
        ORDER BY u.createdAt DESC
