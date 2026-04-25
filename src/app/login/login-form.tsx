@@ -65,7 +65,7 @@ type LoginContext = {
 const MODE_CONTEXT: Record<SubjectKind, LoginContext> = {
   pet: {
     title: "반려동물과 다시 연결하기",
-    subtitle: "링크유(Link-U)에 오신 것을 환영합니다.",
+    subtitle: "링크유-펫 보호자 로그인",
     icon: PawPrint,
     infoTitle: "인식표·태그를 방금 스캔하고 오신 분은",
     infoBody: "로그인 없이 연락 안내를 보실 수 있어요. 아래는 보호자용 로그인입니다.",
@@ -74,8 +74,8 @@ const MODE_CONTEXT: Record<SubjectKind, LoginContext> = {
     iconBgClass: "bg-teal-500",
   },
   elder: {
-    title: "가족과 다시 연결하기",
-    subtitle: "링크유(Link-U)에 오신 것을 환영합니다.",
+    title: "어르신 안심 케어와 다시 연결하기",
+    subtitle: "링크유-메모리 보호자 로그인",
     icon: UserRound,
     infoTitle: "안심표·인식표를 방금 스캔하고 오신 분은",
     infoBody: "로그인 없이 안심 안내를 보실 수 있어요. 아래는 가족 보호자용 로그인입니다.",
@@ -85,7 +85,7 @@ const MODE_CONTEXT: Record<SubjectKind, LoginContext> = {
   },
   child: {
     title: "우리 아이와 다시 연결하기",
-    subtitle: "링크유(Link-U)에 오신 것을 환영합니다.",
+    subtitle: "링크유-키즈 보호자 로그인",
     icon: Baby,
     infoTitle: "안심 패스·인식표를 방금 스캔하고 오신 분은",
     infoBody: "로그인 없이 위치 및 보호자 정보를 보실 수 있어요. 아래는 법정대리인 로그인입니다.",
@@ -95,7 +95,7 @@ const MODE_CONTEXT: Record<SubjectKind, LoginContext> = {
   },
   luggage: {
     title: "소지품과 다시 연결하기",
-    subtitle: "링크유(Link-U)에 오신 것을 환영합니다.",
+    subtitle: "링크유-러기지 소유자 로그인",
     icon: Briefcase,
     infoTitle: "캐리어 택·인식표를 방금 스캔하고 오신 분은",
     infoBody: "로그인 없이 연락 안내 페이지를 보실 수 있어요. 아래는 소유자용 로그인입니다.",
@@ -105,7 +105,7 @@ const MODE_CONTEXT: Record<SubjectKind, LoginContext> = {
   },
   gold: {
     title: "고귀한 가치와 연결하기",
-    subtitle: "링크유(Link-U)에 오신 것을 환영합니다.",
+    subtitle: "링크유-골드 소유자 로그인",
     icon: Gem,
     infoTitle: "인증 태그를 방금 스캔하고 오신 분은",
     infoBody: "로그인 없이 가치 인증과 안내를 보실 수 있어요. 아래는 정품 소유자 전용 로그인입니다.",

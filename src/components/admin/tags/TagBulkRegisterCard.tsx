@@ -39,11 +39,11 @@ const kindIcon: Record<SubjectKind, typeof PawPrint> = {
 };
 
 const kindShortLabel: Record<SubjectKind, string> = {
-  pet: "펫",
-  elder: "메모리",
-  child: "키즈",
-  luggage: "태그",
-  gold: "골드",
+  pet: "링크유-펫",
+  elder: "링크유-메모리",
+  child: "링크유-키즈",
+  luggage: "링크유-러기지",
+  gold: "링크유-골드",
 };
 
 const kindTabStyles: Record<
@@ -202,7 +202,9 @@ export function TagBulkRegisterCard() {
               </span>
               <span className="min-w-0">
                 <span className="block text-[10px] font-black uppercase tracking-tight text-slate-400">모드</span>
-                <span className="block truncate text-xs font-black">{kindShortLabel[kind]}</span>
+                <span className="block text-xs font-black leading-snug break-words [text-wrap:balance]">
+                  {kindShortLabel[kind]}
+                </span>
               </span>
             </button>
           );

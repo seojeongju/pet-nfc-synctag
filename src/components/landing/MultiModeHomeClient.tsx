@@ -29,14 +29,6 @@ const modeIcons: Record<SubjectKind, LucideIcon> = {
   gold: Gem,
 };
 
-const modeDescriptions: Record<SubjectKind, string> = {
-  pet: "반려동물 실종 대응 · 보호자 정보 확인",
-  elder: "어르신 케어 · 긴급 연락 지원",
-  child: "아이 안전 · 보호자 연결 안내",
-  luggage: "수하물 분실 대응 · 소유자 연결",
-  gold: "주얼리 인증 · 분실 방지 안내",
-};
-
 interface MultiModeHomeClientProps {
   session: { user: { name?: string | null } } | null;
   isAdmin: boolean;
@@ -163,8 +155,12 @@ export default function MultiModeHomeClient({
                       <Icon className="h-4.5 w-4.5" />
                     </div>
                     <div className="relative z-10 min-w-0">
-                      <p className="truncate text-[13px] font-black text-slate-900 min-[390px]:text-sm">{meta.label}</p>
-                      <p className="truncate text-[11px] font-semibold text-slate-500">{modeDescriptions[k]}</p>
+                      <p className="text-[13px] font-black text-slate-900 min-[390px]:text-sm break-words leading-snug">
+                        {meta.label}
+                      </p>
+                      <p className="mt-0.5 text-[11px] font-semibold text-slate-500 leading-snug [text-wrap:balance] break-words">
+                        {meta.description}
+                      </p>
                     </div>
                   </div>
                   <ArrowRight className={cn("relative z-10 h-4 w-4 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-teal-500", isActive && "text-teal-500")} />

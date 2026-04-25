@@ -34,8 +34,8 @@ export const subjectKindMeta: Record<
   }
 > = {
   pet: {
-    label: "링크유 - 펫 (반려동물)",
-    description: "반려동물 · NFC로 빠른 연결 · 가족에게 닿는 도움말",
+    label: "링크유-펫",
+    description: "반려동물 보호자 연결 · NFC 빠른 연락 안내",
     listHeading: "함께하는 아이들",
     registerTitle: "새로운 아이 등록",
     registerSubtitle: "우리 아이의 안전을 위한 첫 걸음입니다.",
@@ -53,8 +53,8 @@ export const subjectKindMeta: Record<
     emptyGeofencesNoZones: "아래에서 집·산책 코스 등 중심과 반경을 저장해 두면 가족이 안심할 수 있어요.",
   },
   elder: {
-    label: "링크유 - 메모리 (기억 동행)",
-    description: "기억 동행 · 안심 알림과 가족 연결 · 긴급 연락 (BLE 연동 예정)",
+    label: "링크유-메모리",
+    description: "어르신 안심 위치추적·케어 · 가족 긴급 연결",
     listHeading: "함께하는 가족",
     registerTitle: "가족 프로필 등록",
     registerSubtitle: "연락처를 남겨 두면, 필요할 때 가족에게 바로 연결돼요.",
@@ -71,8 +71,8 @@ export const subjectKindMeta: Record<
     emptyGeofencesNoZones: "집·병원 등 중심과 반경을 저장해 두면 동행 안심에 도움이 돼요.",
   },
   child: {
-    label: "링크유 - 키즈 (우리 아이 안심)",
-    description: "우리 아이 안심 · 안심 울타리와 알림으로 연결 (BLE·안심 구역 연동 예정)",
+    label: "링크유-키즈",
+    description: "아이 안전 보호자 연결 · 안심 구역과 알림",
     listHeading: "우리 아이 프로필",
     registerTitle: "아이 프로필 등록",
     registerSubtitle: "이름과 비상 연락처를 입력해 주세요.",
@@ -89,8 +89,8 @@ export const subjectKindMeta: Record<
     emptyGeofencesNoZones: "등하원·놀이 구역을 반경으로 지정해 두면 보호자에게 단서가 됩니다.",
   },
   luggage: {
-    label: "링크유 - 태그 (수화물·가방)",
-    description: "수화물·가방 · 수하물·캐리어 NFC로 주인 연결 · 분실 시 단서 기록",
+    label: "링크유-러기지",
+    description: "수하물 분실 대응 · 소유자 빠른 연결",
     listHeading: "등록한 소지품",
     registerTitle: "소지품 등록",
     registerSubtitle: "가방·캐리어 등 구분하기 쉬운 이름을 입력하세요.",
@@ -107,7 +107,7 @@ export const subjectKindMeta: Record<
     emptyGeofencesNoZones: "숙소·집 주변을 반경으로 저장해 두면 분실 시 힌트가 됩니다.",
   },
   gold: {
-    label: "링크유 - 골드 (고귀한 가치·인증서)",
+    label: "링크유-골드",
     description:
       "주얼리 · 고귀한 가치(인증서)와 안전한 보호(분실 방지)를 함께 — NFC로 가치 증명과 주인 연결",
     listHeading: "등록한 골드·주얼리",
@@ -132,12 +132,12 @@ export const subjectKindNfcPublic: Record<
   SubjectKind,
   { roleLine: string; callCta: string; hideMedicalBlock: boolean; idCardLabel: string; scanHintLabel: string; scanHintBody: string }
 > = {
-  pet: { roleLine: "가족이 남긴 연락 화면 · 반려동물", callCta: "가족(보호자)에게 전화·문자", hideMedicalBlock: true, idCardLabel: "참고", scanHintLabel: "도움말", scanHintBody: "가능하면 위치도 보내 주시면 가족에게 큰 도움이 돼요." },
-  elder: { roleLine: "가족이 남긴 연락 화면 · 기억 동행", callCta: "가족에게 전화·문자", hideMedicalBlock: true, idCardLabel: "참고", scanHintLabel: "도움말", scanHintBody: "필요할 때 위 전화(문자)로 가족에게 연락해 주세요." },
-  child: { roleLine: "가족이 남긴 연락 화면 · 아이 안심", callCta: "가족(보호자)에게 전화·문자", hideMedicalBlock: true, idCardLabel: "참고", scanHintLabel: "도움말", scanHintBody: "가족에게 먼저 연락해 주세요." },
-  luggage: { roleLine: "가족이 남긴 연락 화면 · 분실물", callCta: "주인에게 전화·문자", hideMedicalBlock: true, idCardLabel: "물품", scanHintLabel: "도움말", scanHintBody: "주인에게 연락해 주시면 감사합니다." },
+  pet: { roleLine: "가족이 남긴 연락 화면 · 링크유-펫", callCta: "가족(보호자)에게 전화·문자", hideMedicalBlock: true, idCardLabel: "참고", scanHintLabel: "도움말", scanHintBody: "가능하면 위치도 보내 주시면 가족에게 큰 도움이 돼요." },
+  elder: { roleLine: "가족이 남긴 연락 화면 · 링크유-메모리", callCta: "가족에게 전화·문자", hideMedicalBlock: true, idCardLabel: "참고", scanHintLabel: "도움말", scanHintBody: "필요할 때 위 전화(문자)로 가족에게 연락해 주세요." },
+  child: { roleLine: "가족이 남긴 연락 화면 · 링크유-키즈", callCta: "가족(보호자)에게 전화·문자", hideMedicalBlock: true, idCardLabel: "참고", scanHintLabel: "도움말", scanHintBody: "가족에게 먼저 연락해 주세요." },
+  luggage: { roleLine: "가족이 남긴 연락 화면 · 링크유-러기지", callCta: "주인에게 전화·문자", hideMedicalBlock: true, idCardLabel: "물품", scanHintLabel: "도움말", scanHintBody: "주인에게 연락해 주시면 감사합니다." },
   gold: {
-    roleLine: "가족이 남긴 연락 화면 · 귀중품",
+    roleLine: "가족이 남긴 연락 화면 · 링크유-골드",
     callCta: "주인에게 전화·문자",
     hideMedicalBlock: true,
     idCardLabel: "제품",

@@ -55,7 +55,7 @@ function helpContentForPath(p: string): { title: string; body: ReactNode } {
       body: (
         <>
           <p>
-            <strong>모드 탭:</strong> 펫·메모리·키즈·캐리·골드 중 할당 모드를 고른 뒤 UID를 입력합니다. 선택한 모드가 인벤토리에 미리 연결됩니다.
+            <strong>모드 탭:</strong> 펫·메모리·키즈·러기지·골드 중 할당 모드를 고른 뒤 UID를 입력합니다. 선택한 모드가 인벤토리에 미리 연결됩니다.
           </p>
           <p>
             <strong>입력 형식:</strong> 한 줄에 하나, 또는 쉼표로 구분합니다. <code className="rounded bg-slate-100 px-1 font-mono text-[11px]">AA:BB:CC:DD:EE:FF</code> 등 허용 형식을 따르세요. DB에 이미 있는 UID는 건너뜁니다.

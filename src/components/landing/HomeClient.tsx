@@ -48,7 +48,7 @@ export default function HomeClient({ session, isAdmin, guardianEntryLink, guardi
               transition={{ delay: 0.5, duration: 0.6 }}
               className="absolute top-6 right-6 glass px-5 py-2.5 rounded-2xl flex items-center gap-2"
             >
-              <span className="text-xs font-black text-slate-800">링크유 - 펫</span>
+              <span className="text-xs font-black text-slate-800">링크유-펫</span>
             </motion.div>
 
             <motion.div 
@@ -80,7 +80,7 @@ export default function HomeClient({ session, isAdmin, guardianEntryLink, guardi
           >
             <div className="flex items-center gap-2 text-teal-600 font-bold text-xs uppercase tracking-widest">
                <Sparkles className="w-4 h-4" />
-               링크유 - 펫 · Smart NFC
+               링크유-펫 · Smart NFC
             </div>
             <h1 className="text-3xl font-black text-slate-900 leading-[1.1] tracking-tight">
               반려동물을 위한 <br />

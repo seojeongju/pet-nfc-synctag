@@ -57,6 +57,7 @@ export default function ModeGateLanding({
         session={session}
         isAdmin={isAdmin}
         currentModeLabel={meta.label}
+        currentModeDescription={meta.description}
         orgManageHref={orgManageHref}
       />
       <div

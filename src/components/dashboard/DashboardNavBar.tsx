@@ -33,6 +33,7 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
   
   const kind = parseSubjectKind(pathKind || searchParams.get("kind"));
   const currentModeLabel = subjectKindMeta[kind].label;
+  const currentModeDescription = subjectKindMeta[kind].description;
   const tenantRaw = searchParams.get("tenant");
   const tenant = typeof tenantRaw === "string" && tenantRaw.trim() ? tenantRaw.trim() : null;
   
@@ -72,6 +73,7 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
         session={session}
         isAdmin={isAdmin}
         currentModeLabel={currentModeLabel}
+        currentModeDescription={currentModeDescription}
         orgManageHref={orgManageHref}
         logoutLandingKind={kind}
       />

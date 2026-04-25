@@ -44,7 +44,7 @@ export const modeLandingVisual: Record<SubjectKind, ModeLandingVisual> = {
     ...sharedShell,
     heroImageSrc: "/korean_pet_hero_1774861698476.png",
     heroAlt: "반려동물과 보호자",
-    badge: "링크유 - 펫",
+    badge: "링크유-펫",
     statLabel: "등록된 반려동물",
     statValue: "1,240+",
     Icon: PawPrint,
@@ -53,7 +53,7 @@ export const modeLandingVisual: Record<SubjectKind, ModeLandingVisual> = {
     ...sharedShell,
     heroImageSrc: "/images/memory-hero.png",
     heroAlt: "어르신과 가족의 따뜻한 모습",
-    badge: "링크유 - 메모리",
+    badge: "링크유-메모리",
     statLabel: "가족 연결 케어",
     statValue: "890+",
     Icon: UserRound,
@@ -62,7 +62,7 @@ export const modeLandingVisual: Record<SubjectKind, ModeLandingVisual> = {
     ...sharedShell,
     heroImageSrc: "/images/kids-hero.png",
     heroAlt: "등교하는 아이와 부모님의 안심 가득한 모습",
-    badge: "링크유 - 키즈",
+    badge: "링크유-키즈",
     statLabel: "안심 가정 연결",
     statValue: "620+",
     Icon: Baby,
@@ -71,7 +71,7 @@ export const modeLandingVisual: Record<SubjectKind, ModeLandingVisual> = {
     ...sharedShell,
     heroImageSrc: "/images/luggage-hero.png",
     heroAlt: "스마트폰과 연결된 안심 수하물 태그",
-    badge: "링크유 - 캐리",
+    badge: "링크유-러기지",
     statLabel: "여행·분실 복구",
     statValue: "430+",
     Icon: Briefcase,
@@ -80,7 +80,7 @@ export const modeLandingVisual: Record<SubjectKind, ModeLandingVisual> = {
     ...sharedShell,
     heroImageSrc: "/images/gold-hero.png",
     heroAlt: "고귀한 가치와 안심을 더하는 링크유-골드 히어로",
-    badge: "링크유 - 골드",
+    badge: "링크유-골드",
     statLabel: "가치안심연결",
     statValue: "310+",
     Icon: Gem,
@@ -98,7 +98,7 @@ export type ModeLandingCopy = {
 
 export const modeLandingCopy: Record<SubjectKind, ModeLandingCopy> = {
   pet: {
-    kicker: "링크유 - 펫 · Smart NFC",
+    kicker: "링크유-펫 · Smart NFC",
     titleLine1: "반려동물을 위한",
     titleGradient: "완벽한 디지털 명함",
     subline:
@@ -107,24 +107,24 @@ export const modeLandingCopy: Record<SubjectKind, ModeLandingCopy> = {
     finderLines: [
       "발견자분은 로그인 없이 연락 안내 페이지로 이동합니다.",
       "제품에 적힌 주소(예: /t/태그번호)를 그대로 열어 주세요.",
-      "이 화면은 링크유 - 펫 보호자 등록·관리용입니다.",
+      "이 화면은 링크유-펫 보호자 등록·관리용입니다.",
     ],
   },
   elder: {
-    kicker: "링크유 - 메모리 · Smart NFC",
+    kicker: "링크유-메모리 · Smart NFC",
     titleLine1: "어르신을 위한",
-    titleGradient: "기억 동행 디지털 안심표",
+    titleGradient: "안심 위치추적 케어 태그",
     subline:
-      "NFC와 선택 연동으로 가족에게 연락처와 위치를 안전하게 전달하고, 일상 동행을 돕습니다.",
+      "NFC와 위치 기반 케어 알림으로 가족에게 연락처·위치 단서를 안전하게 전달합니다.",
     finderTitle: "인식표·안심표를 보셨나요?",
     finderLines: [
       "발견·도움을 주시는 분은 로그인 없이 연락 안내 화면으로 이동합니다.",
       "제품의 URL(/t/번호)을 브라우저에 그대로 입력해 주세요.",
-      "이 화면은 링크유 - 메모리 가족(보호자) 등록·관리용입니다.",
+      "이 화면은 링크유-메모리 가족(보호자) 등록·관리용입니다.",
     ],
   },
   child: {
-    kicker: "링크유 - 키즈 · Smart NFC",
+    kicker: "링크유-키즈 · Smart NFC",
     titleLine1: "우리 아이를 위한",
     titleGradient: "안심 연결 패스",
     subline:
@@ -133,11 +133,11 @@ export const modeLandingCopy: Record<SubjectKind, ModeLandingCopy> = {
     finderLines: [
       "선생님·주변 분은 로그인 없이 연락 안내로 안내됩니다.",
       "제품에 적힌 /t/태그 주소를 그대로 열어 주세요.",
-      "이 화면은 링크유 - 키즈 보호자(법정대리인) 등록·관리용입니다.",
+      "이 화면은 링크유-키즈 보호자(법정대리인) 등록·관리용입니다.",
     ],
   },
   luggage: {
-    kicker: "링크유 - 캐리 · Smart NFC",
+    kicker: "링크유-러기지 · Smart NFC",
     titleLine1: "수하물·캐리어를 위한",
     titleGradient: "분실 방지 디지털 택",
     subline:
@@ -146,11 +146,11 @@ export const modeLandingCopy: Record<SubjectKind, ModeLandingCopy> = {
     finderLines: [
       "발견자는 로그인 없이 연락 안내 페이지로 이동합니다.",
       "제품에 표기된 /t/태그 주소를 열어 주세요.",
-      "이 화면은 링크유 - 캐리 소유자 등록·관리용입니다.",
+      "이 화면은 링크유-러기지 소유자 등록·관리용입니다.",
     ],
   },
   gold: {
-    kicker: "링크유 - 골드 · SMART NFC",
+    kicker: "링크유-골드 · SMART NFC",
     titleLine1: "주얼리를 위한",
     titleGradient: "",
     subline:
@@ -159,7 +159,7 @@ export const modeLandingCopy: Record<SubjectKind, ModeLandingCopy> = {
     finderLines: [
       "발견자는 로그인 없이 연락·안내 페이지로 이동합니다.",
       "제품에 적힌 URL 주소를 그대로 열어 주세요.",
-      "이 화면은 링크유 - 골드 소유자 등록·관리용입니다.",
+      "이 화면은 링크유-골드 소유자 등록·관리용입니다.",
     ],
   },
 };

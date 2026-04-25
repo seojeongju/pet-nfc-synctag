@@ -239,7 +239,7 @@ export default function ModeAnnouncementsAdminClient({ initialRows }: { initialR
             <ChevronDown className="h-4 w-4 shrink-0 text-slate-400 transition-transform group-open:rotate-180" aria-hidden />
           </summary>
           <div className="border-t border-slate-100 px-4 pb-4 pt-1 text-[14px] font-medium leading-relaxed text-slate-600 sm:text-xs sm:font-bold sm:leading-relaxed">
-            모드(펫·메모리·키즈·캐리·골드)와 선택 배치(batch_id), 선택 조직 ID(B2B)로 대상을 좁힐 수 있습니다. 조직 ID가 있으면 해당{" "}
+            모드(펫·메모리·키즈·러기지·골드)와 선택 배치(batch_id), 선택 조직 ID(B2B)로 대상을 좁힐 수 있습니다. 조직 ID가 있으면 해당{" "}
             <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-[0.85em] text-teal-800">?tenant=</code>에서만 보입니다.
             링크·이미지·PDF를 함께 넣을 수 있습니다. 세부 노출 규칙은 팀 운영 문서를 참고하세요.
           </div>

@@ -12,6 +12,7 @@ type FlowTopNavContentProps = {
   session: FlowTopNavSession;
   isAdmin: boolean;
   currentModeLabel?: string;
+  currentModeDescription?: string;
   /** owner/admin 소속 조직이 있을 때만: 조직 관리(감사·멤버 등) */
   orgManageHref?: string | null;
   /** 대시보드에서 로그아웃 시 `/{kind}` 모드 랜딩(보호자 대문)으로. 미지정이면 `/` */
@@ -33,6 +34,7 @@ export function FlowTopNavContent({
   session,
   isAdmin,
   currentModeLabel,
+  currentModeDescription,
   orgManageHref,
   logoutLandingKind,
   className,
@@ -80,8 +82,15 @@ export function FlowTopNavContent({
           </Link>
         )}
         {currentModeLabel ? (
-          <span className="truncate text-[10px] font-black uppercase tracking-wide text-slate-400 min-[390px]:text-[11px]">
-            {currentModeLabel}
+          <span className="min-w-0 leading-tight">
+            <span className="block truncate text-[10px] font-black uppercase tracking-wide text-slate-500 min-[390px]:text-[11px]">
+              {currentModeLabel}
+            </span>
+            {currentModeDescription ? (
+              <span className="block max-w-[11rem] truncate text-[10px] font-bold text-slate-400 min-[390px]:max-w-[13rem]">
+                {currentModeDescription}
+              </span>
+            ) : null}
           </span>
         ) : null}
       </div>
