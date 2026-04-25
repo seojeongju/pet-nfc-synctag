@@ -127,6 +127,10 @@ export function LoginForm() {
     return `/hub?${p.toString()}`;
   }, [searchParams]);
   const [authTab, setAuthTab] = useState<"login" | "signup">("login");
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState("");
   const [signupName, setSignupName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
@@ -141,6 +145,13 @@ export function LoginForm() {
   const kind = parseSubjectKind(kindParam);
   const ctx = MODE_CONTEXT[kind];
   const IconComponent = ctx.icon;
+  const allAgreed = agreeTerms && agreePrivacy && agreeLocation;
+
+  const handleToggleAllAgree = (checked: boolean) => {
+    setAgreeTerms(checked);
+    setAgreePrivacy(checked);
+    setAgreeLocation(checked);
+  };
 
   /**
    * 통합 소셜 로그인 핸들러.
@@ -156,8 +167,9 @@ export function LoginForm() {
    *   callbackURL을 직접 최종 목적지로 설정합니다.
    */
   const handleLogin = async (provider: "google" | "kakao") => {
+    setLoginError("");
     if (!agreeTerms || !agreePrivacy || !agreeLocation) {
-      setSignupError("로그인 전 필수 동의 3가지를 모두 체크해 주세요.");
+      setLoginError("로그인 전 필수 동의 3가지를 모두 체크해 주세요.");
       return;
     }
     // 구글만 /auth/complete 브리지를 경유 (카카오는 기존 방식 유지)
@@ -171,6 +183,45 @@ export function LoginForm() {
       provider,
       callbackURL: resolvedCallbackURL,
     });
+  };
+
+  const handleEmailLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (loginLoading) return;
+    setLoginError("");
+    if (!agreeTerms || !agreePrivacy || !agreeLocation) {
+      setLoginError("로그인 전 필수 동의 3가지를 모두 체크해 주세요.");
+      return;
+    }
+    if (!loginEmail.trim() || !loginPassword) {
+      setLoginError("이메일과 비밀번호를 입력해 주세요.");
+      return;
+    }
+    setLoginLoading(true);
+    try {
+      const result = await signIn.email({
+        email: loginEmail.trim(),
+        password: loginPassword,
+        callbackURL: `/consent?next=${encodeURIComponent(callbackURL)}`,
+      });
+      const signInError = result?.error;
+      if (signInError) {
+        const raw = signInError.message || "로그인에 실패했습니다.";
+        const lower = raw.toLowerCase();
+        setLoginError(
+          lower.includes("invalid email or password")
+            ? "이메일 또는 비밀번호가 올바르지 않습니다."
+            : raw
+        );
+        return;
+      }
+      window.location.assign(`/consent?next=${encodeURIComponent(callbackURL)}`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "로그인 중 오류가 발생했습니다.";
+      setLoginError(message);
+    } finally {
+      setLoginLoading(false);
+    }
   };
 
   const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -272,6 +323,7 @@ export function LoginForm() {
                 type="button"
                 onClick={() => {
                   setAuthTab("login");
+                  setLoginError("");
                   setSignupError("");
                   setSignupSuccess("");
                 }}
@@ -287,6 +339,7 @@ export function LoginForm() {
                 type="button"
                 onClick={() => {
                   setAuthTab("signup");
+                  setLoginError("");
                   setSignupError("");
                   setSignupSuccess("");
                 }}
@@ -302,6 +355,36 @@ export function LoginForm() {
 
             {authTab === "login" ? (
               <div className="space-y-4">
+                <form onSubmit={handleEmailLogin} className="space-y-2.5">
+                  <Input
+                    type="email"
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    placeholder="이메일"
+                    className="h-11 rounded-xl border-slate-200 bg-white font-semibold"
+                    autoComplete="email"
+                    disabled={loginLoading}
+                    required
+                  />
+                  <Input
+                    type="password"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    placeholder="비밀번호"
+                    className="h-11 rounded-xl border-slate-200 bg-white font-semibold"
+                    autoComplete="current-password"
+                    disabled={loginLoading}
+                    required
+                  />
+                  <Button
+                    type="submit"
+                    disabled={loginLoading}
+                    className="w-full h-11 rounded-xl bg-slate-900 text-white font-black hover:bg-teal-600"
+                  >
+                    {loginLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "이메일로 로그인"}
+                  </Button>
+                </form>
+                <p className="text-[10px] font-bold text-slate-400 text-center">또는 소셜 계정으로 계속하기</p>
                 <Button
                   variant="outline"
                   className="w-full h-16 rounded-[24px] border-slate-200 bg-white hover:bg-slate-50 text-slate-800 font-bold text-lg flex items-center justify-center gap-4 transition-all active:scale-[0.98] shadow-sm"
@@ -340,6 +423,11 @@ export function LoginForm() {
                 <p className="text-[11px] font-bold text-slate-500 text-center">
                   처음이신가요? 상단의 회원가입 탭에서 이메일 계정을 만들 수 있어요.
                 </p>
+                {loginError ? (
+                  <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] font-bold text-rose-600">
+                    {loginError}
+                  </p>
+                ) : null}
               </div>
             ) : (
               <form onSubmit={handleSignup} className="space-y-2.5">
@@ -391,6 +479,16 @@ export function LoginForm() {
             )}
 
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 space-y-1.5">
+              <label className="flex items-start gap-2 text-[11px] font-black text-slate-900">
+                <input
+                  type="checkbox"
+                  checked={allAgreed}
+                  onChange={(e) => handleToggleAllAgree(e.target.checked)}
+                  className="mt-0.5 h-3.5 w-3.5"
+                />
+                전체 동의 (필수 3항목)
+              </label>
+              <div className="my-1 h-px bg-slate-200" />
               <label className="flex items-start gap-2 text-[11px] font-bold text-slate-700">
                 <input type="checkbox" checked={agreeTerms} onChange={(e) => setAgreeTerms(e.target.checked)} className="mt-0.5 h-3.5 w-3.5" />
                 (필수) 이용약관 동의 <Link href="/legal/terms" className="underline text-teal-700">보기</Link>
