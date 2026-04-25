@@ -131,6 +131,8 @@ export default function LiveLocationMap({
   const watchIdRef = useRef<number | null>(null);
   const lastMyLatLngRef = useRef<KakaoLatLng | null>(null);
   const mapStateStorageKeyRef = useRef(`live-map-state:${subjectKind}`);
+  /** 첫 진입 시 1회만 getCurrentPosition으로 맵 중심 잡기(타일+UX) */
+  const initialGpsCenterDoneRef = useRef(false);
   /** 좁은 화면에서 좌측 관제 패널만 접기 (우측 도구는 상시 노출) */
   const [mapLeftOpen, setMapLeftOpen] = useState(false);
 
@@ -187,14 +189,18 @@ export default function LiveLocationMap({
         level,
       };
       mapInstanceRef.current = new window.kakao.maps.Map(container, options);
-      
-      // 초기 레이아웃 보정
-      setTimeout(() => {
-        mapInstanceRef.current?.relayout();
-        if (mapInstanceRef.current?.setCenter) {
-            mapInstanceRef.current.setCenter(options.center);
+
+      // 컨테이너 크기가 0이거나 전환 직후면 타일이 흰 화면으로 남을 수 있어 relayout을 여러 번·지연 호출
+      const map = mapInstanceRef.current;
+      const fixLayout = () => {
+        if (!map || !mapContainerRef.current) return;
+        map.relayout();
+        if (map.getCenter && map.setCenter) {
+          const c = map.getCenter();
+          map.setCenter(new window.kakao.maps.LatLng(c.getLat(), c.getLng()));
         }
-      }, 50);
+      };
+      [0, 50, 150, 400, 800].forEach((ms) => setTimeout(fixLayout, ms));
 
       if (window.kakao.maps.MarkerClusterer) {
         clustererRef.current = new window.kakao.maps.MarkerClusterer({
@@ -306,6 +312,58 @@ export default function LiveLocationMap({
       mapInstanceRef.current.setBounds(bounds);
     }
   }, [subjects, sdkLoaded, mapReady, showLostOnly, useClustering]);
+
+  /** 컨테이너 리사이즈(모바일 주소창, 탭 전환) 시 타일 갱신 */
+  useEffect(() => {
+    if (!mapReady || !mapContainerRef.current) return;
+    const el = mapContainerRef.current;
+    const ro = new ResizeObserver(() => {
+      mapInstanceRef.current?.relayout();
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [mapReady]);
+
+  /**
+   * 대시보드 첫 진입: 마커 setBounds 직후에도 짧은 지연으로 한 번 getCurrentPosition → 맵 중심을 내 위치로.
+   * 권한 거부/타임아웃이면 ref만 닫고 기존(대상 bounds 또는 서울) 유지.
+   */
+  useEffect(() => {
+    if (!mapReady || !mapInstanceRef.current || !window.kakao || !navigator.geolocation) return;
+    if (initialGpsCenterDoneRef.current) return;
+    let cancelled = false;
+    const t = setTimeout(() => {
+      if (cancelled) return;
+      const map = mapInstanceRef.current;
+      if (!map) return;
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          if (cancelled || !mapInstanceRef.current) return;
+          const latLng = new window.kakao.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
+          lastMyLatLngRef.current = latLng;
+          if (map.setCenter) {
+            map.setCenter(latLng);
+          } else if (map.panTo) {
+            map.panTo(latLng);
+          }
+          if (map.setLevel) {
+            map.setLevel(4);
+          }
+          map.relayout();
+          [0, 200, 500].forEach((ms) => setTimeout(() => mapInstanceRef.current?.relayout(), ms));
+          initialGpsCenterDoneRef.current = true;
+        },
+        () => {
+          if (!cancelled) initialGpsCenterDoneRef.current = true;
+        },
+        { enableHighAccuracy: true, maximumAge: 15000, timeout: 15000 }
+      );
+    }, 220);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [mapReady]);
 
   useEffect(() => {
     const visibleSubjects = (showLostOnly ? subjects.filter((s) => Boolean(s.is_lost)) : subjects).filter((s) => s.location);
@@ -881,7 +939,10 @@ export default function LiveLocationMap({
 
       <div className="absolute bottom-4 left-4 z-[22] hidden md:block">{telemetryPanel}</div>
 
-      <div ref={mapContainerRef} className="h-[350px] w-full bg-slate-50 transition-all" />
+      <div
+        ref={mapContainerRef}
+        className="relative z-0 h-[min(55vh,420px)] min-h-[280px] w-full bg-slate-100 transition-all"
+      />
       
       {/* 지도가 완전히 준비될 때까지 로딩 표시 유지 */}
       {(!mapReady || !sdkLoaded || configStatus !== "ready" || scriptLoadFailed) && (
