@@ -87,7 +87,8 @@ export default async function ScansPage({
         typeof tenantParam === "string" && tenantParam.trim() ? tenantParam.trim() : null;
 
     const page = Math.max(1, parseInt(pageParam ?? "1", 10));
-    const pageSize = 15;
+    /** 모바일에서 스크롤·페이지 길이 완화(한 화면 2건) */
+    const pageSize = 2;
     const offset = (page - 1) * pageSize;
 
     const tenantQs = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : "";
