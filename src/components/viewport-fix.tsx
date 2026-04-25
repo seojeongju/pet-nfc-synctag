@@ -50,6 +50,21 @@ function forceViewportRecalc() {
   }
 }
 
+function runViewportFixBurst() {
+  const steps = [0, 120, 320, 800] as const;
+  const timers: number[] = [];
+  steps.forEach((ms) => {
+    const id = window.setTimeout(() => {
+      resetViewportMeta();
+      forceViewportRecalc();
+    }, ms);
+    timers.push(id);
+  });
+  return () => {
+    timers.forEach((id) => window.clearTimeout(id));
+  };
+}
+
 export function ViewportFix() {
   const pathname = usePathname();
 
@@ -57,12 +72,14 @@ export function ViewportFix() {
     // 초기 마운트 시 1회 실행
     resetViewportMeta();
     forceViewportRecalc();
+    const cancelBurstOnMount = runViewportFixBurst();
 
     // 탭 포커스 복귀 시 (OAuth 외부 페이지에서 돌아올 때 포함)
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         resetViewportMeta();
         forceViewportRecalc();
+        runViewportFixBurst();
       }
     };
 
@@ -71,11 +88,13 @@ export function ViewportFix() {
       if (!e.persisted) return;
       resetViewportMeta();
       forceViewportRecalc();
+      runViewportFixBurst();
     };
 
     const handleWindowFocus = () => {
       resetViewportMeta();
       forceViewportRecalc();
+      runViewportFixBurst();
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -83,6 +102,7 @@ export function ViewportFix() {
     window.addEventListener("focus", handleWindowFocus);
 
     return () => {
+      cancelBurstOnMount();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("pageshow", handlePageShow);
       window.removeEventListener("focus", handleWindowFocus);
@@ -93,6 +113,8 @@ export function ViewportFix() {
     // OAuth 콜백 후 router.replace로 들어온 "첫 화면"에서도 즉시 보정
     resetViewportMeta();
     forceViewportRecalc();
+    const cancelBurstOnRoute = runViewportFixBurst();
+    return () => cancelBurstOnRoute();
   }, [pathname]);
 
   // 렌더링 없음 — 동작만 수행하는 순수 효과 컴포넌트
