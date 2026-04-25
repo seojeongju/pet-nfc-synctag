@@ -2,6 +2,7 @@ import {
   updateStorageCheckoutIntentStatus,
   listStorageCheckoutIntents,
   getStorageCheckoutIntentStatusCounts,
+  getStorageCheckoutIntentSlaCounts,
 } from "@/app/actions/storage-billing-admin";
 import { rethrowNextControlFlowErrors } from "@/lib/next-redirect-guard";
 
@@ -10,6 +11,8 @@ export const dynamic = "force-dynamic";
 
 const STATUS_FILTERS = ["all", "requested", "processing", "completed", "failed", "cancelled"] as const;
 type StatusFilter = (typeof STATUS_FILTERS)[number];
+const SLA_FILTERS = ["none", "requested_over_24h", "processing_over_24h"] as const;
+type SlaFilter = (typeof SLA_FILTERS)[number];
 
 function formatQuotaLabel(mb: number): string {
   if (mb >= 1024) {
@@ -57,10 +60,16 @@ function editableStatusesForCurrent(
   return ["cancelled"] as const;
 }
 
+function slaFilterLabel(sla: SlaFilter): string | null {
+  if (sla === "requested_over_24h") return "요청 24시간 초과";
+  if (sla === "processing_over_24h") return "처리중 24시간 초과";
+  return null;
+}
+
 export default async function AdminStorageBillingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; sla?: string }>;
 }) {
   try {
     const sp = await searchParams;
@@ -68,14 +77,27 @@ export default async function AdminStorageBillingPage({
       typeof sp.status === "string" && STATUS_FILTERS.includes(sp.status as StatusFilter)
         ? (sp.status as StatusFilter)
         : "all";
+    const sla: SlaFilter =
+      typeof sp.sla === "string" && SLA_FILTERS.includes(sp.sla as SlaFilter)
+        ? (sp.sla as SlaFilter)
+        : "none";
     const query = typeof sp.q === "string" ? sp.q.trim() : "";
     const intents = await listStorageCheckoutIntents({
       limit: 120,
       status,
       query,
+      sla,
     });
     const statusCounts = await getStorageCheckoutIntentStatusCounts(query);
+    const slaCounts = await getStorageCheckoutIntentSlaCounts(query);
     const totalCount = statusCounts.reduce((sum, item) => sum + item.count, 0);
+    const activeSlaLabel = slaFilterLabel(sla);
+    const activeSlaCount =
+      sla === "requested_over_24h"
+        ? slaCounts.requestedOver24h
+        : sla === "processing_over_24h"
+          ? slaCounts.processingOver24h
+          : null;
 
     async function updateIntentAction(formData: FormData) {
       "use server";
@@ -101,9 +123,9 @@ export default async function AdminStorageBillingPage({
 
         <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-100 px-4 py-3">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 mb-2">
               <a
-                href={`/admin/storage-billing?status=all${query ? `&q=${encodeURIComponent(query)}` : ""}`}
+                href={`/admin/storage-billing?status=all&sla=${sla}${query ? `&q=${encodeURIComponent(query)}` : ""}`}
                 className={`rounded-full border px-2.5 py-1 text-[10px] font-black ${status === "all" ? "bg-slate-900 text-white border-slate-900" : statusBadgeClass("all")}`}
               >
                 전체 {totalCount}
@@ -111,7 +133,7 @@ export default async function AdminStorageBillingPage({
               {statusCounts.map((item) => (
                 <a
                   key={item.status}
-                  href={`/admin/storage-billing?status=${item.status}${query ? `&q=${encodeURIComponent(query)}` : ""}`}
+                  href={`/admin/storage-billing?status=${item.status}&sla=${sla}${query ? `&q=${encodeURIComponent(query)}` : ""}`}
                   className={`rounded-full border px-2.5 py-1 text-[10px] font-black ${
                     status === item.status ? "bg-slate-900 text-white border-slate-900" : statusBadgeClass(item.status)
                   }`}
@@ -120,8 +142,39 @@ export default async function AdminStorageBillingPage({
                 </a>
               ))}
             </div>
+            <div className="flex flex-wrap gap-2">
+              <a
+                href={`/admin/storage-billing?status=all&sla=requested_over_24h${query ? `&q=${encodeURIComponent(query)}` : ""}`}
+                className={`rounded-full border border-amber-200 px-2.5 py-1 text-[10px] font-black ${
+                  sla === "requested_over_24h"
+                    ? "bg-amber-600 text-white"
+                    : "bg-amber-50 text-amber-700"
+                }`}
+              >
+                SLA 경과(요청 24h+): {slaCounts.requestedOver24h}
+              </a>
+              <a
+                href={`/admin/storage-billing?status=all&sla=processing_over_24h${query ? `&q=${encodeURIComponent(query)}` : ""}`}
+                className={`rounded-full border border-indigo-200 px-2.5 py-1 text-[10px] font-black ${
+                  sla === "processing_over_24h"
+                    ? "bg-indigo-600 text-white"
+                    : "bg-indigo-50 text-indigo-700"
+                }`}
+              >
+                SLA 경과(처리중 24h+): {slaCounts.processingOver24h}
+              </a>
+              {sla !== "none" ? (
+                <a
+                  href={`/admin/storage-billing?status=${status}${query ? `&q=${encodeURIComponent(query)}` : ""}`}
+                  className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-black text-slate-700"
+                >
+                  SLA 필터 해제
+                </a>
+              ) : null}
+            </div>
           </div>
           <form method="get" className="border-b border-slate-100 p-4 grid grid-cols-1 gap-2 sm:grid-cols-[auto_1fr_auto]">
+            <input type="hidden" name="sla" value={sla} />
             <select
               name="status"
               defaultValue={status}
@@ -148,6 +201,13 @@ export default async function AdminStorageBillingPage({
               필터 적용
             </button>
           </form>
+          {activeSlaLabel ? (
+            <div className="border-b border-slate-100 bg-amber-50/70 px-4 py-2.5">
+              <p className="text-[11px] font-black text-amber-800">
+                현재 우선처리 보기: {activeSlaLabel} {activeSlaCount ?? 0}건
+              </p>
+            </div>
+          ) : null}
           {intents.length === 0 ? (
             <div className="px-4 py-10 text-center">
               <p className="text-sm font-black text-slate-700">조건에 맞는 구매 요청이 없습니다.</p>

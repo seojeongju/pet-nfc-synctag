@@ -19,6 +19,7 @@ export type ListStorageCheckoutIntentOptions = {
   limit?: number;
   status?: StorageCheckoutIntentStatus | "all";
   query?: string;
+  sla?: "none" | "requested_over_24h" | "processing_over_24h";
 };
 
 const ALLOWED_STATUS_TRANSITIONS: Record<StorageCheckoutIntentStatus, StorageCheckoutIntentStatus[]> = {
@@ -48,6 +49,11 @@ export type StorageCheckoutIntentStatusCount = {
   count: number;
 };
 
+export type StorageCheckoutIntentSlaCounts = {
+  requestedOver24h: number;
+  processingOver24h: number;
+};
+
 async function assertAdminRole() {
   const context = getCfRequestContext();
   const auth = getAuth(context.env);
@@ -70,6 +76,7 @@ export async function listStorageCheckoutIntents(
   const binds: Array<string | number> = [];
   const status = options.status;
   const query = (options.query ?? "").trim();
+  const sla = options.sla ?? "none";
 
   if (
     status &&
@@ -83,6 +90,11 @@ export async function listStorageCheckoutIntents(
     where.push("(i.id LIKE ? OR i.user_id LIKE ? OR COALESCE(u.email, '') LIKE ?)");
     const q = `%${query}%`;
     binds.push(q, q, q);
+  }
+  if (sla === "requested_over_24h") {
+    where.push("i.status = 'requested' AND i.created_at <= DATETIME('now', '-24 hours')");
+  } else if (sla === "processing_over_24h") {
+    where.push("i.status = 'processing' AND i.updated_at <= DATETIME('now', '-24 hours')");
   }
 
   const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
@@ -138,6 +150,35 @@ export async function getStorageCheckoutIntentStatusCounts(
     status,
     count: map.get(status) ?? 0,
   }));
+}
+
+export async function getStorageCheckoutIntentSlaCounts(
+  query?: string
+): Promise<StorageCheckoutIntentSlaCounts> {
+  await assertAdminRole();
+  const q = (query ?? "").trim();
+  const where = q ? "AND (i.id LIKE ? OR i.user_id LIKE ? OR COALESCE(u.email, '') LIKE ?)" : "";
+  const binds = q ? [`%${q}%`, `%${q}%`, `%${q}%`] : [];
+
+  const row = await getDB()
+    .prepare(
+      `SELECT
+         SUM(CASE WHEN i.status = 'requested'
+                   AND i.created_at <= DATETIME('now', '-24 hours') THEN 1 ELSE 0 END) AS requested_over_24h,
+         SUM(CASE WHEN i.status = 'processing'
+                   AND i.updated_at <= DATETIME('now', '-24 hours') THEN 1 ELSE 0 END) AS processing_over_24h
+       FROM storage_addon_checkout_intents i
+       LEFT JOIN user u ON u.id = i.user_id
+       WHERE 1 = 1
+       ${where}`
+    )
+    .bind(...binds)
+    .first<{ requested_over_24h?: number | string | null; processing_over_24h?: number | string | null }>();
+
+  return {
+    requestedOver24h: Number(row?.requested_over_24h ?? 0),
+    processingOver24h: Number(row?.processing_over_24h ?? 0),
+  };
 }
 
 export async function updateStorageCheckoutIntentStatus(input: {
