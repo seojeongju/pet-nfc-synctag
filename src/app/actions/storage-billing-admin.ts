@@ -15,6 +15,20 @@ export type StorageCheckoutIntentStatus =
   | "failed"
   | "cancelled";
 
+export type ListStorageCheckoutIntentOptions = {
+  limit?: number;
+  status?: StorageCheckoutIntentStatus | "all";
+  query?: string;
+};
+
+const ALLOWED_STATUS_TRANSITIONS: Record<StorageCheckoutIntentStatus, StorageCheckoutIntentStatus[]> = {
+  requested: ["processing", "completed", "failed", "cancelled"],
+  processing: ["completed", "failed", "cancelled"],
+  completed: [],
+  failed: ["processing", "cancelled"],
+  cancelled: [],
+};
+
 export type StorageCheckoutIntentRow = {
   id: string;
   user_id: string;
@@ -27,6 +41,11 @@ export type StorageCheckoutIntentRow = {
   note: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type StorageCheckoutIntentStatusCount = {
+  status: StorageCheckoutIntentStatus;
+  count: number;
 };
 
 async function assertAdminRole() {
@@ -42,23 +61,83 @@ async function assertAdminRole() {
   return session.user.id;
 }
 
-export async function listStorageCheckoutIntents(limit = 100): Promise<StorageCheckoutIntentRow[]> {
+export async function listStorageCheckoutIntents(
+  options: ListStorageCheckoutIntentOptions = {}
+): Promise<StorageCheckoutIntentRow[]> {
   await assertAdminRole();
-  const safeLimit = Math.min(300, Math.max(1, Math.trunc(limit)));
+  const safeLimit = Math.min(300, Math.max(1, Math.trunc(options.limit ?? 100)));
+  const where: string[] = [];
+  const binds: Array<string | number> = [];
+  const status = options.status;
+  const query = (options.query ?? "").trim();
+
+  if (
+    status &&
+    status !== "all" &&
+    (["requested", "processing", "completed", "failed", "cancelled"] as const).includes(status)
+  ) {
+    where.push("i.status = ?");
+    binds.push(status);
+  }
+  if (query) {
+    where.push("(i.id LIKE ? OR i.user_id LIKE ? OR COALESCE(u.email, '') LIKE ?)");
+    const q = `%${query}%`;
+    binds.push(q, q, q);
+  }
+
+  const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+  const sql = `SELECT i.id, i.user_id, u.email AS user_email, i.product_id,
+                      p.name AS product_name, p.extra_quota_mb, p.monthly_price_krw,
+                      i.status, i.note, i.created_at, i.updated_at
+                 FROM storage_addon_checkout_intents i
+                 INNER JOIN storage_addon_products p ON p.id = i.product_id
+                 LEFT JOIN user u ON u.id = i.user_id
+                 ${whereSql}
+                ORDER BY i.created_at DESC
+                LIMIT ?`;
+  binds.push(safeLimit);
+
   const { results } = await getDB()
-    .prepare(
-      `SELECT i.id, i.user_id, u.email AS user_email, i.product_id,
-              p.name AS product_name, p.extra_quota_mb, p.monthly_price_krw,
-              i.status, i.note, i.created_at, i.updated_at
-         FROM storage_addon_checkout_intents i
-         INNER JOIN storage_addon_products p ON p.id = i.product_id
-         LEFT JOIN user u ON u.id = i.user_id
-        ORDER BY i.created_at DESC
-        LIMIT ?`
-    )
-    .bind(safeLimit)
+    .prepare(sql)
+    .bind(...binds)
     .all<StorageCheckoutIntentRow>();
   return results ?? [];
+}
+
+export async function getStorageCheckoutIntentStatusCounts(
+  query?: string
+): Promise<StorageCheckoutIntentStatusCount[]> {
+  await assertAdminRole();
+  const q = (query ?? "").trim();
+  const where = q ? "WHERE (i.id LIKE ? OR i.user_id LIKE ? OR COALESCE(u.email, '') LIKE ?)" : "";
+  const binds = q ? [`%${q}%`, `%${q}%`, `%${q}%`] : [];
+
+  const { results } = await getDB()
+    .prepare(
+      `SELECT i.status AS status, COUNT(*) AS count
+       FROM storage_addon_checkout_intents i
+       LEFT JOIN user u ON u.id = i.user_id
+       ${where}
+       GROUP BY i.status`
+    )
+    .bind(...binds)
+    .all<{ status: StorageCheckoutIntentStatus; count: number | string }>();
+
+  const map = new Map<StorageCheckoutIntentStatus, number>([
+    ["requested", 0],
+    ["processing", 0],
+    ["completed", 0],
+    ["failed", 0],
+    ["cancelled", 0],
+  ]);
+  for (const row of results ?? []) {
+    map.set(row.status, Number(row.count ?? 0));
+  }
+
+  return (["requested", "processing", "completed", "failed", "cancelled"] as const).map((status) => ({
+    status,
+    count: map.get(status) ?? 0,
+  }));
 }
 
 export async function updateStorageCheckoutIntentStatus(input: {
@@ -83,6 +162,14 @@ export async function updateStorageCheckoutIntentStatus(input: {
     .bind(intentId)
     .first<{ id: string; user_id: string; product_id: string; status: StorageCheckoutIntentStatus }>();
   if (!intent) throw new Error("요청 정보를 찾을 수 없습니다.");
+  if (intent.status === status) {
+    revalidatePath("/admin/storage-billing");
+    return { ok: true };
+  }
+  const allowedNext = ALLOWED_STATUS_TRANSITIONS[intent.status] ?? [];
+  if (!allowedNext.includes(status)) {
+    throw new Error(`상태 전환 불가: ${intent.status} -> ${status}`);
+  }
 
   await db
     .prepare(

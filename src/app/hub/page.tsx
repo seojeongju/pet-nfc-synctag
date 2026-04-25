@@ -20,7 +20,11 @@ import { resolveDeviceAssignedKind } from "@/lib/device-mode";
 import { listTenantsForUser } from "@/lib/tenant-membership";
 import { resolvePersonalPlan } from "@/lib/plan-resolution";
 import { getTenantPlanUsageSummary } from "@/lib/tenant-quota";
-import { getUserStorageQuotaSummary, listActiveStorageAddonProducts } from "@/lib/storage-quota";
+import {
+  getUserStorageQuotaSummary,
+  listActiveStorageAddonProducts,
+  listUserStorageAddonSubscriptions,
+} from "@/lib/storage-quota";
 import { requestStorageAddonCheckout } from "@/app/actions/storage-billing";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
 import { getUserConsentStatus } from "@/lib/privacy-consent";
@@ -56,6 +60,26 @@ function formatQuotaLabel(mb: number): string {
 
 function formatKrw(value: number): string {
   return `${new Intl.NumberFormat("ko-KR").format(value)}원`;
+}
+
+function formatDateTime(value: string | null): string {
+  if (!value) return "-";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" });
+}
+
+function formatSubscriptionStatus(status: "active" | "trialing" | "past_due" | "cancelled"): string {
+  switch (status) {
+    case "active":
+      return "정상 이용중";
+    case "trialing":
+      return "체험중";
+    case "past_due":
+      return "결제 필요";
+    case "cancelled":
+      return "해지됨";
+  }
 }
 
 async function getPersonalOnboardingProgress(
@@ -166,6 +190,9 @@ export default async function HubPage({
   const personalPlan = await resolvePersonalPlan(db, session.user.id).catch(() => null);
   const storageQuota = await getUserStorageQuotaSummary(db, session.user.id).catch(() => null);
   const storageAddonProducts = await listActiveStorageAddonProducts(db).catch(() => []);
+  const storageAddonSubscriptions = await listUserStorageAddonSubscriptions(db, session.user.id).catch(
+    () => []
+  );
 
   const tenantUsageEntries = await Promise.all(
     tenants.map(async (t) => {
@@ -422,6 +449,59 @@ export default async function HubPage({
             </p>
           </section>
         )}
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3 shadow-sm">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">내 추가 용량 구독</p>
+            <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-700">
+              {storageAddonSubscriptions.filter((s) => s.status === "active" || s.status === "trialing").length}건
+            </span>
+          </div>
+          {storageAddonSubscriptions.length === 0 ? (
+            <p className="text-[11px] font-bold text-slate-500">현재 활성/대기 중인 추가 용량 구독이 없습니다.</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-2">
+              {storageAddonSubscriptions.map((sub) => {
+                const isActive = sub.status === "active" || sub.status === "trialing";
+                return (
+                  <div
+                    key={sub.id}
+                    className={cn(
+                      "rounded-xl border px-3 py-3",
+                      isActive ? "border-teal-200 bg-teal-50/60" : "border-slate-200 bg-slate-50"
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-[12px] font-black text-slate-800 break-words">{sub.productName}</p>
+                        <p className="text-[10px] font-bold text-slate-500 mt-0.5">
+                          +{formatQuotaLabel(sub.extraQuotaMb)} · 월 {formatKrw(sub.monthlyPriceKrw)}
+                        </p>
+                      </div>
+                      <span
+                        className={cn(
+                          "rounded-full px-2 py-1 text-[10px] font-black",
+                          sub.status === "active"
+                            ? "bg-teal-100 text-teal-700"
+                            : sub.status === "trialing"
+                              ? "bg-indigo-100 text-indigo-700"
+                              : sub.status === "past_due"
+                                ? "bg-amber-100 text-amber-700"
+                                : "bg-slate-200 text-slate-600"
+                        )}
+                      >
+                        {formatSubscriptionStatus(sub.status)}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-[10px] font-semibold text-slate-500">
+                      다음 갱신/종료 예정: {formatDateTime(sub.currentPeriodEnd)}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
         <section className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3 shadow-sm">
           <div className="flex items-center justify-between gap-2">

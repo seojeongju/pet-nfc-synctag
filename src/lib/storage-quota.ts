@@ -1,5 +1,9 @@
 import type { D1Database } from "@cloudflare/workers-types";
-import type { StorageAddonProductSummary, UserStorageQuotaSummary } from "@/types/storage-quota";
+import type {
+  StorageAddonProductSummary,
+  UserStorageAddonSubscriptionSummary,
+  UserStorageQuotaSummary,
+} from "@/types/storage-quota";
 
 type StorageProfileProjection = {
   base_quota_mb?: number | null;
@@ -128,5 +132,43 @@ export async function listActiveStorageAddonProducts(
     extraQuotaMb: Math.max(0, Number(row.extra_quota_mb ?? 0)),
     monthlyPriceKrw: Math.max(0, Number(row.monthly_price_krw ?? 0)),
     sortOrder: Number(row.sort_order ?? 0),
+  }));
+}
+
+export async function listUserStorageAddonSubscriptions(
+  db: D1Database,
+  userId: string
+): Promise<UserStorageAddonSubscriptionSummary[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT s.id, s.product_id, p.name AS product_name, p.extra_quota_mb, p.monthly_price_krw,
+              s.status, s.current_period_end, s.created_at
+       FROM user_storage_addon_subscriptions s
+       INNER JOIN storage_addon_products p ON p.id = s.product_id
+       WHERE s.user_id = ?
+       ORDER BY CASE s.status WHEN 'active' THEN 0 WHEN 'trialing' THEN 1 ELSE 9 END,
+                s.created_at DESC`
+    )
+    .bind(userId)
+    .all<{
+      id: string;
+      product_id: string;
+      product_name: string;
+      extra_quota_mb: number;
+      monthly_price_krw: number;
+      status: "active" | "past_due" | "cancelled" | "trialing";
+      current_period_end: string | null;
+      created_at: string;
+    }>();
+
+  return (results ?? []).map((row) => ({
+    id: row.id,
+    productId: row.product_id,
+    productName: row.product_name,
+    extraQuotaMb: Math.max(0, Number(row.extra_quota_mb ?? 0)),
+    monthlyPriceKrw: Math.max(0, Number(row.monthly_price_krw ?? 0)),
+    status: row.status,
+    currentPeriodEnd: row.current_period_end ?? null,
+    createdAt: row.created_at,
   }));
 }

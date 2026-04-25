@@ -47,3 +47,14 @@ export type UserStorageQuotaSummary = {
   freeQuotaMb: number;
   usagePercent: number;
 };
+
+export type UserStorageAddonSubscriptionSummary = {
+  id: string;
+  productId: string;
+  productName: string;
+  extraQuotaMb: number;
+  monthlyPriceKrw: number;
+  status: StorageAddonSubscriptionStatus;
+  currentPeriodEnd: string | null;
+  createdAt: string;
+};
