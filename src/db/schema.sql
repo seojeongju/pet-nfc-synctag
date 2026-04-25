@@ -156,3 +156,112 @@ CREATE INDEX IF NOT EXISTS idx_geofences_owner ON geofences(owner_id);
 
 -- Multi-tenancy & subscriptions (see migrations/0008_tenants_subscriptions.sql)
 -- tenants, tenant_members, plans, subscriptions; pets.tenant_id, tags.tenant_id (nullable)
+
+-- Personal album storage quota & paid addons (see migrations/0013_user_storage_quota_and_addons.sql)
+CREATE TABLE IF NOT EXISTS user_storage_profiles (
+    user_id TEXT PRIMARY KEY REFERENCES user(id) ON DELETE CASCADE,
+    base_quota_mb INTEGER NOT NULL DEFAULT 512,
+    used_quota_mb INTEGER NOT NULL DEFAULT 0,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS storage_addon_products (
+    id TEXT PRIMARY KEY,
+    code TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    extra_quota_mb INTEGER NOT NULL,
+    monthly_price_krw INTEGER NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_active INTEGER NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS user_storage_addon_subscriptions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,
+    product_id TEXT NOT NULL REFERENCES storage_addon_products(id),
+    status TEXT NOT NULL DEFAULT 'active',
+    current_period_end DATETIME,
+    external_provider TEXT,
+    external_id TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_storage_addons_user ON user_storage_addon_subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_storage_addons_status ON user_storage_addon_subscriptions(status);
+
+INSERT OR IGNORE INTO storage_addon_products
+    (id, code, name, extra_quota_mb, monthly_price_krw, sort_order, is_active)
+VALUES
+    ('addon_storage_1gb', 'storage_1gb', '스토리지 +1GB', 1024, 1900, 0, 1),
+    ('addon_storage_3gb', 'storage_3gb', '스토리지 +3GB', 3072, 4900, 1, 1),
+    ('addon_storage_10gb', 'storage_10gb', '스토리지 +10GB', 10240, 12900, 2, 1);
+
+-- Core albums (guardian-only by default)
+CREATE TABLE IF NOT EXISTS albums (
+    id TEXT PRIMARY KEY,
+    owner_id TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,
+    subject_kind TEXT NOT NULL DEFAULT 'pet',
+    tenant_id TEXT REFERENCES tenants(id) ON DELETE SET NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    cover_asset_id TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_albums_owner_kind ON albums(owner_id, subject_kind, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_albums_tenant ON albums(tenant_id, subject_kind, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS album_assets (
+    id TEXT PRIMARY KEY,
+    album_id TEXT NOT NULL REFERENCES albums(id) ON DELETE CASCADE,
+    r2_key TEXT NOT NULL UNIQUE,
+    mime_type TEXT NOT NULL,
+    size_bytes INTEGER NOT NULL,
+    size_mb INTEGER NOT NULL,
+    caption TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_album_assets_album_created ON album_assets(album_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS album_share_links (
+    id TEXT PRIMARY KEY,
+    album_id TEXT NOT NULL REFERENCES albums(id) ON DELETE CASCADE,
+    created_by_user_id TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL UNIQUE,
+    expires_at DATETIME,
+    revoked_at DATETIME,
+    view_count INTEGER NOT NULL DEFAULT 0,
+    last_viewed_at DATETIME,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_album_share_links_album ON album_share_links(album_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_album_share_links_active ON album_share_links(album_id, revoked_at, expires_at);
+
+CREATE TABLE IF NOT EXISTS album_share_access_logs (
+    id TEXT PRIMARY KEY,
+    share_link_id TEXT NOT NULL REFERENCES album_share_links(id) ON DELETE CASCADE,
+    ip_address TEXT,
+    user_agent TEXT,
+    success INTEGER NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_album_share_access_link_created ON album_share_access_logs(share_link_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS storage_addon_checkout_intents (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,
+    product_id TEXT NOT NULL REFERENCES storage_addon_products(id),
+    status TEXT NOT NULL DEFAULT 'requested',
+    note TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_storage_checkout_intents_user ON storage_addon_checkout_intents(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_storage_checkout_intents_status ON storage_addon_checkout_intents(status, created_at DESC);

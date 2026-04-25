@@ -8,6 +8,7 @@ import { DashboardAnnouncementBell } from "@/components/dashboard/DashboardAnnou
 import { DashboardContextualHelp } from "@/components/dashboard/DashboardContextualHelp";
 import { dashboardTopNavLinkClass } from "@/lib/dashboard-nav-styles";
 import {
+  isDashboardAlbums,
   isDashboardGeofences,
   isDashboardHome,
   isDashboardPets,
@@ -43,6 +44,7 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
   const dashPets = isDashboardPets(pathname);
   const dashScans = isDashboardScans(pathname);
   const dashGeo = isDashboardGeofences(pathname);
+  const dashAlbums = isDashboardAlbums(pathname);
 
   const dashLinks = (
     <>
@@ -54,6 +56,9 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
       </a>
       <a href={`/dashboard/${kind}/scans${tenantQs}`} className={dashboardTopNavLinkClass(dashScans)} aria-current={dashScans ? "page" : undefined}>
         스캔 기록
+      </a>
+      <a href={`/dashboard/${kind}/albums${tenantQs}`} className={dashboardTopNavLinkClass(dashAlbums)} aria-current={dashAlbums ? "page" : undefined}>
+        전자앨범
       </a>
       <a
         href={`/dashboard/${kind}/geofences${tenantQs}`}

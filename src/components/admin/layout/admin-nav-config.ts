@@ -11,6 +11,7 @@ import {
   History,
   Users,
   ShieldCheck,
+  CreditCard,
 } from "lucide-react";
 
 export type NavLeaf = { href: string; label: string; icon: LucideIcon; color: string };
@@ -45,6 +46,7 @@ export const ADMIN_NAV_SECTIONS: NavSection[] = [
       { href: "/admin/users", label: "사용자 관리", icon: Users, color: "text-sky-600" },
       { href: "/admin/tenants", label: "조직·멤버 관리", icon: Building2, color: "text-emerald-500" },
       { href: "/admin/privacy", label: "개인정보 동의 이력", icon: ShieldCheck, color: "text-rose-500" },
+      { href: "/admin/storage-billing", label: "스토리지 결제 요청", icon: CreditCard, color: "text-violet-600" },
     ],
   },
 ];

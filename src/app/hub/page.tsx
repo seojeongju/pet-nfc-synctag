@@ -20,6 +20,8 @@ import { resolveDeviceAssignedKind } from "@/lib/device-mode";
 import { listTenantsForUser } from "@/lib/tenant-membership";
 import { resolvePersonalPlan } from "@/lib/plan-resolution";
 import { getTenantPlanUsageSummary } from "@/lib/tenant-quota";
+import { getUserStorageQuotaSummary, listActiveStorageAddonProducts } from "@/lib/storage-quota";
+import { requestStorageAddonCheckout } from "@/app/actions/storage-billing";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
 import { getUserConsentStatus } from "@/lib/privacy-consent";
 import {
@@ -41,6 +43,19 @@ const hubIcons: Record<SubjectKind, typeof PawPrint> = {
 
 function limitText(used: number, limit: number | null): string {
   return `${used}/${limit == null ? "∞" : limit}`;
+}
+
+function formatQuotaLabel(mb: number): string {
+  if (mb >= 1024) {
+    const gb = mb / 1024;
+    const text = Number.isInteger(gb) ? `${gb}` : gb.toFixed(1);
+    return `${text}GB`;
+  }
+  return `${mb}MB`;
+}
+
+function formatKrw(value: number): string {
+  return `${new Intl.NumberFormat("ko-KR").format(value)}원`;
 }
 
 async function getPersonalOnboardingProgress(
@@ -87,7 +102,13 @@ async function getPersonalOnboardingProgress(
 export default async function HubPage({
   searchParams,
 }: {
-  searchParams: Promise<{ device?: string; uid?: string; onboarding?: string; kind?: string }>;
+  searchParams: Promise<{
+    device?: string;
+    uid?: string;
+    onboarding?: string;
+    kind?: string;
+    billing_msg?: string;
+  }>;
 }) {
   const context = getCfRequestContext();
   const auth = getAuth(context.env);
@@ -116,6 +137,10 @@ export default async function HubPage({
     : allowedSubjectKinds;
 
   const isWelcomeOnboarding = sp.onboarding === "welcome";
+  const billingMessage =
+    typeof sp.billing_msg === "string" && sp.billing_msg.trim()
+      ? decodeURIComponent(sp.billing_msg.trim())
+      : null;
   if (!isPlatformAdmin && !isWelcomeOnboarding) {
     const oneShot = getHubRedirectForGuardian(allowedSubjectKinds);
     if (oneShot) {
@@ -139,6 +164,8 @@ export default async function HubPage({
 
   const tenants = await listTenantsForUser(db, session.user.id).catch(() => []);
   const personalPlan = await resolvePersonalPlan(db, session.user.id).catch(() => null);
+  const storageQuota = await getUserStorageQuotaSummary(db, session.user.id).catch(() => null);
+  const storageAddonProducts = await listActiveStorageAddonProducts(db).catch(() => []);
 
   const tenantUsageEntries = await Promise.all(
     tenants.map(async (t) => {
@@ -200,6 +227,24 @@ export default async function HubPage({
   ] as const;
   const onboardingDoneCount = onboardingSteps.filter((step) => step.done).length;
 
+  async function requestAddonCheckoutAction(formData: FormData) {
+    "use server";
+    const productId = String(formData.get("product_id") ?? "").trim();
+    if (!productId) {
+      redirect("/hub?billing_msg=" + encodeURIComponent("상품 정보가 올바르지 않습니다."));
+    }
+    try {
+      const result = await requestStorageAddonCheckout(productId);
+      redirect(
+        "/hub?billing_msg=" +
+          encodeURIComponent(`구매 요청이 접수되었습니다. 요청 ID: ${result.intentId}`)
+      );
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "구매 요청 접수에 실패했습니다.";
+      redirect("/hub?billing_msg=" + encodeURIComponent(message));
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-outfit">
       <FlowTopNav variant="landing" session={session} isAdmin={isPlatformAdmin} />
@@ -226,6 +271,15 @@ export default async function HubPage({
             <p className="text-[11px] font-bold text-slate-400">
               개인 플랜: <span className="text-slate-600">{personalPlan.plan.name}</span>
               {personalPlan.source === "subscription" ? " · 구독" : " · 계정 설정"}
+            </p>
+          )}
+          {storageQuota && (
+            <p className="text-[11px] font-bold text-slate-400">
+              앨범 저장공간:{" "}
+              <span className="text-slate-600">
+                {storageQuota.usedQuotaMb}MB / {storageQuota.effectiveQuotaMb}MB
+              </span>
+              {storageQuota.extraQuotaMb > 0 ? ` (추가 ${storageQuota.extraQuotaMb}MB)` : " (기본 512MB)"}
             </p>
           )}
           <a
@@ -322,6 +376,91 @@ export default async function HubPage({
             <li>대시보드에서 관리 대상을 등록하고 NFC 태그를 연결합니다.</li>
             <li>조직(B2B)은 소속 조직 카드에서 관리·대시보드로 이동할 수 있습니다.</li>
           </ol>
+        </section>
+
+        {billingMessage && (
+          <section className="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 shadow-sm">
+            <p className="text-[12px] font-black text-teal-800 break-words">{billingMessage}</p>
+          </section>
+        )}
+
+        {storageQuota && (
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3 shadow-sm">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">전자앨범 저장공간</p>
+              <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-700">
+                {storageQuota.usagePercent}%
+              </span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+              <div
+                className={cn(
+                  "h-full rounded-full transition-[width] duration-500 ease-out",
+                  storageQuota.usagePercent >= 90
+                    ? "bg-rose-500"
+                    : storageQuota.usagePercent >= 75
+                      ? "bg-amber-500"
+                      : "bg-teal-500"
+                )}
+                style={{ width: `${storageQuota.usagePercent}%` }}
+              />
+            </div>
+            <p className="text-[12px] font-semibold text-slate-600 leading-relaxed">
+              사용량 {storageQuota.usedQuotaMb}MB / 총 {storageQuota.effectiveQuotaMb}MB · 남은 용량{" "}
+              {storageQuota.freeQuotaMb}MB
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-black text-slate-700">
+                기본 제공: {storageQuota.baseQuotaMb}MB
+              </span>
+              <span className="rounded-xl border border-teal-100 bg-teal-50 px-3 py-1.5 text-[11px] font-black text-teal-700">
+                추가 구매: {storageQuota.extraQuotaMb}MB
+              </span>
+            </div>
+            <p className="text-[10px] font-medium text-slate-400 leading-relaxed">
+              전자앨범 업로드 시 사용량이 증가합니다. 추후 결제 연동 후 추가 용량 상품(+1GB/+3GB/+10GB)을 여기에서 구매할 수 있습니다.
+            </p>
+          </section>
+        )}
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3 shadow-sm">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">추가 용량 상품</p>
+            <span className="rounded-full bg-teal-50 px-2 py-1 text-[10px] font-black text-teal-700">
+              준비중
+            </span>
+          </div>
+          <p className="text-[12px] font-semibold text-slate-600 leading-relaxed">
+            기본 제공량 이후 더 저장하려면 월 구독으로 용량을 확장할 수 있습니다. 결제 연동 전 단계에서는 상품 확인만 가능합니다.
+          </p>
+          {storageAddonProducts.length === 0 ? (
+            <p className="text-[11px] font-bold text-slate-500">등록된 추가 용량 상품이 없습니다.</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-2">
+              {storageAddonProducts.map((product) => (
+                <div
+                  key={product.id}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="text-[12px] font-black text-slate-800 break-words">{product.name}</p>
+                    <p className="text-[10px] font-bold text-slate-500">
+                      추가 {formatQuotaLabel(product.extraQuotaMb)} · 월 {formatKrw(product.monthlyPriceKrw)}
+                    </p>
+                  </div>
+                  <form action={requestAddonCheckoutAction}>
+                    <input type="hidden" name="product_id" value={product.id} />
+                    <button
+                      type="submit"
+                      className="shrink-0 rounded-lg border border-teal-200 bg-white px-3 py-1.5 text-[10px] font-black text-teal-700 hover:bg-teal-50"
+                    >
+                      구매 요청
+                    </button>
+                  </form>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {tenants.length > 0 && (

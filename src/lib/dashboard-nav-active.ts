@@ -20,3 +20,8 @@ export function isDashboardGeofences(pathname: string): boolean {
   return pathname === "/dashboard/geofences" || pathname.startsWith("/dashboard/geofences/") ||
          (pathname.includes("/dashboard/") && pathname.includes("/geofences"));
 }
+
+export function isDashboardAlbums(pathname: string): boolean {
+  return pathname === "/dashboard/albums" || pathname.startsWith("/dashboard/albums/") ||
+         (pathname.includes("/dashboard/") && pathname.includes("/albums"));
+}
