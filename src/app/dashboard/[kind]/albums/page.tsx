@@ -30,6 +30,26 @@ function formatDateTime(value: string | null): string {
   return d.toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" });
 }
 
+function buildAlbumsHref(
+  kind: string,
+  tenantId: string | null,
+  params: {
+    sharePath?: string;
+    message?: string;
+    sort?: string;
+    activeShareOnly?: boolean;
+  }
+): string {
+  const p = new URLSearchParams();
+  if (tenantId) p.set("tenant", tenantId);
+  if (params.sort && params.sort !== "updated") p.set("sort", params.sort);
+  if (params.activeShareOnly) p.set("active_share_only", "1");
+  if (params.sharePath) p.set("share", params.sharePath);
+  if (params.message) p.set("msg", params.message);
+  const query = p.toString();
+  return `/dashboard/${kind}/albums${query ? `?${query}` : ""}`;
+}
+
 export default async function AlbumsPage({
   params,
   searchParams,
@@ -133,21 +153,6 @@ export default async function AlbumsPage({
       );
       return bUpdated - aUpdated;
     });
-    const buildAlbumsHref = (params: {
-      sharePath?: string;
-      message?: string;
-      sort?: string;
-      activeShareOnly?: boolean;
-    }) => {
-      const p = new URLSearchParams();
-      if (tenantId) p.set("tenant", tenantId);
-      if (params.sort && params.sort !== "updated") p.set("sort", params.sort);
-      if (params.activeShareOnly) p.set("active_share_only", "1");
-      if (params.sharePath) p.set("share", params.sharePath);
-      if (params.message) p.set("msg", params.message);
-      const query = p.toString();
-      return `/dashboard/${kind}/albums${query ? `?${query}` : ""}`;
-    };
 
     async function createAlbumAction(formData: FormData) {
       "use server";
@@ -156,7 +161,7 @@ export default async function AlbumsPage({
       try {
         await createAlbum({ kind, tenantId, title, description });
         redirect(
-          buildAlbumsHref({
+          buildAlbumsHref(kind, tenantId, {
             message: encodeURIComponent("앨범이 생성되었습니다."),
             sort: sortBy,
             activeShareOnly,
@@ -165,7 +170,7 @@ export default async function AlbumsPage({
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : "앨범 생성에 실패했습니다.";
         redirect(
-          buildAlbumsHref({
+          buildAlbumsHref(kind, tenantId, {
             message: encodeURIComponent(message),
             sort: sortBy,
             activeShareOnly,
@@ -295,7 +300,7 @@ export default async function AlbumsPage({
                 try {
                   await uploadAlbumAsset({ albumId: album.id, file, caption });
                   redirect(
-                    buildAlbumsHref({
+                    buildAlbumsHref(kind, tenantId, {
                       message: encodeURIComponent(`"${album.title}"에 이미지가 업로드되었습니다.`),
                       sort: sortBy,
                       activeShareOnly,
@@ -304,7 +309,7 @@ export default async function AlbumsPage({
                 } catch (error: unknown) {
                   const message = error instanceof Error ? error.message : "이미지 업로드에 실패했습니다.";
                   redirect(
-                    buildAlbumsHref({
+                    buildAlbumsHref(kind, tenantId, {
                       message: encodeURIComponent(message),
                       sort: sortBy,
                       activeShareOnly,
@@ -318,7 +323,7 @@ export default async function AlbumsPage({
                 try {
                   await deleteAlbumAsset({ albumId: album.id, assetId });
                   redirect(
-                    buildAlbumsHref({
+                    buildAlbumsHref(kind, tenantId, {
                       message: encodeURIComponent("이미지를 삭제했습니다."),
                       sort: sortBy,
                       activeShareOnly,
@@ -327,7 +332,7 @@ export default async function AlbumsPage({
                 } catch (error: unknown) {
                   const message = error instanceof Error ? error.message : "이미지 삭제에 실패했습니다.";
                   redirect(
-                    buildAlbumsHref({
+                    buildAlbumsHref(kind, tenantId, {
                       message: encodeURIComponent(message),
                       sort: sortBy,
                       activeShareOnly,
@@ -341,7 +346,7 @@ export default async function AlbumsPage({
                 try {
                   const created = await createAlbumShareLink({ albumId: album.id, expiresInDays: days });
                   redirect(
-                    buildAlbumsHref({
+                    buildAlbumsHref(kind, tenantId, {
                       sharePath: encodeURIComponent(created.sharePath),
                       sort: sortBy,
                       activeShareOnly,
@@ -350,7 +355,7 @@ export default async function AlbumsPage({
                 } catch (error: unknown) {
                   const message = error instanceof Error ? error.message : "공유 링크 생성에 실패했습니다.";
                   redirect(
-                    buildAlbumsHref({
+                    buildAlbumsHref(kind, tenantId, {
                       message: encodeURIComponent(message),
                       sort: sortBy,
                       activeShareOnly,
@@ -364,7 +369,7 @@ export default async function AlbumsPage({
                 try {
                   await revokeAlbumShareLink({ albumId: album.id, shareLinkId });
                   redirect(
-                    buildAlbumsHref({
+                    buildAlbumsHref(kind, tenantId, {
                       message: encodeURIComponent("공유 링크를 폐기했습니다."),
                       sort: sortBy,
                       activeShareOnly,
@@ -373,7 +378,7 @@ export default async function AlbumsPage({
                 } catch (error: unknown) {
                   const message = error instanceof Error ? error.message : "공유 링크 폐기에 실패했습니다.";
                   redirect(
-                    buildAlbumsHref({
+                    buildAlbumsHref(kind, tenantId, {
                       message: encodeURIComponent(message),
                       sort: sortBy,
                       activeShareOnly,
