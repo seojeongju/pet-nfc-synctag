@@ -169,17 +169,7 @@ export function LoginForm() {
    */
   const handleLogin = async (provider: "google" | "kakao") => {
     setLoginError("");
-    if (!agreeTerms || !agreePrivacy || !agreeLocation) {
-      setLoginError("로그인 전 필수 동의 3가지를 모두 체크해 주세요.");
-      return;
-    }
-    try {
-      await fetch("/api/privacy/ack-login-gate", { method: "POST", credentials: "include" });
-    } catch {
-      setLoginError("동의 설정을 서버에 전달하지 못했습니다. 잠시 후 다시 시도해 주세요.");
-      return;
-    }
-    // 구글만 /auth/complete 브리지를 경유 (카카오는 기존 방식 유지)
+    // 로그인 직후 /consent에서 계정 동의 상태를 확인하고(최초 1회만 폼 노출) 분기합니다.
     const consentNext = `/consent?next=${encodeURIComponent(callbackURL)}`;
     const resolvedCallbackURL =
       provider === "google"
@@ -196,10 +186,6 @@ export function LoginForm() {
     e.preventDefault();
     if (loginLoading) return;
     setLoginError("");
-    if (!agreeTerms || !agreePrivacy || !agreeLocation) {
-      setLoginError("로그인 전 필수 동의 3가지를 모두 체크해 주세요.");
-      return;
-    }
     if (!loginEmail.trim() || !loginPassword) {
       setLoginError("이메일과 비밀번호를 입력해 주세요.");
       return;
@@ -222,12 +208,7 @@ export function LoginForm() {
         );
         return;
       }
-      try {
-        await recordConsentsFromAuthenticatedLogin();
-        window.location.assign(callbackURL);
-      } catch {
-        window.location.assign(`/consent?next=${encodeURIComponent(callbackURL)}`);
-      }
+      window.location.assign(callbackURL);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "로그인 중 오류가 발생했습니다.";
       setLoginError(message);
@@ -527,7 +508,7 @@ export function LoginForm() {
 
             <div className="pt-6 text-center">
               <p className="text-[10px] text-slate-300 font-medium leading-relaxed">
-                간편 로그인/회원가입 전 필수 동의 체크가 필요하며, 최초 로그인 후 동의 내역이 계정에 저장됩니다.
+                최초 로그인/회원가입 시 동의 내역이 계정에 저장되며, 이미 동의한 계정은 재로그인 시 다시 요청하지 않습니다.
               </p>
             </div>
           </CardContent>
