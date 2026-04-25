@@ -183,7 +183,7 @@ export function AdminNfcHelpCallout() {
           <div className="min-w-0 space-y-1">
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-teal-700">보안·호환성</p>
             <p className="text-sm font-black text-slate-900">Web NFC와 동일한 규칙</p>
-            <p className="text-xs font-bold text-slate-600">등록된 UID만 기록 가능 · 상세는 자세히</p>
+            <p className="text-xs font-bold text-slate-600">등록된 UID만 기록 · Web NFC/앱 쓰기 모두 동일 감사 로그 추적</p>
           </div>
         </div>
         <Link
