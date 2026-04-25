@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Home, LayoutGrid, LogOut, Shield, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { SubjectKind } from "@/lib/subject-kind";
 
 export type FlowTopNavSession = { user: { name?: string | null } } | null;
 
@@ -13,6 +14,8 @@ type FlowTopNavContentProps = {
   currentModeLabel?: string;
   /** owner/admin 소속 조직이 있을 때만: 조직 관리(감사·멤버 등) */
   orgManageHref?: string | null;
+  /** 대시보드에서 로그아웃 시 `/{kind}` 모드 랜딩(보호자 대문)으로. 미지정이면 `/` */
+  logoutLandingKind?: SubjectKind;
   className?: string;
 };
 
@@ -31,8 +34,14 @@ export function FlowTopNavContent({
   isAdmin,
   currentModeLabel,
   orgManageHref,
+  logoutLandingKind,
   className,
 }: FlowTopNavContentProps) {
+  const logoutHref =
+    variant === "dashboard" && logoutLandingKind
+      ? `/logout?kind=${encodeURIComponent(logoutLandingKind)}`
+      : "/logout";
+
   const modeSelectHref =
     variant === "dashboard"
       ? "/hub"
@@ -141,7 +150,7 @@ export function FlowTopNavContent({
         {session ? (
           useHardNav ? (
             <a
-              href="/logout"
+              href={logoutHref}
               className="inline-flex items-center gap-1 rounded-full px-2 py-1 font-black text-rose-600 hover:bg-rose-50 min-[390px]:px-2.5"
             >
               <LogOut className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -149,7 +158,7 @@ export function FlowTopNavContent({
             </a>
           ) : (
             <Link
-              href="/logout"
+              href={logoutHref}
               prefetch={false}
               className="inline-flex items-center gap-1 rounded-full px-2 py-1 font-black text-rose-600 hover:bg-rose-50 min-[390px]:px-2.5"
             >

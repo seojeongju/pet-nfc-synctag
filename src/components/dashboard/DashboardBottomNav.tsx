@@ -94,7 +94,10 @@ export function DashboardBottomNav() {
         <span className={dashboardBottomLabelClass(geofences)}>안심</span>
       </a>
 
-      <a href="/logout" className="group flex min-w-0 flex-1 flex-col items-center gap-0.5 py-1">
+      <a
+        href={`/logout?kind=${encodeURIComponent(kind)}`}
+        className="group flex min-w-0 flex-1 flex-col items-center gap-0.5 py-1"
+      >
         <div className="p-2 transition-all active:scale-90 rounded-2xl text-slate-400 group-hover:text-rose-400">
           <LogOut className="h-5 w-5 min-[400px]:h-6 min-[400px]:w-6" aria-hidden />
         </div>

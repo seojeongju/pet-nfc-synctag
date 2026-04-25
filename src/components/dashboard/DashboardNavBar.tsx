@@ -73,6 +73,7 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
         isAdmin={isAdmin}
         currentModeLabel={currentModeLabel}
         orgManageHref={orgManageHref}
+        logoutLandingKind={kind}
       />
       <div className="border-t border-slate-100">
         <div className="container flex max-w-5xl flex-col gap-2 px-4 py-2.5 xl:flex-row xl:items-center xl:justify-between xl:py-2">
