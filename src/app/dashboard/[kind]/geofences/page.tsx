@@ -6,6 +6,7 @@ import { getCfRequestContext } from "@/lib/cf-request-context";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
+import { GeofenceMapPicker } from "@/components/dashboard/GeofenceMapPicker";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,8 +15,6 @@ import { MapPin, Trash2, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { requireTenantMember } from "@/lib/tenant-membership";
 import { isTenantSuspendedSafe } from "@/lib/tenant-status";
-import { rethrowNextControlFlowErrors } from "@/lib/next-redirect-guard";
-
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
 
@@ -159,7 +158,7 @@ export default async function GeofencesPage({
             안심 구역
           </h1>
           <p className="text-sm text-slate-500">
-            {meta.label} 모드 · 중심과 반경(m)으로 가족이 안심할 수 있는 범위를 정해요.
+            {meta.label} 모드 · 지도에서 구역 중심을 탭하고 반경을 조절해 주세요.
             {tenantId ? (
               <span className="block text-[11px] font-bold text-teal-600 mt-1">
                 조직 컨텍스트: tenant_id가 설정된 관리 대상만 표시됩니다.
@@ -224,42 +223,11 @@ export default async function GeofencesPage({
                 <Label htmlFor="name">구역 이름</Label>
                 <Input id="name" name="name" required placeholder="예: 집, 학교" className="h-12 rounded-2xl" />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="latitude">위도</Label>
-                <Input
-                  id="latitude"
-                  name="latitude"
-                  type="text"
-                  inputMode="decimal"
-                  required
-                  placeholder="37.5665"
-                  className="h-12 rounded-2xl"
+              <div className="sm:col-span-2">
+                <GeofenceMapPicker
+                  disabled={!!tenantSuspended}
+                  defaultRadiusMeters={300}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="longitude">경도</Label>
-                <Input
-                  id="longitude"
-                  name="longitude"
-                  type="text"
-                  inputMode="decimal"
-                  required
-                  placeholder="126.9780"
-                  className="h-12 rounded-2xl"
-                />
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="radius_meters">반경 (m)</Label>
-                <Input
-                  id="radius_meters"
-                  name="radius_meters"
-                  type="text"
-                  inputMode="numeric"
-                  required
-                  placeholder="100 ~ 100000"
-                  className="h-12 rounded-2xl"
-                />
-                <p className="text-[11px] text-slate-400">최소 10m, 최대 100km</p>
               </div>
               <div className="sm:col-span-2">
                 <Button type="submit" className="w-full h-12 rounded-2xl bg-teal-600 hover:bg-teal-700 font-bold">
