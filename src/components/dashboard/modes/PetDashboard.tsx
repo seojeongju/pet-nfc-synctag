@@ -45,6 +45,8 @@ interface PetDashboardProps {
   tenantUsage?: TenantPlanUsageSummary | null;
   tenantSuspended?: boolean;
   linkedTagCount?: number;
+  /** 해당 테넌트(또는 개인) 범위 스캔 로그 1건 이상이면 테스트 스캔 완료 */
+  petScanLogCount?: number;
 }
 
 function limitText(used: number, limit: number | null): string {
@@ -62,7 +64,8 @@ export default function PetDashboard({
   tenantId,
   tenantUsage,
   tenantSuspended = false,
-  linkedTagCount = 0
+  linkedTagCount = 0,
+  petScanLogCount = 0
 }: PetDashboardProps) {
   const [nfcSelectedSubjectId, setNfcSelectedSubjectId] = useState("");
   const [subjectsWithLocation, setSubjectsWithLocation] = useState<SubjectWithLocation[]>([]);
@@ -157,6 +160,7 @@ export default function PetDashboard({
   };
   const lostCount = pets.filter((p) => p.is_lost).length;
   const hasLinkedTag = linkedTagCount > 0 || tagLinkedInSession;
+  const hasTestScanConfirmed = petScanLogCount > 0;
 
   const dismissNfcBanner = () => {
     try {
@@ -191,7 +195,7 @@ export default function PetDashboard({
     {
       id: "scan",
       title: "테스트 스캔 확인",
-      done: false,
+      done: hasTestScanConfirmed,
       href: `/dashboard/${subjectKind}/scans${kindQs}`,
       cta: "스캔 보기",
     },

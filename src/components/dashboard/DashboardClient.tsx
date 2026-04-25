@@ -17,6 +17,8 @@ interface DashboardClientProps {
   tenantUsage?: TenantPlanUsageSummary | null;
   tenantSuspended?: boolean;
   linkedTagCount?: number;
+  /** pet 모드 원탭 가이드 3단계(테스트 스캔) — scan_logs 기준 */
+  petScanLogCount?: number;
 }
 
 export default function DashboardClient({
@@ -28,7 +30,8 @@ export default function DashboardClient({
   tenantId,
   tenantUsage,
   tenantSuspended = false,
-  linkedTagCount = 0
+  linkedTagCount = 0,
+  petScanLogCount = 0
 }: DashboardClientProps) {
   switch (subjectKind) {
     case "pet":
@@ -42,6 +45,7 @@ export default function DashboardClient({
           tenantUsage={tenantUsage}
           tenantSuspended={tenantSuspended}
           linkedTagCount={linkedTagCount}
+          petScanLogCount={petScanLogCount}
         />
       );
     case "elder":

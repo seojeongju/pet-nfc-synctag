@@ -15,6 +15,7 @@ import {
   getEffectiveAllowedSubjectKinds,
   isSubjectKindAllowedForTenant,
 } from "@/lib/mode-visibility";
+import { getScanLogsCountWithDb } from "@/lib/scan-logs-db";
 import type { SubjectKind } from "@/lib/subject-kind";
 import type { D1Database } from "@cloudflare/workers-types";
 
@@ -118,12 +119,17 @@ export default async function DashboardKindPage({
         tenantId ? getTenantPlanUsageSummary(context.env.DB, tenantId) : Promise.resolve<TenantPlanUsageSummary | null>(null),
         tenantId ? getTenantStatus(context.env.DB, tenantId) : Promise.resolve<"active" | "suspended" | null>(null),
       ]);
-      const linkedTagCount = await getLinkedTagCountByScope(
-        context.env.DB,
-        session.user.id,
-        subjectKind,
-        tenantId
-      );
+      const [linkedTagCount, petScanLogCount] = await Promise.all([
+        getLinkedTagCountByScope(context.env.DB, session.user.id, subjectKind, tenantId),
+        subjectKind === "pet"
+          ? getScanLogsCountWithDb(
+              context.env.DB,
+              session.user.id,
+              "pet",
+              tenantId ?? undefined
+            )
+          : Promise.resolve(0),
+      ]);
 
       return (
         <DashboardClient
@@ -136,6 +142,7 @@ export default async function DashboardKindPage({
           tenantUsage={tenantUsage}
           tenantSuspended={tenantStatus === "suspended"}
           linkedTagCount={linkedTagCount}
+          petScanLogCount={petScanLogCount}
         />
       );
     } catch (dataError: unknown) {
@@ -152,6 +159,7 @@ export default async function DashboardKindPage({
           tenantUsage={null}
           tenantSuspended={false}
           linkedTagCount={0}
+          petScanLogCount={0}
         />
       );
     }
