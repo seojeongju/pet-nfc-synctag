@@ -3,12 +3,27 @@
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { LayoutDashboard, ShieldCheck, ArrowRight, Sparkles } from "lucide-react";
+import {
+  LayoutDashboard,
+  ShieldCheck,
+  ArrowRight,
+  Sparkles,
+  ScanLine,
+  UserRoundCheck,
+  Link2,
+  Home,
+  ChevronRight,
+  Shield,
+  BellRing,
+  UserPlus,
+  BadgeCheck,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SubjectKind } from "@/lib/subject-kind";
 import { SUBJECT_KINDS, subjectKindMeta } from "@/lib/subject-kind";
 import { modeLandingCopy, modeLandingVisual } from "@/lib/mode-landing-content";
 import { FlowTopNav } from "@/components/layout/FlowTopNav";
+import { saveRecentKind } from "@/lib/recent-kind";
 
 const modePath: Record<SubjectKind, string> = {
   pet: "/pet",
@@ -39,9 +54,11 @@ export default function ModeGateLanding({
   const Icon = visual.Icon;
 
   const dashboardUrl = `/dashboard/${encodeURIComponent(kind)}`;
+  const registerUrl = `/dashboard/${encodeURIComponent(kind)}/pets/new`;
   const loginUrl = `/login?kind=${encodeURIComponent(kind)}&callbackUrl=${encodeURIComponent(dashboardUrl)}`;
 
   const guardianEntryLink = session ? (isAdmin ? "/admin" : dashboardUrl) : loginUrl;
+  const quickRegisterLink = session ? (isAdmin ? "/admin" : registerUrl) : loginUrl;
   const guardianButtonLabel = session
     ? isAdmin
       ? "관리자 센터 바로가기"
@@ -49,6 +66,59 @@ export default function ModeGateLanding({
     : `${meta.label} · 보호자로 시작하기`;
 
   const otherModes = SUBJECT_KINDS.filter((k) => k !== kind);
+  const finderIcons = [ScanLine, UserRoundCheck, Link2] as const;
+  const primaryActionType = !session ? "register" : "dashboard";
+  const quickActionCards = (
+    [
+      {
+        id: "dashboard",
+        href: guardianEntryLink,
+        title: "바로 대시보드",
+        description: "현재 모드 관리 화면으로 즉시 이동",
+        Icon: LayoutDashboard,
+        iconWrapClass: cn("bg-gradient-to-br text-white shadow-sm", visual.gradient),
+        hoverClass: "hover:border-teal-300 hover:bg-teal-50/40",
+        accentClass: "group-hover:text-teal-500",
+      },
+      {
+        id: "register",
+        href: quickRegisterLink,
+        title: "대상 바로 등록",
+        description: "신규 등록부터 시작해서 연결까지 진행",
+        Icon: UserPlus,
+        iconWrapClass: "bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-sm",
+        hoverClass: "hover:border-indigo-300 hover:bg-indigo-50/40",
+        accentClass: "group-hover:text-indigo-500",
+      },
+    ] as const
+  ).sort((a, b) => {
+    if (a.id === primaryActionType) return -1;
+    if (b.id === primaryActionType) return 1;
+    return 0;
+  });
+  const quickInfoCards = [
+    {
+      id: "scan",
+      title: "즉시 스캔 인식",
+      description: "NFC 태그 터치 시 모드에 맞는 화면으로 빠르게 이동해요.",
+      Icon: ScanLine,
+    },
+    {
+      id: "protect",
+      title: "보호자 중심 관리",
+      description: "등록/수정/알림 흐름을 한 화면에서 간결하게 이어가요.",
+      Icon: Shield,
+    },
+    {
+      id: "notify",
+      title: "실시간 연결 알림",
+      description: "위치·연결 상태를 빠르게 확인하고 대응할 수 있어요.",
+      Icon: BellRing,
+    },
+  ] as const;
+  const rememberKind = (value: SubjectKind) => {
+    saveRecentKind(value);
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-outfit overflow-x-hidden relative">
@@ -164,13 +234,42 @@ export default function ModeGateLanding({
             <p className="text-slate-600 text-[12px] min-[390px]:text-sm font-semibold leading-relaxed break-words">
               {copy.subline}
             </p>
+            <div className="grid grid-cols-1 min-[390px]:grid-cols-3 gap-2">
+              {quickInfoCards.map((card) => (
+                <div
+                  key={card.id}
+                  className="rounded-xl border border-slate-200/90 bg-white/90 px-3 py-2.5 shadow-sm"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={cn(
+                        "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br text-white",
+                        visual.gradient
+                      )}
+                    >
+                      <card.Icon className="h-3.5 w-3.5" />
+                    </span>
+                    <p className="text-[10px] font-black text-slate-800 leading-tight">{card.title}</p>
+                  </div>
+                  <p className="mt-1.5 text-[10px] font-semibold text-slate-500 leading-relaxed">{card.description}</p>
+                </div>
+              ))}
+            </div>
             {!session && (
               <div className={cn("rounded-2xl border px-4 py-3 text-left", visual.finderBoxBorder, visual.finderBoxBg)}>
                 <p className={cn("text-[11px] font-black", visual.finderTitleClass)}>{copy.finderTitle}</p>
                 <ul className={cn("mt-2 space-y-1.5 text-[10px] font-bold leading-relaxed", visual.finderBodyClass)}>
-                  {copy.finderLines.map((line) => (
-                    <li key={line}>· {line}</li>
-                  ))}
+                  {copy.finderLines.map((line, index) => {
+                    const FinderIcon = finderIcons[index] ?? Link2;
+                    return (
+                      <li key={line} className="flex items-start gap-1.5">
+                        <span className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-md bg-white/70 text-teal-700">
+                          <FinderIcon className="h-2.5 w-2.5" />
+                        </span>
+                        <span className="min-w-0">{line}</span>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             )}
@@ -182,8 +281,46 @@ export default function ModeGateLanding({
             transition={{ delay: fromHome ? 0.18 : 0.6 }}
             className="w-full space-y-6 pt-2"
           >
+            <div className="grid grid-cols-1 min-[390px]:grid-cols-2 gap-2.5">
+              {quickActionCards.map((card, index) => (
+                <Link
+                  key={card.id}
+                  href={card.href}
+                  onClick={() => rememberKind(kind)}
+                  className={cn(
+                    "group rounded-2xl border border-slate-200 bg-white px-3 py-3 transition-all",
+                    card.hoverClass
+                  )}
+                >
+                  <div className="flex items-start gap-2.5">
+                    <span
+                      className={cn("inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl", card.iconWrapClass)}
+                    >
+                      <card.Icon className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-[11px] font-black text-slate-900">{card.title}</p>
+                        {index === 0 && (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-black text-emerald-700">
+                            <BadgeCheck className="h-2.5 w-2.5" />
+                            추천
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-0.5 text-[10px] font-semibold text-slate-500 leading-relaxed">
+                        {card.description}
+                      </p>
+                    </div>
+                    <ChevronRight className={cn("h-4 w-4 shrink-0 text-slate-300 transition-colors", card.accentClass)} />
+                  </div>
+                </Link>
+              ))}
+            </div>
+
             <Link
               href={guardianEntryLink}
+              onClick={() => rememberKind(kind)}
               className={cn(
                 "group flex w-full min-h-[3.5rem] min-[390px]:min-h-[4.25rem] items-center justify-center gap-2 rounded-[26px] min-[390px]:rounded-[28px] px-3 py-3 text-sm min-[390px]:text-base font-black shadow-2xl transition-all active:scale-[0.98] group-hover:-translate-y-0.5 group-hover:shadow-xl duration-300 relative overflow-hidden border-2 border-white/25 ring-4 ring-black/5",
                 visual.buttonTextClass,
@@ -226,17 +363,27 @@ export default function ModeGateLanding({
         </section>
 
         <footer className="px-4 min-[390px]:px-7 min-[430px]:px-8 pb-10 pt-2 bg-white/50 flex flex-col items-center gap-4 w-full max-w-screen-sm mx-auto relative z-10">
-          <nav className="flex flex-wrap justify-center gap-x-3 gap-y-2 text-[10px] min-[390px]:text-[11px] font-black text-slate-600 uppercase tracking-wide max-w-full px-1">
-            <Link href="/" className="hover:text-slate-900 transition-colors whitespace-nowrap">
+          <nav className="flex flex-wrap justify-center gap-2 text-[10px] min-[390px]:text-[11px] font-black text-slate-600 uppercase tracking-wide max-w-full px-1">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 hover:border-slate-300 hover:text-slate-900 transition-colors whitespace-nowrap"
+            >
+              <Home className="h-3.5 w-3.5" />
               전체 홈
             </Link>
             {otherModes.map((k) => (
               <Link
                 key={k}
                 href={modePath[k]}
-                className="hover:text-slate-900 transition-colors text-center max-w-[9.5rem] min-[390px]:max-w-none leading-tight"
+                onClick={() => rememberKind(k)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 hover:border-slate-300 hover:text-slate-900 transition-colors text-center max-w-[9.5rem] min-[390px]:max-w-none leading-tight"
               >
+                {(() => {
+                  const ModeIcon = modeLandingVisual[k].Icon;
+                  return <ModeIcon className="h-3.5 w-3.5 shrink-0" />;
+                })()}
                 {subjectKindMeta[k].label}
+                <ChevronRight className="h-3 w-3 opacity-60" />
               </Link>
             ))}
           </nav>
