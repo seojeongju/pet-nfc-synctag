@@ -3,7 +3,18 @@
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { LayoutDashboard, ShieldCheck, ArrowRight, Sparkles, Home, LogIn, ChevronRight } from "lucide-react";
+import {
+  LayoutDashboard,
+  ShieldCheck,
+  ArrowRight,
+  Sparkles,
+  Home,
+  LogIn,
+  ChevronRight,
+  ScanLine,
+  Link2,
+  UserRoundCheck,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SubjectKind } from "@/lib/subject-kind";
 import { SUBJECT_KINDS, subjectKindMeta } from "@/lib/subject-kind";
@@ -57,6 +68,11 @@ export default function ModeGateLanding({
     : `${meta.label} · 보호자로 시작하기`;
 
   const otherModes = SUBJECT_KINDS.filter((k) => k !== kind);
+  const finderStepMeta = [
+    { id: "open", title: "안내 페이지 열기", Icon: ScanLine },
+    { id: "url", title: "정확한 주소 확인", Icon: Link2 },
+    { id: "owner", title: "보호자 연결", Icon: UserRoundCheck },
+  ] as const;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-outfit overflow-x-hidden relative">
@@ -177,11 +193,42 @@ export default function ModeGateLanding({
             {!session && (
               <div className={cn("rounded-2xl border px-4 py-3 text-left", visual.finderBoxBorder, visual.finderBoxBg)}>
                 <p className={cn("text-[11px] font-black", visual.finderTitleClass)}>{copy.finderTitle}</p>
-                <ul className={cn("mt-2 space-y-1.5 text-[10px] font-bold leading-relaxed", visual.finderBodyClass)}>
-                  {copy.finderLines.map((line) => (
-                    <li key={line}>· {line}</li>
-                  ))}
-                </ul>
+                <div className="mt-2 grid grid-cols-1 gap-2 min-[390px]:grid-cols-3">
+                  {copy.finderLines.map((line, index) => {
+                    const step = finderStepMeta[index];
+                    const StepIcon = step?.Icon ?? ScanLine;
+                    const title = step?.title ?? `안내 ${index + 1}`;
+                    return (
+                      <article
+                        key={line}
+                        tabIndex={0}
+                        className="group rounded-xl border border-white/70 bg-white/70 px-2.5 py-2 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300/70"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white text-teal-700">
+                            <StepIcon className="h-3.5 w-3.5" />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-black text-slate-800 break-keep [word-break:keep-all]">
+                              {title}
+                            </p>
+                            <p className="text-[9px] font-semibold text-slate-500">{index + 1}단계</p>
+                          </div>
+                        </div>
+                        <div className="grid grid-rows-[0fr] transition-all duration-300 group-hover:grid-rows-[1fr] group-focus-within:grid-rows-[1fr]">
+                          <div className="overflow-hidden">
+                            <p className={cn("mt-1.5 text-[10px] font-bold leading-relaxed break-keep [word-break:keep-all]", visual.finderBodyClass)}>
+                              {line}
+                            </p>
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+                <p className={cn("mt-2 text-[10px] font-bold break-keep [word-break:keep-all]", visual.finderBodyClass)}>
+                  아이콘 카드는 기본 접힘 상태이며, 마우스를 올리면 설명이 펼쳐집니다.
+                </p>
               </div>
             )}
           </motion.div>
