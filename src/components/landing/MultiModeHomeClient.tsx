@@ -345,9 +345,10 @@ export default function MultiModeHomeClient({
           <p className="mb-3 text-[11px] font-black uppercase tracking-[0.18em] text-teal-600">보호자 이용 순서</p>
           <div className="grid grid-cols-1 gap-2.5 min-[390px]:grid-cols-3">
             {guardianSteps.map((step, index) => (
-              <div
+              <article
                 key={step.id}
-                className="group relative rounded-2xl border border-teal-100/90 bg-white/90 px-3 py-3 shadow-sm"
+                tabIndex={0}
+                className="group rounded-2xl border border-teal-100/90 bg-white/90 px-3 py-3 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300/70"
               >
                 <div className="flex items-center gap-2">
                   <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
@@ -360,19 +361,23 @@ export default function MultiModeHomeClient({
                     <p className="text-[10px] font-semibold text-slate-500">{index + 1}단계</p>
                   </div>
                 </div>
-                <p className="mt-2 text-[10px] font-semibold leading-relaxed text-slate-600 break-keep [word-break:keep-all]">
-                  {step.summary}
-                </p>
-
-                <div className="pointer-events-none absolute left-1/2 top-[calc(100%+8px)] z-20 hidden w-[14.5rem] -translate-x-1/2 rounded-xl border border-slate-200 bg-slate-900/95 px-3 py-2 text-[10px] font-semibold leading-relaxed text-slate-100 shadow-xl group-hover:block group-focus-within:block">
-                  {step.detail}
-                  <span className="absolute -top-1 left-1/2 h-2.5 w-2.5 -translate-x-1/2 rotate-45 border-l border-t border-slate-200 bg-slate-900/95" />
+                <div className="grid grid-rows-[0fr] transition-all duration-300 group-hover:grid-rows-[1fr] group-focus-within:grid-rows-[1fr]">
+                  <div className="overflow-hidden">
+                    <div className="mt-2 space-y-1.5 rounded-xl border border-teal-100 bg-teal-50/70 px-2.5 py-2">
+                      <p className="text-[10px] font-semibold leading-relaxed text-slate-700 break-keep [word-break:keep-all]">
+                        {step.summary}
+                      </p>
+                      <p className="text-[10px] font-semibold leading-relaxed text-teal-800 break-keep [word-break:keep-all]">
+                        {step.detail}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              </article>
             ))}
           </div>
           <p className="mt-2 text-[10px] font-semibold text-slate-500 break-keep [word-break:keep-all]">
-            각 단계 카드에 마우스를 올리면 상세 안내가 표시됩니다.
+            아이콘 카드는 기본 접힘 상태이며, 마우스를 올리면 설명이 펼쳐집니다.
           </p>
         </motion.section>
 
@@ -386,9 +391,10 @@ export default function MultiModeHomeClient({
 
           <div className="grid grid-cols-1 gap-2.5 min-[390px]:grid-cols-3">
             {finderSteps.map((step, index) => (
-              <div
+              <article
                 key={step.id}
-                className="group relative rounded-2xl border border-indigo-100/90 bg-white/90 px-3 py-3 shadow-sm"
+                tabIndex={0}
+                className="group rounded-2xl border border-indigo-100/90 bg-white/90 px-3 py-3 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300/70"
               >
                 <div className="flex items-center gap-2">
                   <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
@@ -401,16 +407,24 @@ export default function MultiModeHomeClient({
                     <p className="text-[10px] font-semibold text-slate-500">{index + 1}단계</p>
                   </div>
                 </div>
-                <p className="mt-2 text-[10px] font-semibold leading-relaxed text-slate-600 break-keep [word-break:keep-all]">
-                  {step.summary}
-                </p>
-                <div className="pointer-events-none absolute left-1/2 top-[calc(100%+8px)] z-20 hidden w-[14.5rem] -translate-x-1/2 rounded-xl border border-slate-200 bg-slate-900/95 px-3 py-2 text-[10px] font-semibold leading-relaxed text-slate-100 shadow-xl group-hover:block group-focus-within:block">
-                  {step.detail}
-                  <span className="absolute -top-1 left-1/2 h-2.5 w-2.5 -translate-x-1/2 rotate-45 border-l border-t border-slate-200 bg-slate-900/95" />
+                <div className="grid grid-rows-[0fr] transition-all duration-300 group-hover:grid-rows-[1fr] group-focus-within:grid-rows-[1fr]">
+                  <div className="overflow-hidden">
+                    <div className="mt-2 space-y-1.5 rounded-xl border border-indigo-100 bg-indigo-50/70 px-2.5 py-2">
+                      <p className="text-[10px] font-semibold leading-relaxed text-slate-700 break-keep [word-break:keep-all]">
+                        {step.summary}
+                      </p>
+                      <p className="text-[10px] font-semibold leading-relaxed text-indigo-800 break-keep [word-break:keep-all]">
+                        {step.detail}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              </article>
             ))}
           </div>
+          <p className="mt-2 text-[10px] font-semibold text-slate-500 break-keep [word-break:keep-all]">
+            아이콘 카드는 기본 접힘 상태이며, 마우스를 올리면 설명이 펼쳐집니다.
+          </p>
           {!session ? (
             <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-100 bg-white px-3 py-1.5 text-[10px] font-semibold text-slate-600">
               <MessageCircleWarning className="h-3.5 w-3.5 text-indigo-600" />
