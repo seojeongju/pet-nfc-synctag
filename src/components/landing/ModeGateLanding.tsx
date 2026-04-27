@@ -68,30 +68,29 @@ export default function ModeGateLanding({
   const otherModes = SUBJECT_KINDS.filter((k) => k !== kind);
   const finderIcons = [ScanLine, UserRoundCheck, Link2] as const;
   const primaryActionType = !session ? "register" : "dashboard";
-  const quickActionCards = (
-    [
-      {
-        id: "dashboard",
-        href: guardianEntryLink,
-        title: "바로 대시보드",
-        description: "현재 모드 관리 화면으로 즉시 이동",
-        Icon: LayoutDashboard,
-        iconWrapClass: cn("bg-gradient-to-br text-white shadow-sm", visual.gradient),
-        hoverClass: "hover:border-teal-300 hover:bg-teal-50/40",
-        accentClass: "group-hover:text-teal-500",
-      },
-      {
-        id: "register",
-        href: quickRegisterLink,
-        title: "대상 바로 등록",
-        description: "신규 등록부터 시작해서 연결까지 진행",
-        Icon: UserPlus,
-        iconWrapClass: "bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-sm",
-        hoverClass: "hover:border-indigo-300 hover:bg-indigo-50/40",
-        accentClass: "group-hover:text-indigo-500",
-      },
-    ] as const
-  ).sort((a, b) => {
+  const quickActionCards = [
+    {
+      id: "dashboard",
+      href: guardianEntryLink,
+      title: "바로 대시보드",
+      description: "현재 모드 관리 화면으로 즉시 이동",
+      Icon: LayoutDashboard,
+      iconWrapClass: cn("bg-gradient-to-br text-white shadow-sm", visual.gradient),
+      hoverClass: "hover:border-teal-300 hover:bg-teal-50/40",
+      accentClass: "group-hover:text-teal-500",
+    },
+    {
+      id: "register",
+      href: quickRegisterLink,
+      title: "대상 바로 등록",
+      description: "신규 등록부터 시작해서 연결까지 진행",
+      Icon: UserPlus,
+      iconWrapClass: "bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-sm",
+      hoverClass: "hover:border-indigo-300 hover:bg-indigo-50/40",
+      accentClass: "group-hover:text-indigo-500",
+    },
+  ];
+  const orderedQuickActionCards = [...quickActionCards].sort((a, b) => {
     if (a.id === primaryActionType) return -1;
     if (b.id === primaryActionType) return 1;
     return 0;
@@ -282,7 +281,7 @@ export default function ModeGateLanding({
             className="w-full space-y-6 pt-2"
           >
             <div className="grid grid-cols-1 min-[390px]:grid-cols-2 gap-2.5">
-              {quickActionCards.map((card, index) => (
+              {orderedQuickActionCards.map((card, index) => (
                 <Link
                   key={card.id}
                   href={card.href}
