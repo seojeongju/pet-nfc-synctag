@@ -10,6 +10,12 @@ import {
   Briefcase,
   Gem,
   HeartHandshake,
+  Link2,
+  MessageCircleWarning,
+  PhoneCall,
+  ScanLine,
+  ShieldAlert,
+  UserPlus,
   type LucideIcon,
   PawPrint,
   ShieldCheck,
@@ -53,6 +59,52 @@ export default function MultiModeHomeClient({
   const heroBody =
     "반려동물·어르신·아이·수하물·주얼리까지.\n링크유는 스캔 이후의 안내와 연결 흐름을 쉽고 다정하게 이어줍니다.";
   const selectedMeta = selectedKind ? subjectKindMeta[selectedKind] : null;
+  const guardianSteps = [
+    {
+      id: "mode",
+      title: "모드 선택",
+      summary: "사용 목적에 맞는 링크유 모드를 선택합니다.",
+      detail: "반려동물·어르신·아이·수하물·주얼리 중 현재 관리할 대상에 맞는 모드를 먼저 고르세요.",
+      Icon: ScanLine,
+    },
+    {
+      id: "register",
+      title: "대상 등록",
+      summary: "보호자 정보와 대상을 등록합니다.",
+      detail: "선택한 모드 대시보드에서 대상 정보와 연락처를 등록해, 발견 시 즉시 안내될 수 있게 준비합니다.",
+      Icon: UserPlus,
+    },
+    {
+      id: "connect",
+      title: "태그 연결",
+      summary: "태그와 대상을 연결해 사용을 시작합니다.",
+      detail: "등록된 대상과 태그를 연결하면 스캔 즉시 안내·연결 흐름이 동작하며 실제 사용이 시작됩니다.",
+      Icon: Link2,
+    },
+  ] as const;
+  const finderSteps = [
+    {
+      id: "scan-open",
+      title: "태그 화면 열기",
+      summary: "스캔 후 열린 URL 화면을 그대로 확인합니다.",
+      detail: "별도 앱 설치 없이 열린 안내 화면에서 기본 정보를 확인하고 필요한 동작을 바로 진행할 수 있습니다.",
+      Icon: ScanLine,
+    },
+    {
+      id: "contact",
+      title: "보호자 빠른 연락",
+      summary: "표시된 연락 수단으로 즉시 연결합니다.",
+      detail: "전화/문자 등 제공된 버튼을 눌러 보호자에게 빠르게 알리고, 상황을 간단히 전달해 주세요.",
+      Icon: PhoneCall,
+    },
+    {
+      id: "safe-help",
+      title: "안전 안내 전달",
+      summary: "현재 위치나 상태를 함께 알려줍니다.",
+      detail: "가능하면 발견 위치와 대상 상태를 함께 전달하면 보호자가 더 빠르고 정확하게 대응할 수 있습니다.",
+      Icon: ShieldAlert,
+    },
+  ] as const;
   const networkNodes = useMemo(
     () => [
       { id: "n1", x: 8, y: 18 },
@@ -290,39 +342,81 @@ export default function MultiModeHomeClient({
           transition={{ delay: 0.06, duration: 0.45 }}
           className="rounded-[26px] border border-teal-100/90 bg-gradient-to-br from-teal-50/95 to-white p-[18px] shadow-[0_12px_30px_rgba(15,23,42,0.05)] min-[390px]:rounded-[28px] min-[390px]:p-5"
         >
-          <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-teal-600">보호자 이용 순서</p>
-          <ol className="list-inside list-decimal space-y-2 text-[12px] font-semibold leading-relaxed text-slate-700">
-            <li>
-              <span className="text-slate-900">모드</span>를 고른 뒤 로그인합니다.
-            </li>
-            <li>
-              <span className="text-slate-900">대시보드</span>에서 관리 대상을 등록하고 NFC 태그를 연결합니다.
-            </li>
-            <li>
-              조직(B2B)이 필요하면 <span className="text-slate-900">허브</span>에서 조직 대시보드로 전환합니다.
-            </li>
-          </ol>
+          <p className="mb-3 text-[11px] font-black uppercase tracking-[0.18em] text-teal-600">보호자 이용 순서</p>
+          <div className="grid grid-cols-1 gap-2.5 min-[390px]:grid-cols-3">
+            {guardianSteps.map((step, index) => (
+              <div
+                key={step.id}
+                className="group relative rounded-2xl border border-teal-100/90 bg-white/90 px-3 py-3 shadow-sm"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
+                    <step.Icon className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-black text-slate-900 break-keep [word-break:keep-all]">
+                      {step.title}
+                    </p>
+                    <p className="text-[10px] font-semibold text-slate-500">{index + 1}단계</p>
+                  </div>
+                </div>
+                <p className="mt-2 text-[10px] font-semibold leading-relaxed text-slate-600 break-keep [word-break:keep-all]">
+                  {step.summary}
+                </p>
+
+                <div className="pointer-events-none absolute left-1/2 top-[calc(100%+8px)] z-20 hidden w-[14.5rem] -translate-x-1/2 rounded-xl border border-slate-200 bg-slate-900/95 px-3 py-2 text-[10px] font-semibold leading-relaxed text-slate-100 shadow-xl group-hover:block group-focus-within:block">
+                  {step.detail}
+                  <span className="absolute -top-1 left-1/2 h-2.5 w-2.5 -translate-x-1/2 rotate-45 border-l border-t border-slate-200 bg-slate-900/95" />
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-[10px] font-semibold text-slate-500 break-keep [word-break:keep-all]">
+            각 단계 카드에 마우스를 올리면 상세 안내가 표시됩니다.
+          </p>
         </motion.section>
 
-        <section className="space-y-3.5 rounded-[26px] border border-slate-200/80 bg-white p-[18px] shadow-[0_12px_30px_rgba(15,23,42,0.05)] min-[390px]:space-y-4 min-[390px]:rounded-[28px] min-[390px]:p-5">
+        <section className="space-y-3.5 rounded-[26px] border border-indigo-100/80 bg-gradient-to-br from-indigo-50/55 via-white to-cyan-50/30 p-[18px] shadow-[0_12px_30px_rgba(15,23,42,0.05)] min-[390px]:space-y-4 min-[390px]:rounded-[28px] min-[390px]:p-5">
           <div className="space-y-2 text-center">
-            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">FOR FINDER & OWNER</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-indigo-400">FOR FINDER & OWNER</p>
             <h2 className="whitespace-pre-line text-[22px] font-black leading-tight text-slate-900 break-keep [word-break:keep-all]">
               {"태그를 스캔했다면\n이렇게 진행하세요"}
             </h2>
           </div>
 
-          {!session && (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <div className="mb-1.5 flex items-center gap-2 text-slate-800">
-                <HeartHandshake className="h-4 w-4 text-teal-600" />
-                <p className="text-[12px] font-black">발견자 안내</p>
+          <div className="grid grid-cols-1 gap-2.5 min-[390px]:grid-cols-3">
+            {finderSteps.map((step, index) => (
+              <div
+                key={step.id}
+                className="group relative rounded-2xl border border-indigo-100/90 bg-white/90 px-3 py-3 shadow-sm"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                    <step.Icon className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-black text-slate-900 break-keep [word-break:keep-all]">
+                      {step.title}
+                    </p>
+                    <p className="text-[10px] font-semibold text-slate-500">{index + 1}단계</p>
+                  </div>
+                </div>
+                <p className="mt-2 text-[10px] font-semibold leading-relaxed text-slate-600 break-keep [word-break:keep-all]">
+                  {step.summary}
+                </p>
+                <div className="pointer-events-none absolute left-1/2 top-[calc(100%+8px)] z-20 hidden w-[14.5rem] -translate-x-1/2 rounded-xl border border-slate-200 bg-slate-900/95 px-3 py-2 text-[10px] font-semibold leading-relaxed text-slate-100 shadow-xl group-hover:block group-focus-within:block">
+                  {step.detail}
+                  <span className="absolute -top-1 left-1/2 h-2.5 w-2.5 -translate-x-1/2 rotate-45 border-l border-t border-slate-200 bg-slate-900/95" />
+                </div>
               </div>
-              <p className="whitespace-pre-line text-[12px] font-semibold leading-relaxed text-slate-600 break-keep [word-break:keep-all]">
-                {"로그인 없이 태그 URL을 그대로 열어 주세요.\n예: /t/태그번호"}
-              </p>
+            ))}
+          </div>
+          {!session ? (
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-100 bg-white px-3 py-1.5 text-[10px] font-semibold text-slate-600">
+              <MessageCircleWarning className="h-3.5 w-3.5 text-indigo-600" />
+              로그인 없이도 태그 URL을 그대로 열어 안내를 확인할 수 있어요.
             </div>
-          )}
+          ) : null}
 
           <div className="flex flex-col items-center gap-3">
             <Link href={adminEntryLink} className="group inline-flex w-full">
