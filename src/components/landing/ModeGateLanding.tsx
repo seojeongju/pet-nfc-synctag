@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { LayoutDashboard, ShieldCheck, ArrowRight, Sparkles } from "lucide-react";
+import { LayoutDashboard, ShieldCheck, ArrowRight, Sparkles, Home, LogIn, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SubjectKind } from "@/lib/subject-kind";
 import { SUBJECT_KINDS, subjectKindMeta } from "@/lib/subject-kind";
@@ -16,6 +16,14 @@ const modePath: Record<SubjectKind, string> = {
   child: "/child",
   luggage: "/luggage",
   gold: "/gold",
+};
+
+const modeProgramLabel: Record<SubjectKind, string> = {
+  pet: "링크유-펫",
+  elder: "링크유-메모리",
+  child: "링크유-키즈",
+  luggage: "링크유-러기지",
+  gold: "링크유-골드",
 };
 
 interface ModeGateLandingProps {
@@ -144,7 +152,7 @@ export default function ModeGateLanding({
               <Sparkles className="w-4 h-4 shrink-0" />
               {copy.kicker}
             </div>
-            <h1 className="text-[22px] min-[360px]:text-[26px] min-[390px]:text-3xl font-black text-slate-900 leading-[1.2] tracking-tight break-words">
+            <h1 className="text-[22px] min-[360px]:text-[26px] min-[390px]:text-3xl font-black text-slate-900 leading-[1.25] tracking-tight break-keep [word-break:keep-all]">
               {copy.titleLine1}{" "}
               {copy.titleGradient && (
                 <>
@@ -161,9 +169,11 @@ export default function ModeGateLanding({
                 </>
               )}
             </h1>
-            <p className="text-slate-600 text-[12px] min-[390px]:text-sm font-semibold leading-relaxed break-words">
-              {copy.subline}
-            </p>
+            <div className="rounded-xl border border-slate-200 bg-slate-50/90 px-3.5 py-3 shadow-sm">
+              <p className="text-slate-600 text-[12px] min-[390px]:text-sm font-semibold leading-relaxed break-keep [word-break:keep-all]">
+                {copy.subline}
+              </p>
+            </div>
             {!session && (
               <div className={cn("rounded-2xl border px-4 py-3 text-left", visual.finderBoxBorder, visual.finderBoxBg)}>
                 <p className={cn("text-[11px] font-black", visual.finderTitleClass)}>{copy.finderTitle}</p>
@@ -212,7 +222,7 @@ export default function ModeGateLanding({
 
             <div className="flex flex-col items-center gap-4">
               {!session ? (
-                <p className="text-xs min-[390px]:text-sm text-slate-500 font-bold text-center px-1 leading-relaxed max-w-[min(100%,22rem)] mx-auto">
+                <p className="text-xs min-[390px]:text-sm text-slate-500 font-bold text-center px-1 leading-relaxed break-keep [word-break:keep-all] max-w-[min(100%,22rem)] mx-auto">
                   처음이시면 위 버튼으로 로그인 후 이 모드 대시보드로 이동해요.
                 </p>
               ) : (
@@ -226,29 +236,39 @@ export default function ModeGateLanding({
         </section>
 
         <footer className="px-4 min-[390px]:px-7 min-[430px]:px-8 pb-10 pt-2 bg-white/50 flex flex-col items-center gap-4 w-full max-w-screen-sm mx-auto relative z-10">
-          <nav className="flex flex-wrap justify-center gap-x-3 gap-y-2 text-[10px] min-[390px]:text-[11px] font-black text-slate-600 uppercase tracking-wide max-w-full px-1">
-            <Link href="/" className="hover:text-slate-900 transition-colors whitespace-nowrap">
-              전체 홈
+          <nav className="flex flex-wrap justify-center gap-2 max-w-full px-1">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] min-[390px]:text-[11px] font-black text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-colors break-keep [word-break:keep-all]"
+            >
+              <Home className="h-3.5 w-3.5 shrink-0" />
+              <span className="leading-tight">링크유 홈</span>
             </Link>
             {otherModes.map((k) => (
               <Link
                 key={k}
                 href={modePath[k]}
-                className="hover:text-slate-900 transition-colors text-center max-w-[9.5rem] min-[390px]:max-w-none leading-tight"
+                className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] min-[390px]:text-[11px] font-black text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-colors text-center max-w-full min-[390px]:max-w-none break-keep [word-break:keep-all]"
               >
-                {subjectKindMeta[k].label}
+                {(() => {
+                  const ModeIcon = modeLandingVisual[k].Icon;
+                  return <ModeIcon className="h-3.5 w-3.5 shrink-0" />;
+                })()}
+                <span className="leading-tight">{modeProgramLabel[k]}</span>
+                <ChevronRight className="h-3 w-3 opacity-60" />
               </Link>
             ))}
           </nav>
           {!isAdmin && (
             <Link
               href="/admin/login"
-              className="text-[10px] font-black text-slate-500 hover:text-teal-600 tracking-wide transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black text-slate-500 hover:text-teal-600 hover:border-teal-200 transition-colors break-keep [word-break:keep-all]"
             >
-              관리자 로그인
+              <LogIn className="h-3.5 w-3.5 shrink-0" />
+              <span className="leading-tight">링크유 관리자 로그인</span>
             </Link>
           )}
-          <div className="text-[10px] text-slate-400 font-bold text-center leading-relaxed space-y-1">
+          <div className="text-[10px] text-slate-400 font-bold text-center leading-relaxed break-keep [word-break:keep-all] space-y-1">
             <p>© 2026 WOW3D PRO. (주)와우쓰리디. All rights reserved.</p>
             <p>대표 전화: 02-3144-3137 / 054-464-3144</p>
             <p>이메일 문의: wow3d16@naver.com</p>
