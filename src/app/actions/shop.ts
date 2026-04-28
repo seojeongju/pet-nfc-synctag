@@ -24,6 +24,14 @@ export async function updateOrderShippingInfo(formData: FormData): Promise<{ suc
   }
 
   const db = getDB();
+  const orderCols = new Set(
+    (
+      await db
+        .prepare("PRAGMA table_info(shop_orders)")
+        .all<{ name: string }>()
+        .catch(() => ({ results: [] as { name: string }[] }))
+    ).results.map((x) => x.name)
+  );
   
   // 주문 소유권 확인
   const row = await db
@@ -32,14 +40,41 @@ export async function updateOrderShippingInfo(formData: FormData): Promise<{ suc
     .first();
   if (!row) return { success: false, error: "주문을 찾을 수 없습니다." };
 
-  await db
-    .prepare(
-      `UPDATE shop_orders 
-       SET recipient_name = ?, recipient_phone = ?, shipping_zip = ?, shipping_address = ?, shipping_memo = ?, updated_at = CURRENT_TIMESTAMP 
-       WHERE id = ? AND user_id = ?`
-    )
-    .bind(recipientName, recipientPhone, shippingZip, shippingAddress, shippingMemo, orderId, session.user.id)
-    .run();
+  const updates: string[] = [];
+  const binds: (string | null)[] = [];
+  if (orderCols.has("recipient_name")) {
+    updates.push("recipient_name = ?");
+    binds.push(recipientName);
+  }
+  if (orderCols.has("recipient_phone")) {
+    updates.push("recipient_phone = ?");
+    binds.push(recipientPhone);
+  }
+  if (orderCols.has("shipping_zip")) {
+    updates.push("shipping_zip = ?");
+    binds.push(shippingZip || null);
+  }
+  if (orderCols.has("shipping_address")) {
+    updates.push("shipping_address = ?");
+    binds.push(shippingAddress);
+  }
+  if (orderCols.has("shipping_memo")) {
+    updates.push("shipping_memo = ?");
+    binds.push(shippingMemo || null);
+  }
+  if (orderCols.has("updated_at")) {
+    updates.push("updated_at = CURRENT_TIMESTAMP");
+  }
+  if (updates.length > 0) {
+    await db
+      .prepare(
+        `UPDATE shop_orders 
+         SET ${updates.join(", ")}
+         WHERE id = ? AND user_id = ?`
+      )
+      .bind(...binds, orderId, session.user.id)
+      .run();
+  }
 
   revalidatePath(`/shop/orders/${orderId}`);
   return { success: true };

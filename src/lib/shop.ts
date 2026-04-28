@@ -50,6 +50,14 @@ type ProductRow = {
   is_gold_linked: number;
 };
 
+async function getShopOrdersColumnSet(db: D1Database): Promise<Set<string>> {
+  const r = await db
+    .prepare("PRAGMA table_info(shop_orders)")
+    .all<{ name: string }>()
+    .catch(() => ({ results: [] as { name: string }[] }));
+  return new Set((r.results ?? []).map((x) => x.name));
+}
+
 /** 마이그레이션 단계별로 shop_products 컬럼이 다를 수 있음 */
 async function getShopProductsColumnSet(db: D1Database): Promise<Set<string>> {
   const r = await db.prepare("PRAGMA table_info(shop_products)").all<{ name: string }>();
@@ -261,12 +269,13 @@ export async function createPendingShopOrder(input: {
   idempotencyKey?: string | null;
 }): Promise<{ orderId: string; amountKrw: number; productName: string }> {
   const { db, userId, kind, productId } = input;
+  const orderCols = await getShopOrdersColumnSet(db);
   const idempotencyKey =
     typeof input.idempotencyKey === "string" && input.idempotencyKey.trim()
       ? input.idempotencyKey.trim().slice(0, 120)
       : null;
 
-  if (idempotencyKey) {
+  if (idempotencyKey && orderCols.has("idempotency_key")) {
     const existing = await db
       .prepare(`SELECT id FROM shop_orders WHERE idempotency_key = ?`)
       .bind(idempotencyKey)
@@ -355,13 +364,28 @@ export async function createPendingShopOrder(input: {
   }
 
   const optionsSelectedJson = input.options ? JSON.stringify(input.options) : null;
-
+  const cols = ["id", "user_id", "subject_kind", "product_id", "amount_krw", "status"] as string[];
+  const vals: unknown[] = [orderId, userId, kind, product.id, amountKrw, "pending"];
+  if (orderCols.has("payment_provider")) {
+    cols.push("payment_provider");
+    vals.push(null);
+  }
+  if (orderCols.has("idempotency_key")) {
+    cols.push("idempotency_key");
+    vals.push(idempotencyKey);
+  }
+  if (orderCols.has("options_selected_json")) {
+    cols.push("options_selected_json");
+    vals.push(optionsSelectedJson);
+  }
+  if (orderCols.has("updated_at")) {
+    cols.push("updated_at");
+    vals.push(new Date().toISOString());
+  }
+  const placeholders = cols.map(() => "?").join(", ");
   await db
-    .prepare(
-      `INSERT INTO shop_orders (id, user_id, subject_kind, product_id, amount_krw, status, payment_provider, idempotency_key, options_selected_json, updated_at)
-       VALUES (?, ?, ?, ?, ?, 'pending', NULL, ?, ?, CURRENT_TIMESTAMP)`
-    )
-    .bind(orderId, userId, kind, product.id, amountKrw, idempotencyKey, optionsSelectedJson)
+    .prepare(`INSERT INTO shop_orders (${cols.join(", ")}) VALUES (${placeholders})`)
+    .bind(...vals)
     .run();
 
   return { orderId, amountKrw, productName: product.name };
@@ -372,6 +396,9 @@ export async function getShopOrderByIdForUser(
   orderId: string,
   userId: string
 ): Promise<ShopOrderPublic | null> {
+  const orderCols = await getShopOrdersColumnSet(db);
+  const pickOrder = (name: string, alias = name) =>
+    orderCols.has(name) ? `o.${name} AS ${alias}` : `NULL AS ${alias}`;
   const hasResalePolicyTable = Boolean(
     await db
       .prepare(
@@ -390,8 +417,8 @@ export async function getShopOrderByIdForUser(
 
   const row = await db
     .prepare(
-      `SELECT o.id, o.subject_kind, o.amount_krw, o.status, o.options_selected_json,
-              o.recipient_name, o.recipient_phone, o.shipping_zip, o.shipping_address, o.shipping_memo,
+      `SELECT o.id, o.subject_kind, o.amount_krw, o.status, ${pickOrder("options_selected_json")},
+              ${pickOrder("recipient_name")}, ${pickOrder("recipient_phone")}, ${pickOrder("shipping_zip")}, ${pickOrder("shipping_address")}, ${pickOrder("shipping_memo")},
               o.created_at, o.updated_at,
               p.id AS p_id, p.name AS p_name, p.slug AS p_slug,
               ${resaleSelect}
