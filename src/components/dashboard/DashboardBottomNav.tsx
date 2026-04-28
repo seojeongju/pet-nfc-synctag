@@ -1,9 +1,11 @@
 "use client";
 
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import { Baby, Briefcase, Gem, History, Home, LogOut, MapPin, PawPrint, UserRound } from "lucide-react";
 import { parseSubjectKind, type SubjectKind } from "@/lib/subject-kind";
+import { subjectKindFromDashboardPathname } from "@/lib/dashboard-path-kind";
+import { useDashboardNavSearchSnapshot } from "@/hooks/use-dashboard-nav-search-snapshot";
 import { cn } from "@/lib/utils";
 import { dashboardBottomIconWrap, dashboardBottomLabelClass } from "@/lib/dashboard-nav-styles";
 import {
@@ -27,16 +29,11 @@ const subjectAvatars: Record<SubjectKind, LucideIcon> = {
  */
 export function DashboardBottomNav() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  
-  // 경로에서 [kind] 추출 시도 (/dashboard/[kind]...)
-  const segments = pathname.split("/");
-  const pathKind = (segments[1] === "dashboard" && segments[2] && segments[2] !== "pets" && segments[2] !== "scans" && segments[2] !== "geofences") 
-    ? segments[2] 
-    : null;
-
-  const kind = parseSubjectKind(pathKind || searchParams.get("kind"));
-  const tenant = searchParams.get("tenant")?.trim() ?? null;
+  const searchSnap = useDashboardNavSearchSnapshot();
+  const pathKind = subjectKindFromDashboardPathname(pathname);
+  const kind: SubjectKind =
+    pathKind ?? (searchSnap == null ? parseSubjectKind(null) : parseSubjectKind(searchSnap.kind));
+  const tenant = searchSnap == null ? null : searchSnap.tenant;
   const tenantQs = tenant ? `?tenant=${encodeURIComponent(tenant)}` : "";
   const AvatarIcon = subjectAvatars[kind];
 

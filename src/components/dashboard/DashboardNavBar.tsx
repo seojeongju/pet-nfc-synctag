@@ -1,8 +1,10 @@
 "use client";
 
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { PawPrint, MapPin, LayoutDashboard, ClipboardList, ScanLine, Images, Store } from "lucide-react";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
+import { subjectKindFromDashboardPathname } from "@/lib/dashboard-path-kind";
+import { useDashboardNavSearchSnapshot } from "@/hooks/use-dashboard-nav-search-snapshot";
 import { FlowTopNavContent, type FlowTopNavSession } from "@/components/layout/FlowTopNav";
 import { DashboardAnnouncementBell } from "@/components/dashboard/DashboardAnnouncementBell";
 import { DashboardContextualHelp } from "@/components/dashboard/DashboardContextualHelp";
@@ -25,20 +27,13 @@ type DashboardNavBarProps = {
 /** 데스크톱 가로 탭은 xl(1280px) 이상만. pointer:fine은 안드 Chrome·OAuth 직후에 오탐되어 모바일에서도 PC 탭이 뜰 수 있음 */
 export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNavBarProps) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  
-  // 경로에서 [kind] 추출 시도 (/dashboard/[kind]...)
-  const segments = pathname.split("/");
-  const pathKind = (segments[1] === "dashboard" && segments[2] && segments[2] !== "pets" && segments[2] !== "scans" && segments[2] !== "geofences") 
-    ? segments[2] 
-    : null;
-  
-  const kind = parseSubjectKind(pathKind || searchParams.get("kind"));
+  const searchSnap = useDashboardNavSearchSnapshot();
+  const pathKind = subjectKindFromDashboardPathname(pathname);
+  const kind =
+    pathKind ?? (searchSnap == null ? parseSubjectKind(null) : parseSubjectKind(searchSnap.kind));
   const currentModeLabel = subjectKindMeta[kind].label;
   const currentModeDescription = subjectKindMeta[kind].description;
-  const tenantRaw = searchParams.get("tenant");
-  const tenant = typeof tenantRaw === "string" && tenantRaw.trim() ? tenantRaw.trim() : null;
-  
+  const tenant = searchSnap == null ? null : searchSnap.tenant;
   const tenantQs = tenant ? `?tenant=${encodeURIComponent(tenant)}` : "";
 
   const dashHome = isDashboardHome(pathname);

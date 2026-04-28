@@ -25,6 +25,7 @@ export const ADMIN_NAV_SECTIONS: NavSection[] = [
     title: "운영·현황",
     items: [
       { href: "/admin", label: "운영 대시보드", icon: LayoutDashboard, color: "text-teal-500" },
+      { href: "/admin/shop", label: "스토어 관리", icon: ShoppingBag, color: "text-cyan-600" },
       { href: "/admin/announcements", label: "모드·배치 공지", icon: Megaphone, color: "text-indigo-500" },
       { href: "/admin/monitoring", label: "NFC/BLE 모니터링", icon: Radio, color: "text-sky-500" },
     ],
@@ -48,7 +49,6 @@ export const ADMIN_NAV_SECTIONS: NavSection[] = [
       { href: "/admin/tenants", label: "조직·멤버 관리", icon: Building2, color: "text-emerald-500" },
       { href: "/admin/privacy", label: "개인정보 동의 이력", icon: ShieldCheck, color: "text-rose-500" },
       { href: "/admin/storage-billing", label: "스토리지 결제 요청", icon: CreditCard, color: "text-violet-600" },
-      { href: "/admin/shop", label: "스토어 관리", icon: ShoppingBag, color: "text-cyan-600" },
     ],
   },
 ];
