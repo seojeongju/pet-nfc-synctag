@@ -310,6 +310,19 @@ export type AdminShopOrderRow = {
   updated_at: string;
 };
 
+export type AdminGoldResaleBuyerRow = {
+  user_id: string;
+  user_email: string;
+  user_name: string | null;
+  order_count: number;
+  total_amount_krw: number;
+  last_order_at: string | null;
+  last_order_id: string | null;
+  last_policy_enabled: number | null;
+  last_resale_offer_price_krw: number | null;
+  last_resale_visible_from: string | null;
+};
+
 export async function listAdminShopOrders(options: {
   limit?: number;
   status?: "all" | "pending" | "paid" | "failed" | "cancelled";
@@ -420,6 +433,239 @@ export async function updateShopOrderStatus(formData: FormData): Promise<void> {
   revalidatePath("/admin/shop/orders");
   revalidatePath("/shop");
   redirect("/admin/shop/orders?ok=1");
+}
+
+async function assertGoldResaleTablesReady(): Promise<void> {
+  const db = getDB();
+  const hasPolicyTable = Boolean(
+    await db
+      .prepare(
+        `SELECT 1 AS ok FROM sqlite_master WHERE type='table' AND name='gold_order_resale_policies' LIMIT 1`
+      )
+      .first<{ ok: number }>()
+      .catch(() => null)
+  );
+  const hasTargetTable = Boolean(
+    await db
+      .prepare(
+        `SELECT 1 AS ok FROM sqlite_master WHERE type='table' AND name='gold_order_resale_targets' LIMIT 1`
+      )
+      .first<{ ok: number }>()
+      .catch(() => null)
+  );
+  if (!hasPolicyTable || !hasTargetTable) {
+    throw new Error(
+      "되팔기 정책 테이블이 없습니다. migrations/0024_gold_order_resale_policies.sql 적용이 필요합니다."
+    );
+  }
+}
+
+export async function listAdminGoldResaleBuyers(options: {
+  limit?: number;
+  query?: string;
+}): Promise<AdminGoldResaleBuyerRow[]> {
+  await assertAdminRole();
+  await assertGoldResaleTablesReady();
+  const db = getDB();
+  const limit = Math.min(500, Math.max(1, Math.trunc(options.limit ?? 200)));
+  const q = (options.query ?? "").trim();
+  const whereParts = ["o.subject_kind = 'gold'", "o.status = 'paid'"];
+  const binds: (string | number)[] = [];
+  if (q) {
+    whereParts.push("(u.email LIKE ? OR COALESCE(u.name,'') LIKE ? OR o.user_id LIKE ?)");
+    const like = `%${q}%`;
+    binds.push(like, like, like);
+  }
+  const whereSql = `WHERE ${whereParts.join(" AND ")}`;
+
+  const sql = `
+    SELECT
+      o.user_id,
+      u.email AS user_email,
+      u.name AS user_name,
+      COUNT(*) AS order_count,
+      COALESCE(SUM(o.amount_krw), 0) AS total_amount_krw,
+      MAX(o.created_at) AS last_order_at,
+      (
+        SELECT o2.id
+        FROM shop_orders o2
+        WHERE o2.user_id = o.user_id
+          AND o2.subject_kind = 'gold'
+          AND o2.status = 'paid'
+        ORDER BY o2.created_at DESC
+        LIMIT 1
+      ) AS last_order_id,
+      (
+        SELECT rp.enabled
+        FROM gold_order_resale_policies rp
+        INNER JOIN shop_orders o3 ON o3.id = rp.order_id
+        WHERE o3.user_id = o.user_id
+          AND o3.subject_kind = 'gold'
+          AND o3.status = 'paid'
+        ORDER BY o3.created_at DESC
+        LIMIT 1
+      ) AS last_policy_enabled,
+      (
+        SELECT rp.resale_offer_price_krw
+        FROM gold_order_resale_policies rp
+        INNER JOIN shop_orders o3 ON o3.id = rp.order_id
+        WHERE o3.user_id = o.user_id
+          AND o3.subject_kind = 'gold'
+          AND o3.status = 'paid'
+        ORDER BY o3.created_at DESC
+        LIMIT 1
+      ) AS last_resale_offer_price_krw,
+      (
+        SELECT rp.resale_visible_from
+        FROM gold_order_resale_policies rp
+        INNER JOIN shop_orders o3 ON o3.id = rp.order_id
+        WHERE o3.user_id = o.user_id
+          AND o3.subject_kind = 'gold'
+          AND o3.status = 'paid'
+        ORDER BY o3.created_at DESC
+        LIMIT 1
+      ) AS last_resale_visible_from
+    FROM shop_orders o
+    INNER JOIN user u ON u.id = o.user_id
+    ${whereSql}
+    GROUP BY o.user_id, u.email, u.name
+    ORDER BY last_order_at DESC
+    LIMIT ?`;
+  binds.push(limit);
+  const res = await db.prepare(sql).bind(...binds).all<AdminGoldResaleBuyerRow>();
+  return (res.results ?? []).map((row) => ({
+    ...row,
+    order_count: Number(row.order_count ?? 0),
+    total_amount_krw: Number(row.total_amount_krw ?? 0),
+    last_policy_enabled:
+      row.last_policy_enabled === null || row.last_policy_enabled === undefined
+        ? null
+        : Number(row.last_policy_enabled) ? 1 : 0,
+    last_resale_offer_price_krw:
+      row.last_resale_offer_price_krw === null || row.last_resale_offer_price_krw === undefined
+        ? null
+        : Number(row.last_resale_offer_price_krw),
+  }));
+}
+
+export async function applyGoldResalePolicyToBuyers(formData: FormData): Promise<void> {
+  await assertAdminRole();
+  await assertGoldResaleTablesReady();
+  const context = getCfRequestContext();
+  const auth = getAuth(context.env);
+  const session = await auth.api.getSession({ headers: await headers() });
+  const actorId = session?.user?.id;
+  if (!actorId) {
+    redirect("/admin/shop/resale?e=" + encodeURIComponent("로그인이 필요합니다."));
+  }
+  const buyerIds = formData
+    .getAll("buyer_user_id")
+    .map((x) => String(x).trim())
+    .filter(Boolean);
+  if (buyerIds.length === 0) {
+    redirect("/admin/shop/resale?e=" + encodeURIComponent("적용할 구매자를 한 명 이상 선택해 주세요."));
+  }
+  const enabled = formData.get("resale_enabled") === "on" ? 1 : 0;
+  const scopeRaw = String(formData.get("resale_visibility_scope") ?? "order_buyer").trim();
+  const scope = scopeRaw === "selected_buyers" ? "selected_buyers" : "order_buyer";
+  const priceRaw = Number(formData.get("resale_offer_price_krw"));
+  const visibleFromRaw = String(formData.get("resale_visible_from") ?? "").trim();
+  const includeBuyer = formData.get("include_order_buyer") === "on";
+  const targetsCsv = String(formData.get("resale_targets_csv") ?? "").trim();
+
+  if (!Number.isFinite(priceRaw) || priceRaw < 0) {
+    redirect("/admin/shop/resale?e=" + encodeURIComponent("판매가를 올바르게 입력해 주세요."));
+  }
+  let visibleFromIso: string | null = null;
+  if (visibleFromRaw) {
+    const dt = new Date(visibleFromRaw);
+    if (!Number.isFinite(dt.getTime())) {
+      redirect("/admin/shop/resale?e=" + encodeURIComponent("노출 시작일시가 올바르지 않습니다."));
+    }
+    visibleFromIso = dt.toISOString();
+  }
+
+  const db = getDB();
+  const placeholders = buyerIds.map(() => "?").join(", ");
+  const orderRows = await db
+    .prepare(
+      `SELECT id, user_id, amount_krw
+       FROM shop_orders
+       WHERE subject_kind = 'gold'
+         AND status = 'paid'
+         AND user_id IN (${placeholders})`
+    )
+    .bind(...buyerIds)
+    .all<{ id: string; user_id: string; amount_krw: number }>();
+  const orders = orderRows.results ?? [];
+  if (orders.length === 0) {
+    redirect("/admin/shop/resale?e=" + encodeURIComponent("선택한 구매자의 유효한 골드 결제 주문이 없습니다."));
+  }
+
+  const requestedTargets = new Set<string>();
+  if (scope === "selected_buyers") {
+    for (const token of targetsCsv.split(",")) {
+      const t = token.trim();
+      if (t) requestedTargets.add(t);
+    }
+  }
+
+  for (const order of orders) {
+    const existing = await db
+      .prepare(`SELECT id FROM gold_order_resale_policies WHERE order_id = ?`)
+      .bind(order.id)
+      .first<{ id: string }>();
+    const policyId = existing?.id ?? nanoid();
+    if (!existing?.id) {
+      await db
+        .prepare(
+          `INSERT INTO gold_order_resale_policies
+            (id, order_id, purchase_price_krw, resale_offer_price_krw, resale_visible_from, visibility_scope, enabled, created_by_user_id, updated_by_user_id, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
+        )
+        .bind(
+          policyId,
+          order.id,
+          order.amount_krw,
+          Math.floor(priceRaw),
+          visibleFromIso,
+          scope,
+          enabled,
+          actorId,
+          actorId
+        )
+        .run();
+    } else {
+      await db
+        .prepare(
+          `UPDATE gold_order_resale_policies
+           SET resale_offer_price_krw = ?, resale_visible_from = ?, visibility_scope = ?, enabled = ?, updated_by_user_id = ?, updated_at = CURRENT_TIMESTAMP
+           WHERE id = ?`
+        )
+        .bind(Math.floor(priceRaw), visibleFromIso, scope, enabled, actorId, policyId)
+        .run();
+    }
+
+    const targets = new Set<string>(requestedTargets);
+    if (scope === "selected_buyers" && includeBuyer) {
+      targets.add(order.user_id);
+    }
+    await db.prepare(`DELETE FROM gold_order_resale_targets WHERE policy_id = ?`).bind(policyId).run();
+    for (const userId of targets) {
+      await db
+        .prepare(`INSERT INTO gold_order_resale_targets (id, policy_id, user_id) VALUES (?, ?, ?)`)
+        .bind(nanoid(), policyId, userId)
+        .run();
+    }
+  }
+
+  revalidatePath("/admin/shop/resale");
+  revalidatePath("/admin/shop/orders");
+  revalidatePath("/shop");
+  redirect(
+    "/admin/shop/resale?ok=1&m=" +
+      encodeURIComponent(`${buyerIds.length}명 구매자 / ${orders.length}건 주문에 되팔기 정책을 반영했습니다.`)
+  );
 }
 
 export async function saveGoldOrderResalePolicy(formData: FormData): Promise<void> {
