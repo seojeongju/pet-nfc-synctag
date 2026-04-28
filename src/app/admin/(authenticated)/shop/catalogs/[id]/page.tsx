@@ -5,9 +5,14 @@ import CatalogEditor from "@/components/admin/shop/CatalogEditor";
 import { adminUi } from "@/styles/admin/ui";
 import { AdminPageIntro } from "@/components/admin/layout/AdminPageIntro";
 
-export default async function EditCatalogPage({ params }: { params: { id: string } }) {
+export default async function EditCatalogPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
   const [catalog, products] = await Promise.all([
-    getAdminCatalog(params.id),
+    getAdminCatalog(id),
     listAdminShopProducts(),
   ]);
 
