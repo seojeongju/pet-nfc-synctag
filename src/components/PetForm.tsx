@@ -229,7 +229,7 @@ export function PetForm({ ownerId, subjectKind: kindProp, tenantId, initialData,
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {writeLocked ? (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-700">
-                    조직이 중지 상태라 저장이 잠겨 있습니다. 조회만 가능합니다.
+                    현재 모드에서는 등록/수정 기능이 잠겨 있습니다. 조회만 가능합니다.
                 </div>
             ) : null}
             <fieldset disabled={writeLocked} className="space-y-8">

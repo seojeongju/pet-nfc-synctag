@@ -9,6 +9,8 @@ import { notFound, redirect } from "next/navigation";
 import { parseSubjectKind, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
 import { requireTenantMember } from "@/lib/tenant-membership";
 import { getTenantStatus } from "@/lib/tenant-status";
+import { canUseModeFeature } from "@/lib/mode-visibility";
+import { isPlatformAdminRole } from "@/lib/platform-admin";
 
 export const runtime = "edge";
 
@@ -91,6 +93,16 @@ export default async function EditPetPage({
   const tenantSuspended = tenantFromPet
     ? (await getTenantStatus(context.env.DB, tenantFromPet)) === "suspended"
     : false;
+  const roleRow = await context.env.DB
+    .prepare("SELECT role FROM user WHERE id = ?")
+    .bind(session.user.id)
+    .first<{ role?: string | null }>();
+  const modeWriteLocked =
+    !(await canUseModeFeature(context.env.DB, session.user.id, subjectKind, {
+      isPlatformAdmin: isPlatformAdminRole(roleRow?.role),
+      tenantId: tenantFromPet,
+    }));
+  const writeLocked = tenantSuspended || modeWriteLocked;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-outfit pb-12">
@@ -120,7 +132,7 @@ export default async function EditPetPage({
             ownerId={session.user.id}
             subjectKind={subjectKind}
             tenantId={tenantFromPet}
-            writeLocked={tenantSuspended}
+            writeLocked={writeLocked}
             initialData={{
               id: pet.id,
               name: pet.name,

@@ -593,7 +593,7 @@ export default function PetProfileClient({
              <div className="px-2">
                 {writeLocked ? (
                   <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold text-amber-700">
-                    조직이 중지 상태라 수정/태그 관리 기능은 잠겨 있습니다. 조회만 가능합니다.
+                    현재 모드에서는 수정/태그 관리 기능이 잠겨 있습니다. 조회만 가능합니다.
                   </div>
                 ) : null}
                 <TagManageCard petId={pet.id} existingTags={petTagsLive} writeLocked={writeLocked} />
@@ -721,7 +721,7 @@ export default function PetProfileClient({
             href={isOwner && !writeLocked ? `/dashboard/${subjectKind}/pets/${pet.id}/edit${kindQs}` : `/dashboard/${subjectKind}${kindQs}`}
             className={cn("flex flex-col items-center gap-1 group", isOwner && writeLocked ? "opacity-50" : "")}
             aria-disabled={isOwner && writeLocked}
-            title={isOwner && writeLocked ? "중지된 조직에서는 수정이 잠겨 있습니다." : undefined}
+            title={isOwner && writeLocked ? "현재 모드에서는 수정 기능이 잠겨 있습니다." : undefined}
          >
             <div className="p-2.5 rounded-2xl text-slate-400 group-hover:text-white transition-all active:scale-90">
                <Settings className="w-6 h-6" />

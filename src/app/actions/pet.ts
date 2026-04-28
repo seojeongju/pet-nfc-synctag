@@ -9,6 +9,8 @@ import { assertPersonalPetQuota, assertTenantPetQuota } from "@/lib/tenant-quota
 import { assertMigration0008Applied } from "@/lib/db-migration-0008";
 import { assertTenantRole } from "@/lib/tenant-membership";
 import { assertTenantActive } from "@/lib/tenant-status";
+import { canUseModeFeature } from "@/lib/mode-visibility";
+import { isPlatformAdminRole } from "@/lib/platform-admin";
 import type { D1Database } from "@cloudflare/workers-types";
 
 interface PetData {
@@ -72,6 +74,20 @@ async function requireActorUser(): Promise<ActorUser> {
     const user = session?.user;
     if (!user?.id) throw new Error("로그인이 필요합니다.");
     return user as ActorUser;
+}
+
+async function resolveActorModePermission(
+    db: D1Database,
+    userId: string,
+    subjectKind: SubjectKind,
+    tenantId?: string | null
+): Promise<boolean> {
+    const roleRow = await db
+        .prepare("SELECT role FROM user WHERE id = ?")
+        .bind(userId)
+        .first<{ role?: string | null }>();
+    const isPlatformAdmin = isPlatformAdminRole(roleRow?.role);
+    return canUseModeFeature(db, userId, subjectKind, { isPlatformAdmin, tenantId });
 }
 
 /**
@@ -182,6 +198,10 @@ export async function createPet(ownerId: string, data: PetData) {
 
     const id = nanoid();
     const kind = parseSubjectKind(data.subject_kind);
+    const mayUseFeature = await resolveActorModePermission(db, actorId, kind, tenantId);
+    if (!mayUseFeature) {
+        throw new Error("현재 모드에서는 등록 기능을 사용할 수 없습니다.");
+    }
     const breed = data.breed ?? null;
     const medicalInfo = data.medical_info ?? null;
     const emergencyContact = data.emergency_contact ?? null;
@@ -292,9 +312,9 @@ export async function toggleLostMode(petId: string, isLost: boolean): Promise<vo
 
     // 소유자 또는 테넌트 어드민만 수정 가능
     const target = await db
-        .prepare("SELECT owner_id, tenant_id FROM pets WHERE id = ?")
+        .prepare("SELECT owner_id, tenant_id, subject_kind FROM pets WHERE id = ?")
         .bind(petId)
-        .first<{ owner_id: string; tenant_id: string | null }>();
+        .first<{ owner_id: string; tenant_id: string | null; subject_kind: string | null }>();
     if (!target) throw new Error("반려동물을 찾을 수 없습니다.");
 
     if (target.tenant_id) {
@@ -302,6 +322,11 @@ export async function toggleLostMode(petId: string, isLost: boolean): Promise<vo
         await assertTenantRole(db, actorId, target.tenant_id, "admin");
     } else if (target.owner_id !== actorId) {
         throw new Error("수정 권한이 없습니다.");
+    }
+    const modeKind = parseSubjectKind(target.subject_kind);
+    const mayUseFeature = await resolveActorModePermission(db, actorId, modeKind, target.tenant_id);
+    if (!mayUseFeature) {
+        throw new Error("현재 모드에서는 실종 모드 변경 기능을 사용할 수 없습니다.");
     }
 
     await db
@@ -316,9 +341,9 @@ export async function updatePet(petId: string, data: Partial<PetData>) {
     await assertMigration0008Applied(db);
 
     const target = await db
-        .prepare("SELECT owner_id, tenant_id FROM pets WHERE id = ?")
+        .prepare("SELECT owner_id, tenant_id, subject_kind FROM pets WHERE id = ?")
         .bind(petId)
-        .first<{ owner_id: string; tenant_id: string | null }>();
+        .first<{ owner_id: string; tenant_id: string | null; subject_kind: string | null }>();
     if (!target) {
         throw new Error("수정 대상이 존재하지 않습니다.");
     }
@@ -328,6 +353,11 @@ export async function updatePet(petId: string, data: Partial<PetData>) {
         await assertTenantRole(db, actorId, target.tenant_id, "admin");
     } else if (target.owner_id !== actorId) {
         throw new Error("수정 권한이 없습니다.");
+    }
+    const modeKind = parseSubjectKind(target.subject_kind);
+    const mayUseFeature = await resolveActorModePermission(db, actorId, modeKind, target.tenant_id);
+    if (!mayUseFeature) {
+        throw new Error("현재 모드에서는 수정 기능을 사용할 수 없습니다.");
     }
 
     const payload: Partial<PetData> = { ...data };
@@ -388,9 +418,9 @@ export async function deletePet(petId: string): Promise<void> {
     await assertMigration0008Applied(db);
 
     const target = await db
-        .prepare("SELECT owner_id, tenant_id, photo_url FROM pets WHERE id = ?")
+        .prepare("SELECT owner_id, tenant_id, photo_url, subject_kind FROM pets WHERE id = ?")
         .bind(petId)
-        .first<{ owner_id: string; tenant_id: string | null; photo_url: string | null }>();
+        .first<{ owner_id: string; tenant_id: string | null; photo_url: string | null; subject_kind: string | null }>();
     if (!target) {
         throw new Error("삭제 대상이 존재하지 않습니다.");
     }
@@ -400,6 +430,11 @@ export async function deletePet(petId: string): Promise<void> {
         await assertTenantRole(db, actorId, target.tenant_id, "admin");
     } else if (target.owner_id !== actorId) {
         throw new Error("삭제 권한이 없습니다.");
+    }
+    const modeKind = parseSubjectKind(target.subject_kind);
+    const mayUseFeature = await resolveActorModePermission(db, actorId, modeKind, target.tenant_id);
+    if (!mayUseFeature) {
+        throw new Error("현재 모드에서는 삭제 기능을 사용할 수 없습니다.");
     }
 
     await db.prepare("DELETE FROM pets WHERE id = ?").bind(petId).run();

@@ -10,6 +10,8 @@ import { getScanLogsWithDb } from "@/lib/scan-logs-db";
 import { getActiveWarrantyByPetId } from "@/lib/jewelry-warranty-db";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
 import { getTenantStatus } from "@/lib/tenant-status";
+import { canUseModeFeature } from "@/lib/mode-visibility";
+import { isPlatformAdminRole } from "@/lib/platform-admin";
 import { LostModeToggle } from "@/components/pet/LostModeToggle";
 import { GoldWarrantySection } from "@/components/pet/GoldWarrantySection";
 import { OpenNativePetNfcSectionButton } from "@/components/pet/OpenNativePetNfcSectionButton";
@@ -87,6 +89,16 @@ export default async function PetDetailPage({
   const tenantSuspended = tenantId
     ? (await getTenantStatus(context.env.DB, tenantId)) === "suspended"
     : false;
+  const roleRow = await context.env.DB
+    .prepare("SELECT role FROM user WHERE id = ?")
+    .bind(session.user.id)
+    .first<{ role?: string | null }>();
+  const modeWriteLocked =
+    !(await canUseModeFeature(context.env.DB, session.user.id, subjectKind, {
+      isPlatformAdmin: isPlatformAdminRole(roleRow?.role),
+      tenantId,
+    }));
+  const writeLocked = tenantSuspended || modeWriteLocked;
 
   // 병렬 데이터 로드
   const [tags, recentHealth, recentScansRaw, activeWarranty] = await Promise.all([
@@ -184,7 +196,7 @@ export default async function PetDetailPage({
             petId={pet.id}
             petName={pet.name}
             initialIsLost={isLost}
-            writeLocked={tenantSuspended}
+            writeLocked={writeLocked}
           />
         </section>
 
@@ -194,7 +206,7 @@ export default async function PetDetailPage({
             petId={pet.id}
             subjectKind="gold"
             tenantId={tenantId}
-            writeLocked={tenantSuspended}
+            writeLocked={writeLocked}
             initial={
               activeWarranty
                 ? {
@@ -234,7 +246,7 @@ export default async function PetDetailPage({
             <TagManageCard
               petId={pet.id}
               existingTags={tags}
-              writeLocked={tenantSuspended}
+              writeLocked={writeLocked}
               embed
             />
 

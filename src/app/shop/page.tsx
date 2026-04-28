@@ -4,7 +4,6 @@ import { getCfRequestContext } from "@/lib/cf-request-context";
 import { redirect } from "next/navigation";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
 import { getUserConsentStatus } from "@/lib/privacy-consent";
-import { getEffectiveAllowedSubjectKinds } from "@/lib/mode-visibility";
 import { SUBJECT_KINDS, type SubjectKind } from "@/lib/subject-kind";
 import { listShopProductsForKind } from "@/lib/shop";
 import { getOrgManageHrefForUser } from "@/lib/org-manage-href";
@@ -44,11 +43,8 @@ export default async function ShopPage({
     .bind(session.user.id)
     .first<{ role?: string | null }>();
   const isPlatformAdmin = isPlatformAdminRole(roleRow?.role);
-  const allowedSubjectKinds = await getEffectiveAllowedSubjectKinds(db, session.user.id, {
-    isPlatformAdmin,
-  });
-  const allowedKinds: SubjectKind[] =
-    isPlatformAdmin ? [...SUBJECT_KINDS] : allowedSubjectKinds;
+  // 스토어는 모든 모드 진입/구매를 허용하고, 모드별 상품만 필터링해서 보여준다.
+  const allowedKinds: SubjectKind[] = [...SUBJECT_KINDS];
 
   const fallbackKind = allowedKinds[0] ?? "pet";
   const requested = parseKindQuery(sp.kind);

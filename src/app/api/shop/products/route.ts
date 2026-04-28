@@ -2,8 +2,6 @@ import { getCfRequestContext } from "@/lib/cf-request-context";
 import { getAuth } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { getDB } from "@/lib/db";
-import { isPlatformAdminRole } from "@/lib/platform-admin";
-import { getEffectiveAllowedSubjectKinds } from "@/lib/mode-visibility";
 import { listShopProductsForKind } from "@/lib/shop";
 import { SUBJECT_KINDS, type SubjectKind } from "@/lib/subject-kind";
 
@@ -30,16 +28,6 @@ export async function GET(request: Request) {
   const kindParam = parseKindParam(url.searchParams.get("kind"));
   if (!kindParam) {
     return NextResponse.json({ error: "kind가 필요합니다." }, { status: 400 });
-  }
-
-  const roleRow = await getDB()
-    .prepare("SELECT role FROM user WHERE id = ?")
-    .bind(session.user.id)
-    .first<{ role?: string | null }>();
-  const isPlatformAdmin = isPlatformAdminRole(roleRow?.role);
-  const allowed = await getEffectiveAllowedSubjectKinds(getDB(), session.user.id, { isPlatformAdmin });
-  if (!allowed.includes(kindParam)) {
-    return NextResponse.json({ error: "이 모드의 상품을 볼 수 없습니다." }, { status: 403 });
   }
 
   try {

@@ -8,6 +8,8 @@ import { getDB } from "@/lib/db";
 import { countActiveWarrantiesForPet } from "@/lib/jewelry-warranty-db";
 import { parseSubjectKind } from "@/lib/subject-kind";
 import type { JewelryWarrantyProductSnapshot } from "@/types/warranty";
+import { canUseModeFeature } from "@/lib/mode-visibility";
+import { isPlatformAdminRole } from "@/lib/platform-admin";
 
 const certNoSuffix = customAlphabet("0123456789ABCDEFGHJKLMNPQRSTUVWXYZ", 8);
 
@@ -80,6 +82,17 @@ export async function issueJewelryWarrantyCertificate(
   }
   if (parseSubjectKind(pet.subject_kind) !== "gold") {
     return { ok: false, error: "골드 모드에서만 보증서를 발급할 수 있어요." };
+  }
+  const roleRow = await db
+    .prepare("SELECT role FROM user WHERE id = ?")
+    .bind(userId)
+    .first<{ role?: string | null }>();
+  const isPlatformAdmin = isPlatformAdminRole(roleRow?.role);
+  const mayUseFeature = await canUseModeFeature(db, userId, "gold", {
+    isPlatformAdmin,
+  });
+  if (!mayUseFeature) {
+    return { ok: false, error: "현재 계정은 골드 모드 기능을 사용할 수 없어요." };
   }
 
   const active = await countActiveWarrantiesForPet(db, petId);

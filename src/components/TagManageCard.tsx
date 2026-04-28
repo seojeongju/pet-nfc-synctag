@@ -151,7 +151,7 @@ export function TagManageCard({
           <div className="space-y-3">
             {writeLocked ? (
               <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold text-amber-700">
-                조직이 중지 상태라 태그 연결/해제는 잠겨 있습니다.
+                현재 모드에서는 태그 연결/해제 기능이 잠겨 있습니다.
               </div>
             ) : null}
             <AnimatePresence mode="popLayout">

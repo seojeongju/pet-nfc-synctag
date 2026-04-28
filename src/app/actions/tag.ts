@@ -11,6 +11,9 @@ import { assertMigration0008Applied } from "@/lib/db-migration-0008";
 import { assertTenantActive } from "@/lib/tenant-status";
 import { isValidTagUidFormat, normalizeTagUid } from "@/lib/tag-uid-format";
 import { mintNativeHandoffToken } from "@/lib/nfc-native-security";
+import { canUseModeFeature } from "@/lib/mode-visibility";
+import { isPlatformAdminRole } from "@/lib/platform-admin";
+import type { SubjectKind } from "@/lib/subject-kind";
 
 export type TagActionResult =
     | { ok: true }
@@ -32,6 +35,20 @@ async function getActorEmailSafe() {
     } catch {
         return "system";
     }
+}
+
+async function resolveActorModePermission(
+    userId: string,
+    subjectKind: SubjectKind,
+    tenantId?: string | null
+): Promise<boolean> {
+    const db = getDB();
+    const roleRow = await db
+        .prepare("SELECT role FROM user WHERE id = ?")
+        .bind(userId)
+        .first<{ role?: string | null }>();
+    const isPlatformAdmin = isPlatformAdminRole(roleRow?.role);
+    return canUseModeFeature(db, userId, subjectKind, { isPlatformAdmin, tenantId });
 }
 
 export async function linkTag(petId: string, tagId: string) {
@@ -73,6 +90,11 @@ export async function linkTag(petId: string, tagId: string) {
         await assertTenantTagQuota(db, petScope.tenant_id);
     } else if (petScope.owner_id !== userId) {
         throw new Error("해당 관리 대상에 연결할 권한이 없습니다.");
+    }
+    const petKind = parseSubjectKind(petScope.subject_kind);
+    const mayUseFeature = await resolveActorModePermission(userId, petKind, petScope.tenant_id);
+    if (!mayUseFeature) {
+        throw new Error("현재 모드에서는 태그 연결 기능을 사용할 수 없습니다.");
     }
 
     // 같은 관리 대상에 이미 연결된 태그를 다시 스캔한 경우도 idempotent 하게 성공 처리합니다.
@@ -318,6 +340,11 @@ export async function unlinkTag(tagId: string) {
             await assertTenantRole(db, userId, existing.tenant_id, "admin");
         } else if (!existing.owner_id || existing.owner_id !== userId) {
             throw new Error("해당 태그를 해제할 권한이 없습니다.");
+        }
+        const existingKind = parseSubjectKind(existing.subject_kind);
+        const mayUseFeature = await resolveActorModePermission(userId, existingKind, existing.tenant_id);
+        if (!mayUseFeature) {
+            throw new Error("현재 모드에서는 태그 해제 기능을 사용할 수 없습니다.");
         }
     }
 

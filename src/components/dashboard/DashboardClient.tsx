@@ -16,6 +16,7 @@ interface DashboardClientProps {
   tenantId?: string | null;
   tenantUsage?: TenantPlanUsageSummary | null;
   tenantSuspended?: boolean;
+  modeFeatureEnabled?: boolean;
   linkedTagCount?: number;
   /** pet 모드 원탭 가이드 3단계(테스트 스캔) — scan_logs 기준 */
   petScanLogCount?: number;
@@ -30,6 +31,7 @@ export default function DashboardClient({
   tenantId,
   tenantUsage,
   tenantSuspended = false,
+  modeFeatureEnabled = true,
   linkedTagCount = 0,
   petScanLogCount = 0
 }: DashboardClientProps) {
@@ -44,6 +46,7 @@ export default function DashboardClient({
           tenantId={tenantId}
           tenantUsage={tenantUsage}
           tenantSuspended={tenantSuspended}
+          modeFeatureEnabled={modeFeatureEnabled}
           linkedTagCount={linkedTagCount}
           petScanLogCount={petScanLogCount}
         />
@@ -58,6 +61,7 @@ export default function DashboardClient({
           tenantId={tenantId}
           tenantUsage={tenantUsage}
           tenantSuspended={tenantSuspended}
+          modeFeatureEnabled={modeFeatureEnabled}
           linkedTagCount={linkedTagCount}
         />
       );
@@ -71,6 +75,7 @@ export default function DashboardClient({
           tenantId={tenantId}
           tenantUsage={tenantUsage}
           tenantSuspended={tenantSuspended}
+          modeFeatureEnabled={modeFeatureEnabled}
           linkedTagCount={linkedTagCount}
         />
       );
@@ -84,6 +89,7 @@ export default function DashboardClient({
           tenantId={tenantId}
           tenantUsage={tenantUsage}
           tenantSuspended={tenantSuspended}
+          modeFeatureEnabled={modeFeatureEnabled}
           linkedTagCount={linkedTagCount}
         />
       );
@@ -97,6 +103,7 @@ export default function DashboardClient({
           tenantId={tenantId}
           tenantUsage={tenantUsage}
           tenantSuspended={tenantSuspended}
+          modeFeatureEnabled={modeFeatureEnabled}
           linkedTagCount={linkedTagCount}
         />
       );

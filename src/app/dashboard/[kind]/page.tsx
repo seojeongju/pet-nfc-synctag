@@ -11,13 +11,10 @@ import { getTenantPlanUsageSummary, type TenantPlanUsageSummary } from "@/lib/te
 import { getTenantStatus } from "@/lib/tenant-status";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
 import { rethrowNextControlFlowErrors } from "@/lib/next-redirect-guard";
-import {
-  getEffectiveAllowedSubjectKinds,
-  isSubjectKindAllowedForTenant,
-} from "@/lib/mode-visibility";
 import { getScanLogsCountWithDb } from "@/lib/scan-logs-db";
 import type { SubjectKind } from "@/lib/subject-kind";
 import type { D1Database } from "@cloudflare/workers-types";
+import { canUseModeFeature } from "@/lib/mode-visibility";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -88,25 +85,12 @@ export default async function DashboardKindPage({
         .bind(session.user.id)
         .first<{ role?: string | null }>();
       const isAdmin = isPlatformAdminRole(roleRow?.role);
-
-      if (!isAdmin) {
-        const allowed = await getEffectiveAllowedSubjectKinds(context.env.DB, session.user.id, {
-          isPlatformAdmin: false,
-        });
-        if (!allowed.includes(subjectKind)) {
-          redirect("/hub");
-        }
-        if (tenantId) {
-          const tenantOk = await isSubjectKindAllowedForTenant(
-            context.env.DB,
-            tenantId,
-            subjectKind
-          );
-          if (!tenantOk) {
-            redirect("/hub");
-          }
-        }
-      }
+      const modeFeatureEnabled = await canUseModeFeature(
+        context.env.DB,
+        session.user.id,
+        subjectKind,
+        { isPlatformAdmin: isAdmin, tenantId }
+      );
 
       const [pets, announcements, tenantUsage, tenantStatus] = await Promise.all([
         getPetsWithDb(context.env.DB, session.user.id, subjectKind, tenantId ?? undefined),
@@ -141,6 +125,7 @@ export default async function DashboardKindPage({
           tenantId={tenantId}
           tenantUsage={tenantUsage}
           tenantSuspended={tenantStatus === "suspended"}
+          modeFeatureEnabled={modeFeatureEnabled}
           linkedTagCount={linkedTagCount}
           petScanLogCount={petScanLogCount}
         />
@@ -158,6 +143,7 @@ export default async function DashboardKindPage({
           tenantId={tenantId}
           tenantUsage={null}
           tenantSuspended={false}
+          modeFeatureEnabled={false}
           linkedTagCount={0}
           petScanLogCount={0}
         />

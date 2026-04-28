@@ -88,6 +88,11 @@ export function GoldWarrantySection({
             {err}
           </p>
         )}
+        {writeLocked && (
+          <p className="text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+            현재 계정 상태에서는 보증서 발급 기능을 사용할 수 없습니다. 조회만 가능합니다.
+          </p>
+        )}
 
         {!initial ? (
           <div className="space-y-2">

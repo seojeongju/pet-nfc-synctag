@@ -2,8 +2,6 @@ import { getCfRequestContext } from "@/lib/cf-request-context";
 import { getAuth } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { getDB } from "@/lib/db";
-import { isPlatformAdminRole } from "@/lib/platform-admin";
-import { getEffectiveAllowedSubjectKinds } from "@/lib/mode-visibility";
 import {
   createPendingShopOrder,
   ShopForbiddenError,
@@ -38,16 +36,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "유효한 kind가 필요합니다." }, { status: 400 });
   }
   const kind = kindRaw as SubjectKind;
-
-  const roleRow = await getDB()
-    .prepare("SELECT role FROM user WHERE id = ?")
-    .bind(session.user.id)
-    .first<{ role?: string | null }>();
-  const isPlatformAdmin = isPlatformAdminRole(roleRow?.role);
-  const allowed = await getEffectiveAllowedSubjectKinds(getDB(), session.user.id, { isPlatformAdmin });
-  if (!allowed.includes(kind)) {
-    return NextResponse.json({ error: "이 모드로 주문할 수 없습니다." }, { status: 403 });
-  }
 
   const idem =
     request.headers.get("Idempotency-Key") ||

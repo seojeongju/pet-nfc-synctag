@@ -44,6 +44,7 @@ interface PetDashboardProps {
   tenantId?: string | null;
   tenantUsage?: TenantPlanUsageSummary | null;
   tenantSuspended?: boolean;
+  modeFeatureEnabled?: boolean;
   linkedTagCount?: number;
   /** 해당 테넌트(또는 개인) 범위 스캔 로그 1건 이상이면 테스트 스캔 완료 */
   petScanLogCount?: number;
@@ -64,6 +65,7 @@ export default function PetDashboard({
   tenantId,
   tenantUsage,
   tenantSuspended = false,
+  modeFeatureEnabled = true,
   linkedTagCount = 0,
   petScanLogCount = 0
 }: PetDashboardProps) {
@@ -171,8 +173,9 @@ export default function PetDashboard({
     setNfcBannerDismissed(true);
   };
 
+  const writeLocked = tenantSuspended || !modeFeatureEnabled;
   const showNfcSetupBanner =
-    !tenantSuspended &&
+    !writeLocked &&
     pets.length > 0 &&
     linkedTagCount === 0 &&
     !tagLinkedInSession &&
@@ -296,9 +299,9 @@ export default function PetDashboard({
                 )}
               </div>
             )}
-            {tenantSuspended ? (
+            {writeLocked ? (
               <div className="mt-2 inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[10px] font-black text-amber-700">
-                조직이 중지 상태라 쓰기 기능이 잠겨 있습니다.
+                현재 모드는 조회만 가능합니다. 쓰기 기능이 잠겨 있습니다.
               </div>
             ) : null}
             <div className="flex items-center gap-1.5 text-teal-600 font-bold text-[11px] uppercase tracking-wider">
@@ -444,7 +447,7 @@ export default function PetDashboard({
             subjectKind={subjectKind}
             subjects={pets}
             tenantId={tenantId}
-            tenantSuspended={tenantSuspended}
+            tenantSuspended={writeLocked}
             linkedTagCount={linkedTagCount}
             emptyRegisterHint={meta.emptyRegisterHint}
             subtitle="태그를 스캔하거나 UID를 입력해 연결하고, 태그 주소 기록까지 한 번에 진행해요."
@@ -512,11 +515,11 @@ export default function PetDashboard({
                 </motion.div>
               ))}
 
-              <motion.div whileTap={{ scale: tenantSuspended ? 1 : 0.95 }}>
+              <motion.div whileTap={{ scale: writeLocked ? 1 : 0.95 }}>
                 <a
-                  href={tenantSuspended ? "#" : `/dashboard/pets/new${kindQs}`}
-                  aria-disabled={tenantSuspended}
-                  className={tenantSuspended ? "pointer-events-none opacity-50" : ""}
+                  href={writeLocked ? "#" : `/dashboard/pets/new${kindQs}`}
+                  aria-disabled={writeLocked}
+                  className={writeLocked ? "pointer-events-none opacity-50" : ""}
                 >
                    <div className="min-w-[150px] h-full min-h-[176px] rounded-[32px] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center gap-2 hover:bg-teal-50/50 hover:border-teal-500 transition-all group">
                       <div className="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-teal-500 group-hover:text-white transition-all shadow-sm">

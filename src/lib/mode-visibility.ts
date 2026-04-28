@@ -214,3 +214,34 @@ export async function getDashboardPathForUserTenant(
   const kind = candidates[0] ?? "pet";
   return `/dashboard/${encodeURIComponent(kind)}?tenant=${encodeURIComponent(tenantId)}`;
 }
+
+/**
+ * 기능 사용 가능 여부(쓰기/실행 계열).
+ * - 플랫폼 관리자: 항상 허용
+ * - 일반 사용자: 글로벌 허용 모드 + (tenant 지정 시) tenant 허용 모드 모두 만족해야 허용
+ * - 스토어/주문은 별도 정책으로 모든 모드 허용 처리 권장
+ */
+export async function canUseModeFeature(
+  db: D1Database,
+  userId: string,
+  subjectKind: SubjectKind,
+  opts: {
+    isPlatformAdmin: boolean;
+    tenantId?: string | null;
+  }
+): Promise<boolean> {
+  if (opts.isPlatformAdmin) {
+    return true;
+  }
+  const allowed = await getEffectiveAllowedSubjectKinds(db, userId, {
+    isPlatformAdmin: false,
+  });
+  if (!allowed.includes(subjectKind)) {
+    return false;
+  }
+  const tenantId = (opts.tenantId ?? "").trim();
+  if (!tenantId) {
+    return true;
+  }
+  return isSubjectKindAllowedForTenant(db, tenantId, subjectKind);
+}

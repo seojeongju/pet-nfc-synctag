@@ -11,6 +11,8 @@ import { isTenantSuspendedSafe } from "@/lib/tenant-status";
 import { rethrowNextControlFlowErrors } from "@/lib/next-redirect-guard";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { canUseModeFeature } from "@/lib/mode-visibility";
+import { isPlatformAdminRole } from "@/lib/platform-admin";
 
 export const runtime = "edge";
 
@@ -127,6 +129,16 @@ export default async function NewPetPage({
     }
 
     const tenantSuspended = await isTenantSuspendedSafe(context.env.DB, tenantId);
+    const roleRow = await context.env.DB
+      .prepare("SELECT role FROM user WHERE id = ?")
+      .bind(session.user.id)
+      .first<{ role?: string | null }>();
+    const modeWriteLocked =
+      !(await canUseModeFeature(context.env.DB, session.user.id, subjectKind, {
+        isPlatformAdmin: isPlatformAdminRole(roleRow?.role),
+        tenantId,
+      }));
+    const writeLocked = tenantSuspended || modeWriteLocked;
     const ownerId = session.user.id;
 
     return (
@@ -157,7 +169,7 @@ export default async function NewPetPage({
               ownerId={ownerId}
               subjectKind={subjectKind}
               tenantId={tenantId}
-              writeLocked={tenantSuspended}
+              writeLocked={writeLocked}
             />
           </div>
 
