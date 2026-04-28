@@ -13,6 +13,15 @@ type ShopOrderClientProps = {
   session: { user: { name: string } };
 };
 
+type DaumPostcodeAddress = {
+  zonecode: string;
+  address: string;
+  addressType?: "R" | "J";
+  bname?: string;
+  buildingName?: string;
+  apartment?: "Y" | "N";
+};
+
 const statusLabel: Record<string, string> = {
   pending: "결제 대기",
   paid: "결제 완료",
@@ -24,6 +33,54 @@ export function ShopOrderClient({ order, session }: ShopOrderClientProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(Boolean(order.recipientName));
+  const [shippingZip, setShippingZip] = useState(order.shippingZip || "");
+  const [shippingAddress, setShippingAddress] = useState(order.shippingAddress || "");
+
+  const openPostcode = () => {
+    if (typeof window === "undefined") return;
+
+    const openPopup = () => {
+      const daumObj = (window as Window & {
+        daum?: { Postcode: new (args: { oncomplete: (data: DaumPostcodeAddress) => void }) => { open: () => void } };
+      }).daum;
+      const PostcodeCtor = daumObj?.Postcode;
+      if (!PostcodeCtor) {
+        setError("주소 검색 창을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        return;
+      }
+      const pc = new PostcodeCtor({
+        oncomplete: (data: DaumPostcodeAddress) => {
+          const road = data.addressType === "R";
+          let extra = "";
+          if (road) {
+            const bname = data.bname ?? "";
+            const building = data.buildingName ?? "";
+            if (bname) extra += bname;
+            if (building) extra += `${extra ? ", " : ""}${building}`;
+            if (extra) extra = ` (${extra})`;
+          }
+          setShippingZip(data.zonecode ?? "");
+          setShippingAddress(`${data.address ?? ""}${extra}`.trim());
+        },
+      });
+      pc.open();
+    };
+
+    const existing = document.querySelector<HTMLScriptElement>(
+      'script[src*="postcode.v2.js"]'
+    );
+    if (existing) {
+      openPopup();
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js";
+    script.async = true;
+    script.onload = openPopup;
+    script.onerror = () => setError("주소 검색 스크립트를 불러오지 못했습니다.");
+    document.body.appendChild(script);
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -159,16 +216,27 @@ export function ShopOrderClient({ order, session }: ShopOrderClientProps) {
 
             <div className="space-y-1.5">
               <label className="text-[11px] font-black text-slate-400 uppercase ml-1">배송 주소</label>
-              <input
-                name="shippingZip"
-                className="w-full h-12 rounded-2xl border border-slate-100 bg-slate-50 px-4 text-[13px] font-bold outline-none mb-2"
-                placeholder="우편번호 (선택)"
-                defaultValue={order.shippingZip || ""}
-              />
+              <div className="flex gap-2 mb-2">
+                <input
+                  name="shippingZip"
+                  value={shippingZip}
+                  onChange={(e) => setShippingZip(e.target.value)}
+                  className="flex-1 h-12 rounded-2xl border border-slate-100 bg-slate-50 px-4 text-[13px] font-bold outline-none"
+                  placeholder="우편번호 (선택)"
+                />
+                <button
+                  type="button"
+                  onClick={openPostcode}
+                  className="h-12 shrink-0 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 text-[12px] font-black text-indigo-700 hover:bg-indigo-100"
+                >
+                  우편번호 찾기
+                </button>
+              </div>
               <input
                 name="shippingAddress"
                 required
-                defaultValue={order.shippingAddress || ""}
+                value={shippingAddress}
+                onChange={(e) => setShippingAddress(e.target.value)}
                 className="w-full h-12 rounded-2xl border border-slate-100 bg-slate-50 px-4 text-[13px] font-bold outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
                 placeholder="전체 주소를 입력하세요"
               />
