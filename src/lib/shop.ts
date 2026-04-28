@@ -50,6 +50,74 @@ type ProductRow = {
   is_gold_linked: number;
 };
 
+/** 마이그레이션 단계별로 shop_products 컬럼이 다를 수 있음 */
+async function getShopProductsColumnSet(db: D1Database): Promise<Set<string>> {
+  const r = await db.prepare("PRAGMA table_info(shop_products)").all<{ name: string }>();
+  return new Set((r.results ?? []).map((x) => x.name));
+}
+
+const LIST_SHOP_PRODUCT_COLS: (keyof ProductRow)[] = [
+  "id",
+  "slug",
+  "name",
+  "description",
+  "price_krw",
+  "active",
+  "target_modes",
+  "image_url",
+  "video_url",
+  "content_html",
+  "additional_images",
+  "options_json",
+  "stock_quantity",
+  "sort_order",
+  "weight_grams",
+  "labor_fee_krw",
+  "is_gold_linked",
+];
+
+function normalizeProductRow(raw: Record<string, unknown>, existing: Set<string>): ProductRow {
+  const has = (k: keyof ProductRow) => existing.has(k);
+  const str = (k: keyof ProductRow, d: string) =>
+    has(k) && raw[k] != null ? String(raw[k]) : d;
+  const optStr = (k: keyof ProductRow) =>
+    !has(k) || raw[k] === null || raw[k] === undefined ? null : String(raw[k]);
+  const num = (k: keyof ProductRow, d: number) => {
+    if (!has(k) || raw[k] === null || raw[k] === undefined) return d;
+    const n = Number(raw[k]);
+    return Number.isFinite(n) ? n : d;
+  };
+  let weightGrams: number | null = null;
+  if (has("weight_grams") && raw.weight_grams !== null && raw.weight_grams !== undefined) {
+    const n = Number(raw.weight_grams);
+    weightGrams = Number.isFinite(n) ? n : null;
+  }
+  let laborFee: number | null = null;
+  if (has("labor_fee_krw") && raw.labor_fee_krw !== null && raw.labor_fee_krw !== undefined) {
+    const n = Math.floor(Number(raw.labor_fee_krw));
+    laborFee = Number.isFinite(n) ? n : null;
+  }
+  return {
+    id: str("id", ""),
+    slug: str("slug", ""),
+    name: str("name", ""),
+    description: str("description", ""),
+    price_krw: Math.floor(num("price_krw", 0)),
+    active: has("active") ? (num("active", 0) ? 1 : 0) : 1,
+    target_modes: str("target_modes", "[]"),
+    image_url: optStr("image_url"),
+    video_url: has("video_url") ? optStr("video_url") : null,
+    content_html: has("content_html") ? optStr("content_html") : null,
+    additional_images: has("additional_images") ? optStr("additional_images") : null,
+    options_json: has("options_json") ? optStr("options_json") : null,
+    stock_quantity: has("stock_quantity") ? Math.floor(num("stock_quantity", 999)) : 999,
+    sort_order: has("sort_order") ? Math.floor(num("sort_order", 0)) : 0,
+    weight_grams: weightGrams,
+    labor_fee_krw: laborFee,
+    is_gold_linked: has("is_gold_linked") ? (num("is_gold_linked", 0) ? 1 : 0) : 0,
+  };
+}
+
 function parseProductOptionsJson(raw: string | null): ShopProductOptionGroup[] | null {
   if (raw == null || !String(raw).trim()) return null;
   try {
@@ -107,16 +175,21 @@ export async function listShopProductsForKind(
   kind: SubjectKind
 ): Promise<ShopProductPublic[]> {
   const currentGoldPrice = await getCurrentGoldPrice(db);
+  const existing = await getShopProductsColumnSet(db);
+  const cols = LIST_SHOP_PRODUCT_COLS.filter((c) => existing.has(c));
+  if (!cols.includes("id")) {
+    return [];
+  }
+  const orderSql = existing.has("sort_order")
+    ? "ORDER BY sort_order ASC, name ASC"
+    : "ORDER BY name ASC";
   const res = await db
     .prepare(
-      `SELECT id, slug, name, description, price_krw, active, target_modes, image_url, video_url, content_html, additional_images, options_json, stock_quantity, sort_order, weight_grams, labor_fee_krw, is_gold_linked
-       FROM shop_products
-       WHERE active = 1
-       ORDER BY sort_order ASC, name ASC`
+      `SELECT ${cols.join(", ")} FROM shop_products WHERE active = 1 ${orderSql}`
     )
-    .all<ProductRow>();
+    .all<Record<string, unknown>>();
 
-  const rows = res.results ?? [];
+  const rows = (res.results ?? []).map((r) => normalizeProductRow(r, existing));
   const out: ShopProductPublic[] = [];
   for (const row of rows) {
     if (productTargetsKind(row.target_modes, kind)) {
@@ -132,16 +205,21 @@ export async function getShopProductBySlugForKind(
   kind: SubjectKind
 ): Promise<ShopProductPublic | null> {
   const currentGoldPrice = await getCurrentGoldPrice(db);
-  const row = await db
-    .prepare(
-      `SELECT id, slug, name, description, price_krw, active, target_modes, image_url, video_url, content_html, additional_images, options_json, stock_quantity, sort_order, weight_grams, labor_fee_krw, is_gold_linked
-       FROM shop_products
-       WHERE slug = ? AND active = 1`
-    )
+  const existing = await getShopProductsColumnSet(db);
+  const cols = LIST_SHOP_PRODUCT_COLS.filter((c) => existing.has(c));
+  if (!cols.includes("id")) {
+    return null;
+  }
+  const raw = await db
+    .prepare(`SELECT ${cols.join(", ")} FROM shop_products WHERE slug = ? AND active = 1`)
     .bind(slug)
-    .first<ProductRow>();
+    .first<Record<string, unknown>>();
 
-  if (!row || !productTargetsKind(row.target_modes, kind)) {
+  if (!raw) {
+    return null;
+  }
+  const row = normalizeProductRow(raw, existing);
+  if (!productTargetsKind(row.target_modes, kind)) {
     return null;
   }
   return rowToPublic(row, kind, currentGoldPrice);
@@ -205,25 +283,35 @@ export async function createPendingShopOrder(input: {
     }
   }
 
-  const product = await db
-    .prepare(
-      `SELECT id, name, price_krw, target_modes, active, options_json, stock_quantity, weight_grams, labor_fee_krw, is_gold_linked FROM shop_products WHERE id = ?`
-    )
-    .bind(productId)
-    .first<{
-      id: string;
-      name: string;
-      price_krw: number;
-      target_modes: string;
-      active: number;
-      options_json: string | null;
-      stock_quantity: number;
-      weight_grams: number | null;
-      labor_fee_krw: number | null;
-      is_gold_linked: number;
-    }>();
+  const tableCols = await getShopProductsColumnSet(db);
+  const orderWanted = [
+    "id",
+    "name",
+    "price_krw",
+    "target_modes",
+    "active",
+    "options_json",
+    "stock_quantity",
+    "weight_grams",
+    "labor_fee_krw",
+    "is_gold_linked",
+  ] as const;
+  const orderSelectCols = orderWanted.filter((c) => tableCols.has(c));
+  if (!orderSelectCols.includes("id")) {
+    throw new ShopNotFoundError();
+  }
 
-  if (!product || !product.active) {
+  const productRaw = await db
+    .prepare(`SELECT ${orderSelectCols.join(", ")} FROM shop_products WHERE id = ?`)
+    .bind(productId)
+    .first<Record<string, unknown>>();
+
+  if (!productRaw) {
+    throw new ShopNotFoundError();
+  }
+
+  const product = normalizeProductRow(productRaw, tableCols);
+  if (!product.active) {
     throw new ShopNotFoundError();
   }
 

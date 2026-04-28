@@ -9,19 +9,24 @@ export interface GoldSettings {
 }
 
 export async function getGoldSettings(db: D1Database): Promise<GoldSettings> {
-  const row = await db
-    .prepare("SELECT use_auto_fetch, manual_override_price, last_fetched_at FROM gold_settings WHERE id = 1")
-    .first<{ use_auto_fetch: number; manual_override_price: number | null; last_fetched_at: string | null }>();
+  try {
+    const row = await db
+      .prepare("SELECT use_auto_fetch, manual_override_price, last_fetched_at FROM gold_settings WHERE id = 1")
+      .first<{ use_auto_fetch: number; manual_override_price: number | null; last_fetched_at: string | null }>();
 
-  if (!row) {
+    if (!row) {
+      return { useAutoFetch: true, manualOverridePrice: null, lastFetchedAt: null };
+    }
+
+    return {
+      useAutoFetch: row.use_auto_fetch === 1,
+      manualOverridePrice: row.manual_override_price,
+      lastFetchedAt: row.last_fetched_at,
+    };
+  } catch {
+    /* D1에 gold_settings 미적용 시(마이그레이션 전) */
     return { useAutoFetch: true, manualOverridePrice: null, lastFetchedAt: null };
   }
-
-  return {
-    useAutoFetch: row.use_auto_fetch === 1,
-    manualOverridePrice: row.manual_override_price,
-    lastFetchedAt: row.last_fetched_at,
-  };
 }
 
 /**
@@ -30,17 +35,22 @@ export async function getGoldSettings(db: D1Database): Promise<GoldSettings> {
  * 2. 없으면 가장 최근 gold_prices 레코드 사용
  */
 export async function getCurrentGoldPrice(db: D1Database): Promise<number> {
-  const settings = await getGoldSettings(db);
-  
-  if (settings.manualOverridePrice !== null) {
-    return settings.manualOverridePrice;
+  try {
+    const settings = await getGoldSettings(db);
+
+    if (settings.manualOverridePrice !== null) {
+      return settings.manualOverridePrice;
+    }
+
+    const latest = await db
+      .prepare("SELECT price_per_gram FROM gold_prices ORDER BY created_at DESC LIMIT 1")
+      .first<{ price_per_gram: number }>();
+
+    return latest?.price_per_gram ?? 0;
+  } catch {
+    /* gold_prices 테이블 없음 등 */
+    return 0;
   }
-
-  const latest = await db
-    .prepare("SELECT price_per_gram FROM gold_prices ORDER BY created_at DESC LIMIT 1")
-    .first<{ price_per_gram: number }>();
-
-  return latest?.price_per_gram ?? 0;
 }
 
 /**
