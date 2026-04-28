@@ -372,14 +372,32 @@ export async function getShopOrderByIdForUser(
   orderId: string,
   userId: string
 ): Promise<ShopOrderPublic | null> {
+  const hasResalePolicyTable = Boolean(
+    await db
+      .prepare(
+        `SELECT 1 AS ok FROM sqlite_master WHERE type='table' AND name='gold_order_resale_policies' LIMIT 1`
+      )
+      .first<{ ok: number }>()
+      .catch(() => null)
+  );
+
+  const resaleSelect = hasResalePolicyTable
+    ? "rp.id AS rp_id, rp.enabled AS rp_enabled, rp.resale_offer_price_krw AS rp_price, rp.resale_visible_from AS rp_visible_from, rp.visibility_scope AS rp_scope"
+    : "NULL AS rp_id, NULL AS rp_enabled, NULL AS rp_price, NULL AS rp_visible_from, NULL AS rp_scope";
+  const resaleJoin = hasResalePolicyTable
+    ? "LEFT JOIN gold_order_resale_policies rp ON rp.order_id = o.id"
+    : "";
+
   const row = await db
     .prepare(
       `SELECT o.id, o.subject_kind, o.amount_krw, o.status, o.options_selected_json,
               o.recipient_name, o.recipient_phone, o.shipping_zip, o.shipping_address, o.shipping_memo,
               o.created_at, o.updated_at,
-              p.id AS p_id, p.name AS p_name, p.slug AS p_slug
+              p.id AS p_id, p.name AS p_name, p.slug AS p_slug,
+              ${resaleSelect}
        FROM shop_orders o
        INNER JOIN shop_products p ON p.id = o.product_id
+       ${resaleJoin}
        WHERE o.id = ? AND o.user_id = ?`
     )
     .bind(orderId, userId)
@@ -399,6 +417,11 @@ export async function getShopOrderByIdForUser(
       p_id: string;
       p_name: string;
       p_slug: string;
+      rp_id: string | null;
+      rp_enabled: number | null;
+      rp_price: number | null;
+      rp_visible_from: string | null;
+      rp_scope: string | null;
     }>();
 
   if (!row) return null;
@@ -419,11 +442,44 @@ export async function getShopOrderByIdForUser(
     }
   }
 
+  let resaleOfferVisible = false;
+  let resaleOfferPriceKrw: number | null = null;
+  const resaleVisibleFrom = row.rp_visible_from;
+
+  if (
+    row.subject_kind === "gold" &&
+    row.rp_enabled === 1 &&
+    row.rp_price != null &&
+    row.rp_visible_from
+  ) {
+    const fromMs = new Date(row.rp_visible_from).getTime();
+    const timeOpen = Number.isFinite(fromMs) && Date.now() >= fromMs;
+    let allowedByScope = row.rp_scope !== "selected_buyers";
+    if (!allowedByScope && row.rp_id) {
+      const t = await db
+        .prepare(
+          `SELECT 1 AS ok FROM gold_order_resale_targets WHERE policy_id = ? AND user_id = ? LIMIT 1`
+        )
+        .bind(row.rp_id, userId)
+        .first<{ ok: number }>()
+        .catch(() => null);
+      allowedByScope = Boolean(t?.ok);
+    }
+    if (timeOpen && allowedByScope) {
+      resaleOfferVisible = true;
+      resaleOfferPriceKrw = row.rp_price;
+    }
+  }
+
   return {
     id: row.id,
     subjectKind: row.subject_kind as SubjectKind,
     status: row.status as ShopOrderStatus,
     amountKrw: row.amount_krw,
+    purchasePriceKrw: row.amount_krw,
+    resaleOfferVisible,
+    resaleOfferPriceKrw,
+    resaleVisibleFrom,
     product: { id: row.p_id, name: row.p_name, slug: row.p_slug },
     selectedOptions,
     recipientName: row.recipient_name,

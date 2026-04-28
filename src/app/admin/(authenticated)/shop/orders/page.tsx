@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { listAdminShopOrders, updateShopOrderStatus } from "@/app/actions/admin-shop";
+import { listAdminShopOrders, saveGoldOrderResalePolicy, updateShopOrderStatus } from "@/app/actions/admin-shop";
 import { subjectKindLabelKo } from "@/lib/shop";
 import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
@@ -115,7 +115,7 @@ export default async function AdminShopOrdersPage({
                 <th className={adminUi.tableHeadCell}>모드</th>
                 <th className={adminUi.tableHeadCell}>상품</th>
                 <th className={adminUi.tableHeadCell}>금액</th>
-                <th className={adminUi.tableHeadCell}>상태 변경</th>
+                <th className={adminUi.tableHeadCell}>상태/되팔기 노출 설정</th>
               </tr>
             </thead>
             <tbody>
@@ -173,6 +173,61 @@ export default async function AdminShopOrdersPage({
                           </button>
                         </form>
                       </div>
+                      {o.subject_kind === "gold" && (
+                        <form action={saveGoldOrderResalePolicy} className="mt-3 rounded-xl border border-amber-200 bg-amber-50/40 p-2.5 space-y-2">
+                          <input type="hidden" name="order_id" value={o.id} />
+                          <label className="flex items-center gap-2 text-[10px] font-bold text-amber-900">
+                            <input
+                              type="checkbox"
+                              name="resale_enabled"
+                              defaultChecked={(o.resale_enabled ?? 0) === 1}
+                            />
+                            소비자 되팔기 판매가 노출 사용
+                          </label>
+                          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                            <input
+                              type="number"
+                              name="resale_offer_price_krw"
+                              defaultValue={o.resale_offer_price_krw ?? o.amount_krw}
+                              className="h-8 rounded-lg border border-amber-200 bg-white px-2 text-[10px] font-bold"
+                              placeholder="판매가(원)"
+                            />
+                            <input
+                              type="datetime-local"
+                              name="resale_visible_from"
+                              defaultValue={o.resale_visible_from ? o.resale_visible_from.slice(0, 16) : ""}
+                              className="h-8 rounded-lg border border-amber-200 bg-white px-2 text-[10px] font-bold"
+                            />
+                          </div>
+                          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                            <select
+                              name="resale_visibility_scope"
+                              defaultValue={o.resale_visibility_scope ?? "order_buyer"}
+                              className="h-8 rounded-lg border border-amber-200 bg-white px-2 text-[10px] font-bold"
+                            >
+                              <option value="order_buyer">주문 구매자만</option>
+                              <option value="selected_buyers">특정 소비자</option>
+                            </select>
+                            <label className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600">
+                              <input type="checkbox" name="include_order_buyer" defaultChecked />
+                              구매자 자동 포함
+                            </label>
+                          </div>
+                          <input
+                            type="text"
+                            name="resale_targets_csv"
+                            defaultValue={o.resale_targets_csv ?? ""}
+                            className="h-8 w-full rounded-lg border border-amber-200 bg-white px-2 text-[10px] font-semibold"
+                            placeholder="특정 소비자 user_id 콤마 구분 (예: u1,u2)"
+                          />
+                          <button
+                            type="submit"
+                            className="h-8 rounded-lg border border-amber-300 bg-white px-2.5 text-[10px] font-black text-amber-900 hover:bg-amber-100"
+                          >
+                            되팔기 정책 저장
+                          </button>
+                        </form>
+                      )}
                     </td>
                   </tr>
                 ))

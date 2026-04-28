@@ -38,7 +38,11 @@ export type ShopOrderPublic = {
   subjectKind: SubjectKind;
   status: ShopOrderStatus;
   amountKrw: number;
+  purchasePriceKrw: number;
   product: { id: string; name: string; slug: string };
+  resaleOfferVisible: boolean;
+  resaleOfferPriceKrw?: number | null;
+  resaleVisibleFrom?: string | null;
   selectedOptions?: Record<string, string> | null;
   recipientName?: string | null;
   recipientPhone?: string | null;

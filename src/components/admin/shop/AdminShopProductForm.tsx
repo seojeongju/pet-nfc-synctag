@@ -243,10 +243,13 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
       <form action={saveShopProduct} className="space-y-8 pb-20">
         {isEdit ? <input type="hidden" name="id" value={product!.id} /> : null}
         <input type="hidden" name="content_html" value={contentHtml} />
+        <input type="hidden" name="image_url" value={imageUrl} />
+        <input type="hidden" name="video_url" value={videoUrl} />
+        <input type="hidden" name="additional_images" value={JSON.stringify(additionalImages)} />
+        <input type="hidden" name="options_json" value={JSON.stringify(options)} />
         
         {/* 기본 정보 탭 */}
-        {activeTab === "basic" && (
-          <div className={cn(adminUi.sectionCard, "space-y-8 animate-in fade-in slide-in-from-bottom-2")}>
+        <div className={cn(adminUi.sectionCard, "space-y-8 animate-in fade-in slide-in-from-bottom-2", activeTab !== "basic" && "hidden")}>
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-xl bg-slate-100 text-slate-600">
                 <Settings className="h-5 w-5" />
@@ -418,12 +421,10 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                  다음: 미디어 설정 <ArrowRight className="h-4 w-4" />
                </button>
             </div>
-          </div>
-        )}
+        </div>
 
         {/* 미디어 관리 탭 */}
-        {activeTab === "media" && (
-          <div className={cn(adminUi.sectionCard, "space-y-10 animate-in fade-in slide-in-from-bottom-2")}>
+        <div className={cn(adminUi.sectionCard, "space-y-10 animate-in fade-in slide-in-from-bottom-2", activeTab !== "media" && "hidden")}>
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-xl bg-slate-100 text-slate-600">
                 <ImageIcon className="h-5 w-5" />
@@ -460,7 +461,6 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                 <div className="space-y-1.5">
                   <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500">이미지 URL</label>
                   <input 
-                    name="image_url" 
                     value={imageUrl} 
                     onChange={(e) => setImageUrl(e.target.value)} 
                     className={cn("w-full", adminUi.input, "h-11")} 
@@ -495,7 +495,6 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                 </div>
                 <div className="flex-1 w-full space-y-2">
                   <input 
-                    name="video_url" 
                     value={videoUrl} 
                     onChange={(e) => setVideoUrl(e.target.value)} 
                     className={cn("w-full", adminUi.input)} 
@@ -551,7 +550,6 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                 </button>
                 <input type="file" ref={addImgInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, "additional")} />
               </div>
-              <input type="hidden" name="additional_images" value={JSON.stringify(additionalImages)} />
             </div>
 
             <div className="pt-4 border-t border-slate-50 flex justify-between">
@@ -564,12 +562,10 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                  다음: 옵션 관리 <ArrowRight className="h-4 w-4" />
                </button>
             </div>
-          </div>
-        )}
+        </div>
 
         {/* 옵션 관리 탭 */}
-        {activeTab === "options" && (
-          <div className={cn(adminUi.sectionCard, "space-y-8 animate-in fade-in slide-in-from-bottom-2")}>
+        <div className={cn(adminUi.sectionCard, "space-y-8 animate-in fade-in slide-in-from-bottom-2", activeTab !== "options" && "hidden")}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-xl bg-slate-100 text-slate-600">
@@ -657,7 +653,6 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                 </div>
               )}
             </div>
-            <input type="hidden" name="options_json" value={JSON.stringify(options)} />
 
             <div className="pt-4 border-t border-slate-50 flex justify-between">
                <button type="button" onClick={() => setActiveTab("media")} className="text-xs font-black text-slate-400 hover:text-slate-600">이전 단계로</button>
@@ -669,11 +664,10 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                  다음: 상세 페이지 디자인 <ArrowRight className="h-4 w-4" />
                </button>
             </div>
-          </div>
-        )}
+        </div>
 
         {/* 상세 페이지 구성 탭 */}
-        {activeTab === "content" && (
+        <div className={activeTab !== "content" ? "hidden" : ""}>
           <ProductContentEditorPanel
             contentHtml={contentHtml}
             onContentChange={setContentHtml}
@@ -690,7 +684,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
               </button>
             }
           />
-        )}
+        </div>
 
         {/* 저장/취소 하단 고정 바 (플로팅 스타일) */}
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-3xl px-4 z-50">

@@ -97,7 +97,18 @@ export function ShopOrderClient({ order, session }: ShopOrderClientProps) {
                   {k}: {v}
                 </p>
               ))}
-              <p className="mt-2 text-[15px] font-black text-teal-700">{formatKrw(order.amountKrw)}</p>
+              <p className="mt-2 text-[15px] font-black text-teal-700">
+                구매가 {formatKrw(order.purchasePriceKrw)}
+              </p>
+              {order.resaleOfferVisible ? (
+                <p className="mt-1 text-[13px] font-black text-amber-700">
+                  되팔기 판매가 {formatKrw(order.resaleOfferPriceKrw ?? 0)}
+                </p>
+              ) : (
+                <p className="mt-1 text-[11px] font-bold text-slate-400">
+                  되팔기 판매가는 관리자 지정 시점 이후 노출됩니다.
+                </p>
+              )}
             </div>
           </div>
         </div>

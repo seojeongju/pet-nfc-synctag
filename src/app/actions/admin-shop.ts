@@ -300,6 +300,12 @@ export type AdminShopOrderRow = {
   shipping_zip: string | null;
   shipping_address: string | null;
   shipping_memo: string | null;
+  resale_policy_id: string | null;
+  resale_enabled: number | null;
+  resale_offer_price_krw: number | null;
+  resale_visible_from: string | null;
+  resale_visibility_scope: string | null;
+  resale_targets_csv: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -310,6 +316,7 @@ export async function listAdminShopOrders(options: {
   query?: string;
 }): Promise<AdminShopOrderRow[]> {
   await assertAdminRole();
+  const db = getDB();
   const limit = Math.min(200, Math.max(1, Math.trunc(options.limit ?? 100)));
   const status = options.status ?? "all";
   const q = (options.query ?? "").trim();
@@ -327,20 +334,52 @@ export async function listAdminShopOrders(options: {
     const like = `%${q}%`;
     binds.push(like, like, like, like);
   }
+  const hasResalePolicyTable = Boolean(
+    await db
+      .prepare(
+        `SELECT 1 AS ok FROM sqlite_master WHERE type='table' AND name='gold_order_resale_policies' LIMIT 1`
+      )
+      .first<{ ok: number }>()
+      .catch(() => null)
+  );
+  const hasResaleTargetsTable = Boolean(
+    await db
+      .prepare(
+        `SELECT 1 AS ok FROM sqlite_master WHERE type='table' AND name='gold_order_resale_targets' LIMIT 1`
+      )
+      .first<{ ok: number }>()
+      .catch(() => null)
+  );
+
+  const resaleSelect = hasResalePolicyTable
+    ? `rp.id AS resale_policy_id, rp.enabled AS resale_enabled, rp.resale_offer_price_krw, rp.resale_visible_from, rp.visibility_scope AS resale_visibility_scope,
+          ${
+            hasResaleTargetsTable
+              ? `(SELECT group_concat(t.user_id, ',') FROM gold_order_resale_targets t WHERE t.policy_id = rp.id)`
+              : "NULL"
+          } AS resale_targets_csv,`
+    : `NULL AS resale_policy_id, NULL AS resale_enabled, NULL AS resale_offer_price_krw, NULL AS resale_visible_from, NULL AS resale_visibility_scope, NULL AS resale_targets_csv,`;
+
+  const resaleJoin = hasResalePolicyTable
+    ? `LEFT JOIN gold_order_resale_policies rp ON rp.order_id = o.id`
+    : ``;
+
   const sql = `SELECT o.id, o.user_id, u.email AS user_email, o.subject_kind, o.product_id,
           p.name AS product_name, p.slug AS product_slug, o.amount_krw, o.status,
           o.payment_provider, o.external_payment_id, o.options_selected_json,
           o.recipient_name, o.recipient_phone, o.shipping_zip, o.shipping_address, o.shipping_memo,
+          ${resaleSelect}
           o.created_at, o.updated_at
        FROM shop_orders o
        INNER JOIN shop_products p ON p.id = o.product_id
        LEFT JOIN user u ON u.id = o.user_id
+       ${resaleJoin}
        ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
        ORDER BY o.created_at DESC
        LIMIT ?`;
   binds.push(limit);
 
-  const res = await getDB()
+  const res = await db
     .prepare(sql)
     .bind(...binds)
     .all<AdminShopOrderRow>();
@@ -362,6 +401,134 @@ export async function updateShopOrderStatus(formData: FormData): Promise<void> {
   revalidatePath("/admin/shop");
   revalidatePath("/admin/shop/orders");
   revalidatePath("/shop");
+  redirect("/admin/shop/orders?ok=1");
+}
+
+export async function saveGoldOrderResalePolicy(formData: FormData): Promise<void> {
+  await assertAdminRole();
+  const context = getCfRequestContext();
+  const auth = getAuth(context.env);
+  const session = await auth.api.getSession({ headers: await headers() });
+  const actorId = session?.user?.id;
+  if (!actorId) {
+    redirect("/admin/shop/orders?e=" + encodeURIComponent("로그인이 필요합니다."));
+  }
+
+  const db = getDB();
+  const hasPolicyTable = Boolean(
+    await db
+      .prepare(
+        `SELECT 1 AS ok FROM sqlite_master WHERE type='table' AND name='gold_order_resale_policies' LIMIT 1`
+      )
+      .first<{ ok: number }>()
+      .catch(() => null)
+  );
+  const hasTargetTable = Boolean(
+    await db
+      .prepare(
+        `SELECT 1 AS ok FROM sqlite_master WHERE type='table' AND name='gold_order_resale_targets' LIMIT 1`
+      )
+      .first<{ ok: number }>()
+      .catch(() => null)
+  );
+  if (!hasPolicyTable || !hasTargetTable) {
+    redirect(
+      "/admin/shop/orders?e=" +
+        encodeURIComponent("되팔기 정책 테이블이 없습니다. migrations/0024_gold_order_resale_policies.sql 적용이 필요합니다.")
+    );
+  }
+  const orderId = String(formData.get("order_id") ?? "").trim();
+  const enabled = formData.get("resale_enabled") === "on" ? 1 : 0;
+  const scopeRaw = String(formData.get("resale_visibility_scope") ?? "order_buyer").trim();
+  const scope =
+    scopeRaw === "selected_buyers" ? "selected_buyers" : "order_buyer";
+  const priceRaw = Number(formData.get("resale_offer_price_krw"));
+  const visibleFromRaw = String(formData.get("resale_visible_from") ?? "").trim();
+  const targetCsv = String(formData.get("resale_targets_csv") ?? "").trim();
+  const includeBuyer = formData.get("include_order_buyer") === "on";
+
+  if (!orderId) {
+    redirect("/admin/shop/orders?e=" + encodeURIComponent("주문 ID가 필요합니다."));
+  }
+  if (!Number.isFinite(priceRaw) || priceRaw < 0) {
+    redirect("/admin/shop/orders?e=" + encodeURIComponent("판매가를 올바르게 입력해 주세요."));
+  }
+
+  const order = await db
+    .prepare(`SELECT id, user_id, subject_kind, amount_krw FROM shop_orders WHERE id = ?`)
+    .bind(orderId)
+    .first<{ id: string; user_id: string; subject_kind: string; amount_krw: number }>();
+  if (!order) {
+    redirect("/admin/shop/orders?e=" + encodeURIComponent("주문을 찾을 수 없습니다."));
+  }
+  if (order.subject_kind !== "gold") {
+    redirect("/admin/shop/orders?e=" + encodeURIComponent("골드 주문만 되팔기 설정이 가능합니다."));
+  }
+
+  let visibleFromIso: string | null = null;
+  if (visibleFromRaw) {
+    const dt = new Date(visibleFromRaw);
+    if (!Number.isFinite(dt.getTime())) {
+      redirect("/admin/shop/orders?e=" + encodeURIComponent("노출 시작일시가 올바르지 않습니다."));
+    }
+    visibleFromIso = dt.toISOString();
+  }
+
+  const existing = await db
+    .prepare(`SELECT id FROM gold_order_resale_policies WHERE order_id = ?`)
+    .bind(orderId)
+    .first<{ id: string }>();
+
+  const policyId = existing?.id ?? nanoid();
+  if (!existing?.id) {
+    await db
+      .prepare(
+        `INSERT INTO gold_order_resale_policies
+          (id, order_id, purchase_price_krw, resale_offer_price_krw, resale_visible_from, visibility_scope, enabled, created_by_user_id, updated_by_user_id, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
+      )
+      .bind(
+        policyId,
+        orderId,
+        order.amount_krw,
+        Math.floor(priceRaw),
+        visibleFromIso,
+        scope,
+        enabled,
+        actorId,
+        actorId
+      )
+      .run();
+  } else {
+    await db
+      .prepare(
+        `UPDATE gold_order_resale_policies
+         SET resale_offer_price_krw = ?, resale_visible_from = ?, visibility_scope = ?, enabled = ?, updated_by_user_id = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`
+      )
+      .bind(Math.floor(priceRaw), visibleFromIso, scope, enabled, actorId, policyId)
+      .run();
+  }
+
+  const targets = new Set<string>();
+  if (scope === "selected_buyers") {
+    for (const token of targetCsv.split(",")) {
+      const t = token.trim();
+      if (t) targets.add(t);
+    }
+    if (includeBuyer) targets.add(order.user_id);
+  }
+
+  await db.prepare(`DELETE FROM gold_order_resale_targets WHERE policy_id = ?`).bind(policyId).run();
+  for (const userId of targets) {
+    await db
+      .prepare(`INSERT INTO gold_order_resale_targets (id, policy_id, user_id) VALUES (?, ?, ?)`)
+      .bind(nanoid(), policyId, userId)
+      .run();
+  }
+
+  revalidatePath("/admin/shop/orders");
+  revalidatePath(`/shop/orders/${encodeURIComponent(orderId)}`);
   redirect("/admin/shop/orders?ok=1");
 }
 
