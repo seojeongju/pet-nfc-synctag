@@ -12,7 +12,6 @@ import {
   Settings,
   Image as ImageIcon,
   FileText,
-  Eye,
   Upload,
   Video,
   Plus,
@@ -21,10 +20,10 @@ import {
   ArrowRight,
   ExternalLink,
   Package,
-  CheckCircle2,
   Coins,
 } from "lucide-react";
 import type { ShopProductOptionGroup, ShopProductOptionValue } from "@/types/shop";
+import { ProductContentEditorPanel } from "@/components/admin/shop/ProductContentEditorPanel";
 
 function kindsChecked(row: AdminShopProductRow | null): Set<SubjectKind> {
   const s = new Set<SubjectKind>();
@@ -243,6 +242,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
 
       <form action={saveShopProduct} className="space-y-8 pb-20">
         {isEdit ? <input type="hidden" name="id" value={product!.id} /> : null}
+        <input type="hidden" name="content_html" value={contentHtml} />
         
         {/* 기본 정보 탭 */}
         {activeTab === "basic" && (
@@ -674,92 +674,22 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
 
         {/* 상세 페이지 구성 탭 */}
         {activeTab === "content" && (
-          <div className={cn(adminUi.sectionCard, "p-0 overflow-hidden border-none animate-in fade-in slide-in-from-bottom-2")}>
-            <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-white">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-slate-100 text-slate-600">
-                  <FileText className="h-5 w-5" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-black text-slate-900">상세 페이지 디자인</h2>
-                  <p className="text-[11px] font-bold text-slate-400">HTML과 Tailwind CSS를 사용하여 페이지를 디자인합니다.</p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowPreview(!showPreview)}
-                  className={cn(
-                    "flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-black transition-all",
-                    showPreview ? "bg-slate-900 text-white" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
-                  )}
-                >
-                  <Eye className="h-4 w-4" />
-                  {showPreview ? "미리보기 끄기" : "미리보기 켜기"}
-                </button>
-                <button
-                  type="button"
-                  onClick={applyTemplate}
-                  className="flex items-center gap-2 rounded-xl bg-teal-50 px-4 py-2 text-[11px] font-black text-teal-700 hover:bg-teal-100 transition-colors border border-teal-200"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  스마트 템플릿 로드
-                </button>
-              </div>
-            </div>
-            
-            <div className={cn("grid h-[700px]", showPreview ? "md:grid-cols-2" : "grid-cols-1")}>
-              {/* 에디터 영역 */}
-              <div className="relative h-full flex flex-col bg-slate-900 border-r border-slate-800">
-                <div className="px-4 py-2 bg-slate-800/50 flex items-center justify-between">
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">HTML Editor</span>
-                  <span className="text-[10px] font-bold text-slate-600">Tailwind CSS 지원</span>
-                </div>
-                <textarea
-                  name="content_html"
-                  value={contentHtml}
-                  onChange={(e) => setContentHtml(e.target.value)}
-                  className="flex-1 w-full bg-transparent p-6 text-[12px] font-mono leading-relaxed text-emerald-400 outline-none resize-none selection:bg-teal-500/30"
-                  placeholder="상세 페이지를 구성할 HTML 코드를 입력하세요..."
-                />
-              </div>
-
-              {/* 프리뷰 영역 */}
-              {showPreview && (
-                <div className="h-full flex flex-col bg-[#F8FAFC]">
-                  <div className="px-4 py-2 bg-white/50 border-b border-slate-100 flex items-center justify-between">
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Live Preview</span>
-                    <div className="flex gap-1">
-                      <div className="h-1.5 w-1.5 rounded-full bg-rose-400" />
-                      <div className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-                      <div className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                    </div>
-                  </div>
-                  <div className="flex-1 overflow-y-auto p-8 scrollbar-hide">
-                    <div className="max-w-[430px] mx-auto bg-white min-h-full shadow-2xl rounded-[40px] overflow-hidden border border-slate-100">
-                      {contentHtml ? (
-                        <div dangerouslySetInnerHTML={{ __html: contentHtml }} />
-                      ) : (
-                        <div className="h-full flex flex-col items-center justify-center p-12 text-center space-y-4">
-                          <div className="h-20 w-20 rounded-full bg-slate-50 flex items-center justify-center">
-                            <ImageIcon className="h-8 w-8 text-slate-200" />
-                          </div>
-                          <p className="text-xs font-bold text-slate-300">콘텐츠가 없습니다.<br/>템플릿을 로드하거나 코드를 입력해 보세요.</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
-               <button type="button" onClick={() => setActiveTab("options")} className="text-xs font-black text-slate-400 hover:text-slate-600">이전 단계로</button>
-               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400">
-                 <CheckCircle2 className="h-3 w-3 text-teal-500" /> 실시간 저장되지 않음. 등록/저장 버튼을 꼭 눌러주세요.
-               </div>
-            </div>
-          </div>
+          <ProductContentEditorPanel
+            contentHtml={contentHtml}
+            onContentChange={setContentHtml}
+            showPreview={showPreview}
+            onTogglePreview={() => setShowPreview((v) => !v)}
+            onApplyTemplate={applyTemplate}
+            footerLeft={
+              <button
+                type="button"
+                onClick={() => setActiveTab("options")}
+                className="text-xs font-black text-slate-400 hover:text-slate-600"
+              >
+                ← 이전 단계 (옵션)
+              </button>
+            }
+          />
         )}
 
         {/* 저장/취소 하단 고정 바 (플로팅 스타일) */}
