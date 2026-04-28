@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
-import dynamic from "next/dynamic";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
 import {
@@ -13,52 +12,19 @@ import {
   Code2,
   Info,
   CheckCircle2,
+  Bold,
+  Italic,
+  Underline,
+  List,
+  ListOrdered,
+  Link2,
+  Quote,
+  Eraser,
 } from "lucide-react";
-import "react-quill/dist/quill.snow.css";
 
 const STORAGE_KEY = "admin-shop-product-content-mode";
 
-const ReactQuill = dynamic(
-  () => import("react-quill").then((m) => m.default),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex flex-1 items-center justify-center bg-slate-50 p-8 text-sm font-bold text-slate-500">
-        편집기를 불러오는 중…
-      </div>
-    ),
-  }
-);
-
 type EditMode = "visual" | "html";
-
-const quillModules = {
-  toolbar: {
-    container: [
-      [{ header: [1, 2, 3, false] }],
-      ["bold", "italic", "underline", "strike"],
-      [{ list: "ordered" }, { list: "bullet" }],
-      [{ indent: "-1" }, { indent: "+1" }],
-      ["link"],
-      ["blockquote", "code-block"],
-      ["clean"],
-    ],
-  },
-  clipboard: { matchVisual: false },
-};
-
-const quillFormats = [
-  "header",
-  "bold",
-  "italic",
-  "underline",
-  "strike",
-  "list",
-  "indent",
-  "link",
-  "blockquote",
-  "code-block",
-];
 
 function loadStoredMode(): EditMode {
   if (typeof window === "undefined") return "visual";
@@ -89,12 +55,22 @@ export function ProductContentEditorPanel({
   footerLeft?: ReactNode;
 }) {
   const [editMode, setEditMode] = useState<EditMode>("visual");
-  const [mounted, setMounted] = useState(false);
+  const visualRef = useRef<HTMLDivElement | null>(null);
+  const visualFocusRef = useRef(false);
 
   useEffect(() => {
     setEditMode(loadStoredMode());
-    setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (editMode !== "visual") return;
+    const el = visualRef.current;
+    if (!el) return;
+    if (visualFocusRef.current) return;
+    if (el.innerHTML !== contentHtml) {
+      el.innerHTML = contentHtml;
+    }
+  }, [contentHtml, editMode]);
 
   const persistMode = useCallback((m: EditMode) => {
     setEditMode(m);
@@ -112,6 +88,14 @@ export function ProductContentEditorPanel({
       if (!ok) return;
     }
     persistMode(next);
+  };
+
+  const runCmd = (cmd: string, value?: string) => {
+    if (typeof document === "undefined") return;
+    visualRef.current?.focus();
+    document.execCommand(cmd, false, value);
+    const next = visualRef.current?.innerHTML ?? "";
+    onContentChange(next);
   };
 
   return (
@@ -238,25 +222,44 @@ export function ProductContentEditorPanel({
               />
             </>
           ) : (
-            <div
-              className={cn(
-                "shop-product-rte flex h-full min-h-0 flex-1 flex-col border-r border-slate-100",
-                !mounted && "min-h-[480px] animate-pulse bg-slate-50"
-              )}
-            >
-              {mounted && (
-                <div className="min-h-0 flex-1 overflow-y-auto p-1 sm:p-2">
-                  <ReactQuill
-                    theme="snow"
-                    value={contentHtml}
-                    onChange={onContentChange}
-                    modules={quillModules}
-                    formats={quillFormats}
-                    className="[&_.ql-container]:!border-slate-200 [&_.ql-container]:!rounded-2xl [&_.ql-container]:!bg-slate-50/50 [&_.ql-editor]:!min-h-[min(58vh,560px)] [&_.ql-editor]:!text-sm [&_.ql-editor]:!leading-relaxed [&_.ql-editor]:!text-slate-800 [&_.ql-editor]:!px-4 [&_.ql-editor]:!py-3 [&_.ql-toolbar]:!rounded-t-2xl [&_.ql-toolbar]:!border-slate-200 [&_.ql-toolbar]:!bg-slate-100/80 [&_.ql-toolbar_.ql-stroke]:!text-slate-600"
-                    placeholder="제목·문단·목록·강조를 쉽게 입력하세요…"
-                  />
-                </div>
-              )}
+            <div className="flex h-full min-h-0 flex-1 flex-col border-r border-slate-100 bg-slate-50/40">
+              <div className="flex flex-wrap items-center gap-1 border-b border-slate-200 bg-white px-3 py-2">
+                <button type="button" onClick={() => runCmd("bold")} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"><Bold className="h-4 w-4" /></button>
+                <button type="button" onClick={() => runCmd("italic")} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"><Italic className="h-4 w-4" /></button>
+                <button type="button" onClick={() => runCmd("underline")} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"><Underline className="h-4 w-4" /></button>
+                <button type="button" onClick={() => runCmd("insertUnorderedList")} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"><List className="h-4 w-4" /></button>
+                <button type="button" onClick={() => runCmd("insertOrderedList")} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"><ListOrdered className="h-4 w-4" /></button>
+                <button type="button" onClick={() => runCmd("formatBlock", "blockquote")} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"><Quote className="h-4 w-4" /></button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const url = window.prompt("링크 URL을 입력해 주세요.", "https://");
+                    if (url) runCmd("createLink", url);
+                  }}
+                  className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"
+                >
+                  <Link2 className="h-4 w-4" />
+                </button>
+                <button type="button" onClick={() => runCmd("removeFormat")} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"><Eraser className="h-4 w-4" /></button>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto p-3">
+                <div
+                  ref={visualRef}
+                  contentEditable
+                  suppressContentEditableWarning
+                  onFocus={() => {
+                    visualFocusRef.current = true;
+                  }}
+                  onBlur={() => {
+                    visualFocusRef.current = false;
+                  }}
+                  onInput={(e) => {
+                    onContentChange(e.currentTarget.innerHTML);
+                  }}
+                  className="min-h-[min(58vh,560px)] rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-relaxed text-slate-800 outline-none focus:ring-2 focus:ring-teal-500/20"
+                  data-placeholder="제목·문단·목록·강조를 쉽게 입력하세요…"
+                />
+              </div>
             </div>
           )}
         </div>
