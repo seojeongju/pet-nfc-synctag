@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { saveAdminGoldSettings, triggerGoldPriceFetch } from "@/app/actions/admin-shop";
 import { cn } from "@/lib/utils";
 import { RefreshCw, Save, AlertCircle, CheckCircle2 } from "lucide-react";
@@ -16,6 +16,48 @@ interface Props {
 export function AdminGoldPriceManager({ settings }: Props) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [manualOverridePriceInput, setManualOverridePriceInput] = useState(
+    settings.manualOverridePrice != null ? String(settings.manualOverridePrice) : ""
+  );
+
+  // 수동 연동 입력 도우미(클라이언트 계산 전용)
+  const [base24kPerGram, setBase24kPerGram] = useState("");
+  const [karat, setKarat] = useState<"24K" | "18K" | "14K" | "custom">("24K");
+  const [customPurityPct, setCustomPurityPct] = useState("99.9");
+  const [premiumPerGram, setPremiumPerGram] = useState("0");
+  const [weightGrams, setWeightGrams] = useState("");
+  const [laborFee, setLaborFee] = useState("0");
+
+  const calc = useMemo(() => {
+    const base = Number(base24kPerGram);
+    const premium = Number(premiumPerGram);
+    const weight = Number(weightGrams);
+    const fee = Number(laborFee);
+
+    const purityRatio =
+      karat === "24K"
+        ? 1
+        : karat === "18K"
+          ? 18 / 24
+          : karat === "14K"
+            ? 14 / 24
+            : Math.max(0, Math.min(100, Number(customPurityPct))) / 100;
+
+    const suggestedPerGram =
+      Number.isFinite(base) && base > 0
+        ? Math.max(0, Math.round(base * purityRatio + (Number.isFinite(premium) ? premium : 0)))
+        : 0;
+
+    const estimatedItemPrice =
+      Number.isFinite(weight) && weight > 0
+        ? Math.max(
+            0,
+            Math.round(suggestedPerGram * weight + (Number.isFinite(fee) ? fee : 0))
+          )
+        : null;
+
+    return { purityRatio, suggestedPerGram, estimatedItemPrice };
+  }, [base24kPerGram, karat, customPurityPct, premiumPerGram, weightGrams, laborFee]);
 
   async function handleFetch() {
     if (!confirm("지금 즉시 공공데이터 API에서 최신 금 시세를 가져오시겠습니까?")) return;
@@ -91,7 +133,8 @@ export function AdminGoldPriceManager({ settings }: Props) {
                 <input
                   type="number"
                   name="manual_override_price"
-                  defaultValue={settings.manualOverridePrice || ""}
+                  value={manualOverridePriceInput}
+                  onChange={(e) => setManualOverridePriceInput(e.target.value)}
                   placeholder="예: 105000"
                   className="w-full rounded-2xl border-slate-200 bg-slate-50 px-4 py-3 font-bold text-slate-900 focus:border-teal-500 focus:ring-teal-500"
                 />
@@ -100,6 +143,114 @@ export function AdminGoldPriceManager({ settings }: Props) {
             </label>
           </div>
         </div>
+
+        <section className="rounded-2xl border border-amber-200/70 bg-amber-50/40 p-4 space-y-4">
+          <div>
+            <p className="text-sm font-black text-amber-900">수동 연동 입력 도우미</p>
+            <p className="text-[11px] font-semibold text-amber-800/80">
+              24K 기준 시세와 순도/공임 정보를 넣으면 권장 1g 시세를 계산해 바로 반영할 수 있어요.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-[11px] font-black text-slate-700">24K 기준 시세 (원/g)</span>
+              <input
+                type="number"
+                value={base24kPerGram}
+                onChange={(e) => setBase24kPerGram(e.target.value)}
+                placeholder="예: 145000"
+                className="mt-1 w-full rounded-xl border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-800"
+              />
+            </label>
+
+            <label className="block">
+              <span className="text-[11px] font-black text-slate-700">금 함량(순도)</span>
+              <select
+                value={karat}
+                onChange={(e) => setKarat(e.target.value as "24K" | "18K" | "14K" | "custom")}
+                className="mt-1 w-full rounded-xl border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-800"
+              >
+                <option value="24K">24K (99.9%)</option>
+                <option value="18K">18K (75%)</option>
+                <option value="14K">14K (58.5%)</option>
+                <option value="custom">직접 입력</option>
+              </select>
+            </label>
+
+            {karat === "custom" && (
+              <label className="block sm:col-span-2">
+                <span className="text-[11px] font-black text-slate-700">직접 순도 (%)</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="0.1"
+                  value={customPurityPct}
+                  onChange={(e) => setCustomPurityPct(e.target.value)}
+                  placeholder="예: 99.9"
+                  className="mt-1 w-full rounded-xl border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-800"
+                />
+              </label>
+            )}
+
+            <label className="block">
+              <span className="text-[11px] font-black text-slate-700">g당 가감값 (원)</span>
+              <input
+                type="number"
+                value={premiumPerGram}
+                onChange={(e) => setPremiumPerGram(e.target.value)}
+                placeholder="예: 1200 (프리미엄/디스카운트)"
+                className="mt-1 w-full rounded-xl border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-800"
+              />
+            </label>
+
+            <label className="block">
+              <span className="text-[11px] font-black text-slate-700">중량 (g)</span>
+              <input
+                type="number"
+                step="0.01"
+                value={weightGrams}
+                onChange={(e) => setWeightGrams(e.target.value)}
+                placeholder="예: 3.75"
+                className="mt-1 w-full rounded-xl border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-800"
+              />
+            </label>
+
+            <label className="block sm:col-span-2">
+              <span className="text-[11px] font-black text-slate-700">공임/추가비 (원)</span>
+              <input
+                type="number"
+                value={laborFee}
+                onChange={(e) => setLaborFee(e.target.value)}
+                placeholder="예: 30000"
+                className="mt-1 w-full rounded-xl border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-800"
+              />
+            </label>
+          </div>
+
+          <div className="rounded-xl border border-amber-200 bg-white px-4 py-3">
+            <p className="text-[11px] font-bold text-slate-500">
+              적용 순도: <span className="font-black text-slate-800">{(calc.purityRatio * 100).toFixed(1)}%</span>
+            </p>
+            <p className="text-sm font-black text-slate-900 mt-1">
+              권장 수동 시세: {calc.suggestedPerGram.toLocaleString()}원 / g
+            </p>
+            <p className="text-[11px] font-bold text-slate-500 mt-0.5">
+              예상 제품가:{" "}
+              {calc.estimatedItemPrice != null
+                ? `${calc.estimatedItemPrice.toLocaleString()}원`
+                : "중량 입력 시 계산"}
+            </p>
+            <button
+              type="button"
+              onClick={() => setManualOverridePriceInput(String(calc.suggestedPerGram || ""))}
+              className="mt-3 rounded-xl bg-amber-700 px-3 py-2 text-[11px] font-black text-white hover:bg-amber-800"
+            >
+              권장값을 수동 고정 시세에 반영
+            </button>
+          </div>
+        </section>
 
         <div className="pt-4">
           <button
