@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { PwaInstallProvider } from "@/components/pwa-install-context";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { ViewportFix } from "@/components/viewport-fix";
+import { SiteLegalFooter } from "@/components/layout/SiteLegalFooter";
 
 export const metadata: Metadata = {
   title: "링크유 Link-U | NFC로 연결하는 안심 플랫폼",
@@ -52,7 +53,10 @@ export default function RootLayout({
         {/* Google OAuth 복귀 시 viewport 오염 자동 복구 */}
         <ViewportFix />
         <PwaInstallProvider>
-          {children}
+          <div className="flex min-h-dvh min-h-[100svh] flex-col">
+            <div className="flex-1 flex flex-col">{children}</div>
+            <SiteLegalFooter />
+          </div>
           <PwaInstallPrompt />
         </PwaInstallProvider>
       </body>

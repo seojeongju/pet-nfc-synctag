@@ -1,7 +1,8 @@
 import { getDB } from "@/lib/db";
 
 export const PRIVACY_TERMS_VERSION = "2026-04-25";
-export const PRIVACY_PROCESSING_VERSION = "2026-04-25";
+/** 개인정보 처리방침( /legal/privacy ) 개정 시 맞춤 — 스토어(주문·배송·결제) 항목 반영 2026-04-28 */
+export const PRIVACY_PROCESSING_VERSION = "2026-04-28";
 export const LOCATION_MONITORING_VERSION = "2026-04-25";
 
 export type UserConsentStatus = {

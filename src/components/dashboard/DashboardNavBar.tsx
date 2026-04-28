@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
-import { PawPrint, MapPin, LayoutDashboard, ClipboardList, ScanLine, Images } from "lucide-react";
+import { PawPrint, MapPin, LayoutDashboard, ClipboardList, ScanLine, Images, Store } from "lucide-react";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
 import { FlowTopNavContent, type FlowTopNavSession } from "@/components/layout/FlowTopNav";
 import { DashboardAnnouncementBell } from "@/components/dashboard/DashboardAnnouncementBell";
@@ -46,6 +46,7 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
   const dashScans = isDashboardScans(pathname);
   const dashGeo = isDashboardGeofences(pathname);
   const dashAlbums = isDashboardAlbums(pathname);
+  const dashStore = pathname === "/shop" || pathname.startsWith("/shop/");
 
   const navItems = [
     {
@@ -78,6 +79,12 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
       active: dashGeo,
       Icon: MapPin,
     },
+    {
+      href: `/shop?kind=${encodeURIComponent(kind)}`,
+      label: "스토어",
+      active: dashStore,
+      Icon: Store,
+    },
   ] as const;
 
   return (
@@ -102,12 +109,6 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
               <span className="truncate">링크유 Link-U</span>
             </a>
             <div className="flex min-w-0 items-center justify-end gap-1.5">
-              <a
-                href={`/shop?kind=${encodeURIComponent(kind)}`}
-                className="shrink-0 rounded-full border border-teal-100 bg-teal-50/80 px-2.5 py-1 text-[10px] font-black text-teal-800 hover:bg-teal-100 min-h-8 inline-flex items-center"
-              >
-                스토어
-              </a>
               <DashboardContextualHelp />
               <DashboardAnnouncementBell />
               {session?.user?.name ? (
@@ -136,14 +137,14 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
             className="xl:hidden"
             aria-label="대시보드 메뉴"
           >
-            <div className="grid grid-cols-5 gap-1.5 text-slate-700">
+            <div className="grid grid-cols-3 gap-2 text-slate-700">
               {navItems.map((item) => (
                 <a
                   key={item.href}
                   href={item.href}
                   aria-current={item.active ? "page" : undefined}
                   className={cn(
-                    "flex min-h-[3.5rem] flex-col items-center justify-center gap-1 rounded-xl border px-1.5 py-1.5 text-center",
+                    "flex min-h-[3.75rem] flex-col items-center justify-center gap-1 rounded-xl border px-1.5 py-2 text-center",
                     item.active
                       ? "border-teal-200 bg-teal-50 text-teal-800"
                       : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
