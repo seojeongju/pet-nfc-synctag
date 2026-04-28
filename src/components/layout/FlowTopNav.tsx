@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Home, LayoutGrid, LogOut, Shield, Building2 } from "lucide-react";
+import { Home, LayoutDashboard, LayoutGrid, LogOut, Shield, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SubjectKind } from "@/lib/subject-kind";
 
@@ -17,6 +17,8 @@ type FlowTopNavContentProps = {
   orgManageHref?: string | null;
   /** 대시보드에서 로그아웃 시 `/{kind}` 모드 랜딩(보호자 대문)으로. 미지정이면 `/` */
   logoutLandingKind?: SubjectKind;
+  /** 스토어 등: 현재 모드 보호자 대시보드 `/dashboard/{kind}` (세션 있을 때만 표시) */
+  dashboardHref?: string | null;
   className?: string;
 };
 
@@ -37,6 +39,7 @@ export function FlowTopNavContent({
   currentModeDescription,
   orgManageHref,
   logoutLandingKind,
+  dashboardHref,
   className,
 }: FlowTopNavContentProps) {
   const logoutHref =
@@ -112,6 +115,17 @@ export function FlowTopNavContent({
           >
             <LayoutGrid className="h-3.5 w-3.5 shrink-0 text-slate-500" aria-hidden />
             허브
+          </Link>
+        ) : null}
+
+        {session && dashboardHref ? (
+          <Link
+            href={dashboardHref}
+            prefetch={false}
+            className="inline-flex items-center gap-1 rounded-full border border-teal-100 bg-teal-50/90 px-2 py-1 font-black text-teal-800 hover:bg-teal-100 min-[390px]:px-2.5"
+          >
+            <LayoutDashboard className="h-3.5 w-3.5 shrink-0 text-teal-600" aria-hidden />
+            대시보드
           </Link>
         ) : null}
 

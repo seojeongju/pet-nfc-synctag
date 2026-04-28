@@ -65,6 +65,7 @@ export default async function ShopOrderPage({
         session={{ user: { name: session.user.name } }}
         isAdmin={isPlatformAdmin}
         orgManageHref={orgManageHref}
+        dashboardHref={`/dashboard/${encodeURIComponent(order.subjectKind)}`}
       />
       <div className="px-4 min-[430px]:px-5 py-6 min-[430px]:py-8 pb-20">
         <div className="w-full max-w-none lg:max-w-screen-sm mx-auto space-y-5">

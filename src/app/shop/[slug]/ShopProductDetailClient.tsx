@@ -65,7 +65,13 @@ export default function ShopProductDetailClient({
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-outfit">
-      <FlowTopNav variant="landing" session={session} isAdmin={isAdmin} orgManageHref={orgManageHref} />
+      <FlowTopNav
+        variant="landing"
+        session={session}
+        isAdmin={isAdmin}
+        orgManageHref={orgManageHref}
+        dashboardHref={`/dashboard/${encodeURIComponent(kind)}`}
+      />
       <div className="px-4 min-[430px]:px-5 py-5 min-[430px]:py-7 pb-24">
         <div className="w-full max-w-none lg:max-w-screen-sm mx-auto space-y-5 min-[430px]:space-y-6">
           <div>

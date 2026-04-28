@@ -176,6 +176,24 @@ function helpContentForPath(p: string): { title: string; body: ReactNode } {
     };
   }
 
+  if (p.startsWith("/admin/shop")) {
+    return {
+      title: "스토어 관리",
+      body: (
+        <>
+          <p>
+            <strong>상품:</strong> 슬러그(URL 경로)·가격·노출 모드(5종)·판매 활성을 설정합니다. 저장 후 사용자 스토어(
+            <code className="rounded bg-slate-100 px-1 font-mono text-[11px]">/shop</code>)에 반영됩니다.
+          </p>
+          <p>
+            <strong>주문:</strong> 사용자 주문과 상태(결제 대기·완료·실패·취소)를 확인·변경합니다. PG 연동 전에는
+            운영 정책에 맞게 수동으로 맞춥니다.
+          </p>
+        </>
+      ),
+    };
+  }
+
   if (p === "/admin") {
     return {
       title: "운영 대시보드",
