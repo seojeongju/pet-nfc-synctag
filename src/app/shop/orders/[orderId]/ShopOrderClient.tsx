@@ -203,7 +203,11 @@ export function ShopOrderClient({ order, session }: ShopOrderClientProps) {
               <span className="text-slate-900">{order.shippingZip ? `[${order.shippingZip}] ` : ""}{order.shippingAddress}</span>
             </p>
             {order.shippingMemo && (
-              <p className="text-[11px] italic text-slate-400 mt-1">"{order.shippingMemo}"</p>
+              <p className="text-[11px] italic text-slate-400 mt-1">
+                <span className="text-slate-500">&ldquo;</span>
+                {order.shippingMemo}
+                <span className="text-slate-500">&rdquo;</span>
+              </p>
             )}
           </div>
         </div>

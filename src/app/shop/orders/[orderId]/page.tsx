@@ -1,25 +1,15 @@
 import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
 import { getCfRequestContext } from "@/lib/cf-request-context";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { CheckCircle2, Package } from "lucide-react";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
 import { getUserConsentStatus } from "@/lib/privacy-consent";
-import { getShopOrderByIdForUser, formatKrw, subjectKindLabel } from "@/lib/shop";
+import { getShopOrderByIdForUser } from "@/lib/shop";
 import { getOrgManageHrefForUser } from "@/lib/org-manage-href";
 import { FlowTopNav } from "@/components/layout/FlowTopNav";
-import { cn } from "@/lib/utils";
 import { ShopOrderClient } from "./ShopOrderClient";
 
 export const runtime = "edge";
-
-const statusLabel: Record<string, string> = {
-  pending: "결제 대기",
-  paid: "결제 완료",
-  failed: "실패",
-  cancelled: "취소됨",
-};
 
 export default async function ShopOrderPage({
   params,
@@ -56,8 +46,6 @@ export default async function ShopOrderPage({
   }
 
   const orgManageHref = await getOrgManageHrefForUser(session.user.id).catch(() => null);
-  const st = order.status;
-  const statusKo = statusLabel[st] ?? st;
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-outfit">

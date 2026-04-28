@@ -1,27 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
+import type { LucideIcon } from "lucide-react";
 import { saveShopProduct, uploadShopAsset } from "@/app/actions/admin-shop";
 import type { AdminShopProductRow } from "@/app/actions/admin-shop";
 import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
 import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
-import { 
-  Settings, 
-  Image as ImageIcon, 
-  FileText, 
-  Eye, 
-  Upload, 
-  Video, 
-  Plus, 
-  X, 
-  Sparkles, 
+import {
+  Settings,
+  Image as ImageIcon,
+  FileText,
+  Eye,
+  Upload,
+  Video,
+  Plus,
+  X,
+  Sparkles,
   ArrowRight,
   ExternalLink,
-  ChevronRight,
   Package,
+  CheckCircle2,
 } from "lucide-react";
+import type { ShopProductOptionGroup, ShopProductOptionValue } from "@/types/shop";
 
 function kindsChecked(row: AdminShopProductRow | null): Set<SubjectKind> {
   const s = new Set<SubjectKind>();
@@ -58,10 +60,11 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
       return [];
     }
   });
-  const [options, setOptions] = useState<any[]>(() => {
+  const [options, setOptions] = useState<ShopProductOptionGroup[]>(() => {
     if (!product?.options_json) return [];
     try {
-      return JSON.parse(product.options_json);
+      const v = JSON.parse(product.options_json) as unknown;
+      return Array.isArray(v) ? (v as ShopProductOptionGroup[]) : [];
     } catch {
       return [];
     }
@@ -114,13 +117,26 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
 
   const removeOptionValue = (groupIdx: number, valueIdx: number) => {
     const next = [...options];
-    next[groupIdx].values = next[groupIdx].values.filter((_: any, i: number) => i !== valueIdx);
+    next[groupIdx].values = next[groupIdx].values.filter(
+      (_: ShopProductOptionValue, i: number) => i !== valueIdx
+    );
     setOptions(next);
   };
 
-  const updateOptionValue = (groupIdx: number, valueIdx: number, field: string, val: any) => {
+  const updateOptionValue = (
+    groupIdx: number,
+    valueIdx: number,
+    field: keyof ShopProductOptionValue,
+    val: string | number
+  ) => {
     const next = [...options];
-    next[groupIdx].values[valueIdx][field] = val;
+    const target: ShopProductOptionValue = { ...next[groupIdx].values[valueIdx] };
+    if (field === "label") {
+      target.label = String(val);
+    } else {
+      target.priceDeltaKrw = typeof val === "number" ? val : Number(val);
+    }
+    next[groupIdx].values[valueIdx] = target;
     setOptions(next);
   };
 
@@ -198,7 +214,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
     setContentHtml(template);
   };
 
-  const TabButton = ({ id, label, icon: Icon }: { id: Tab; label: string; icon: any }) => (
+  const TabButton = ({ id, label, icon: Icon }: { id: Tab; label: string; icon: LucideIcon }) => (
     <button
       type="button"
       onClick={() => setActiveTab(id)}
@@ -540,7 +556,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                   <div className="space-y-3">
                     <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500">선택 항목</label>
                     <div className="space-y-2">
-                      {group.values.map((v: any, vIdx: number) => (
+                      {group.values.map((v: ShopProductOptionValue, vIdx: number) => (
                         <div key={vIdx} className="flex gap-3 items-center">
                           <input
                             value={v.label}
@@ -723,24 +739,4 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
 
 function nanoid_local() {
   return Math.random().toString(36).substring(2, 10);
-}
-
-function CheckCircle2(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
-      <path d="m9 12 2 2 4-4" />
-    </svg>
-  );
 }

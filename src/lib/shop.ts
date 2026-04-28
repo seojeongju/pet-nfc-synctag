@@ -1,7 +1,12 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import { nanoid } from "nanoid";
 import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
-import type { ShopOrderPublic, ShopProductPublic } from "@/types/shop";
+import type {
+  ShopOrderPublic,
+  ShopOrderStatus,
+  ShopProductOptionGroup,
+  ShopProductPublic,
+} from "@/types/shop";
 
 function parseTargetModesJson(raw: string | null | undefined): SubjectKind[] {
   if (raw == null || !String(raw).trim()) return [];
@@ -41,6 +46,17 @@ type ProductRow = {
   sort_order: number;
 };
 
+function parseProductOptionsJson(raw: string | null): ShopProductOptionGroup[] | null {
+  if (raw == null || !String(raw).trim()) return null;
+  try {
+    const v = JSON.parse(raw) as unknown;
+    if (!Array.isArray(v)) return null;
+    return v as ShopProductOptionGroup[];
+  } catch {
+    return null;
+  }
+}
+
 function rowToPublic(row: ProductRow, kind: SubjectKind): ShopProductPublic {
   let additionalImages: string[] | null = null;
   if (row.additional_images) {
@@ -51,14 +67,7 @@ function rowToPublic(row: ProductRow, kind: SubjectKind): ShopProductPublic {
     }
   }
 
-  let options: any[] | null = null;
-  if (row.options_json) {
-    try {
-      options = JSON.parse(row.options_json);
-    } catch {
-      options = null;
-    }
-  }
+  const options = parseProductOptionsJson(row.options_json);
 
   return {
     id: row.id,
@@ -212,14 +221,16 @@ export async function createPendingShopOrder(input: {
   // 옵션 처리
   if (product.options_json) {
     try {
-      const groups = JSON.parse(product.options_json) as any[];
+      const groups = parseProductOptionsJson(product.options_json);
       const selected = input.options || {};
-      for (const g of groups) {
-        const choice = selected[g.name];
-        if (choice) {
-          const v = g.values.find((x: any) => x.label === choice);
-          if (v) {
-            amountKrw += v.priceDeltaKrw;
+      if (groups) {
+        for (const g of groups) {
+          const choice = selected[g.name];
+          if (choice) {
+            const v = g.values.find((x) => x.label === choice);
+            if (v) {
+              amountKrw += v.priceDeltaKrw;
+            }
           }
         }
       }
@@ -280,7 +291,14 @@ export async function getShopOrderByIdForUser(
   let selectedOptions: Record<string, string> | null = null;
   if (row.options_selected_json) {
     try {
-      selectedOptions = JSON.parse(row.options_selected_json);
+      const parsed = JSON.parse(row.options_selected_json) as unknown;
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        !Array.isArray(parsed)
+      ) {
+        selectedOptions = parsed as Record<string, string>;
+      }
     } catch {
       selectedOptions = null;
     }
@@ -289,7 +307,7 @@ export async function getShopOrderByIdForUser(
   return {
     id: row.id,
     subjectKind: row.subject_kind as SubjectKind,
-    status: row.status as any,
+    status: row.status as ShopOrderStatus,
     amountKrw: row.amount_krw,
     product: { id: row.p_id, name: row.p_name, slug: row.p_slug },
     selectedOptions,
