@@ -1,9 +1,28 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+/**
+ * 로그인·동의·OAuth 직후 등에서는 폼 내 링크로 충분하므로 전역 푸터를 숨깁니다.
+ */
+function shouldHideLegalFooter(pathname: string): boolean {
+  if (pathname === "/login" || pathname.startsWith("/login/")) return true;
+  if (pathname === "/consent" || pathname.startsWith("/consent/")) return true;
+  if (pathname.startsWith("/auth/")) return true;
+  if (pathname === "/admin/login" || pathname.startsWith("/admin/login/")) return true;
+  return false;
+}
 
 /**
  * 앱 전역 하단: 법률 문서 링크. 루트 레이아웃에서 사용합니다.
  */
 export function SiteLegalFooter() {
+  const pathname = usePathname() ?? "";
+  if (shouldHideLegalFooter(pathname)) {
+    return null;
+  }
+
   return (
     <footer
       className="mt-auto border-t border-slate-200/90 bg-slate-50/90 backdrop-blur-sm pb-[max(0.75rem,env(safe-area-inset-bottom))]"
