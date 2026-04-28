@@ -228,3 +228,11 @@ export async function getShopOrderByIdForUser(
 export function subjectKindLabel(kind: SubjectKind): string {
   return subjectKindMeta[kind]?.label ?? kind;
 }
+
+/** DB 등에서 오는 문자열(subject_kind); 알 수 없으면 원문 표시 */
+export function subjectKindLabelKo(kind: string): string {
+  if ((SUBJECT_KINDS as readonly string[]).includes(kind)) {
+    return subjectKindMeta[kind as SubjectKind].label;
+  }
+  return kind;
+}

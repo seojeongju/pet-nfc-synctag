@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { listAdminShopOrders, updateShopOrderStatus, subjectKindLabelKo } from "@/app/actions/admin-shop";
+import { listAdminShopOrders, updateShopOrderStatus } from "@/app/actions/admin-shop";
+import { subjectKindLabelKo } from "@/lib/shop";
 import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
 

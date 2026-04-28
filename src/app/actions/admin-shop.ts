@@ -8,7 +8,7 @@ import { getAuth } from "@/lib/auth";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { getDB } from "@/lib/db";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
-import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
+import { SUBJECT_KINDS, type SubjectKind } from "@/lib/subject-kind";
 
 async function assertAdminRole(): Promise<void> {
   const context = getCfRequestContext();
@@ -219,11 +219,4 @@ export async function updateShopOrderStatus(formData: FormData): Promise<void> {
   revalidatePath("/admin/shop/orders");
   revalidatePath("/shop");
   redirect("/admin/shop/orders?ok=1");
-}
-
-export function subjectKindLabelKo(kind: string): string {
-  if ((SUBJECT_KINDS as readonly string[]).includes(kind)) {
-    return subjectKindMeta[kind as SubjectKind].label;
-  }
-  return kind;
 }
