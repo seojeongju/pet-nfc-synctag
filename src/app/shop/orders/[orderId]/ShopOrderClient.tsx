@@ -35,6 +35,7 @@ export function ShopOrderClient({ order, session }: ShopOrderClientProps) {
   const [success, setSuccess] = useState(Boolean(order.recipientName));
   const [shippingZip, setShippingZip] = useState(order.shippingZip || "");
   const [shippingAddress, setShippingAddress] = useState(order.shippingAddress || "");
+  const [shippingAddressDetail, setShippingAddressDetail] = useState(order.shippingAddressDetail || "");
 
   const openPostcode = () => {
     if (typeof window === "undefined") return;
@@ -240,6 +241,13 @@ export function ShopOrderClient({ order, session }: ShopOrderClientProps) {
                 className="w-full h-12 rounded-2xl border border-slate-100 bg-slate-50 px-4 text-[13px] font-bold outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
                 placeholder="전체 주소를 입력하세요"
               />
+              <input
+                name="shippingAddressDetail"
+                value={shippingAddressDetail}
+                onChange={(e) => setShippingAddressDetail(e.target.value)}
+                className="w-full h-12 rounded-2xl border border-slate-100 bg-slate-50 px-4 text-[13px] font-bold outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all mt-2"
+                placeholder="상세주소를 입력하세요 (동/호수 등)"
+              />
             </div>
 
             <div className="space-y-1.5">
@@ -280,6 +288,9 @@ export function ShopOrderClient({ order, session }: ShopOrderClientProps) {
             <p className="flex flex-col gap-1 mt-1 border-t border-slate-100 pt-2">
               <span className="text-[11px] text-slate-400">배송지</span>
               <span className="text-slate-900">{order.shippingZip ? `[${order.shippingZip}] ` : ""}{order.shippingAddress}</span>
+              {order.shippingAddressDetail && (
+                <span className="text-slate-700">{order.shippingAddressDetail}</span>
+              )}
             </p>
             {order.shippingMemo && (
               <p className="text-[11px] italic text-slate-400 mt-1">

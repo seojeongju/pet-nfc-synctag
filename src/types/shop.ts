@@ -73,6 +73,7 @@ export type ShopOrderPublic = {
   recipientPhone?: string | null;
   shippingZip?: string | null;
   shippingAddress?: string | null;
+  shippingAddressDetail?: string | null;
   shippingMemo?: string | null;
   createdAt: string;
   updatedAt: string;
