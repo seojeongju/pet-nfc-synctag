@@ -1,15 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { Save, X, Plus, Package, Check } from "lucide-react";
+import { Plus, Package, Check } from "lucide-react";
 import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
 import { saveCatalogAction } from "@/app/actions/admin-catalog";
-import type { ShopCatalog, AdminShopProductRow } from "@/types/shop";
+import type { ShopCatalog } from "@/types/shop";
+
+type CatalogProductRow = {
+  id: string;
+  name: string;
+  price_krw: number;
+  image_url: string | null;
+};
 
 interface CatalogEditorProps {
-  catalog: any | null;
-  products: any[];
+  catalog: ShopCatalog | null;
+  products: CatalogProductRow[];
 }
 
 export default function CatalogEditor({ catalog, products }: CatalogEditorProps) {

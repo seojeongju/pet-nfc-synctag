@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { Plus, BookOpen, ChevronRight, Trash2, Edit } from "lucide-react";
-import { getAdminCatalogs, deleteCatalogAction } from "@/app/actions/admin-catalog";
+import { Plus, BookOpen, Edit } from "lucide-react";
+import { getAdminCatalogs } from "@/app/actions/admin-catalog";
 import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
-import AdminPageIntro from "@/components/admin/layout/AdminPageIntro";
+import { AdminPageIntro } from "@/components/admin/layout/AdminPageIntro";
 
 export default async function AdminCatalogListPage() {
   const catalogs = await getAdminCatalogs();
@@ -12,7 +12,7 @@ export default async function AdminCatalogListPage() {
     <div className={adminUi.pageContainer}>
       <AdminPageIntro 
         title="상품 카달로그 관리" 
-        description="사용자별, 테넌트별 맞춤형 카달로그를 구성하고 관리합니다."
+        subtitle="사용자별, 테넌트별 맞춤형 카달로그를 구성하고 관리합니다."
       />
 
       <div className="flex justify-end">

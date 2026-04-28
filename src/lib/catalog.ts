@@ -2,6 +2,20 @@ import type { D1Database } from "@cloudflare/workers-types";
 import { nanoid } from "nanoid";
 import type { ShopCatalog, CatalogConfig } from "@/types/shop";
 
+type CatalogRow = {
+  id: string;
+  tenant_id: string | null;
+  user_id: string | null;
+  mode: string;
+  title: string;
+  description: string | null;
+  products_json: string | null;
+  config_json: string | null;
+  is_active: number;
+  created_at: string;
+  updated_at: string;
+};
+
 export async function createCatalog(
   db: D1Database,
   input: {
@@ -47,7 +61,7 @@ export async function updateCatalog(
   }>
 ): Promise<void> {
   const updates: string[] = [];
-  const params: any[] = [];
+  const params: (string | number | null)[] = [];
 
   if (input.mode !== undefined) {
     updates.push("mode = ?");
@@ -89,7 +103,7 @@ export async function getCatalog(db: D1Database, id: string): Promise<ShopCatalo
   const row = await db
     .prepare("SELECT * FROM shop_catalogs WHERE id = ?")
     .bind(id)
-    .first<any>();
+    .first<CatalogRow>();
 
   if (!row) return null;
   return rowToCatalog(row);
@@ -100,7 +114,7 @@ export async function listCatalogs(
   filter: { tenantId?: string; userId?: string; mode?: string }
 ): Promise<ShopCatalog[]> {
   let sql = "SELECT * FROM shop_catalogs WHERE 1=1";
-  const params: any[] = [];
+  const params: string[] = [];
 
   if (filter.tenantId) {
     sql += " AND tenant_id = ?";
@@ -117,7 +131,7 @@ export async function listCatalogs(
 
   sql += " ORDER BY created_at DESC";
 
-  const res = await db.prepare(sql).bind(...params).all<any>();
+  const res = await db.prepare(sql).bind(...params).all<CatalogRow>();
   return (res.results ?? []).map(rowToCatalog);
 }
 
@@ -125,7 +139,7 @@ export async function deleteCatalog(db: D1Database, id: string): Promise<void> {
   await db.prepare("DELETE FROM shop_catalogs WHERE id = ?").bind(id).run();
 }
 
-function rowToCatalog(row: any): ShopCatalog {
+function rowToCatalog(row: CatalogRow): ShopCatalog {
   return {
     id: row.id,
     tenantId: row.tenant_id,
