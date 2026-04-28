@@ -9,8 +9,8 @@ import { normalizeBleMac } from "@/lib/device-mode";
 import { isValidTagUidFormat, normalizeTagUid } from "@/lib/tag-uid-format";
 import { mintNativeHandoffToken } from "@/lib/nfc-native-security";
 import {
-    requirePlatformAdminActor,
     requirePlatformOrTenantAdminActor,
+    resolveAdminScope,
 } from "@/lib/admin-authz";
 import type {
     AdminTag,
@@ -52,7 +52,12 @@ export type RegisterBulkTagsOptions = {
  * NFC 태그를 시스템에 대량으로 미리 등록합니다 (관리자 전용)
  */
 export async function registerBulkTags(uids: string[], options?: RegisterBulkTagsOptions) {
+    const scope = await resolveAdminScope("admin");
     const db = getDB();
+    const forcedTenantId =
+        scope.actor.isPlatformAdmin || !scope.tenantIds || scope.tenantIds.length === 0
+            ? null
+            : scope.tenantIds[0] ?? null;
     const kind = options?.assignedSubjectKind ?? null;
     const kindSlug =
         kind && (SUBJECT_KINDS as readonly string[]).includes(kind) ? kind : "generic";
@@ -78,6 +83,7 @@ export async function registerBulkTags(uids: string[], options?: RegisterBulkTag
         const hasStatusColumn = tagColumns.has("status");
         const hasBatchIdColumn = tagColumns.has("batch_id");
         const hasAssignedKindColumn = tagColumns.has("assigned_subject_kind");
+        const hasTenantIdColumn = tagColumns.has("tenant_id");
 
         const chunks = chunkArray(validUids, 200);
         for (const chunk of chunks) {
@@ -122,6 +128,11 @@ export async function registerBulkTags(uids: string[], options?: RegisterBulkTag
                 columns.push("assigned_subject_kind");
                 values.push("?");
                 binds.push(kind);
+            }
+            if (hasTenantIdColumn && forcedTenantId) {
+                columns.push("tenant_id");
+                values.push("?");
+                binds.push(forcedTenantId);
             }
 
             return db
@@ -191,16 +202,19 @@ function parseInventoryStatus(raw: string | undefined): TagsInventoryStatusFilte
 }
 
 async function resolveTagScopeTenantId(tenantIdRaw?: string | null): Promise<string | null> {
+    const scope = await resolveAdminScope("admin");
     const tenantId = (tenantIdRaw ?? "").trim() || null;
     if (tenantId) {
         await requirePlatformOrTenantAdminActor(tenantId, "admin");
         return tenantId;
     }
-    const actor = await requirePlatformAdminActor();
-    if (!actor.isPlatformAdmin) {
+    if (scope.actor.isPlatformAdmin) {
+        return null;
+    }
+    if (!scope.tenantIds || scope.tenantIds.length === 0) {
         throw new Error("조직 스코프(tenant)가 필요합니다.");
     }
-    return null;
+    return scope.tenantIds[0] ?? null;
 }
 
 /**
@@ -390,16 +404,34 @@ export async function getTagBatchesPage(
  * 관리자 대시보드용 통계 데이터를 가져옵니다
  */
 export async function getAdminStats() {
-    await assertAdminRole();
+    const scope = await resolveAdminScope("admin");
     const db = getDB();
     type CountRow = Record<string, number>;
     type BatchResult = { results: CountRow[] };
-    
+    if (scope.actor.isPlatformAdmin || !scope.tenantIds || scope.tenantIds.length === 0) {
+        const stats = await db.batch([
+            db.prepare("SELECT count(*) as total FROM tags"),
+            db.prepare("SELECT count(*) as active FROM tags WHERE status = 'active'"),
+            db.prepare("SELECT count(*) as unsold FROM tags WHERE status = 'unsold'"),
+            db.prepare("SELECT count(*) as total_users FROM user")
+        ]) as BatchResult[];
+        return {
+            totalTags: stats[0].results[0].total,
+            activeTags: stats[1].results[0].active,
+            unsoldTags: stats[2].results[0].unsold,
+            totalUsers: stats[3].results[0].total_users
+        };
+    }
+    const placeholders = scope.tenantIds.map(() => "?").join(", ");
     const stats = await db.batch([
-        db.prepare("SELECT count(*) as total FROM tags"),
-        db.prepare("SELECT count(*) as active FROM tags WHERE status = 'active'"),
-        db.prepare("SELECT count(*) as unsold FROM tags WHERE status = 'unsold'"),
-        db.prepare("SELECT count(*) as total_users FROM user")
+        db.prepare(`SELECT count(*) as total FROM tags WHERE tenant_id IN (${placeholders})`).bind(...scope.tenantIds),
+        db.prepare(`SELECT count(*) as active FROM tags WHERE status = 'active' AND tenant_id IN (${placeholders})`).bind(...scope.tenantIds),
+        db.prepare(`SELECT count(*) as unsold FROM tags WHERE status = 'unsold' AND tenant_id IN (${placeholders})`).bind(...scope.tenantIds),
+        db.prepare(
+            `SELECT count(DISTINCT tm.user_id) as total_users
+             FROM tenant_members tm
+             WHERE tm.tenant_id IN (${placeholders})`
+        ).bind(...scope.tenantIds),
     ]) as BatchResult[];
     
     return {
@@ -412,12 +444,23 @@ export async function getAdminStats() {
 
 /** 관리 대상(pets) subject_kind별 건수 — COALESCE(subject_kind,'pet') 기준 */
 export async function getPetsSubjectKindCounts() {
-    await assertAdminRole();
+    const scope = await resolveAdminScope("admin");
     const db = getDB();
-    const { results } = await db
-        .prepare(
-            `SELECT COALESCE(subject_kind, 'pet') AS k, COUNT(*) AS c FROM pets GROUP BY k`
-        )
+    const placeholders = scope.tenantIds?.map(() => "?").join(", ") ?? "";
+    const { results } = await (
+        scope.actor.isPlatformAdmin || !scope.tenantIds || scope.tenantIds.length === 0
+            ? db.prepare(`SELECT COALESCE(subject_kind, 'pet') AS k, COUNT(*) AS c FROM pets GROUP BY k`)
+            : db.prepare(
+                `SELECT COALESCE(p.subject_kind, 'pet') AS k, COUNT(*) AS c
+                 FROM pets p
+                 WHERE EXISTS (
+                   SELECT 1 FROM tenant_members tm
+                   WHERE tm.user_id = p.owner_id
+                     AND tm.tenant_id IN (${placeholders})
+                 )
+                 GROUP BY COALESCE(p.subject_kind, 'pet')`
+            ).bind(...scope.tenantIds)
+    )
         .all<{ k: string; c: number }>()
         .catch(() => ({ results: [] as { k: string; c: number }[] }));
 
@@ -583,7 +626,7 @@ const TAG_LINK_LOGS_PAGE_MIN = 5;
 export async function getTagLinkLogsPage(
     params: { page?: number; pageSize?: number } = {}
 ): Promise<TagLinkLogsPageResult> {
-    await assertAdminRole();
+    const scope = await resolveAdminScope("admin");
     const db = getDB();
     const pageRaw = Math.max(1, Number(params.page) || 1);
     let pageSize = Number(params.pageSize) || TAG_LINK_LOGS_PAGE_DEFAULT;
@@ -593,8 +636,18 @@ export async function getTagLinkLogsPage(
         Math.max(TAG_LINK_LOGS_PAGE_MIN, Math.floor(pageSize))
     );
 
-    const countRow = await db
-        .prepare("SELECT COUNT(*) AS c FROM tag_link_logs")
+    const placeholders = scope.tenantIds?.map(() => "?").join(", ") ?? "";
+    const countRow = await (
+        scope.actor.isPlatformAdmin || !scope.tenantIds || scope.tenantIds.length === 0
+            ? db.prepare("SELECT COUNT(*) AS c FROM tag_link_logs")
+            : db.prepare(
+                `SELECT COUNT(*) AS c
+                 FROM tag_link_logs l
+                 LEFT JOIN tags t ON t.id = l.tag_id
+                 LEFT JOIN pets p ON p.id = l.pet_id
+                 WHERE COALESCE(t.tenant_id, p.tenant_id) IN (${placeholders})`
+            ).bind(...scope.tenantIds)
+    )
         .first<{ c: number }>()
         .catch(() => ({ c: 0 }));
     const total = Math.max(0, Math.floor(Number(countRow?.c ?? 0)));
@@ -605,23 +658,45 @@ export async function getTagLinkLogsPage(
     if (safePage < 1) safePage = 1;
     const offset = (safePage - 1) * pageSize;
 
-    const { results } = await db
-        .prepare(
-            `SELECT
-            l.id,
-            l.tag_id,
-            l.pet_id,
-            l.action,
-            l.created_at,
-            p.name AS pet_name,
-            u.email AS owner_email
-        FROM tag_link_logs l
-        LEFT JOIN pets p ON l.pet_id = p.id
-        LEFT JOIN user u ON p.owner_id = u.id
-        ORDER BY l.created_at DESC
-        LIMIT ? OFFSET ?`
-        )
-        .bind(pageSize, offset)
+    const { results } = await (
+        scope.actor.isPlatformAdmin || !scope.tenantIds || scope.tenantIds.length === 0
+            ? db
+                  .prepare(
+                      `SELECT
+                      l.id,
+                      l.tag_id,
+                      l.pet_id,
+                      l.action,
+                      l.created_at,
+                      p.name AS pet_name,
+                      u.email AS owner_email
+                  FROM tag_link_logs l
+                  LEFT JOIN pets p ON l.pet_id = p.id
+                  LEFT JOIN user u ON p.owner_id = u.id
+                  ORDER BY l.created_at DESC
+                  LIMIT ? OFFSET ?`
+                  )
+                  .bind(pageSize, offset)
+            : db
+                  .prepare(
+                      `SELECT
+                      l.id,
+                      l.tag_id,
+                      l.pet_id,
+                      l.action,
+                      l.created_at,
+                      p.name AS pet_name,
+                      u.email AS owner_email
+                  FROM tag_link_logs l
+                  LEFT JOIN tags t ON t.id = l.tag_id
+                  LEFT JOIN pets p ON l.pet_id = p.id
+                  LEFT JOIN user u ON p.owner_id = u.id
+                  WHERE COALESCE(t.tenant_id, p.tenant_id) IN (${placeholders})
+                  ORDER BY l.created_at DESC
+                  LIMIT ? OFFSET ?`
+                  )
+                  .bind(...scope.tenantIds, pageSize, offset)
+    )
         .all<TagLinkLogRow>()
         .catch(() => ({ results: [] as TagLinkLogRow[] }));
 
@@ -646,6 +721,7 @@ export async function getAdminAuditLogs(params?: {
     sortBy?: "created_at" | "action" | "success";
     sortOrder?: "asc" | "desc";
 }) {
+    const scope = await resolveAdminScope("admin");
     const db = getDB();
     const safeLimit = Math.max(1, Math.min(params?.limit ?? 30, 200));
     const page = Math.max(1, params?.page ?? 1);
@@ -683,6 +759,21 @@ export async function getAdminAuditLogs(params?: {
     if (appVersion) {
         whereParts.push("COALESCE(json_extract(payload, '$.appVersion'), 'unknown') LIKE ?");
         bindValues.push(`%${appVersion}%`);
+    }
+    if (!scope.actor.isPlatformAdmin && scope.tenantIds && scope.tenantIds.length > 0) {
+        const placeholders = scope.tenantIds.map(() => "?").join(", ");
+        whereParts.push(
+            `(
+              EXISTS (
+                SELECT 1
+                FROM tags t_scope
+                WHERE t_scope.id = json_extract(payload, '$.tagId')
+                  AND t_scope.tenant_id IN (${placeholders})
+              )
+              OR COALESCE(json_extract(payload, '$.tenantId'), '') IN (${placeholders})
+            )`
+        );
+        bindValues.push(...scope.tenantIds, ...scope.tenantIds);
     }
     const whereClause = whereParts.join(" AND ");
 
@@ -730,7 +821,7 @@ export async function getAdminAuditLogs(params?: {
 }
 
 export async function getAdminFailureTopActions(days = 7, limit = 5) {
-    await assertAdminRole();
+    await resolveAdminScope("admin");
     const db = getDB();
     const safeDays = Math.max(1, Math.min(days, 365));
     const safeLimit = Math.max(1, Math.min(limit, 20));
@@ -749,7 +840,7 @@ export async function getAdminFailureTopActions(days = 7, limit = 5) {
 }
 
 async function assertAdminRole() {
-    await requirePlatformAdminActor();
+    await resolveAdminScope("admin");
 }
 
 /**
@@ -804,7 +895,7 @@ const NFC_NATIVE_HANDOFF_ACTION = "nfc_native_handoff";
 export async function prepareNfcTagWrite(tagIdRaw: string): Promise<
     { ok: true; tagId: string; url: string } | { ok: false; error: string }
 > {
-    await assertAdminRole();
+    const scope = await resolveAdminScope("admin");
     const id = normalizeTagUid(tagIdRaw);
     if (!isValidTagUidFormat(id)) {
         return { ok: false, error: "UID 형식이 올바르지 않습니다." };
@@ -816,10 +907,18 @@ export async function prepareNfcTagWrite(tagIdRaw: string): Promise<
         return { ok: false, error: "NEXT_PUBLIC_APP_URL이 설정되지 않았습니다." };
     }
     const db = getDB();
-    const row = await db
-        .prepare("SELECT id FROM tags WHERE id = ?")
-        .bind(id)
-        .first<{ id: string }>();
+    const row = await (
+        scope.actor.isPlatformAdmin || !scope.tenantIds || scope.tenantIds.length === 0
+            ? db.prepare("SELECT id FROM tags WHERE id = ?").bind(id)
+            : db
+                  .prepare(
+                      `SELECT id
+                       FROM tags
+                       WHERE id = ?
+                         AND tenant_id IN (${scope.tenantIds.map(() => "?").join(", ")})`
+                  )
+                  .bind(id, ...scope.tenantIds)
+    ).first<{ id: string }>();
     if (!row) {
         return { ok: false, error: "등록되지 않은 태그입니다. 먼저 태그를 인벤토리에 등록하세요." };
     }

@@ -93,6 +93,7 @@ export default function UsersAdminClient({
   initialRole,
   tenantId,
   planOptions,
+  isPlatformAdmin,
 }: {
   initialRows: AdminUserListRow[];
   total: number;
@@ -102,6 +103,7 @@ export default function UsersAdminClient({
   initialRole: string;
   tenantId?: string | null;
   planOptions: PlanCodeOption[];
+  isPlatformAdmin: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -123,6 +125,7 @@ export default function UsersAdminClient({
   }, [initialRows, planOptions]);
 
   const handleRoleSave = (userId: string, next: PlatformUserRole) => {
+    if (!isPlatformAdmin) return;
     const row = initialRows.find((r) => r.id === userId);
     const currentRole: PlatformUserRole =
       row && isPlatformAdminStored(row.role) ? "platform_admin" : "user";
@@ -143,6 +146,7 @@ export default function UsersAdminClient({
   };
 
   const handleSubscriptionSave = (userId: string, code: string) => {
+    if (!isPlatformAdmin) return;
     startTransition(async () => {
       try {
         await updateUserSubscriptionStatusAdmin(userId, code);
@@ -154,11 +158,13 @@ export default function UsersAdminClient({
   };
 
   const openEmailModal = (u: AdminUserListRow) => {
+    if (!isPlatformAdmin) return;
     setEmailDraft(u.email ?? "");
     setModal({ kind: "email", user: u });
   };
 
   const openPasswordModal = (u: AdminUserListRow) => {
+    if (!isPlatformAdmin) return;
     setPasswordDraft("");
     setPasswordConfirm("");
     setModal({ kind: "password", user: u });
@@ -195,6 +201,7 @@ export default function UsersAdminClient({
   };
 
   const handleDelete = (u: AdminUserListRow) => {
+    if (!isPlatformAdmin) return;
     const ok = confirm(
       `계정을 영구 삭제합니다: ${u.email}\n연결된 세션·펫 등 연관 데이터가 삭제될 수 있습니다. 계속할까요?`
     );
@@ -236,6 +243,7 @@ export default function UsersAdminClient({
               <select
                 name="role"
                 defaultValue={initialRole}
+                disabled={!isPlatformAdmin}
                 className={cn(
                   adminUi.input,
                   "min-h-[48px] w-full rounded-2xl text-base font-semibold shadow-inner focus:border-teal-400 focus:ring-2 focus:ring-teal-500/20 sm:min-h-[44px] sm:text-xs sm:font-bold"
@@ -309,7 +317,7 @@ export default function UsersAdminClient({
                         "min-h-10 w-full rounded-xl text-[12px] font-bold sm:text-[11px]"
                       )}
                       defaultValue={(u.subscriptionStatus ?? "free").trim() || "free"}
-                      disabled={pending}
+                      disabled={pending || !isPlatformAdmin}
                       onChange={(e) => handleSubscriptionSave(u.id, e.target.value)}
                     >
                       {(planOptsByUser.get(u.id) ?? []).map((p) => (
@@ -329,7 +337,7 @@ export default function UsersAdminClient({
                         "min-h-12 flex-1 rounded-xl text-[14px] font-bold sm:min-h-10 sm:text-xs"
                       )}
                       defaultValue={isPlatformAdminStored(u.role) ? "platform_admin" : "user"}
-                      disabled={pending}
+                      disabled={pending || !isPlatformAdmin}
                       onChange={(e) => handleRoleSave(u.id, e.target.value as PlatformUserRole)}
                     >
                       <option value="user">일반 사용자</option>
@@ -343,7 +351,7 @@ export default function UsersAdminClient({
                     variant="outline"
                     size="sm"
                     className="touch-manipulation"
-                    disabled={pending}
+                    disabled={pending || !isPlatformAdmin}
                     onClick={() => openEmailModal(u)}
                   >
                     <Mail className="mr-1 h-3.5 w-3.5" aria-hidden />
@@ -354,7 +362,7 @@ export default function UsersAdminClient({
                     variant="outline"
                     size="sm"
                     className="touch-manipulation"
-                    disabled={pending}
+                    disabled={pending || !isPlatformAdmin}
                     onClick={() => openPasswordModal(u)}
                   >
                     <KeyRound className="mr-1 h-3.5 w-3.5" aria-hidden />
@@ -365,7 +373,7 @@ export default function UsersAdminClient({
                     variant="outline"
                     size="sm"
                     className="touch-manipulation border-red-200 text-red-700 hover:bg-red-50"
-                    disabled={pending}
+                    disabled={pending || !isPlatformAdmin}
                     onClick={() => handleDelete(u)}
                   >
                     <Trash2 className="mr-1 h-3.5 w-3.5" aria-hidden />
@@ -419,7 +427,7 @@ export default function UsersAdminClient({
                       <select
                         className={cn(adminUi.input, "min-h-9 w-full max-w-[220px] text-[11px] font-bold")}
                         defaultValue={(u.subscriptionStatus ?? "free").trim() || "free"}
-                        disabled={pending}
+                        disabled={pending || !isPlatformAdmin}
                         onChange={(e) => handleSubscriptionSave(u.id, e.target.value)}
                       >
                         {(planOptsByUser.get(u.id) ?? []).map((p) => (
@@ -437,7 +445,7 @@ export default function UsersAdminClient({
                       <select
                         className={cn(adminUi.input, "min-h-9 w-full max-w-[180px] text-[11px] font-bold")}
                         defaultValue={isPlatformAdminStored(u.role) ? "platform_admin" : "user"}
-                        disabled={pending}
+                        disabled={pending || !isPlatformAdmin}
                         onChange={(e) => handleRoleSave(u.id, e.target.value as PlatformUserRole)}
                       >
                         <option value="user">일반 사용자</option>
@@ -451,7 +459,7 @@ export default function UsersAdminClient({
                           variant="outline"
                           size="sm"
                           className="h-8 px-2 text-[10px] font-black"
-                          disabled={pending}
+                          disabled={pending || !isPlatformAdmin}
                           onClick={() => openEmailModal(u)}
                         >
                           <Mail className="mr-1 h-3 w-3" aria-hidden />
@@ -462,7 +470,7 @@ export default function UsersAdminClient({
                           variant="outline"
                           size="sm"
                           className="h-8 px-2 text-[10px] font-black"
-                          disabled={pending}
+                          disabled={pending || !isPlatformAdmin}
                           onClick={() => openPasswordModal(u)}
                         >
                           <KeyRound className="mr-1 h-3 w-3" aria-hidden />
@@ -473,7 +481,7 @@ export default function UsersAdminClient({
                           variant="outline"
                           size="sm"
                           className="h-8 border-red-200 px-2 text-[10px] font-black text-red-700 hover:bg-red-50"
-                          disabled={pending}
+                          disabled={pending || !isPlatformAdmin}
                           onClick={() => handleDelete(u)}
                         >
                           <Trash2 className="mr-1 h-3 w-3" aria-hidden />
@@ -521,12 +529,18 @@ export default function UsersAdminClient({
 
       <p className="flex flex-wrap items-start gap-2 text-[12px] font-semibold leading-relaxed text-slate-500">
         <ArrowLeftRight className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" aria-hidden />
-        플랫폼 관리자는 `/admin` 전역 메뉴에 접근할 수 있습니다. 개인 플랜 코드는 활성 개인 구독이 있을 때보다 우선하지 않을
-        수 있습니다. 조직(B2B) 요금은{" "}
-        <Link href="/admin/tenants" className="font-black text-teal-700 underline-offset-2 hover:underline">
-          테넌트 관리
-        </Link>
-        에서 다룹니다.
+        {isPlatformAdmin ? (
+          <>
+            플랫폼 관리자는 `/admin` 전역 메뉴에 접근할 수 있습니다. 개인 플랜 코드는 활성 개인 구독이 있을 때보다 우선하지
+            않을 수 있습니다. 조직(B2B) 요금은{" "}
+            <Link href="/admin/tenants" className="font-black text-teal-700 underline-offset-2 hover:underline">
+              테넌트 관리
+            </Link>
+            에서 다룹니다.
+          </>
+        ) : (
+          <>조직관리자 계정은 소속 조직 사용자 조회/운영만 가능하며, 플랫폼 역할·비밀번호·삭제 등 전역 계정 관리는 제한됩니다.</>
+        )}
       </p>
 
       <Dialog open={modal?.kind === "email"} onOpenChange={(o) => !o && setModal(null)}>

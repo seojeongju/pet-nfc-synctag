@@ -8,22 +8,23 @@ import { getCfRequestContext } from "@/lib/cf-request-context";
 import { nanoid } from "nanoid";
 import { parseSubjectKind, type SubjectKind } from "@/lib/subject-kind";
 import type { ModeAnnouncementAttachmentKind, ModeAnnouncementRow, ModeAnnouncementStatus } from "@/types/mode-announcement";
-import { isPlatformAdminRole } from "@/lib/platform-admin";
 import { fetchVisibleAnnouncementsForGuardian as fetchVisibleAnnouncementsForGuardianFromLib } from "@/lib/mode-announcements-guardian";
+import { resolveAdminScope } from "@/lib/admin-authz";
 
 const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
 
-async function assertAdminRole() {
-  const context = getCfRequestContext();
-  const auth = getAuth(context.env);
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user?.id) throw new Error("인증이 필요합니다.");
-  const row = await getDB()
-    .prepare("SELECT role FROM user WHERE id = ?")
-    .bind(session.user.id)
-    .first<{ role?: string | null }>();
-  if (!isPlatformAdminRole(row?.role)) throw new Error("플랫폼 관리자만 사용할 수 있습니다.");
-  return session;
+type AnnouncementAdminScope = Awaited<ReturnType<typeof resolveAdminScope>>;
+
+async function resolveAnnouncementScope(): Promise<AnnouncementAdminScope> {
+  return resolveAdminScope("admin");
+}
+
+function getScopedTenantIdOrThrow(scope: AnnouncementAdminScope): string | null {
+  if (scope.actor.isPlatformAdmin) return null;
+  if (!scope.tenantIds || scope.tenantIds.length === 0) {
+    throw new Error("조직 관리자 권한이 필요합니다.");
+  }
+  return scope.tenantIds[0] ?? null;
 }
 
 async function getActorEmailSafe() {
@@ -45,7 +46,7 @@ function attachmentKindFromMime(mime: string): ModeAnnouncementAttachmentKind {
 
 /** 관리자: 공지용 이미지/PDF 업로드 → `/api/r2/...` 경로 반환 */
 export async function uploadModeAnnouncementFile(formData: FormData) {
-  await assertAdminRole();
+  await resolveAnnouncementScope();
   const file = formData.get("file") as File | null;
   if (!file?.size) throw new Error("파일을 선택해 주세요.");
   if (file.size > MAX_ATTACHMENT_BYTES) throw new Error("파일은 15MB 이하만 업로드할 수 있습니다.");
@@ -89,14 +90,19 @@ export type SaveModeAnnouncementInput = {
 };
 
 export async function saveModeAnnouncement(input: SaveModeAnnouncementInput) {
-  const session = await assertAdminRole();
+  const scope = await resolveAnnouncementScope();
   const db = getDB();
   const kind = parseSubjectKind(input.subject_kind);
   const title = input.title.trim();
   if (!title) throw new Error("제목을 입력해 주세요.");
 
   const batch = input.target_batch_id?.trim() || null;
-  const targetTenant = input.target_tenant_id?.trim() || null;
+  const requestedTenant = input.target_tenant_id?.trim() || null;
+  const scopedTenant = getScopedTenantIdOrThrow(scope);
+  const targetTenant = scope.actor.isPlatformAdmin ? requestedTenant : scopedTenant;
+  if (!scope.actor.isPlatformAdmin && requestedTenant && requestedTenant !== scopedTenant) {
+    throw new Error("본인 조직 외 대상 설정은 허용되지 않습니다.");
+  }
   if (targetTenant) {
     const trow = await db
       .prepare("SELECT id FROM tenants WHERE id = ? LIMIT 1")
@@ -115,7 +121,7 @@ export async function saveModeAnnouncement(input: SaveModeAnnouncementInput) {
   };
   const pubAt = normDt(input.published_at);
   const expAt = normDt(input.expires_at);
-  const email = (await getActorEmailSafe()) || session.user.email || null;
+  const email = (await getActorEmailSafe()) || scope.actor.email || null;
 
   const attKey = input.attachment_r2_key?.trim() || null;
   const attMime = input.attachment_mime?.trim() || null;
@@ -175,10 +181,26 @@ export async function saveModeAnnouncement(input: SaveModeAnnouncementInput) {
 }
 
 export async function deleteModeAnnouncement(id: string) {
-  await assertAdminRole();
+  const scope = await resolveAnnouncementScope();
   const db = getDB();
-  const row = await db.prepare("SELECT attachment_r2_key FROM mode_announcements WHERE id = ?").bind(id).first<{ attachment_r2_key: string | null }>();
-  await db.prepare("DELETE FROM mode_announcements WHERE id = ?").bind(id).run();
+  const scopedTenant = getScopedTenantIdOrThrow(scope);
+  const row = await (
+    scope.actor.isPlatformAdmin
+      ? db.prepare("SELECT attachment_r2_key FROM mode_announcements WHERE id = ?").bind(id)
+      : db
+          .prepare(
+            "SELECT attachment_r2_key FROM mode_announcements WHERE id = ? AND target_tenant_id = ?"
+          )
+          .bind(id, scopedTenant)
+  ).first<{ attachment_r2_key: string | null }>();
+  if (!row) throw new Error("삭제 권한이 없거나 공지를 찾을 수 없습니다.");
+  await (
+    scope.actor.isPlatformAdmin
+      ? db.prepare("DELETE FROM mode_announcements WHERE id = ?").bind(id)
+      : db
+          .prepare("DELETE FROM mode_announcements WHERE id = ? AND target_tenant_id = ?")
+          .bind(id, scopedTenant)
+  ).run();
   if (row?.attachment_r2_key) {
     try {
       await getR2().delete(row.attachment_r2_key);
@@ -192,12 +214,21 @@ export async function deleteModeAnnouncement(id: string) {
 }
 
 export async function listModeAnnouncementsForAdmin(): Promise<ModeAnnouncementRow[]> {
-  await assertAdminRole();
+  const scope = await resolveAnnouncementScope();
   const db = getDB();
-  const { results } = await db
-    .prepare(
-      `SELECT * FROM mode_announcements ORDER BY updated_at DESC, created_at DESC LIMIT 200`
-    )
+  const scopedTenant = getScopedTenantIdOrThrow(scope);
+  const { results } = await (
+    scope.actor.isPlatformAdmin
+      ? db.prepare(`SELECT * FROM mode_announcements ORDER BY updated_at DESC, created_at DESC LIMIT 200`)
+      : db
+          .prepare(
+            `SELECT * FROM mode_announcements
+             WHERE target_tenant_id = ?
+             ORDER BY updated_at DESC, created_at DESC
+             LIMIT 200`
+          )
+          .bind(scopedTenant)
+  )
     .all<ModeAnnouncementRow>()
     .catch(() => ({ results: [] as ModeAnnouncementRow[] }));
   return results;

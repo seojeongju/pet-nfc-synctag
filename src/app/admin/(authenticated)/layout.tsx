@@ -6,8 +6,8 @@ import { isPlatformAdminRole } from "@/lib/platform-admin";
 import { AdminSidebarNav } from "@/components/admin/layout/AdminSidebarNav";
 import { AdminHeaderBar } from "@/components/admin/layout/AdminHeaderBar";
 import { getUserConsentStatus } from "@/lib/privacy-consent";
-import { listTenantsForUser } from "@/lib/tenant-membership";
 import { isPasswordChangeRequired } from "@/lib/password-change";
+import { resolveAdminScope } from "@/lib/admin-authz";
 
 export const runtime = "edge";
 
@@ -38,12 +38,11 @@ export default async function AdminAuthenticatedLayout({
     redirect("/force-password");
   }
   if (!isPlatformAdminRole(roleRow?.role)) {
-    const tenants = await listTenantsForUser(context.env.DB, session.user.id).catch(() => []);
-    const hasOrgAdminRole = tenants.some((t) => t.role === "owner" || t.role === "admin");
-    if (hasOrgAdminRole) {
-      redirect("/hub/org/manage");
+    try {
+      await resolveAdminScope("admin");
+    } catch {
+      redirect("/admin/login");
     }
-    redirect("/admin/login");
   }
   const consent = await getUserConsentStatus(session.user.id);
   if (!consent.hasRequired) {
@@ -54,7 +53,7 @@ export default async function AdminAuthenticatedLayout({
     <div className="min-h-screen bg-[#F8FAFC] font-outfit text-slate-700 relative">
       <div className="absolute top-0 left-0 w-full h-[260px] bg-gradient-to-b from-teal-500/10 to-transparent pointer-events-none" />
       <div className="flex min-h-screen flex-col lg:grid lg:min-h-screen lg:grid-cols-[minmax(17rem,19rem)_minmax(0,1fr)]">
-        <AdminSidebarNav />
+        <AdminSidebarNav isPlatformAdmin={isPlatformAdminRole(roleRow?.role)} />
 
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col lg:z-10">
           <AdminHeaderBar user={user} />

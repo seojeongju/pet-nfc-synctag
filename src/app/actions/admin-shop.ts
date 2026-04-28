@@ -7,20 +7,36 @@ import { nanoid } from "nanoid";
 import { getAuth } from "@/lib/auth";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { getDB } from "@/lib/db";
-import { isPlatformAdminRole } from "@/lib/platform-admin";
 import { SUBJECT_KINDS, type SubjectKind } from "@/lib/subject-kind";
 import { getGoldSettings, updateGoldSettings, fetchAndSaveGoldPrice } from "@/lib/gold-price";
+import { resolveAdminScope } from "@/lib/admin-authz";
 
 async function assertAdminRole(): Promise<void> {
-  const context = getCfRequestContext();
-  const auth = getAuth(context.env);
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user?.id) throw new Error("로그인이 필요합니다.");
-  const row = await getDB()
-    .prepare("SELECT role FROM user WHERE id = ?")
-    .bind(session.user.id)
-    .first<{ role?: string | null }>();
-  if (!isPlatformAdminRole(row?.role)) throw new Error("플랫폼 관리자만 사용할 수 있습니다.");
+  await resolveAdminScope("admin");
+}
+
+async function getAdminDataScope(): Promise<{ actorId: string; tenantIds: string[] | null }> {
+  const { actor, tenantIds } = await resolveAdminScope("admin");
+  return { actorId: actor.userId, tenantIds };
+}
+
+function buildTenantUserScopeSql(
+  userIdColumnExpr: string,
+  tenantIds: string[] | null
+): { clause: string; binds: string[] } {
+  if (!tenantIds || tenantIds.length === 0) {
+    return { clause: "", binds: [] };
+  }
+  const placeholders = tenantIds.map(() => "?").join(", ");
+  return {
+    clause: ` AND EXISTS (
+      SELECT 1
+      FROM tenant_members tm_scope
+      WHERE tm_scope.user_id = ${userIdColumnExpr}
+        AND tm_scope.tenant_id IN (${placeholders})
+    )`,
+    binds: tenantIds,
+  };
 }
 
 export type AdminShopProductRow = {
@@ -328,7 +344,7 @@ export async function listAdminShopOrders(options: {
   status?: "all" | "pending" | "paid" | "failed" | "cancelled";
   query?: string;
 }): Promise<AdminShopOrderRow[]> {
-  await assertAdminRole();
+  const scope = await getAdminDataScope();
   const db = getDB();
   const limit = Math.min(200, Math.max(1, Math.trunc(options.limit ?? 100)));
   const status = options.status ?? "all";
@@ -346,6 +362,11 @@ export async function listAdminShopOrders(options: {
     );
     const like = `%${q}%`;
     binds.push(like, like, like, like);
+  }
+  const tenantScope = buildTenantUserScopeSql("o.user_id", scope.tenantIds);
+  if (tenantScope.clause) {
+    where.push(`1=1 ${tenantScope.clause}`);
+    binds.push(...tenantScope.binds);
   }
   const orderCols = new Set(
     (
@@ -418,14 +439,35 @@ export async function listAdminShopOrders(options: {
 }
 
 export async function updateShopOrderStatus(formData: FormData): Promise<void> {
-  await assertAdminRole();
+  const scope = await getAdminDataScope();
   const orderId = String(formData.get("order_id") ?? "").trim();
   const status = String(formData.get("status") ?? "").trim();
   const allowed = ["pending", "paid", "failed", "cancelled"] as const;
   if (!orderId || !(allowed as readonly string[]).includes(status)) {
     redirect("/admin/shop/orders?e=" + encodeURIComponent("잘못된 요청입니다."));
   }
-  await getDB()
+  const db = getDB();
+  if (scope.tenantIds && scope.tenantIds.length > 0) {
+    const scoped = await db
+      .prepare(
+        `SELECT o.id
+         FROM shop_orders o
+         WHERE o.id = ?
+           AND EXISTS (
+             SELECT 1
+             FROM tenant_members tm
+             WHERE tm.user_id = o.user_id
+               AND tm.tenant_id IN (${scope.tenantIds.map(() => "?").join(", ")})
+           )
+         LIMIT 1`
+      )
+      .bind(orderId, ...scope.tenantIds)
+      .first<{ id: string }>();
+    if (!scoped?.id) {
+      redirect("/admin/shop/orders?e=" + encodeURIComponent("해당 주문을 변경할 권한이 없습니다."));
+    }
+  }
+  await db
     .prepare(`UPDATE shop_orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
     .bind(status, orderId)
     .run();
@@ -464,7 +506,7 @@ export async function listAdminGoldResaleBuyers(options: {
   limit?: number;
   query?: string;
 }): Promise<AdminGoldResaleBuyerRow[]> {
-  await assertAdminRole();
+  const scope = await getAdminDataScope();
   await assertGoldResaleTablesReady();
   const db = getDB();
   const limit = Math.min(500, Math.max(1, Math.trunc(options.limit ?? 200)));
@@ -475,6 +517,17 @@ export async function listAdminGoldResaleBuyers(options: {
     whereParts.push("(u.email LIKE ? OR COALESCE(u.name,'') LIKE ? OR o.user_id LIKE ?)");
     const like = `%${q}%`;
     binds.push(like, like, like);
+  }
+  if (scope.tenantIds && scope.tenantIds.length > 0) {
+    whereParts.push(
+      `EXISTS (
+        SELECT 1
+        FROM tenant_members tm_scope
+        WHERE tm_scope.user_id = o.user_id
+          AND tm_scope.tenant_id IN (${scope.tenantIds.map(() => "?").join(", ")})
+      )`
+    );
+    binds.push(...scope.tenantIds);
   }
   const whereSql = `WHERE ${whereParts.join(" AND ")}`;
 
@@ -549,15 +602,9 @@ export async function listAdminGoldResaleBuyers(options: {
 }
 
 export async function applyGoldResalePolicyToBuyers(formData: FormData): Promise<void> {
-  await assertAdminRole();
+  const dataScope = await getAdminDataScope();
   await assertGoldResaleTablesReady();
-  const context = getCfRequestContext();
-  const auth = getAuth(context.env);
-  const session = await auth.api.getSession({ headers: await headers() });
-  const actorId = session?.user?.id;
-  if (!actorId) {
-    redirect("/admin/shop/resale?e=" + encodeURIComponent("로그인이 필요합니다."));
-  }
+  const actorId = dataScope.actorId;
   const buyerIds = formData
     .getAll("buyer_user_id")
     .map((x) => String(x).trim())
@@ -566,8 +613,9 @@ export async function applyGoldResalePolicyToBuyers(formData: FormData): Promise
     redirect("/admin/shop/resale?e=" + encodeURIComponent("적용할 구매자를 한 명 이상 선택해 주세요."));
   }
   const enabled = formData.get("resale_enabled") === "on" ? 1 : 0;
-  const scopeRaw = String(formData.get("resale_visibility_scope") ?? "order_buyer").trim();
-  const scope = scopeRaw === "selected_buyers" ? "selected_buyers" : "order_buyer";
+  const visibilityScopeRaw = String(formData.get("resale_visibility_scope") ?? "order_buyer").trim();
+  const visibilityScope =
+    visibilityScopeRaw === "selected_buyers" ? "selected_buyers" : "order_buyer";
   const priceRaw = Number(formData.get("resale_offer_price_krw"));
   const visibleFromRaw = String(formData.get("resale_visible_from") ?? "").trim();
   const includeBuyer = formData.get("include_order_buyer") === "on";
@@ -587,15 +635,25 @@ export async function applyGoldResalePolicyToBuyers(formData: FormData): Promise
 
   const db = getDB();
   const placeholders = buyerIds.map(() => "?").join(", ");
+  const tenantScopeSql =
+    dataScope.tenantIds && dataScope.tenantIds.length > 0
+      ? ` AND EXISTS (
+          SELECT 1
+          FROM tenant_members tm_scope
+          WHERE tm_scope.user_id = shop_orders.user_id
+            AND tm_scope.tenant_id IN (${dataScope.tenantIds.map(() => "?").join(", ")})
+        )`
+      : "";
   const orderRows = await db
     .prepare(
       `SELECT id, user_id, amount_krw
        FROM shop_orders
        WHERE subject_kind = 'gold'
          AND status = 'paid'
-         AND user_id IN (${placeholders})`
+         AND user_id IN (${placeholders})
+         ${tenantScopeSql}`
     )
-    .bind(...buyerIds)
+    .bind(...buyerIds, ...(dataScope.tenantIds ?? []))
     .all<{ id: string; user_id: string; amount_krw: number }>();
   const orders = orderRows.results ?? [];
   if (orders.length === 0) {
@@ -603,7 +661,7 @@ export async function applyGoldResalePolicyToBuyers(formData: FormData): Promise
   }
 
   const requestedTargets = new Set<string>();
-  if (scope === "selected_buyers") {
+  if (visibilityScope === "selected_buyers") {
     for (const token of targetsCsv.split(",")) {
       const t = token.trim();
       if (t) requestedTargets.add(t);
@@ -629,7 +687,7 @@ export async function applyGoldResalePolicyToBuyers(formData: FormData): Promise
           order.amount_krw,
           Math.floor(priceRaw),
           visibleFromIso,
-          scope,
+          visibilityScope,
           enabled,
           actorId,
           actorId
@@ -642,12 +700,12 @@ export async function applyGoldResalePolicyToBuyers(formData: FormData): Promise
            SET resale_offer_price_krw = ?, resale_visible_from = ?, visibility_scope = ?, enabled = ?, updated_by_user_id = ?, updated_at = CURRENT_TIMESTAMP
            WHERE id = ?`
         )
-        .bind(Math.floor(priceRaw), visibleFromIso, scope, enabled, actorId, policyId)
+        .bind(Math.floor(priceRaw), visibleFromIso, visibilityScope, enabled, actorId, policyId)
         .run();
     }
 
     const targets = new Set<string>(requestedTargets);
-    if (scope === "selected_buyers" && includeBuyer) {
+    if (visibilityScope === "selected_buyers" && includeBuyer) {
       targets.add(order.user_id);
     }
     await db.prepare(`DELETE FROM gold_order_resale_targets WHERE policy_id = ?`).bind(policyId).run();

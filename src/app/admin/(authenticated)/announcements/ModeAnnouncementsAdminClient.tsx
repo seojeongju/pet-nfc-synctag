@@ -86,7 +86,13 @@ function FormSection({
   );
 }
 
-export default function ModeAnnouncementsAdminClient({ initialRows }: { initialRows: ModeAnnouncementRow[] }) {
+export default function ModeAnnouncementsAdminClient({
+  initialRows,
+  isPlatformAdmin,
+}: {
+  initialRows: ModeAnnouncementRow[];
+  isPlatformAdmin: boolean;
+}) {
   const [rows, setRows] = useState(initialRows);
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
@@ -329,24 +335,30 @@ export default function ModeAnnouncementsAdminClient({ initialRows }: { initialR
               </label>
             </div>
 
-            <label className="space-y-2 block">
-              <span className="block text-[11px] font-black uppercase tracking-wider text-slate-500 sm:text-[10px]">
-                조직 ID (선택, B2B)
-              </span>
-              <input
-                className={cn(fieldClass, "font-mono text-[15px] sm:text-sm")}
-                placeholder="비우면 개인 대시보드·모든 조직에 공통"
-                value={form.target_tenant_id ?? ""}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, target_tenant_id: e.target.value.trim() || null }))
-                }
-                autoComplete="off"
-              />
-              <p className="text-[13px] font-medium leading-relaxed text-slate-500 sm:text-[10px] sm:font-bold">
-                테넌트 목록의 조직 ID. 값이 있으면 해당{" "}
-                <span className="font-mono text-slate-600">?tenant=</span> 대시보드에서만 노출됩니다.
-              </p>
-            </label>
+            {isPlatformAdmin ? (
+              <label className="space-y-2 block">
+                <span className="block text-[11px] font-black uppercase tracking-wider text-slate-500 sm:text-[10px]">
+                  조직 ID (선택, B2B)
+                </span>
+                <input
+                  className={cn(fieldClass, "font-mono text-[15px] sm:text-sm")}
+                  placeholder="비우면 개인 대시보드·모든 조직에 공통"
+                  value={form.target_tenant_id ?? ""}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, target_tenant_id: e.target.value.trim() || null }))
+                  }
+                  autoComplete="off"
+                />
+                <p className="text-[13px] font-medium leading-relaxed text-slate-500 sm:text-[10px] sm:font-bold">
+                  테넌트 목록의 조직 ID. 값이 있으면 해당{" "}
+                  <span className="font-mono text-slate-600">?tenant=</span> 대시보드에서만 노출됩니다.
+                </p>
+              </label>
+            ) : (
+              <div className="rounded-2xl border border-teal-100 bg-teal-50 px-4 py-3 text-[12px] font-bold text-teal-800">
+                조직관리자 계정은 본인 조직 대상 공지로 자동 적용됩니다.
+              </div>
+            )}
           </FormSection>
 
           <FormSection icon={PenLine} title="내용" description="보호자에게 보이는 제목과 본문입니다.">

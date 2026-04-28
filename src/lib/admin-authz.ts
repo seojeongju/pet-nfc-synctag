@@ -13,6 +13,11 @@ export type AdminActor = {
   isPlatformAdmin: boolean;
 };
 
+export type AdminScope = {
+  actor: AdminActor;
+  tenantIds: string[] | null;
+};
+
 export async function requireAdminActor(): Promise<AdminActor> {
   const context = getCfRequestContext();
   const auth = getAuth(context.env);
@@ -53,4 +58,30 @@ export async function requirePlatformOrTenantAdminActor(
   const context = getCfRequestContext();
   await assertTenantRole(context.env.DB, actor.userId, tenantId, minimumRole);
   return actor;
+}
+
+export async function resolveAdminScope(minimumRole: TenantRole = "admin"): Promise<AdminScope> {
+  const actor = await requireAdminActor();
+  if (actor.isPlatformAdmin) {
+    return { actor, tenantIds: null };
+  }
+  const context = getCfRequestContext();
+  const rows = await context.env.DB
+    .prepare(
+      `SELECT tenant_id, role
+       FROM tenant_members
+       WHERE user_id = ?`
+    )
+    .bind(actor.userId)
+    .all<{ tenant_id: string; role: TenantRole }>();
+  const rank: Record<TenantRole, number> = { member: 1, admin: 2, owner: 3 };
+  const minimum = rank[minimumRole];
+  const tenantIds = (rows.results ?? [])
+    .filter((r) => rank[(r.role ?? "member") as TenantRole] >= minimum)
+    .map((r) => r.tenant_id)
+    .filter(Boolean);
+  if (tenantIds.length === 0) {
+    throw new Error("관리자 권한이 필요합니다.");
+  }
+  return { actor, tenantIds: [...new Set(tenantIds)] };
 }

@@ -16,10 +16,12 @@ import { formatAllowedSubjectKindsSummaryKo, parseAllowedModesForForm } from "@/
 import { SUBJECT_KINDS, subjectKindMeta } from "@/lib/subject-kind";
 import { Building2, Search, ShieldCheck, UserPlus2, UsersRound } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { adminUi } from "@/styles/admin/ui";
 import OwnerPasswordField from "@/components/admin/tenants/OwnerPasswordField";
 import { cookies } from "next/headers";
+import { resolveAdminScope } from "@/lib/admin-authz";
 
 export const runtime = "edge";
 
@@ -62,6 +64,10 @@ function safeDecode(v: string | undefined): string {
 }
 
 export default async function AdminTenantsPage({ searchParams }: { searchParams: SearchParams }) {
+  const scope = await resolveAdminScope("admin");
+  if (!scope.actor.isPlatformAdmin) {
+    redirect("/hub/org/manage");
+  }
   const cookieStore = await cookies();
   const flashRaw = cookieStore.get("admin_tenant_pw_flash")?.value ?? "";
   let passwordFlash: { tenantId: string; email: string; temporaryPassword: string } | null = null;

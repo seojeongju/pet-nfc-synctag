@@ -16,8 +16,14 @@ export { AdminHeaderUser, type SessionUser } from "@/components/admin/layout/Adm
 
 export type { NavSection } from "@/components/admin/layout/admin-nav-config";
 
-export function AdminSidebarNav() {
+export function AdminSidebarNav({ isPlatformAdmin }: { isPlatformAdmin: boolean }) {
   const pathname = usePathname() || "";
+  const navSections = isPlatformAdmin
+    ? ADMIN_NAV_SECTIONS
+    : ADMIN_NAV_SECTIONS.map((section) => ({
+        ...section,
+        items: section.items.filter((item) => item.href !== "/admin/tenants"),
+      }));
 
   return (
     <aside className="hidden lg:flex w-full shrink-0 flex-col border-b border-slate-100 bg-white/90 shadow-lg shadow-slate-100/50 backdrop-blur-md lg:z-auto lg:w-auto lg:sticky lg:top-0 lg:h-screen lg:max-h-screen lg:min-h-0 lg:overflow-hidden lg:border-b-0 lg:border-r">
@@ -34,7 +40,7 @@ export function AdminSidebarNav() {
       </div>
 
       <nav className="px-4 pb-4 lg:pb-2 lg:overflow-y-auto lg:flex-1 lg:min-h-0 custom-scrollbar">
-        {ADMIN_NAV_SECTIONS.map((section) => (
+        {navSections.map((section) => (
           <div key={section.id} className="mb-6 last:mb-2">
             <p className="px-3 lg:px-4 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">
               {section.title}

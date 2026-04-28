@@ -1,12 +1,9 @@
 "use server";
 
 import { nanoid } from "nanoid";
-import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { getAuth } from "@/lib/auth";
-import { getCfRequestContext } from "@/lib/cf-request-context";
 import { getDB } from "@/lib/db";
-import { isPlatformAdminRole } from "@/lib/platform-admin";
+import { resolveAdminScope } from "@/lib/admin-authz";
 
 export type StorageCheckoutIntentStatus =
   | "requested"
@@ -54,23 +51,31 @@ export type StorageCheckoutIntentSlaCounts = {
   processingOver24h: number;
 };
 
-async function assertAdminRole() {
-  const context = getCfRequestContext();
-  const auth = getAuth(context.env);
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user?.id) throw new Error("로그인이 필요합니다.");
-  const row = await getDB()
-    .prepare("SELECT role FROM user WHERE id = ?")
-    .bind(session.user.id)
-    .first<{ role?: string | null }>();
-  if (!isPlatformAdminRole(row?.role)) throw new Error("플랫폼 관리자만 사용할 수 있습니다.");
-  return session.user.id;
+async function resolveBillingScope() {
+  const scope = await resolveAdminScope("admin");
+  return {
+    actorId: scope.actor.userId,
+    tenantIds: scope.actor.isPlatformAdmin ? null : scope.tenantIds ?? [],
+  };
+}
+
+function withTenantScope(userColumnExpr: string, tenantIds: string[] | null) {
+  if (!tenantIds || tenantIds.length === 0) return { clause: "", binds: [] as string[] };
+  const placeholders = tenantIds.map(() => "?").join(", ");
+  return {
+    clause: ` AND EXISTS (
+      SELECT 1 FROM tenant_members tm
+      WHERE tm.user_id = ${userColumnExpr}
+        AND tm.tenant_id IN (${placeholders})
+    )`,
+    binds: tenantIds,
+  };
 }
 
 export async function listStorageCheckoutIntents(
   options: ListStorageCheckoutIntentOptions = {}
 ): Promise<StorageCheckoutIntentRow[]> {
-  await assertAdminRole();
+  const scope = await resolveBillingScope();
   const safeLimit = Math.min(300, Math.max(1, Math.trunc(options.limit ?? 100)));
   const where: string[] = [];
   const binds: Array<string | number> = [];
@@ -96,6 +101,11 @@ export async function listStorageCheckoutIntents(
   } else if (sla === "processing_over_24h") {
     where.push("i.status = 'processing' AND i.updated_at <= DATETIME('now', '-24 hours')");
   }
+  const tenantScoped = withTenantScope("i.user_id", scope.tenantIds);
+  if (tenantScoped.clause) {
+    where.push(`1=1 ${tenantScoped.clause}`);
+    binds.push(...tenantScoped.binds);
+  }
 
   const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
   const sql = `SELECT i.id, i.user_id, u.email AS user_email, i.product_id,
@@ -119,10 +129,20 @@ export async function listStorageCheckoutIntents(
 export async function getStorageCheckoutIntentStatusCounts(
   query?: string
 ): Promise<StorageCheckoutIntentStatusCount[]> {
-  await assertAdminRole();
+  const scope = await resolveBillingScope();
   const q = (query ?? "").trim();
-  const where = q ? "WHERE (i.id LIKE ? OR i.user_id LIKE ? OR COALESCE(u.email, '') LIKE ?)" : "";
-  const binds = q ? [`%${q}%`, `%${q}%`, `%${q}%`] : [];
+  const whereParts: string[] = [];
+  const binds: string[] = [];
+  if (q) {
+    whereParts.push("(i.id LIKE ? OR i.user_id LIKE ? OR COALESCE(u.email, '') LIKE ?)");
+    binds.push(`%${q}%`, `%${q}%`, `%${q}%`);
+  }
+  const tenantScoped = withTenantScope("i.user_id", scope.tenantIds);
+  if (tenantScoped.clause) {
+    whereParts.push(`1=1 ${tenantScoped.clause}`);
+    binds.push(...tenantScoped.binds);
+  }
+  const where = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
 
   const { results } = await getDB()
     .prepare(
@@ -155,10 +175,20 @@ export async function getStorageCheckoutIntentStatusCounts(
 export async function getStorageCheckoutIntentSlaCounts(
   query?: string
 ): Promise<StorageCheckoutIntentSlaCounts> {
-  await assertAdminRole();
+  const scope = await resolveBillingScope();
   const q = (query ?? "").trim();
-  const where = q ? "AND (i.id LIKE ? OR i.user_id LIKE ? OR COALESCE(u.email, '') LIKE ?)" : "";
-  const binds = q ? [`%${q}%`, `%${q}%`, `%${q}%`] : [];
+  const whereParts: string[] = [];
+  const binds: string[] = [];
+  if (q) {
+    whereParts.push("(i.id LIKE ? OR i.user_id LIKE ? OR COALESCE(u.email, '') LIKE ?)");
+    binds.push(`%${q}%`, `%${q}%`, `%${q}%`);
+  }
+  const tenantScoped = withTenantScope("i.user_id", scope.tenantIds);
+  if (tenantScoped.clause) {
+    whereParts.push(`1=1 ${tenantScoped.clause}`);
+    binds.push(...tenantScoped.binds);
+  }
+  const where = whereParts.length ? `AND ${whereParts.join(" AND ")}` : "";
 
   const row = await getDB()
     .prepare(
@@ -186,7 +216,7 @@ export async function updateStorageCheckoutIntentStatus(input: {
   status: StorageCheckoutIntentStatus;
   note?: string | null;
 }): Promise<{ ok: true }> {
-  await assertAdminRole();
+  const scope = await resolveBillingScope();
   const db = getDB();
   const intentId = input.intentId.trim();
   const status = input.status;
@@ -203,6 +233,19 @@ export async function updateStorageCheckoutIntentStatus(input: {
     .bind(intentId)
     .first<{ id: string; user_id: string; product_id: string; status: StorageCheckoutIntentStatus }>();
   if (!intent) throw new Error("요청 정보를 찾을 수 없습니다.");
+  if (scope.tenantIds && scope.tenantIds.length > 0) {
+    const scoped = await db
+      .prepare(
+        `SELECT 1 AS ok
+         FROM tenant_members tm
+         WHERE tm.user_id = ?
+           AND tm.tenant_id IN (${scope.tenantIds.map(() => "?").join(", ")})
+         LIMIT 1`
+      )
+      .bind(intent.user_id, ...scope.tenantIds)
+      .first<{ ok: number }>();
+    if (!scoped?.ok) throw new Error("해당 요청을 처리할 권한이 없습니다.");
+  }
   if (intent.status === status) {
     revalidatePath("/admin/storage-billing");
     return { ok: true };

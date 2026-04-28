@@ -32,7 +32,7 @@ export default async function AdminEntryPage() {
   const tenants = await listTenantsForUser(context.env.DB, userId).catch(() => []);
   const hasOrgAdminRole = tenants.some((t) => t.role === "owner" || t.role === "admin");
   if (hasOrgAdminRole) {
-    redirect("/hub/org/manage");
+    redirect("/admin");
   }
 
   redirect("/admin/login?error=" + encodeURIComponent("관리자 권한이 없습니다."));

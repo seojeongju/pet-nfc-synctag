@@ -3,6 +3,7 @@ import { AdminPageIntro } from "@/components/admin/layout/AdminPageIntro";
 import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
 import UsersAdminClient from "./UsersAdminClient";
+import { resolveAdminScope } from "@/lib/admin-authz";
 
 export const runtime = "edge";
 
@@ -14,20 +15,30 @@ type Search = {
 };
 
 export default async function AdminUsersPage({ searchParams }: { searchParams: Promise<Search> }) {
+  const scope = await resolveAdminScope("admin");
   const sp = await searchParams;
   const q = (sp.q ?? "").trim();
   const role = sp.role === "user" || sp.role === "platform_admin" ? sp.role : "all";
-  const tenantId = (sp.tenant ?? "").trim() || null;
+  const requestedTenantId = (sp.tenant ?? "").trim() || null;
+  const tenantId = scope.actor.isPlatformAdmin
+    ? requestedTenantId
+    : (scope.tenantIds?.[0] ?? null);
   const page = Math.max(1, Number(sp.page) || 1);
 
   const [{ rows, total, page: pageOut, pageSize }, planOptions] = await Promise.all([
     listUsersAdmin({
       q: q || undefined,
-      role: role === "all" ? "all" : role,
+      role: scope.actor.isPlatformAdmin ? (role === "all" ? "all" : role) : "all",
       tenantId: tenantId ?? undefined,
       page,
     }),
-    listPlanCodeOptionsAdmin(),
+    scope.actor.isPlatformAdmin
+      ? listPlanCodeOptionsAdmin()
+      : Promise.resolve([
+          { code: "free", name: "무료" },
+          { code: "starter", name: "스타터" },
+          { code: "business", name: "비즈니스" },
+        ]),
   ]);
 
   return (
@@ -49,6 +60,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
         initialRole={role}
         tenantId={tenantId}
         planOptions={planOptions}
+        isPlatformAdmin={scope.actor.isPlatformAdmin}
       />
     </div>
   );
