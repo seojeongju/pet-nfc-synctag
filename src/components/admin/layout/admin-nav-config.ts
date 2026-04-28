@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   CreditCard,
   ShoppingBag,
+  ReceiptText,
 } from "lucide-react";
 
 export type NavLeaf = { href: string; label: string; icon: LucideIcon; color: string };
@@ -26,6 +27,7 @@ export const ADMIN_NAV_SECTIONS: NavSection[] = [
     items: [
       { href: "/admin", label: "운영 대시보드", icon: LayoutDashboard, color: "text-teal-500" },
       { href: "/admin/shop", label: "스토어 관리", icon: ShoppingBag, color: "text-cyan-600" },
+      { href: "/admin/shop/orders", label: "주문 관리", icon: ReceiptText, color: "text-violet-600" },
       { href: "/admin/announcements", label: "모드·배치 공지", icon: Megaphone, color: "text-indigo-500" },
       { href: "/admin/monitoring", label: "NFC/BLE 모니터링", icon: Radio, color: "text-sky-500" },
     ],
