@@ -102,6 +102,12 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
               <span className="truncate">링크유 Link-U</span>
             </a>
             <div className="flex min-w-0 items-center justify-end gap-1.5">
+              <a
+                href={`/shop?kind=${encodeURIComponent(kind)}`}
+                className="shrink-0 rounded-full border border-teal-100 bg-teal-50/80 px-2.5 py-1 text-[10px] font-black text-teal-800 hover:bg-teal-100 min-h-8 inline-flex items-center"
+              >
+                스토어
+              </a>
               <DashboardContextualHelp />
               <DashboardAnnouncementBell />
               {session?.user?.name ? (

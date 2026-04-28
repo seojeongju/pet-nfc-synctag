@@ -13,6 +13,7 @@ import {
   Building2,
   CheckCircle2,
   CircleDashed,
+  Store,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
@@ -404,6 +405,23 @@ export default async function HubPage({
             <li>조직(B2B)은 소속 조직 카드에서 관리·대시보드로 이동할 수 있습니다.</li>
           </ol>
         </section>
+
+        <a
+          href={`/shop?kind=${encodeURIComponent(hubVisibleKinds[0] ?? "pet")}`}
+          className="flex items-center gap-3 rounded-2xl border border-teal-200 bg-gradient-to-r from-white to-teal-50/90 p-4 shadow-sm transition hover:border-teal-300 hover:shadow-md active:scale-[0.99]"
+        >
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-700">
+            <Store className="h-6 w-6" aria-hidden />
+          </div>
+          <div className="min-w-0 flex-1 text-left">
+            <p className="text-[10px] font-black uppercase tracking-widest text-teal-600">스토어</p>
+            <p className="text-[14px] font-black text-slate-900 leading-snug">모드 맞춤 상품 둘러보기</p>
+            <p className="mt-0.5 text-[11px] font-semibold text-slate-500 leading-snug">
+              허용된 모드에 맞는 상품만 표시됩니다.
+            </p>
+          </div>
+          <ChevronRight className="h-5 w-5 text-slate-300 shrink-0" />
+        </a>
 
         {billingMessage && (
           <section className="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 shadow-sm">
