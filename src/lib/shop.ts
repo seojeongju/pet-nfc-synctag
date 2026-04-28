@@ -33,10 +33,33 @@ type ProductRow = {
   active: number;
   target_modes: string;
   image_url: string | null;
+  video_url: string | null;
+  content_html: string | null;
+  additional_images: string | null;
+  options_json: string | null;
+  stock_quantity: number;
   sort_order: number;
 };
 
 function rowToPublic(row: ProductRow, kind: SubjectKind): ShopProductPublic {
+  let additionalImages: string[] | null = null;
+  if (row.additional_images) {
+    try {
+      additionalImages = JSON.parse(row.additional_images);
+    } catch {
+      additionalImages = [];
+    }
+  }
+
+  let options: any[] | null = null;
+  if (row.options_json) {
+    try {
+      options = JSON.parse(row.options_json);
+    } catch {
+      options = null;
+    }
+  }
+
   return {
     id: row.id,
     slug: row.slug,
@@ -44,6 +67,11 @@ function rowToPublic(row: ProductRow, kind: SubjectKind): ShopProductPublic {
     description: row.description,
     priceKrw: row.price_krw,
     imageUrl: row.image_url,
+    videoUrl: row.video_url,
+    contentHtml: row.content_html,
+    additionalImages: additionalImages,
+    options: options,
+    stockQuantity: row.stock_quantity,
     subjectKind: kind,
   };
 }
@@ -57,7 +85,7 @@ export async function listShopProductsForKind(
 ): Promise<ShopProductPublic[]> {
   const res = await db
     .prepare(
-      `SELECT id, slug, name, description, price_krw, active, target_modes, image_url, sort_order
+      `SELECT id, slug, name, description, price_krw, active, target_modes, image_url, video_url, content_html, additional_images, options_json, stock_quantity, sort_order
        FROM shop_products
        WHERE active = 1
        ORDER BY sort_order ASC, name ASC`
@@ -81,7 +109,7 @@ export async function getShopProductBySlugForKind(
 ): Promise<ShopProductPublic | null> {
   const row = await db
     .prepare(
-      `SELECT id, slug, name, description, price_krw, active, target_modes, image_url, sort_order
+      `SELECT id, slug, name, description, price_krw, active, target_modes, image_url, video_url, content_html, additional_images, options_json, stock_quantity, sort_order
        FROM shop_products
        WHERE slug = ? AND active = 1`
     )
@@ -126,6 +154,7 @@ export async function createPendingShopOrder(input: {
   userId: string;
   kind: SubjectKind;
   productId: string;
+  options?: Record<string, string> | null;
   idempotencyKey?: string | null;
 }): Promise<{ orderId: string; amountKrw: number; productName: string }> {
   const { db, userId, kind, productId } = input;
@@ -153,7 +182,7 @@ export async function createPendingShopOrder(input: {
 
   const product = await db
     .prepare(
-      `SELECT id, name, price_krw, target_modes, active FROM shop_products WHERE id = ?`
+      `SELECT id, name, price_krw, target_modes, active, options_json, stock_quantity FROM shop_products WHERE id = ?`
     )
     .bind(productId)
     .first<{
@@ -162,24 +191,51 @@ export async function createPendingShopOrder(input: {
       price_krw: number;
       target_modes: string;
       active: number;
+      options_json: string | null;
+      stock_quantity: number;
     }>();
 
   if (!product || !product.active) {
     throw new ShopNotFoundError();
+  }
+
+  if (product.stock_quantity <= 0) {
+    throw new ShopForbiddenError("죄송합니다. 이 상품은 현재 품절되었습니다.");
   }
   if (!productTargetsKind(product.target_modes, kind)) {
     throw new ShopForbiddenError("이 모드에서 구매할 수 없는 상품입니다.");
   }
 
   const orderId = nanoid();
-  const amountKrw = Math.max(0, Math.floor(Number(product.price_krw)));
+  let amountKrw = Math.max(0, Math.floor(Number(product.price_krw)));
+
+  // 옵션 처리
+  if (product.options_json) {
+    try {
+      const groups = JSON.parse(product.options_json) as any[];
+      const selected = input.options || {};
+      for (const g of groups) {
+        const choice = selected[g.name];
+        if (choice) {
+          const v = g.values.find((x: any) => x.label === choice);
+          if (v) {
+            amountKrw += v.priceDeltaKrw;
+          }
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const optionsSelectedJson = input.options ? JSON.stringify(input.options) : null;
 
   await db
     .prepare(
-      `INSERT INTO shop_orders (id, user_id, subject_kind, product_id, amount_krw, status, payment_provider, idempotency_key, updated_at)
-       VALUES (?, ?, ?, ?, ?, 'pending', NULL, ?, CURRENT_TIMESTAMP)`
+      `INSERT INTO shop_orders (id, user_id, subject_kind, product_id, amount_krw, status, payment_provider, idempotency_key, options_selected_json, updated_at)
+       VALUES (?, ?, ?, ?, ?, 'pending', NULL, ?, ?, CURRENT_TIMESTAMP)`
     )
-    .bind(orderId, userId, kind, product.id, amountKrw, idempotencyKey)
+    .bind(orderId, userId, kind, product.id, amountKrw, idempotencyKey, optionsSelectedJson)
     .run();
 
   return { orderId, amountKrw, productName: product.name };
@@ -192,8 +248,10 @@ export async function getShopOrderByIdForUser(
 ): Promise<ShopOrderPublic | null> {
   const row = await db
     .prepare(
-      `SELECT o.id, o.subject_kind, o.status, o.amount_krw, o.created_at, o.updated_at,
-              p.id AS pid, p.name AS pname, p.slug AS pslug
+      `SELECT o.id, o.subject_kind, o.amount_krw, o.status, o.options_selected_json,
+              o.recipient_name, o.recipient_phone, o.shipping_zip, o.shipping_address, o.shipping_memo,
+              o.created_at, o.updated_at,
+              p.id AS p_id, p.name AS p_name, p.slug AS p_slug
        FROM shop_orders o
        INNER JOIN shop_products p ON p.id = o.product_id
        WHERE o.id = ? AND o.user_id = ?`
@@ -202,24 +260,44 @@ export async function getShopOrderByIdForUser(
     .first<{
       id: string;
       subject_kind: string;
-      status: string;
       amount_krw: number;
+      status: string;
+      options_selected_json: string | null;
+      recipient_name: string | null;
+      recipient_phone: string | null;
+      shipping_zip: string | null;
+      shipping_address: string | null;
+      shipping_memo: string | null;
       created_at: string;
       updated_at: string;
-      pid: string;
-      pname: string;
-      pslug: string;
+      p_id: string;
+      p_name: string;
+      p_slug: string;
     }>();
 
   if (!row) return null;
-  const sk = row.subject_kind as SubjectKind;
-  const st = row.status as ShopOrderPublic["status"];
+
+  let selectedOptions: Record<string, string> | null = null;
+  if (row.options_selected_json) {
+    try {
+      selectedOptions = JSON.parse(row.options_selected_json);
+    } catch {
+      selectedOptions = null;
+    }
+  }
+
   return {
     id: row.id,
-    subjectKind: sk,
-    status: st,
+    subjectKind: row.subject_kind as SubjectKind,
+    status: row.status as any,
     amountKrw: row.amount_krw,
-    product: { id: row.pid, name: row.pname, slug: row.pslug },
+    product: { id: row.p_id, name: row.p_name, slug: row.p_slug },
+    selectedOptions,
+    recipientName: row.recipient_name,
+    recipientPhone: row.recipient_phone,
+    shippingZip: row.shipping_zip,
+    shippingAddress: row.shipping_address,
+    shippingMemo: row.shipping_memo,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

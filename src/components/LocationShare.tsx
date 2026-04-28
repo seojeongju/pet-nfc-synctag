@@ -101,6 +101,8 @@ export function LocationShare({
             tagId: activeTag,
             petId: petId ?? null,
             userAgent: ua,
+            latitude,
+            longitude,
           });
           if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
             navigator.vibrate(getHapticPattern());

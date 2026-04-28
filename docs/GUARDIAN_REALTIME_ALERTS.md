@@ -9,6 +9,16 @@
   - 미설정 시 알림은 발송되지 않고 로그만 저장됩니다.
 - `NEXT_PUBLIC_APP_URL` (권장)
   - 알림 메시지에 보호자 프로필 링크를 포함할 때 사용됩니다.
+- `KAKAO_REST_API_KEY` (권장)
+  - 카카오 개발자 콘솔의 **REST API 키** (지도에 쓰는 JavaScript 키와 다름).
+  - 설정 시 `location_share_success` 등 **좌표가 있을 때** [좌표→주소](https://developers.kakao.com/docs/latest/ko/local/dev-guide#coord-to-address)로 도로명·지번을 조회해 알림 `text`의 `address=` 및 JSON `address` 필드에 넣습니다.
+  - 미설정이거나 API 실패 시 좌표·카카오맵 링크는 그대로 두고, 주소 문구만 비웁니다.
+
+## 웹훅 JSON 본문 (요약)
+- `text`: 사람이 읽는 한 줄 텍스트 블록 (`address=`, `coordinates=`, `kakao_map=` 등).
+- `address`: 역지오코딩된 주소 문자열 또는 `null`.
+- `latitude` / `longitude`: 숫자 또는 `null`.
+- `kakaoMapUrl`: 카카오맵 웹 링크 또는 `null`.
 
 ## 발송 이벤트
 - `call_click` (전화 버튼 클릭)

@@ -31,6 +31,11 @@ export type AdminShopProductRow = {
   active: number;
   target_modes: string;
   image_url: string | null;
+  video_url: string | null;
+  content_html: string | null;
+  additional_images: string | null;
+  options_json: string | null;
+  stock_quantity: number;
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -40,7 +45,7 @@ export async function listAdminShopProducts(): Promise<AdminShopProductRow[]> {
   await assertAdminRole();
   const res = await getDB()
     .prepare(
-      `SELECT id, slug, name, description, price_krw, active, target_modes, image_url, sort_order, created_at, updated_at
+      `SELECT id, slug, name, description, price_krw, active, target_modes, image_url, video_url, content_html, additional_images, options_json, stock_quantity, sort_order, created_at, updated_at
        FROM shop_products
        ORDER BY sort_order ASC, name ASC`
     )
@@ -52,7 +57,7 @@ export async function getAdminShopProduct(id: string): Promise<AdminShopProductR
   await assertAdminRole();
   const row = await getDB()
     .prepare(
-      `SELECT id, slug, name, description, price_krw, active, target_modes, image_url, sort_order, created_at, updated_at
+      `SELECT id, slug, name, description, price_krw, active, target_modes, image_url, video_url, content_html, additional_images, options_json, stock_quantity, sort_order, created_at, updated_at
        FROM shop_products WHERE id = ?`
     )
     .bind(id)
@@ -78,9 +83,14 @@ export async function saveShopProduct(formData: FormData): Promise<void> {
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const priceRaw = Number(formData.get("price_krw"));
+  const stockRaw = Number(formData.get("stock_quantity") ?? 999);
   const sortRaw = Number(formData.get("sort_order"));
   const active = formData.get("active") === "on" ? 1 : 0;
   const imageUrlRaw = String(formData.get("image_url") ?? "").trim();
+  const videoUrlRaw = String(formData.get("video_url") ?? "").trim();
+  const contentHtml = String(formData.get("content_html") ?? "").trim();
+  const additionalImagesRaw = String(formData.get("additional_images") ?? "").trim();
+  const optionsJsonRaw = String(formData.get("options_json") ?? "").trim();
 
   const modes = parseKindsFromForm(formData);
   const target_modes = JSON.stringify(modes);
@@ -102,8 +112,13 @@ export async function saveShopProduct(formData: FormData): Promise<void> {
   }
 
   const price_krw = Math.floor(priceRaw);
+  const stock_quantity = Math.floor(stockRaw);
   const sort_order = Math.floor(sortRaw);
   const image_url = imageUrlRaw.length > 0 ? imageUrlRaw.slice(0, 2048) : null;
+  const video_url = videoUrlRaw.length > 0 ? videoUrlRaw.slice(0, 2048) : null;
+  const additional_images = additionalImagesRaw.length > 0 ? additionalImagesRaw : null;
+  const content_html = contentHtml.length > 0 ? contentHtml : null;
+  const options_json = optionsJsonRaw.length > 0 ? optionsJsonRaw : null;
 
   const db = getDB();
 
@@ -117,9 +132,9 @@ export async function saveShopProduct(formData: FormData): Promise<void> {
     }
     await db
       .prepare(
-        `UPDATE shop_products SET slug = ?, name = ?, description = ?, price_krw = ?, active = ?, target_modes = ?, image_url = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+        `UPDATE shop_products SET slug = ?, name = ?, description = ?, price_krw = ?, active = ?, target_modes = ?, image_url = ?, video_url = ?, content_html = ?, additional_images = ?, options_json = ?, stock_quantity = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
       )
-      .bind(slugRaw, name, description, price_krw, active, target_modes, image_url, sort_order, idExisting)
+      .bind(slugRaw, name, description, price_krw, active, target_modes, image_url, video_url, content_html, additional_images, options_json, stock_quantity, sort_order, idExisting)
       .run();
     revalidatePath("/admin/shop");
     revalidatePath("/admin/shop/products");
@@ -135,15 +150,41 @@ export async function saveShopProduct(formData: FormData): Promise<void> {
   const newId = nanoid();
   await db
     .prepare(
-      `INSERT INTO shop_products (id, slug, name, description, price_krw, active, target_modes, image_url, sort_order, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
+      `INSERT INTO shop_products (id, slug, name, description, price_krw, active, target_modes, image_url, video_url, content_html, additional_images, options_json, stock_quantity, sort_order, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
     )
-    .bind(newId, slugRaw, name, description, price_krw, active, target_modes, image_url, sort_order)
+    .bind(newId, slugRaw, name, description, price_krw, active, target_modes, image_url, video_url, content_html, additional_images, options_json, stock_quantity, sort_order)
     .run();
   revalidatePath("/admin/shop");
   revalidatePath("/admin/shop/products");
   revalidatePath("/shop");
   redirect(`/admin/shop/products?ok=1`);
+}
+
+/**
+ * 상품 관련 에셋(이미지, 영상) 업로드
+ */
+export async function uploadShopAsset(formData: FormData): Promise<{ url: string }> {
+  await assertAdminRole();
+  const file = formData.get("file") as File;
+  if (!file || !file.size) throw new Error("업로드할 파일을 선택해 주세요.");
+
+  // 이미지/영상 타입 체크
+  const isImage = file.type.startsWith("image/");
+  const isVideo = file.type.startsWith("video/");
+  if (!isImage && !isVideo) throw new Error("이미지 또는 영상 파일만 업로드할 수 있습니다.");
+
+  const context = getCfRequestContext();
+  const r2 = context.env.R2;
+  const folder = isImage ? "shop/images" : "shop/videos";
+  const key = `${folder}/${nanoid()}-${file.name.replace(/[^\w.\-]/g, "_")}`;
+
+  const buf = await file.arrayBuffer();
+  await r2.put(key, buf, {
+    httpMetadata: { contentType: file.type }
+  });
+
+  return { url: `/api/r2/${key}` };
 }
 
 export type AdminShopOrderRow = {
@@ -156,8 +197,13 @@ export type AdminShopOrderRow = {
   product_slug: string;
   amount_krw: number;
   status: string;
-  payment_provider: string | null;
   external_payment_id: string | null;
+  options_selected_json: string | null;
+  recipient_name: string | null;
+  recipient_phone: string | null;
+  shipping_zip: string | null;
+  shipping_address: string | null;
+  shipping_memo: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -186,8 +232,10 @@ export async function listAdminShopOrders(options: {
     binds.push(like, like, like, like);
   }
   const sql = `SELECT o.id, o.user_id, u.email AS user_email, o.subject_kind, o.product_id,
-         p.name AS product_name, p.slug AS product_slug, o.amount_krw, o.status,
-         o.payment_provider, o.external_payment_id, o.created_at, o.updated_at
+          p.name AS product_name, p.slug AS product_slug, o.amount_krw, o.status,
+          o.payment_provider, o.external_payment_id, o.options_selected_json,
+          o.recipient_name, o.recipient_phone, o.shipping_zip, o.shipping_address, o.shipping_memo,
+          o.created_at, o.updated_at
        FROM shop_orders o
        INNER JOIN shop_products p ON p.id = o.product_id
        LEFT JOIN user u ON u.id = o.user_id

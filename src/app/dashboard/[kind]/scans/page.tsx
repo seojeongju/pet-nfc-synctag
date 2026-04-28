@@ -1,6 +1,9 @@
 import { getAuth } from "@/lib/auth";
 import { getScanLogsWithDb, getScanLogsCountWithDb } from "@/lib/scan-logs-db";
-import { listBleLocationEventsForOwner } from "@/lib/ble-location-events-db";
+import {
+    listBleLocationEventsForOwner,
+    type BleLocationEventRow,
+} from "@/lib/ble-location-events-db";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -11,9 +14,13 @@ import { extractBleRawMeta } from "@/lib/ble-raw-payload";
 import { cn } from "@/lib/utils";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
 import { requireTenantMember } from "@/lib/tenant-membership";
+import { enrichWithKakaoAddressLabels } from "@/lib/kakao-geocode";
+import { formatDateTimeKoSeoul, formatIntegerKo } from "@/lib/format-datetime-ko-seoul";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
+
+type BleEventWithAddress = BleLocationEventRow & { addressLabel: string | null };
 
 type ScanLog = {
     id: string;
@@ -25,6 +32,7 @@ type ScanLog = {
     longitude?: number | null;
     user_agent?: string | null;
     ip_address?: string | null;
+    addressLabel?: string | null;
 };
 
 /** D1/SQLite가 좌표를 문자열로 줄 수 있어 .toFixed 직접 호출 방지 */
@@ -33,6 +41,97 @@ function formatScanCoords(lat: unknown, lng: unknown): string {
     const ln = lng != null && lng !== "" ? Number(lng) : NaN;
     if (!Number.isFinite(la) || !Number.isFinite(ln)) return "위치 정보 없음";
     return `${la.toFixed(4)}, ${ln.toFixed(4)}`;
+}
+
+function parseScanLatLng(
+    lat: unknown,
+    lng: unknown
+): { la: number; ln: number } | null {
+    const la = lat != null && lat !== "" ? Number(lat) : NaN;
+    const ln = lng != null && lng !== "" ? Number(lng) : NaN;
+    if (!Number.isFinite(la) || !Number.isFinite(ln)) return null;
+    return { la, ln };
+}
+
+/** 스캔 카드: 도로명/지번(가능 시) + 보조로 좌표, 카카오맵 링크 */
+function ScanLogLocationBlock(props: {
+    latitude: unknown;
+    longitude: unknown;
+    addressLabel: string | null;
+}) {
+    const pos = parseScanLatLng(props.latitude, props.longitude);
+    if (!pos) {
+        return (
+            <div className="flex min-w-0 items-center gap-2 rounded-xl bg-slate-50 p-2 text-xs text-slate-500">
+                <MapPin className="h-4 w-4 shrink-0 text-slate-300" aria-hidden />
+                위치 정보 없음
+            </div>
+        );
+    }
+    const { la, ln } = pos;
+    const href = `https://map.kakao.com/link/map/발견위치,${la},${ln}`;
+    return (
+        <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex min-w-0 items-start gap-2 rounded-xl bg-slate-50 p-2 text-xs text-slate-600 transition-colors hover:bg-teal-50 hover:text-teal-800"
+        >
+            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" aria-hidden />
+            <div className="min-w-0 flex-1">
+                {props.addressLabel ? (
+                    <>
+                        <span className="block truncate font-bold text-slate-800">{props.addressLabel}</span>
+                        <span className="mt-0.5 block font-mono text-[10px] text-slate-400">
+                            {la.toFixed(4)}, {ln.toFixed(4)}
+                        </span>
+                    </>
+                ) : (
+                    <span className="min-w-0 truncate underline underline-offset-2">
+                        {formatScanCoords(props.latitude, props.longitude)}
+                    </span>
+                )}
+            </div>
+        </a>
+    );
+}
+
+/** BLE 카드용 위치 (도로명 우선) */
+function BleEventLocationBlock(props: {
+    latitude: unknown;
+    longitude: unknown;
+    addressLabel: string | null;
+}) {
+    const pos = parseScanLatLng(props.latitude, props.longitude);
+    if (!pos) {
+        return (
+            <span className="truncate font-black text-slate-400">좌표 없음</span>
+        );
+    }
+    const { la, ln } = pos;
+    return (
+        <a
+            href={`https://map.kakao.com/link/map/감지위치,${la},${ln}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex min-w-0 flex-col gap-0.5 font-black"
+        >
+            {props.addressLabel ? (
+                <>
+                    <span className="truncate text-indigo-800 underline decoration-indigo-200 underline-offset-2">
+                        {props.addressLabel}
+                    </span>
+                    <span className="truncate text-[10px] font-mono font-semibold text-slate-400">
+                        {la.toFixed(4)}, {ln.toFixed(4)}
+                    </span>
+                </>
+            ) : (
+                <span className="truncate underline underline-offset-2">
+                    {la.toFixed(4)}, {ln.toFixed(4)}
+                </span>
+            )}
+        </a>
+    );
 }
 
 function scansLoadFailed(dashboardLink: string, selfLink: string) {
@@ -137,7 +236,7 @@ export default async function ScansPage({
 
         let logs: ScanLog[];
         let totalLogs: number;
-        let bleEvents: Awaited<ReturnType<typeof listBleLocationEventsForOwner>>;
+        let bleEvents: BleEventWithAddress[] = [];
         try {
             const rawLogs = (await getScanLogsWithDb(
                 context.env.DB,
@@ -152,6 +251,7 @@ export default async function ScansPage({
             logs = rawLogs.sort((a, b) => 
                 new Date(b.scanned_at).getTime() - new Date(a.scanned_at).getTime()
             );
+            logs = await enrichWithKakaoAddressLabels(logs);
 
             totalLogs = await getScanLogsCountWithDb(
                 context.env.DB,
@@ -160,18 +260,18 @@ export default async function ScansPage({
                 tenantId ?? undefined
             );
 
-            bleEvents = await listBleLocationEventsForOwner(
+            let bleRows = await listBleLocationEventsForOwner(
                 context.env.DB,
                 session.user.id,
                 subjectKind,
                 30,
                 tenantId ?? undefined
-            ).catch(() => []);
+            ).catch((): BleLocationEventRow[] => []);
 
-            // 최신순 정렬 보장
-            bleEvents = bleEvents.sort((a, b) => 
+            bleRows = bleRows.sort((a, b) => 
                 new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
             );
+            bleEvents = await enrichWithKakaoAddressLabels(bleRows);
         } catch (error: unknown) {
             console.error("Scans page data fetch error:", error);
             return scansLoadFailed(dashboardLink, selfLink);
@@ -192,7 +292,7 @@ export default async function ScansPage({
                 </div>
                 <div className="bg-white border border-slate-100 shadow-sm rounded-2xl px-4 py-2 text-center">
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Total Scans</p>
-                    <p className="text-xl font-black text-teal-500 leading-none">{totalLogs.toLocaleString()}</p>
+                    <p className="text-xl font-black text-teal-500 leading-none">{formatIntegerKo(totalLogs)}</p>
                 </div>
             </div>
 
@@ -248,7 +348,7 @@ export default async function ScansPage({
                                                     </h3>
                                                     <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">
                                                         <Clock className="w-3 h-3" />
-                                                        {new Date(log.scanned_at).toLocaleString('ko-KR')}
+                                                        {formatDateTimeKoSeoul(log.scanned_at)}
                                                     </div>
                                                 </div>
                                                 <a
@@ -263,17 +363,11 @@ export default async function ScansPage({
                                                 </a>
                                             </div>
 
-                                            <a
-                                                href={`https://map.kakao.com/link/map/발견위치,${log.latitude},${log.longitude}`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="flex min-w-0 items-center gap-2 rounded-xl bg-slate-50 p-2 text-xs text-slate-600 transition-colors hover:bg-teal-50 hover:text-teal-600"
-                                            >
-                                                <MapPin className="h-4 w-4 shrink-0 text-rose-400" />
-                                                <span className="min-w-0 truncate underline underline-offset-2">
-                                                    {formatScanCoords(log.latitude, log.longitude)}
-                                                </span>
-                                            </a>
+                                            <ScanLogLocationBlock
+                                                latitude={log.latitude}
+                                                longitude={log.longitude}
+                                                addressLabel={log.addressLabel ?? null}
+                                            />
                                             
                                             {log.ip_address && (
                                                 <div className="text-[10px] text-slate-300 px-1 italic">
@@ -375,23 +469,20 @@ export default async function ScansPage({
                                             </p>
                                         </div>
                                         <span className="text-[10px] text-slate-400 font-bold whitespace-nowrap">
-                                            {new Date(ev.created_at).toLocaleString("ko-KR")}
+                                            {formatDateTimeKoSeoul(ev.created_at)}
                                         </span>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2 text-xs text-slate-600">
-                                        <a
-                                            href={`https://map.kakao.com/link/map/감지위치,${ev.latitude},${ev.longitude}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center gap-1.5 p-2 rounded-xl bg-white/80 hover:bg-white hover:text-indigo-600 transition-colors"
-                                        >
-                                            <MapPin className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                                            <span className="truncate underline underline-offset-2 font-black">
-                                                {ev.latitude != null && ev.longitude != null
-                                                    ? `${Number(ev.latitude).toFixed(4)}, ${Number(ev.longitude).toFixed(4)}`
-                                                    : "좌표 없음"}
-                                            </span>
-                                        </a>
+                                        <div className="flex items-start gap-1.5 p-2 rounded-xl bg-white/80 transition-colors min-w-0">
+                                            <MapPin className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" />
+                                            <div className="min-w-0 flex-1 hover:text-indigo-600">
+                                                <BleEventLocationBlock
+                                                    latitude={ev.latitude}
+                                                    longitude={ev.longitude}
+                                                    addressLabel={ev.addressLabel ?? null}
+                                                />
+                                            </div>
+                                        </div>
                                         <div className="flex items-center gap-1.5 p-2 rounded-xl bg-white/80">
                                             <Bluetooth className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
                                             <span>

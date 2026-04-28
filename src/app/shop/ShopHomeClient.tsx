@@ -142,43 +142,70 @@ export default function ShopHomeClient({
             </div>
 
             {products.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-5 py-12 text-center">
-                <Package className="h-10 w-10 mx-auto text-slate-300 mb-3" aria-hidden />
-                <p className="text-[14px] font-black text-slate-700">이 모드에 등록된 상품이 아직 없어요</p>
-                <p className="mt-2 text-[12px] font-medium text-slate-500 leading-relaxed">
-                  준비되는 대로 이곳에 표시됩니다. 다른 모드를 선택해 보세요.
+              <div className="rounded-[40px] border border-dashed border-slate-200 bg-white/50 px-5 py-16 text-center shadow-inner">
+                <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-slate-100 mx-auto mb-4">
+                  <Package className="h-8 w-8 text-slate-300" aria-hidden />
+                </div>
+                <p className="text-[16px] font-black text-slate-800">준비된 상품이 없어요</p>
+                <p className="mt-2 text-[12px] font-bold text-slate-400 leading-relaxed max-w-[15rem] mx-auto">
+                  이 모드에 어울리는 멋진 상품들을<br/>곧 만나보실 수 있습니다.
                 </p>
               </div>
             ) : (
-              <ul className="space-y-3">
+              <div className="grid grid-cols-2 gap-3 min-[430px]:gap-4">
                 {products.map((p) => (
-                  <li key={p.id}>
-                    <Link
-                      href={`/shop/${encodeURIComponent(p.slug)}?kind=${encodeURIComponent(initialKind)}`}
-                      className={cn(
-                        "group flex items-stretch gap-4 rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm",
-                        "transition-all hover:border-teal-200 hover:shadow-md active:scale-[0.99] min-h-[100px]"
+                  <Link
+                    key={p.id}
+                    href={`/shop/${encodeURIComponent(p.slug)}?kind=${encodeURIComponent(initialKind)}`}
+                    className={cn(
+                      "group flex flex-col overflow-hidden rounded-[32px] border border-slate-100 bg-white shadow-[0_8px_20px_rgba(15,23,42,0.04)]",
+                      "transition-all duration-300 hover:border-teal-200 hover:shadow-[0_20px_40px_rgba(15,23,42,0.08)] hover:-translate-y-1 active:scale-[0.98]"
+                    )}
+                  >
+                    {/* 썸네일 영역 */}
+                    <div className="relative aspect-square overflow-hidden bg-slate-50">
+                      {p.imageUrl ? (
+                        <img 
+                          src={p.imageUrl} 
+                          alt={p.name} 
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" 
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100/50">
+                          <Package className="h-10 w-10 text-slate-200 group-hover:scale-110 transition-transform" />
+                        </div>
                       )}
-                    >
-                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-50 to-cyan-50 text-teal-600 ring-1 ring-teal-100">
-                        <Package className="h-7 w-7" aria-hidden />
+                      {/* 배지 (선택사항: 신상품 등) */}
+                      <div className="absolute top-3 left-3">
+                        <div className="rounded-full bg-white/80 backdrop-blur-md px-2 py-0.5 border border-white/50 shadow-sm">
+                           <p className="text-[8px] font-black text-teal-600 uppercase tracking-widest">Premium</p>
+                        </div>
                       </div>
-                      <div className="min-w-0 flex-1 flex flex-col justify-center">
-                        <p className="text-[15px] font-black text-slate-900 leading-snug group-hover:text-teal-800 transition-colors line-clamp-2">
+                    </div>
+
+                    {/* 정보 영역 */}
+                    <div className="flex flex-1 flex-col p-4 pt-3.5">
+                      <div className="flex-1 space-y-1">
+                        <h3 className="text-[14px] min-[430px]:text-[15px] font-black text-slate-900 leading-tight group-hover:text-teal-700 transition-colors line-clamp-2 break-keep">
                           {p.name}
-                        </p>
-                        <p className="mt-1 text-[12px] font-semibold text-slate-500 line-clamp-2 leading-relaxed">
+                        </h3>
+                        <p className="text-[11px] font-bold text-slate-400 line-clamp-1">
                           {p.description}
                         </p>
-                        <p className="mt-2 text-[15px] font-black text-teal-700 tabular-nums">
+                      </div>
+                      
+                      <div className="mt-3 flex items-center justify-between gap-1">
+                        <p className="text-[15px] font-black text-slate-900 tabular-nums">
                           {formatKrw(p.priceKrw)}
                         </p>
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-teal-50 text-teal-600 group-hover:bg-teal-600 group-hover:text-white transition-colors">
+                          <ChevronRight className="h-4 w-4" />
+                        </div>
                       </div>
-                      <ChevronRight className="h-5 w-5 text-slate-300 shrink-0 self-center group-hover:text-teal-500 transition-colors" />
-                    </Link>
-                  </li>
+                    </div>
+                  </Link>
                 ))}
-              </ul>
+              </div>
             )}
           </section>
 

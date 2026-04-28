@@ -19,15 +19,14 @@ import { getUserStorageQuotaSummary } from "@/lib/storage-quota";
 import { rethrowNextControlFlowErrors } from "@/lib/next-redirect-guard";
 import ShareLinkCopyCard from "@/components/albums/ShareLinkCopyCard";
 import AlbumAssetLightboxGrid from "@/components/albums/AlbumAssetLightboxGrid";
+import { formatDateTimeMediumShortKoSeoul } from "@/lib/format-datetime-ko-seoul";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
 
 function formatDateTime(value: string | null): string {
   if (!value) return "-";
-  const d = new Date(value.replace(" ", "T"));
-  if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" });
+  return formatDateTimeMediumShortKoSeoul(value);
 }
 
 function buildAlbumsHref(

@@ -2,6 +2,17 @@ import type { SubjectKind } from "@/lib/subject-kind";
 
 export type ShopOrderStatus = "pending" | "paid" | "failed" | "cancelled";
 
+export type ShopProductOptionValue = {
+  label: string;
+  priceDeltaKrw: number;
+};
+
+export type ShopProductOptionGroup = {
+  id: string;
+  name: string;
+  values: ShopProductOptionValue[];
+};
+
 export type ShopProductPublic = {
   id: string;
   slug: string;
@@ -9,6 +20,11 @@ export type ShopProductPublic = {
   description: string;
   priceKrw: number;
   imageUrl: string | null;
+  videoUrl?: string | null;
+  contentHtml?: string | null;
+  additionalImages?: string[] | null;
+  options?: ShopProductOptionGroup[] | null;
+  stockQuantity: number;
   /** 노출 검증에 쓴 모드 (UI 표시용) */
   subjectKind: SubjectKind;
 };
@@ -19,6 +35,12 @@ export type ShopOrderPublic = {
   status: ShopOrderStatus;
   amountKrw: number;
   product: { id: string; name: string; slug: string };
+  selectedOptions?: Record<string, string> | null;
+  recipientName?: string | null;
+  recipientPhone?: string | null;
+  shippingZip?: string | null;
+  shippingAddress?: string | null;
+  shippingMemo?: string | null;
   createdAt: string;
   updatedAt: string;
 };

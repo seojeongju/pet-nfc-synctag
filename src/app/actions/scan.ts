@@ -1,5 +1,6 @@
 "use server";
 import { getDB } from "@/lib/db";
+import { reverseGeocodeToKoreanAddress } from "@/lib/kakao-geocode";
 
 export async function updateScanLocation(tagId: string, lat: number, lng: number) {
   const db = getDB();
@@ -56,6 +57,9 @@ async function maybeSendGuardianRealtimeAlert(
     petId?: string | null;
     detail?: string | null;
     userAgent?: string | null;
+    /** 위치 공유 성공 등 — 있으면 카카오로 역지오코딩해 주소를 알림에 포함 */
+    latitude?: number | null;
+    longitude?: number | null;
   }
 ) {
   const webhook = process.env.GUARDIAN_ALERT_WEBHOOK_URL?.trim();
@@ -103,12 +107,41 @@ async function maybeSendGuardianRealtimeAlert(
     .first<{ name: string | null; emergency_contact: string | null }>()
     .catch(() => null);
 
+  let addressLabel: string | null = null;
+  const lat = input.latitude;
+  const lng = input.longitude;
+  if (
+    lat != null &&
+    lng != null &&
+    Number.isFinite(lat) &&
+    Number.isFinite(lng)
+  ) {
+    const geo = await reverseGeocodeToKoreanAddress(lat, lng);
+    if (geo) addressLabel = geo.label;
+  }
+
   const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "").trim() || "";
   const profileUrl = base ? `${base}/profile/${encodeURIComponent(resolvedPetId)}?from=scan` : "";
+  const mapUrl =
+    lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng)
+      ? `https://map.kakao.com/link/map/발견위치,${lat},${lng}`
+      : "";
+  const addressTextLine =
+    addressLabel != null
+      ? `address=${addressLabel}\n`
+      : lat != null && lng != null
+        ? `address=(주소 문구 없음 — REST 키·네트워크 확인)\n`
+        : "";
+
   const text =
     `[Guardian Realtime Alert]\n` +
     `pet=${pet?.name ?? resolvedPetId}\n` +
     `action=${finderActionLabel(input.action)}\n` +
+    addressTextLine +
+    (lat != null && lng != null
+      ? `coordinates=${lat},${lng}\n` +
+        (mapUrl ? `kakao_map=${mapUrl}\n` : "")
+      : "") +
     `emergency_contact=${pet?.emergency_contact ?? "n/a"}\n` +
     `tag_id=${input.tagId ?? "n/a"}\n` +
     `detail=${input.detail ?? "n/a"}\n` +
@@ -117,7 +150,13 @@ async function maybeSendGuardianRealtimeAlert(
   await fetch(webhook, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({
+      text,
+      address: addressLabel,
+      latitude: lat != null && Number.isFinite(lat) ? lat : null,
+      longitude: lng != null && Number.isFinite(lng) ? lng : null,
+      kakaoMapUrl: mapUrl || null,
+    }),
   }).catch(() => {
     // 알림 전송 실패는 사용자 흐름을 막지 않음
   });
@@ -135,6 +174,8 @@ export async function logFinderAction(input: {
   petId?: string | null;
   detail?: string | null;
   userAgent?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }) {
   const db = getDB();
   await db.prepare(

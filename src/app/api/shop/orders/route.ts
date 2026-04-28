@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: { productId?: string; kind?: string; idempotencyKey?: string };
+  let body: { productId?: string; kind?: string; idempotencyKey?: string; options?: Record<string, string> };
   try {
     body = (await request.json()) as typeof body;
   } catch {
@@ -59,6 +59,7 @@ export async function POST(request: Request) {
       userId: session.user.id,
       kind,
       productId,
+      options: body.options,
       idempotencyKey: idem,
     });
     return NextResponse.json({

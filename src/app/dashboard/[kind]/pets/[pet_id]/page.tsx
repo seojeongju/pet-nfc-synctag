@@ -18,6 +18,7 @@ import {
   Nfc, Stethoscope, Clock, AlertTriangle, ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatMonthDayTimeKoSeoul } from "@/lib/format-datetime-ko-seoul";
 
 type ScanLogRow = {
   id: string | number;
@@ -250,7 +251,7 @@ export default async function PetDetailPage({
                       <p className="text-xs font-black text-slate-700 truncate">{scan.pet_name}</p>
                       <div className="flex items-center gap-1 text-[10px] text-slate-400 font-bold">
                         <Clock className="w-3 h-3" />
-                        {new Date(scan.scanned_at).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        {formatMonthDayTimeKoSeoul(scan.scanned_at)}
                       </div>
                     </div>
                   </div>
