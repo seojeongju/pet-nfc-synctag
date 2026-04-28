@@ -45,28 +45,115 @@ export type AdminShopProductRow = {
   updated_at: string;
 };
 
+/** D1 마이그레이션 단계에 따라 shop_products 컬럼이 다를 수 있어, SELECT는 실제 존재 컬럼만 사용합니다. */
+const ADMIN_SHOP_PRODUCT_SELECT_KEYS: (keyof AdminShopProductRow)[] = [
+  "id",
+  "slug",
+  "name",
+  "description",
+  "price_krw",
+  "active",
+  "target_modes",
+  "image_url",
+  "video_url",
+  "content_html",
+  "additional_images",
+  "options_json",
+  "stock_quantity",
+  "sort_order",
+  "weight_grams",
+  "labor_fee_krw",
+  "is_gold_linked",
+  "created_at",
+  "updated_at",
+];
+
+async function getShopProductsColumnSet(): Promise<Set<string>> {
+  const r = await getDB()
+    .prepare("PRAGMA table_info(shop_products)")
+    .all<{ name: string }>();
+  return new Set((r.results ?? []).map((row) => row.name));
+}
+
+function normalizeAdminShopProductRow(
+  raw: Record<string, unknown>,
+  existing: Set<string>
+): AdminShopProductRow {
+  const str = (k: keyof AdminShopProductRow, d: string) =>
+    existing.has(k) && raw[k] != null ? String(raw[k]) : d;
+  const optStr = (k: keyof AdminShopProductRow) =>
+    !existing.has(k) || raw[k] === null || raw[k] === undefined ? null : String(raw[k]);
+
+  const num = (k: keyof AdminShopProductRow, d: number) => {
+    if (!existing.has(k) || raw[k] === null || raw[k] === undefined) return d;
+    const n = Number(raw[k]);
+    return Number.isFinite(n) ? n : d;
+  };
+
+  let weightGrams: number | null = null;
+  if (existing.has("weight_grams") && raw.weight_grams !== null && raw.weight_grams !== undefined) {
+    const n = Number(raw.weight_grams);
+    weightGrams = Number.isFinite(n) ? n : null;
+  }
+
+  let laborFee: number | null = null;
+  if (existing.has("labor_fee_krw") && raw.labor_fee_krw !== null && raw.labor_fee_krw !== undefined) {
+    const n = Math.floor(Number(raw.labor_fee_krw));
+    laborFee = Number.isFinite(n) ? n : null;
+  }
+
+  return {
+    id: str("id", ""),
+    slug: str("slug", ""),
+    name: str("name", ""),
+    description: str("description", ""),
+    price_krw: Math.floor(num("price_krw", 0)),
+    active: existing.has("active") ? (num("active", 0) ? 1 : 0) : 1,
+    target_modes: str("target_modes", "[]"),
+    image_url: optStr("image_url"),
+    video_url: existing.has("video_url") ? optStr("video_url") : null,
+    content_html: existing.has("content_html") ? optStr("content_html") : null,
+    additional_images: existing.has("additional_images") ? optStr("additional_images") : null,
+    options_json: existing.has("options_json") ? optStr("options_json") : null,
+    stock_quantity: existing.has("stock_quantity") ? Math.floor(num("stock_quantity", 999)) : 999,
+    sort_order: existing.has("sort_order") ? Math.floor(num("sort_order", 0)) : 0,
+    weight_grams: weightGrams,
+    labor_fee_krw: laborFee,
+    is_gold_linked: existing.has("is_gold_linked") ? (num("is_gold_linked", 0) ? 1 : 0) : 0,
+    created_at: str("created_at", ""),
+    updated_at: str("updated_at", ""),
+  };
+}
+
 export async function listAdminShopProducts(): Promise<AdminShopProductRow[]> {
   await assertAdminRole();
-  const res = await getDB()
-    .prepare(
-      `SELECT id, slug, name, description, price_krw, active, target_modes, image_url, video_url, content_html, additional_images, options_json, stock_quantity, sort_order, weight_grams, labor_fee_krw, is_gold_linked, created_at, updated_at
-       FROM shop_products
-       ORDER BY sort_order ASC, name ASC`
-    )
-    .all<AdminShopProductRow>();
-  return res.results ?? [];
+  const existing = await getShopProductsColumnSet();
+  const cols = ADMIN_SHOP_PRODUCT_SELECT_KEYS.filter((c) => existing.has(c));
+  if (!cols.includes("id")) {
+    return [];
+  }
+  const orderSql = existing.has("sort_order")
+    ? "ORDER BY sort_order ASC, name ASC"
+    : "ORDER BY name ASC";
+  const sql = `SELECT ${cols.join(", ")} FROM shop_products ${orderSql}`;
+  const res = await getDB().prepare(sql).all<Record<string, unknown>>();
+  return (res.results ?? []).map((row) => normalizeAdminShopProductRow(row, existing));
 }
 
 export async function getAdminShopProduct(id: string): Promise<AdminShopProductRow | null> {
   await assertAdminRole();
+  const existing = await getShopProductsColumnSet();
+  const cols = ADMIN_SHOP_PRODUCT_SELECT_KEYS.filter((c) => existing.has(c));
+  if (!cols.includes("id")) {
+    return null;
+  }
+  const sql = `SELECT ${cols.join(", ")} FROM shop_products WHERE id = ?`;
   const row = await getDB()
-    .prepare(
-      `SELECT id, slug, name, description, price_krw, active, target_modes, image_url, video_url, content_html, additional_images, options_json, stock_quantity, sort_order, weight_grams, labor_fee_krw, is_gold_linked, created_at, updated_at
-       FROM shop_products WHERE id = ?`
-    )
+    .prepare(sql)
     .bind(id)
-    .first<AdminShopProductRow>();
-  return row ?? null;
+    .first<Record<string, unknown>>();
+  if (!row) return null;
+  return normalizeAdminShopProductRow(row, existing);
 }
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;

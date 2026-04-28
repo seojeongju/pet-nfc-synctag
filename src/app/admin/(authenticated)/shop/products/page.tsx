@@ -81,7 +81,7 @@ export default async function AdminShopProductsPage({
             ) : (
               products.map((p) => {
                 const modes = parseModes(p.target_modes);
-                const modeLabels = modes.map((m) => subjectKindMeta[m].label).join(", ");
+                const modeLabels = modes.map((m) => subjectKindMeta[m]?.label ?? m).join(", ");
                 return (
                   <tr key={p.id} className={adminUi.tableRowHover}>
                     <td className={adminUi.tableBodyCellStrong}>
