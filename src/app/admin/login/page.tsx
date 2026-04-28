@@ -26,7 +26,7 @@ export default function AdminLoginPage() {
       const result = await signIn.email({
         email,
         password,
-        callbackURL: "/admin",
+        callbackURL: "/admin/entry",
       });
       const signInError = result?.error;
 
@@ -39,7 +39,7 @@ export default function AdminLoginPage() {
         setError(normalizedMessage);
       } else {
         // OAuth가 아닌 이메일 로그인은 명시적으로 이동시켜 무반응처럼 보이는 문제를 방지합니다.
-        window.location.assign("/admin");
+        window.location.assign("/admin/entry");
         return;
       }
     } catch (err: unknown) {

@@ -15,6 +15,7 @@ type Search = {
   q?: string;
   status?: string;
   batch?: string;
+  tenant?: string;
   page?: string;
   pageSize?: string;
   /** 배치 집계 페이징(자산 `page`와 별도) */
@@ -36,6 +37,7 @@ export default async function AdminNfcTagsInventoryPage({
   const q = (sp.q ?? "").trim();
   const status = parseStatus(sp.status);
   const batch = (sp.batch ?? "").trim();
+  const tenantId = (sp.tenant ?? "").trim() || undefined;
   const page = Math.max(1, Number(sp.page) || 1);
   let pageSize = Number(sp.pageSize) || 20;
   if (!Number.isFinite(pageSize)) pageSize = 20;
@@ -47,9 +49,9 @@ export default async function AdminNfcTagsInventoryPage({
   bpageSize = Math.min(30, Math.max(3, Math.floor(bpageSize)));
 
   const [inventory, batchPage, batchOptions] = await Promise.all([
-    getTagsInventoryPage({ q, status, batch, page, pageSize }),
-    getTagBatchesPage({ page: bpage, pageSize: bpageSize }),
-    getTagInventoryBatchOptions(),
+    getTagsInventoryPage({ q, status, batch, tenantId, page, pageSize }),
+    getTagBatchesPage({ tenantId, page: bpage, pageSize: bpageSize }),
+    getTagInventoryBatchOptions(tenantId),
   ]);
 
   return (
@@ -74,6 +76,7 @@ export default async function AdminNfcTagsInventoryPage({
           initialQ={q}
           initialStatus={status}
           initialBatch={batch}
+          tenantId={tenantId ?? null}
           batchOptions={batchOptions}
           batchPage={batchPage}
         />

@@ -10,6 +10,7 @@ import {
   adminCreateTenantInviteFormAction,
   adminChangeTenantMemberRoleFormAction,
   adminRemoveTenantMemberFormAction,
+  adminResetTenantManagerPasswordFormAction,
 } from "@/app/actions/admin-tenants";
 import { formatAllowedSubjectKindsSummaryKo, parseAllowedModesForForm } from "@/lib/mode-visibility";
 import { SUBJECT_KINDS, subjectKindMeta } from "@/lib/subject-kind";
@@ -17,6 +18,8 @@ import { Building2, Search, ShieldCheck, UserPlus2, UsersRound } from "lucide-re
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { adminUi } from "@/styles/admin/ui";
+import OwnerPasswordField from "@/components/admin/tenants/OwnerPasswordField";
+import { cookies } from "next/headers";
 
 export const runtime = "edge";
 
@@ -59,6 +62,35 @@ function safeDecode(v: string | undefined): string {
 }
 
 export default async function AdminTenantsPage({ searchParams }: { searchParams: SearchParams }) {
+  const cookieStore = await cookies();
+  const flashRaw = cookieStore.get("admin_tenant_pw_flash")?.value ?? "";
+  let passwordFlash: { tenantId: string; email: string; temporaryPassword: string } | null = null;
+  if (flashRaw) {
+    try {
+      const parsed = JSON.parse(flashRaw) as {
+        tenantId?: string;
+        email?: string;
+        temporaryPassword?: string;
+        createdAt?: number;
+      };
+      if (
+        typeof parsed.tenantId === "string" &&
+        typeof parsed.email === "string" &&
+        typeof parsed.temporaryPassword === "string"
+      ) {
+        passwordFlash = {
+          tenantId: parsed.tenantId,
+          email: parsed.email,
+          temporaryPassword: parsed.temporaryPassword,
+        };
+      }
+    } catch {
+      passwordFlash = null;
+    } finally {
+      cookieStore.delete("admin_tenant_pw_flash");
+    }
+  }
+
   const qs = await searchParams;
   const q = String(qs.q ?? "").trim();
   const email = String(qs.email ?? "").trim();
@@ -96,6 +128,17 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
         <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-bold text-indigo-700 break-all">
           초대 토큰 발급 완료: <span className="font-black">{safeDecode(qs.invite_token)}</span>
           {qs.invite_exp ? ` (만료: ${safeDecode(qs.invite_exp)})` : ""}
+        </div>
+      ) : null}
+      {passwordFlash ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800 break-all space-y-1">
+          <p>조직관리자 비밀번호 재생성 완료: {passwordFlash.email}</p>
+          <p>
+            임시 비밀번호: <span className="font-mono font-black">{passwordFlash.temporaryPassword}</span>
+          </p>
+          <p className="text-[12px] font-semibold text-amber-700">
+            보안상 이 비밀번호는 안전한 채널로만 전달하고, 전달 후 즉시 화면에서 이탈하세요.
+          </p>
         </div>
       ) : null}
 
@@ -153,9 +196,10 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
               name="owner_email"
               required
               type="email"
-              placeholder="소유자 이메일(가입된 계정)"
+              placeholder="조직관리자 이메일"
               className="min-h-[48px] touch-manipulation rounded-2xl border border-slate-200 px-4 text-base font-semibold sm:h-11 sm:text-sm"
             />
+            <OwnerPasswordField />
           </div>
           <div className="rounded-2xl border border-amber-100 bg-amber-50/50 p-4 space-y-3">
             <div>
@@ -215,7 +259,7 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
               key={tenant.id}
               className={cn(
                 "rounded-3xl border border-slate-100 bg-white p-5 lg:p-6 shadow-sm space-y-4",
-                qs.created_tenant === tenant.id && "ring-2 ring-teal-300/70"
+                (qs.created_tenant === tenant.id || passwordFlash?.tenantId === tenant.id) && "ring-2 ring-teal-300/70"
               )}
             >
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -430,6 +474,43 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
                     ))}
                   </tbody>
                 </table>
+              </div>
+
+              <div className="rounded-2xl border border-violet-100 bg-violet-50/50 p-4 space-y-3">
+                <p className="text-[11px] font-black uppercase text-violet-700">조직관리자 이메일/비밀번호 찾기</p>
+                <p className="text-[12px] font-semibold text-violet-900/80">
+                  owner/admin 계정의 이메일을 확인하고, 필요 시 임시 비밀번호를 재생성할 수 있습니다.
+                </p>
+                {tenant.members.filter((m) => m.role === "owner" || m.role === "admin").length === 0 ? (
+                  <p className="text-xs font-semibold text-slate-500">등록된 조직관리자 계정이 없습니다.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {tenant.members
+                      .filter((m) => m.role === "owner" || m.role === "admin")
+                      .map((m) => (
+                        <div
+                          key={`manager-${tenant.id}-${m.user_id}`}
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-violet-100 bg-white px-3 py-2"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-black text-slate-800 break-all">{m.email}</p>
+                            <p className="text-[11px] font-semibold text-slate-500">{roleLabel(m.role)}</p>
+                          </div>
+                          <form action={adminResetTenantManagerPasswordFormAction}>
+                            <input type="hidden" name="tenant_id" value={tenant.id} />
+                            <input type="hidden" name="user_id" value={m.user_id} />
+                            <input type="hidden" name="return_qs" value={backQs} />
+                            <button
+                              type="submit"
+                              className="h-9 rounded-xl border border-amber-200 bg-amber-50 px-3 text-[11px] font-black text-amber-700 hover:bg-amber-100"
+                            >
+                              임시 비밀번호 재생성
+                            </button>
+                          </form>
+                        </div>
+                      ))}
+                  </div>
+                )}
               </div>
             </article>
             );

@@ -9,6 +9,7 @@ export const runtime = "edge";
 type Search = {
   q?: string;
   role?: string;
+  tenant?: string;
   page?: string;
 };
 
@@ -16,12 +17,14 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
   const sp = await searchParams;
   const q = (sp.q ?? "").trim();
   const role = sp.role === "user" || sp.role === "platform_admin" ? sp.role : "all";
+  const tenantId = (sp.tenant ?? "").trim() || null;
   const page = Math.max(1, Number(sp.page) || 1);
 
   const [{ rows, total, page: pageOut, pageSize }, planOptions] = await Promise.all([
     listUsersAdmin({
       q: q || undefined,
       role: role === "all" ? "all" : role,
+      tenantId: tenantId ?? undefined,
       page,
     }),
     listPlanCodeOptionsAdmin(),
@@ -44,6 +47,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
         pageSize={pageSize}
         initialQ={q}
         initialRole={role}
+        tenantId={tenantId}
         planOptions={planOptions}
       />
     </div>

@@ -67,10 +67,11 @@ function mergePlanOpts(planOptions: PlanCodeOption[], subscriptionStatus: string
   return [...map.values()].sort((a, b) => a.code.localeCompare(b.code));
 }
 
-function buildHref(q: string, role: string, page: number) {
+function buildHref(q: string, role: string, page: number, tenantId?: string | null) {
   const p = new URLSearchParams();
   if (q.trim()) p.set("q", q.trim());
   if (role !== "all") p.set("role", role);
+  if (tenantId) p.set("tenant", tenantId);
   if (page > 1) p.set("page", String(page));
   const qs = p.toString();
   return qs ? `/admin/users?${qs}` : "/admin/users";
@@ -90,6 +91,7 @@ export default function UsersAdminClient({
   pageSize,
   initialQ,
   initialRole,
+  tenantId,
   planOptions,
 }: {
   initialRows: AdminUserListRow[];
@@ -98,6 +100,7 @@ export default function UsersAdminClient({
   pageSize: number;
   initialQ: string;
   initialRole: string;
+  tenantId?: string | null;
   planOptions: PlanCodeOption[];
 }) {
   const router = useRouter();
@@ -210,6 +213,7 @@ export default function UsersAdminClient({
     <>
       <AdminCard variant="section" className="overflow-hidden">
         <form action="/admin/users" method="get" className="rounded-[22px] border border-slate-100 bg-gradient-to-b from-slate-50/80 to-white p-4 sm:p-5">
+          {tenantId ? <input type="hidden" name="tenant" value={tenantId} /> : null}
           <div className="mb-4 flex flex-wrap items-center gap-2 text-slate-600">
             <Search className="h-4 w-4 shrink-0 text-teal-600" aria-hidden />
             <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">검색 및 필터</span>
@@ -487,7 +491,7 @@ export default function UsersAdminClient({
         {totalPages > 1 && (
           <div className="flex flex-col items-center justify-between gap-4 border-t border-slate-100 px-4 py-4 sm:flex-row sm:px-6">
             <Link
-              href={buildHref(initialQ, initialRole, Math.max(1, page - 1))}
+              href={buildHref(initialQ, initialRole, Math.max(1, page - 1), tenantId)}
               className={cn(
                 "inline-flex min-h-12 items-center gap-1 rounded-2xl border border-slate-200 bg-white px-4 text-[14px] font-black touch-manipulation hover:bg-slate-50",
                 page <= 1 && "pointer-events-none opacity-40"
@@ -501,7 +505,7 @@ export default function UsersAdminClient({
               {page} / {totalPages}
             </span>
             <Link
-              href={buildHref(initialQ, initialRole, Math.min(totalPages, page + 1))}
+              href={buildHref(initialQ, initialRole, Math.min(totalPages, page + 1), tenantId)}
               className={cn(
                 "inline-flex min-h-12 items-center gap-1 rounded-2xl border border-slate-200 bg-white px-4 text-[14px] font-black touch-manipulation hover:bg-slate-50",
                 page >= totalPages && "pointer-events-none opacity-40"

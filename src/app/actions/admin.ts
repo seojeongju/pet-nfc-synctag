@@ -6,9 +6,12 @@ import { getAuth } from "@/lib/auth";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { parseSubjectKind, SUBJECT_KINDS, type SubjectKind } from "@/lib/subject-kind";
 import { normalizeBleMac } from "@/lib/device-mode";
-import { isPlatformAdminRole } from "@/lib/platform-admin";
 import { isValidTagUidFormat, normalizeTagUid } from "@/lib/tag-uid-format";
 import { mintNativeHandoffToken } from "@/lib/nfc-native-security";
+import {
+    requirePlatformAdminActor,
+    requirePlatformOrTenantAdminActor,
+} from "@/lib/admin-authz";
 import type {
     AdminTag,
     TagBatchesPageResult,
@@ -187,13 +190,26 @@ function parseInventoryStatus(raw: string | undefined): TagsInventoryStatusFilte
     return "all";
 }
 
+async function resolveTagScopeTenantId(tenantIdRaw?: string | null): Promise<string | null> {
+    const tenantId = (tenantIdRaw ?? "").trim() || null;
+    if (tenantId) {
+        await requirePlatformOrTenantAdminActor(tenantId, "admin");
+        return tenantId;
+    }
+    const actor = await requirePlatformAdminActor();
+    if (!actor.isPlatformAdmin) {
+        throw new Error("조직 스코프(tenant)가 필요합니다.");
+    }
+    return null;
+}
+
 /**
  * 태그 인벤토리 목록(페이지네이션·검색·상태·배치 필터). 관리자 전용.
  */
 export async function getTagsInventoryPage(
     params: TagsInventoryPageParams = {}
 ): Promise<TagsInventoryPageResult> {
-    await assertAdminRole();
+    const scopeTenantId = await resolveTagScopeTenantId(params.tenantId);
     const db = getDB();
 
     const qRaw = (params.q ?? "").trim().slice(0, 120);
@@ -223,6 +239,10 @@ export async function getTagsInventoryPage(
     if (batchTrim.length > 0) {
         conditions.push(`t.batch_id = ?`);
         binds.push(batchTrim);
+    }
+    if (scopeTenantId) {
+        conditions.push(`COALESCE(t.tenant_id, p.tenant_id) = ?`);
+        binds.push(scopeTenantId);
     }
 
     const whereSql = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
@@ -265,17 +285,19 @@ export async function getTagsInventoryPage(
 /**
  * 인벤토리 배치 필터용 batch_id 목록(최근 순, 상한).
  */
-export async function getTagInventoryBatchOptions(): Promise<string[]> {
-    await assertAdminRole();
+export async function getTagInventoryBatchOptions(tenantId?: string): Promise<string[]> {
+    const scopeTenantId = await resolveTagScopeTenantId(tenantId);
     const db = getDB();
-    const { results } = await db
-        .prepare(
-            `SELECT DISTINCT batch_id AS batch_id FROM tags
-             WHERE batch_id IS NOT NULL AND trim(batch_id) != ''
-             ORDER BY batch_id DESC
-             LIMIT 200`
-        )
-        .all<{ batch_id: string }>();
+    const where = scopeTenantId
+        ? "WHERE batch_id IS NOT NULL AND trim(batch_id) != '' AND tenant_id = ?"
+        : "WHERE batch_id IS NOT NULL AND trim(batch_id) != ''";
+    const stmt = db.prepare(
+        `SELECT DISTINCT batch_id AS batch_id FROM tags
+         ${where}
+         ORDER BY batch_id DESC
+         LIMIT 200`
+    );
+    const { results } = await (scopeTenantId ? stmt.bind(scopeTenantId) : stmt).all<{ batch_id: string }>();
     return (results ?? []).map((r) => r.batch_id).filter(Boolean);
 }
 
@@ -287,9 +309,9 @@ const BATCH_INVENTORY_PAGE_MIN = 3;
  * 인벤토리「배치 등록 통계」용: batch_id별 집계를 페이지로 나눔
  */
 export async function getTagBatchesPage(
-    params: { page?: number; pageSize?: number } = {}
+    params: { page?: number; pageSize?: number; tenantId?: string } = {}
 ): Promise<TagBatchesPageResult> {
-    await assertAdminRole();
+    const scopeTenantId = await resolveTagScopeTenantId(params.tenantId);
     const db = getDB();
     const pageRaw = Math.max(1, Number(params.page) || 1);
     let pageSize = Number(params.pageSize) || BATCH_INVENTORY_PAGE_DEFAULT;
@@ -299,14 +321,19 @@ export async function getTagBatchesPage(
         Math.max(BATCH_INVENTORY_PAGE_MIN, Math.floor(pageSize))
     );
 
-    const countRow = await db
-        .prepare(
-            `SELECT COUNT(*) AS c FROM (
+    const countSql = scopeTenantId
+        ? `SELECT COUNT(*) AS c FROM (
+         SELECT 1 AS x FROM tags
+         WHERE batch_id IS NOT NULL AND trim(COALESCE(batch_id, '')) != '' AND tenant_id = ?
+         GROUP BY batch_id
+       )`
+        : `SELECT COUNT(*) AS c FROM (
          SELECT 1 AS x FROM tags
          WHERE batch_id IS NOT NULL AND trim(COALESCE(batch_id, '')) != ''
          GROUP BY batch_id
-       )`
-        )
+       )`;
+    const countStmt = db.prepare(countSql);
+    const countRow = await (scopeTenantId ? countStmt.bind(scopeTenantId) : countStmt)
         .first<{ c: number }>()
         .catch(() => ({ c: 0 }));
     const total = Math.max(0, Math.floor(Number(countRow?.c ?? 0)));
@@ -317,9 +344,21 @@ export async function getTagBatchesPage(
     if (safePage < 1) safePage = 1;
     const offset = (safePage - 1) * pageSize;
 
-    const { results } = await db
-        .prepare(
-            `SELECT * FROM (
+    const listSql = scopeTenantId
+        ? `SELECT * FROM (
+         SELECT
+           batch_id,
+           COUNT(*) AS total_count,
+           SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active_count,
+           SUM(CASE WHEN status = 'unsold' THEN 1 ELSE 0 END) AS unsold_count,
+           MAX(created_at) AS latest_created_at
+         FROM tags
+         WHERE batch_id IS NOT NULL AND trim(COALESCE(batch_id, '')) != '' AND tenant_id = ?
+         GROUP BY batch_id
+       ) AS bat
+       ORDER BY bat.latest_created_at DESC
+       LIMIT ? OFFSET ?`
+        : `SELECT * FROM (
          SELECT
            batch_id,
            COUNT(*) AS total_count,
@@ -331,9 +370,11 @@ export async function getTagBatchesPage(
          GROUP BY batch_id
        ) AS bat
        ORDER BY bat.latest_created_at DESC
-       LIMIT ? OFFSET ?`
-        )
-        .bind(pageSize, offset)
+       LIMIT ? OFFSET ?`;
+    const listStmt = db.prepare(listSql);
+    const { results } = await (scopeTenantId
+        ? listStmt.bind(scopeTenantId, pageSize, offset)
+        : listStmt.bind(pageSize, offset))
         .all<TagBatchSummaryRow>()
         .catch(() => ({ results: [] as TagBatchSummaryRow[] }));
 
@@ -389,26 +430,74 @@ export async function getPetsSubjectKindCounts() {
     return counts;
 }
 
-export async function getTagOpsStats() {
-    await assertAdminRole();
+export async function getTagOpsStats(tenantId?: string) {
+    const scopeTenantId = await resolveTagScopeTenantId(tenantId);
     const db = getDB();
-    const total = await db.prepare("SELECT COUNT(*) AS value FROM tags").first<{ value: number }>();
-    const active = await db.prepare("SELECT COUNT(*) AS value FROM tags WHERE status = 'active'").first<{ value: number }>();
-    const unsold = await db.prepare("SELECT COUNT(*) AS value FROM tags WHERE status = 'unsold'").first<{ value: number }>();
-    const recentLinks = await db
-        .prepare("SELECT COUNT(*) AS value FROM tag_link_logs WHERE action='link' AND created_at >= datetime('now', '-7 days')")
-        .first<{ value: number }>()
-        .catch(() => ({ value: 0 }));
-    const failedRegistrations7d = await db
-        .prepare("SELECT COALESCE(SUM(CAST(json_extract(payload, '$.failedCount') AS INTEGER)), 0) AS value FROM admin_action_logs WHERE action='bulk_register' AND created_at >= datetime('now', '-7 days')")
-        .first<{ value: number }>()
-        .catch(() => ({ value: 0 }));
-    const webWriteFailures7d = await db
-        .prepare("SELECT COUNT(*) AS value FROM admin_action_logs WHERE action='nfc_web_write' AND success = 0 AND created_at >= datetime('now', '-7 days')")
-        .first<{ value: number }>()
-        .catch(() => ({ value: 0 }));
-    const nativeWriteSuccessFromWebFail7d = await db
-        .prepare(`
+    const total = await (scopeTenantId
+        ? db.prepare("SELECT COUNT(*) AS value FROM tags WHERE tenant_id = ?").bind(scopeTenantId)
+        : db.prepare("SELECT COUNT(*) AS value FROM tags")
+    ).first<{ value: number }>();
+    const active = await (scopeTenantId
+        ? db.prepare("SELECT COUNT(*) AS value FROM tags WHERE status = 'active' AND tenant_id = ?").bind(scopeTenantId)
+        : db.prepare("SELECT COUNT(*) AS value FROM tags WHERE status = 'active'")
+    ).first<{ value: number }>();
+    const unsold = await (scopeTenantId
+        ? db.prepare("SELECT COUNT(*) AS value FROM tags WHERE status = 'unsold' AND tenant_id = ?").bind(scopeTenantId)
+        : db.prepare("SELECT COUNT(*) AS value FROM tags WHERE status = 'unsold'")
+    ).first<{ value: number }>();
+    const recentLinks = await (scopeTenantId
+        ? db.prepare(
+            `SELECT COUNT(*) AS value
+             FROM tag_link_logs l
+             INNER JOIN tags t ON t.id = l.tag_id
+             WHERE l.action='link' AND l.created_at >= datetime('now', '-7 days') AND t.tenant_id = ?`
+        ).bind(scopeTenantId)
+        : db.prepare("SELECT COUNT(*) AS value FROM tag_link_logs WHERE action='link' AND created_at >= datetime('now', '-7 days')")
+    ).first<{ value: number }>().catch(() => ({ value: 0 }));
+    const failedRegistrations7d = scopeTenantId
+        ? { value: 0 }
+        : await db
+            .prepare("SELECT COALESCE(SUM(CAST(json_extract(payload, '$.failedCount') AS INTEGER)), 0) AS value FROM admin_action_logs WHERE action='bulk_register' AND created_at >= datetime('now', '-7 days')")
+            .first<{ value: number }>()
+            .catch(() => ({ value: 0 }));
+    const webWriteFailures7d = await (scopeTenantId
+        ? db.prepare(
+            `SELECT COUNT(*) AS value
+             FROM admin_action_logs a
+             WHERE a.action='nfc_web_write'
+               AND a.success = 0
+               AND a.created_at >= datetime('now', '-7 days')
+               AND EXISTS (
+                 SELECT 1 FROM tags t
+                 WHERE t.id = json_extract(a.payload, '$.tagId')
+                   AND t.tenant_id = ?
+               )`
+          ).bind(scopeTenantId)
+        : db.prepare("SELECT COUNT(*) AS value FROM admin_action_logs WHERE action='nfc_web_write' AND success = 0 AND created_at >= datetime('now', '-7 days')")
+      ).first<{ value: number }>()
+      .catch(() => ({ value: 0 }));
+    const nativeWriteSuccessFromWebFail7d = await (scopeTenantId
+        ? db.prepare(`
+            SELECT COUNT(*) AS value
+            FROM admin_action_logs n
+            WHERE n.action='nfc_native_write'
+              AND n.success=1
+              AND n.created_at >= datetime('now', '-7 days')
+              AND EXISTS (
+                SELECT 1 FROM tags t
+                WHERE t.id = json_extract(n.payload, '$.tagId')
+                  AND t.tenant_id = ?
+              )
+              AND EXISTS (
+                SELECT 1
+                FROM admin_action_logs w
+                WHERE w.action='nfc_web_write'
+                  AND w.success=0
+                  AND w.created_at >= datetime('now', '-7 days')
+                  AND json_extract(w.payload, '$.tagId') = json_extract(n.payload, '$.tagId')
+              )
+        `).bind(scopeTenantId)
+        : db.prepare(`
             SELECT COUNT(*) AS value
             FROM admin_action_logs n
             WHERE n.action='nfc_native_write'
@@ -423,10 +512,24 @@ export async function getTagOpsStats() {
                   AND json_extract(w.payload, '$.tagId') = json_extract(n.payload, '$.tagId')
               )
         `)
-        .first<{ value: number }>()
-        .catch(() => ({ value: 0 }));
+      ).first<{ value: number }>()
+      .catch(() => ({ value: 0 }));
 
-    const batchRows = await db.prepare(`
+    const batchRows = await (scopeTenantId
+        ? db.prepare(`
+        SELECT 
+            batch_id,
+            COUNT(*) AS total_count,
+            SUM(CASE WHEN status='active' THEN 1 ELSE 0 END) AS active_count,
+            SUM(CASE WHEN status='unsold' THEN 1 ELSE 0 END) AS unsold_count,
+            MAX(created_at) AS latest_created_at
+        FROM tags
+        WHERE batch_id IS NOT NULL AND tenant_id = ?
+        GROUP BY batch_id
+        ORDER BY latest_created_at DESC
+        LIMIT 8
+    `).bind(scopeTenantId)
+        : db.prepare(`
         SELECT 
             batch_id,
             COUNT(*) AS total_count,
@@ -438,7 +541,8 @@ export async function getTagOpsStats() {
         GROUP BY batch_id
         ORDER BY latest_created_at DESC
         LIMIT 8
-    `).all<{
+    `)
+    ).all<{
         batch_id: string;
         total_count: number;
         active_count: number;
@@ -645,15 +749,7 @@ export async function getAdminFailureTopActions(days = 7, limit = 5) {
 }
 
 async function assertAdminRole() {
-    const context = getCfRequestContext();
-    const auth = getAuth(context.env);
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user?.id) throw new Error("인증이 필요합니다.");
-    const row = await getDB()
-        .prepare("SELECT role FROM user WHERE id = ?")
-        .bind(session.user.id)
-        .first<{ role?: string | null }>();
-    if (!isPlatformAdminRole(row?.role)) throw new Error("플랫폼 관리자만 수정할 수 있습니다.");
+    await requirePlatformAdminActor();
 }
 
 /**

@@ -119,14 +119,24 @@ export function FlowTopNavContent({
         ) : null}
 
         {session && dashboardHref ? (
-          <Link
-            href={dashboardHref}
-            prefetch={false}
-            className="inline-flex items-center gap-1 rounded-full border border-teal-100 bg-teal-50/90 px-2 py-1 font-black text-teal-800 hover:bg-teal-100 min-[390px]:px-2.5"
-          >
-            <LayoutDashboard className="h-3.5 w-3.5 shrink-0 text-teal-600" aria-hidden />
-            대시보드
-          </Link>
+          useHardNav ? (
+            <a
+              href={dashboardHref}
+              className="inline-flex items-center gap-1 rounded-full border border-teal-100 bg-teal-50/90 px-2 py-1 font-black text-teal-800 hover:bg-teal-100 min-[390px]:px-2.5"
+            >
+              <LayoutDashboard className="h-3.5 w-3.5 shrink-0 text-teal-600" aria-hidden />
+              {isDashboard ? "홈" : "대시보드"}
+            </a>
+          ) : (
+            <Link
+              href={dashboardHref}
+              prefetch={false}
+              className="inline-flex items-center gap-1 rounded-full border border-teal-100 bg-teal-50/90 px-2 py-1 font-black text-teal-800 hover:bg-teal-100 min-[390px]:px-2.5"
+            >
+              <LayoutDashboard className="h-3.5 w-3.5 shrink-0 text-teal-600" aria-hidden />
+              {isDashboard ? "홈" : "대시보드"}
+            </Link>
+          )
         ) : null}
 
         {session && orgManageHref ? (

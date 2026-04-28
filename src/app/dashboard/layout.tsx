@@ -5,6 +5,8 @@ import { getLandingSessionState, type LandingSessionState } from "@/lib/landing-
 import { getOrgManageHrefForUser } from "@/lib/org-manage-href";
 import { getUserConsentStatus } from "@/lib/privacy-consent";
 import { redirect } from "next/navigation";
+import { getCfRequestContext } from "@/lib/cf-request-context";
+import { isPasswordChangeRequired } from "@/lib/password-change";
 
 export const runtime = "edge";
 
@@ -20,6 +22,10 @@ export default async function DashboardLayout({
     console.error("[dashboard/layout] getLandingSessionState", e);
   }
   if (landing.session?.user?.id) {
+    const context = getCfRequestContext();
+    if (await isPasswordChangeRequired(context.env.DB, landing.session.user.id)) {
+      redirect("/force-password");
+    }
     const consent = await getUserConsentStatus(landing.session.user.id);
     if (!consent.hasRequired) {
       redirect(`/consent?next=${encodeURIComponent("/dashboard")}`);

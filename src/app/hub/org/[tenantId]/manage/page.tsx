@@ -272,8 +272,8 @@ export default async function TenantOrgManagePage({
           />
           <select name="role" defaultValue="member" className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-bold">
             <option value="member">멤버</option>
-            <option value="admin">관리자</option>
-            <option value="owner">소유자</option>
+            {isPlatformAdmin ? <option value="admin">관리자</option> : null}
+            {isPlatformAdmin ? <option value="owner">소유자</option> : null}
           </select>
           <button
             type="submit"
@@ -312,8 +312,8 @@ export default async function TenantOrgManagePage({
           />
           <select name="role" defaultValue="member" className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-bold">
             <option value="member">멤버</option>
-            <option value="admin">관리자</option>
-            <option value="owner">소유자</option>
+            {isPlatformAdmin ? <option value="admin">관리자</option> : null}
+            {isPlatformAdmin ? <option value="owner">소유자</option> : null}
           </select>
           <button
             type="submit"
@@ -326,6 +326,11 @@ export default async function TenantOrgManagePage({
           미가입 사용자에게만 사용하세요. 초대 링크는 <span className="text-slate-700 font-bold">7일간</span> 유효하며, 형식은{" "}
           <code className="rounded bg-slate-100 px-1 text-[10px]">/invite/토큰</code> 입니다.
         </p>
+        {!isPlatformAdmin ? (
+          <p className="text-[11px] font-semibold text-amber-700 -mt-2">
+            조직 관리자(소유자/관리자) 권한 부여는 슈퍼어드민만 가능합니다.
+          </p>
+        ) : null}
 
         {tenant.invites.length > 0 ? (
           <div className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-3 space-y-2">
@@ -404,8 +409,14 @@ export default async function TenantOrgManagePage({
                           className="h-8 rounded-lg border border-slate-200 px-2 text-xs font-bold"
                         >
                           <option value="member">멤버</option>
-                          <option value="admin">관리자</option>
-                          <option value="owner">소유자</option>
+                          {!isPlatformAdmin && m.role === "admin" ? (
+                            <option value="admin">관리자</option>
+                          ) : null}
+                          {!isPlatformAdmin && m.role === "owner" ? (
+                            <option value="owner">소유자</option>
+                          ) : null}
+                          {isPlatformAdmin ? <option value="admin">관리자</option> : null}
+                          {isPlatformAdmin ? <option value="owner">소유자</option> : null}
                         </select>
                         <button
                           type="submit"

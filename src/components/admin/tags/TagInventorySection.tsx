@@ -21,6 +21,7 @@ export type TagInventoryQueryState = {
   q: string;
   status: TagsInventoryStatusFilter;
   batch: string;
+  tenantId?: string | null;
   page: number;
   pageSize: number;
   bpage: number;
@@ -37,6 +38,7 @@ export function buildInventorySearchHref(
   if (m.q.trim()) p.set("q", m.q.trim());
   if (m.status !== "all") p.set("status", m.status);
   if (m.batch.trim()) p.set("batch", m.batch.trim());
+  if (m.tenantId) p.set("tenant", m.tenantId);
   if (m.page > 1) p.set("page", String(m.page));
   if (m.pageSize !== 20) p.set("pageSize", String(m.pageSize));
   if (m.bpage > 1) p.set("bpage", String(m.bpage));
@@ -53,6 +55,7 @@ type TagInventorySectionProps = {
   initialQ: string;
   initialStatus: TagsInventoryStatusFilter;
   initialBatch: string;
+  tenantId?: string | null;
   batchOptions: string[];
   /** 배치 ID별 집계(페이징) */
   batchPage: TagBatchesPageResult;
@@ -66,6 +69,7 @@ export function TagInventorySection({
   initialQ,
   initialStatus,
   initialBatch,
+  tenantId = null,
   batchOptions,
   batchPage,
 }: TagInventorySectionProps) {
@@ -86,6 +90,7 @@ export function TagInventorySection({
     q: initialQ,
     status: initialStatus,
     batch: initialBatch,
+    tenantId,
     page,
     pageSize,
     bpage: bPage,
@@ -100,6 +105,7 @@ export function TagInventorySection({
         action="/admin/nfc-tags/inventory"
         className="space-y-4 border-b border-slate-100 pb-6"
       >
+        {tenantId ? <input type="hidden" name="tenant" value={tenantId} /> : null}
         <input type="hidden" name="page" value="1" />
         <input type="hidden" name="bpage" value="1" />
         <input type="hidden" name="bpageSize" value={String(bPageSize)} />
@@ -254,6 +260,7 @@ export function TagInventorySection({
           action="/admin/nfc-tags/inventory"
           className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between"
         >
+          {tenantId ? <input type="hidden" name="tenant" value={tenantId} /> : null}
           <input type="hidden" name="q" value={initialQ} />
           <input type="hidden" name="status" value={initialStatus} />
           <input type="hidden" name="batch" value={initialBatch} />

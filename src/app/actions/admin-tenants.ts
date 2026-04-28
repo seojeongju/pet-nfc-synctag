@@ -1,19 +1,25 @@
 "use server";
 
-import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { nanoid } from "nanoid";
-import { getCfRequestContext } from "@/lib/cf-request-context";
-import { getAuth } from "@/lib/auth";
+import { hashPassword } from "better-auth/crypto";
+import { cookies } from "next/headers";
 import { getDB } from "@/lib/db";
-import { assertTenantRole, getMembership } from "@/lib/tenant-membership";
-import { isPlatformAdminRole } from "@/lib/platform-admin";
+import { getMembership } from "@/lib/tenant-membership";
 import type { D1Database } from "@cloudflare/workers-types";
 import { TENANT_AUDIT_ACTIONS, type TenantOrgAuditFilter } from "@/lib/tenant-audit-constants";
 import { SUBJECT_KINDS, type SubjectKind } from "@/lib/subject-kind";
+import {
+  requirePlatformAdminActor,
+  requirePlatformOrTenantAdminActor,
+} from "@/lib/admin-authz";
+import { setPasswordChangeRequired } from "@/lib/password-change";
 
 type TenantRole = "owner" | "admin" | "member";
+const MIN_PASSWORD_LEN = 8;
+const MAX_PASSWORD_LEN = 128;
+const CREDENTIAL_PROVIDER = "credential" as const;
 
 type TenantMemberInfo = {
   user_id: string;
@@ -62,47 +68,18 @@ function normalizeActorSearch(raw: string | undefined): string {
 }
 
 async function requirePlatformAdmin() {
-  const context = getCfRequestContext();
-  const auth = getAuth(context.env);
-  const session = await auth.api.getSession({ headers: await headers() });
-  const userId = session?.user?.id;
-  if (!userId) {
-    throw new Error("로그인이 필요합니다.");
-  }
-
-  const roleRow = await context.env.DB
-    .prepare("SELECT role, email FROM user WHERE id = ?")
-    .bind(userId)
-    .first<{ role?: string | null; email?: string | null }>();
-
-  if (!isPlatformAdminRole(roleRow?.role)) {
-    throw new Error("플랫폼 관리자 권한이 필요합니다.");
-  }
-
-  return { userId, actorEmail: roleRow?.email ?? "system" };
+  const actor = await requirePlatformAdminActor();
+  return { userId: actor.userId, actorEmail: actor.email };
 }
 
 /** 플랫폼 관리자 또는 해당 조직의 owner/admin(테넌트 관리자). */
 async function requirePlatformOrTenantOrgAdmin(tenantId: string): Promise<OrgActor> {
-  const context = getCfRequestContext();
-  const auth = getAuth(context.env);
-  const session = await auth.api.getSession({ headers: await headers() });
-  const userId = session?.user?.id;
-  if (!userId) {
-    throw new Error("로그인이 필요합니다.");
-  }
-  const db = context.env.DB;
-  const roleRow = await db
-    .prepare("SELECT role, email FROM user WHERE id = ?")
-    .bind(userId)
-    .first<{ role?: string | null; email?: string | null }>();
-
-  if (isPlatformAdminRole(roleRow?.role)) {
-    return { userId, actorEmail: roleRow?.email ?? "system", isPlatformAdmin: true };
-  }
-
-  await assertTenantRole(db, userId, tenantId, "admin");
-  return { userId, actorEmail: roleRow?.email ?? "system", isPlatformAdmin: false };
+  const actor = await requirePlatformOrTenantAdminActor(tenantId, "admin");
+  return {
+    userId: actor.userId,
+    actorEmail: actor.email,
+    isPlatformAdmin: actor.isPlatformAdmin,
+  };
 }
 
 async function assertMayAssignOwnerRole(
@@ -111,12 +88,39 @@ async function assertMayAssignOwnerRole(
   tenantId: string,
   targetRole: TenantRole
 ) {
-  if (targetRole !== "owner") return;
-  if (actor.isPlatformAdmin) return;
-  const m = await getMembership(db, actor.userId, tenantId);
-  if (m !== "owner") {
-    throw new Error("소유자 역할은 조직 소유자 또는 플랫폼 관리자만 지정할 수 있습니다.");
+  if (targetRole !== "owner" && targetRole !== "admin") return;
+  if (!actor.isPlatformAdmin) {
+    throw new Error("조직 관리자(소유자/관리자) 권한 부여는 슈퍼어드민만 가능합니다.");
   }
+}
+
+async function assertSingleManagerTenantConstraint(
+  db: D1Database,
+  userId: string,
+  nextRole: TenantRole,
+  tenantId: string
+) {
+  if (nextRole !== "owner" && nextRole !== "admin") return;
+  const row = await db
+    .prepare(
+      `SELECT tm.tenant_id
+       FROM tenant_members tm
+       WHERE tm.user_id = ?
+         AND tm.role IN ('owner', 'admin')
+         AND tm.tenant_id != ?
+       LIMIT 1`
+    )
+    .bind(userId, tenantId)
+    .first<{ tenant_id: string }>();
+  if (row?.tenant_id) {
+    throw new Error("조직 관리자는 1개 조직에만 부여할 수 있습니다.");
+  }
+}
+
+async function assertInviteRoleByActor(actor: OrgActor, role: TenantRole) {
+  if (role !== "owner" && role !== "admin") return;
+  if (actor.isPlatformAdmin) return;
+  throw new Error("조직 관리자(소유자/관리자) 초대는 슈퍼어드민만 가능합니다.");
 }
 
 async function assertMayRemoveOwnerMember(db: D1Database, actor: OrgActor, tenantId: string, targetUserId: string) {
@@ -154,6 +158,86 @@ async function resolveUserByEmail(email: string) {
     .prepare("SELECT id, email, name FROM user WHERE lower(email) = lower(?) LIMIT 1")
     .bind(email)
     .first<{ id: string; email: string; name?: string | null }>();
+}
+
+function assertPasswordPolicy(password: string) {
+  if (password.length < MIN_PASSWORD_LEN) {
+    throw new Error(`비밀번호는 ${MIN_PASSWORD_LEN}자 이상이어야 합니다.`);
+  }
+  if (password.length > MAX_PASSWORD_LEN) {
+    throw new Error(`비밀번호는 ${MAX_PASSWORD_LEN}자를 넘을 수 없습니다.`);
+  }
+}
+
+function generateTemporaryPassword(length = 12): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*";
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => chars[b % chars.length]).join("");
+}
+
+async function resolveOrCreateOwnerUserByEmailWithPassword(email: string, password: string): Promise<{
+  user: { id: string; email: string; name?: string | null };
+  createdUser: boolean;
+  createdCredential: boolean;
+}> {
+  const db = getDB();
+  assertPasswordPolicy(password);
+  const hashed = await hashPassword(password);
+
+  const existing = await resolveUserByEmail(email);
+  if (existing) {
+    const credential = await db
+      .prepare("SELECT id FROM account WHERE userId = ? AND providerId = ? LIMIT 1")
+      .bind(existing.id, CREDENTIAL_PROVIDER)
+      .first<{ id: string }>();
+    if (credential?.id) {
+      await db
+        .prepare(
+          `UPDATE account
+           SET password = ?, updatedAt = CURRENT_TIMESTAMP
+           WHERE userId = ? AND providerId = ?`
+        )
+        .bind(hashed, existing.id, CREDENTIAL_PROVIDER)
+        .run();
+      await db.prepare("DELETE FROM session WHERE userId = ?").bind(existing.id).run();
+      await setPasswordChangeRequired(db, existing.id, true);
+      return { user: existing, createdUser: false, createdCredential: false };
+    }
+    await db
+      .prepare(
+        `INSERT INTO account (id, userId, accountId, providerId, password, createdAt, updatedAt)
+         VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+      )
+      .bind(nanoid(), existing.id, existing.id, CREDENTIAL_PROVIDER, hashed)
+      .run();
+    await db.prepare("DELETE FROM session WHERE userId = ?").bind(existing.id).run();
+    await setPasswordChangeRequired(db, existing.id, true);
+    return { user: existing, createdUser: false, createdCredential: true };
+  }
+
+  const userId = nanoid();
+  await db
+    .prepare(
+      `INSERT INTO user (id, email, name, emailVerified, role, subscriptionStatus, createdAt, updatedAt)
+       VALUES (?, ?, NULL, 0, 'user', 'free', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+    )
+    .bind(userId, email)
+    .run();
+  await db
+    .prepare(
+      `INSERT INTO account (id, userId, accountId, providerId, password, createdAt, updatedAt)
+       VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+    )
+    .bind(nanoid(), userId, userId, CREDENTIAL_PROVIDER, hashed)
+    .run();
+  await setPasswordChangeRequired(db, userId, true);
+
+  return {
+    user: { id: userId, email, name: null },
+    createdUser: true,
+    createdCredential: true,
+  };
 }
 
 async function writeAdminAudit(actorEmail: string, action: string, payload: unknown) {
@@ -437,14 +521,12 @@ export async function adminCreateTenantWithOwner(
 
   const name = String(formData.get("name") ?? "").trim();
   const ownerEmail = String(formData.get("owner_email") ?? "").trim();
-  if (!name || !ownerEmail) {
-    throw new Error("조직명과 소유자 이메일을 입력하세요.");
+  const ownerPassword = String(formData.get("owner_password") ?? "");
+  if (!name || !ownerEmail || !ownerPassword) {
+    throw new Error("조직명, 조직관리자 이메일, 비밀번호를 모두 입력하세요.");
   }
-
-  const owner = await resolveUserByEmail(ownerEmail);
-  if (!owner) {
-    throw new Error("해당 이메일의 사용자를 찾을 수 없습니다.");
-  }
+  const ownerResolved = await resolveOrCreateOwnerUserByEmailWithPassword(ownerEmail, ownerPassword);
+  const owner = ownerResolved.user;
 
   const tenantId = nanoid();
   let slug = `${slugify(name)}-${nanoid(8)}`;
@@ -464,6 +546,8 @@ export async function adminCreateTenantWithOwner(
      VALUES (?, ?, ?, 'active', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
   ).bind(tenantId, name, slug, allowedJson).run();
 
+  await assertSingleManagerTenantConstraint(db, owner.id, "owner", tenantId);
+
   await db.prepare(
     `INSERT INTO tenant_members (tenant_id, user_id, role, created_at)
      VALUES (?, ?, 'owner', CURRENT_TIMESTAMP)`
@@ -474,6 +558,8 @@ export async function adminCreateTenantWithOwner(
     name,
     slug,
     ownerEmail: owner.email,
+    ownerUserCreated: ownerResolved.createdUser,
+    ownerCredentialCreated: ownerResolved.createdCredential,
     allowed_subject_kinds: allowedJson,
   });
   revalidateTenantSurfaces(tenantId);
@@ -530,6 +616,8 @@ export async function adminAddTenantMember(formData: FormData) {
     throw new Error("해당 이메일의 사용자를 찾을 수 없습니다.");
   }
 
+  await assertSingleManagerTenantConstraint(db, user.id, role, tenantId);
+
   await db
     .prepare(
       `INSERT INTO tenant_members (tenant_id, user_id, role, created_at)
@@ -558,6 +646,7 @@ export async function adminChangeTenantMemberRole(formData: FormData) {
   const db = getDB();
 
   await assertMayAssignOwnerRole(db, actor, tenantId, role);
+  await assertSingleManagerTenantConstraint(db, userId, role, tenantId);
 
   const current = await db
     .prepare("SELECT role FROM tenant_members WHERE tenant_id = ? AND user_id = ?")
@@ -715,7 +804,7 @@ export async function adminCreateTenantInvite(formData: FormData): Promise<{ tok
   const db = getDB();
   await ensureTenantInvitesTable();
 
-  await assertMayAssignOwnerRole(db, actor, tenantId, role);
+  await assertInviteRoleByActor(actor, role);
 
   const existingUser = await resolveUserByEmail(email);
   if (existingUser) throw new Error("이미 가입된 사용자입니다. 멤버 추가/갱신을 사용하세요.");
@@ -741,6 +830,78 @@ export async function adminCreateTenantInvite(formData: FormData): Promise<{ tok
   });
   revalidateTenantSurfaces(tenantId);
   return { token, expiresAt };
+}
+
+export async function adminResetTenantManagerPassword(formData: FormData): Promise<{
+  tenantId: string;
+  targetEmail: string;
+  temporaryPassword: string;
+}> {
+  const { actorEmail } = await requirePlatformAdmin();
+  const db = getDB();
+  const tenantId = String(formData.get("tenant_id") ?? "").trim();
+  const userId = String(formData.get("user_id") ?? "").trim();
+  if (!tenantId || !userId) {
+    throw new Error("대상 정보가 올바르지 않습니다.");
+  }
+
+  const target = await db
+    .prepare(
+      `SELECT u.id, u.email, tm.role
+       FROM tenant_members tm
+       INNER JOIN user u ON u.id = tm.user_id
+       WHERE tm.tenant_id = ? AND tm.user_id = ?
+       LIMIT 1`
+    )
+    .bind(tenantId, userId)
+    .first<{ id: string; email: string; role: string }>();
+  if (!target) {
+    throw new Error("대상 조직관리자 계정을 찾을 수 없습니다.");
+  }
+  if (target.role !== "owner" && target.role !== "admin") {
+    throw new Error("조직관리자(owner/admin) 계정만 비밀번호 재생성이 가능합니다.");
+  }
+
+  const temporaryPassword = generateTemporaryPassword();
+  assertPasswordPolicy(temporaryPassword);
+  const hashed = await hashPassword(temporaryPassword);
+
+  const credential = await db
+    .prepare("SELECT id FROM account WHERE userId = ? AND providerId = ? LIMIT 1")
+    .bind(userId, CREDENTIAL_PROVIDER)
+    .first<{ id: string }>();
+
+  if (credential?.id) {
+    await db
+      .prepare(
+        `UPDATE account
+         SET password = ?, updatedAt = CURRENT_TIMESTAMP
+         WHERE userId = ? AND providerId = ?`
+      )
+      .bind(hashed, userId, CREDENTIAL_PROVIDER)
+      .run();
+  } else {
+    await db
+      .prepare(
+        `INSERT INTO account (id, userId, accountId, providerId, password, createdAt, updatedAt)
+         VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+      )
+      .bind(nanoid(), userId, userId, CREDENTIAL_PROVIDER, hashed)
+      .run();
+  }
+  await setPasswordChangeRequired(db, userId, true);
+  await db.prepare("DELETE FROM session WHERE userId = ?").bind(userId).run();
+
+  await writeAdminAudit(actorEmail, "tenant_manager_password_reset_by_admin", {
+    tenantId,
+    targetUserId: userId,
+    targetEmail: target.email,
+    targetRole: target.role,
+    credentialCreated: !credential?.id,
+  });
+  revalidateTenantSurfaces(tenantId);
+
+  return { tenantId, targetEmail: target.email, temporaryPassword };
 }
 
 export async function getTenantAdminAuditLogs(limit = 80): Promise<TenantAuditLogRow[]> {
@@ -945,6 +1106,35 @@ export async function adminRemoveTenantMemberFormAction(formData: FormData) {
   } catch (e) {
     if (isNextRedirectError(e)) throw e;
     const msg = e instanceof Error ? e.message : "멤버 제거 실패";
+    redirect(internalWithMessage(backQs, "err", encodeURIComponent(msg)));
+  }
+}
+
+export async function adminResetTenantManagerPasswordFormAction(formData: FormData) {
+  const backQs = String(formData.get("return_qs") ?? "");
+  try {
+    const result = await adminResetTenantManagerPassword(formData);
+    const cookieStore = await cookies();
+    cookieStore.set(
+      "admin_tenant_pw_flash",
+      JSON.stringify({
+        tenantId: result.tenantId,
+        email: result.targetEmail,
+        temporaryPassword: result.temporaryPassword,
+        createdAt: Date.now(),
+      }),
+      {
+        path: "/admin/tenants",
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 60 * 5,
+      }
+    );
+    redirect(internalWithMessage(backQs, "ok", encodeURIComponent(`조직관리자 임시 비밀번호를 재생성했습니다: ${result.targetEmail}`)));
+  } catch (e) {
+    if (isNextRedirectError(e)) throw e;
+    const msg = e instanceof Error ? e.message : "조직관리자 비밀번호 재생성 실패";
     redirect(internalWithMessage(backQs, "err", encodeURIComponent(msg)));
   }
 }

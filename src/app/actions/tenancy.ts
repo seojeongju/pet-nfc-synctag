@@ -6,6 +6,7 @@ import { getCfRequestContext } from "@/lib/cf-request-context";
 import { getDB } from "@/lib/db";
 import { listTenantsForUser } from "@/lib/tenant-membership";
 import { resolvePersonalPlan } from "@/lib/plan-resolution";
+import { isPlatformAdminRole } from "@/lib/platform-admin";
 import type { TenantWithRole } from "@/types/tenant-subscription";
 import type { PersonalPlanResolution } from "@/lib/plan-resolution";
 import { nanoid } from "nanoid";
@@ -59,7 +60,15 @@ export async function createTenant(
 
   try {
     const userId = await requireUserId();
+    const context = getCfRequestContext();
     const db = getDB();
+    const roleRow = await context.env.DB
+      .prepare("SELECT role FROM user WHERE id = ?")
+      .bind(userId)
+      .first<{ role?: string | null }>();
+    if (!isPlatformAdminRole(roleRow?.role)) {
+      return { ok: false, error: "조직 생성은 슈퍼어드민만 수행할 수 있습니다." };
+    }
     const tenantId = nanoid();
     let slug = `${slugify(trimmed)}-${nanoid(8)}`;
 

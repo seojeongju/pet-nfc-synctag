@@ -2,13 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { hashPassword } from "better-auth/crypto";
-import { headers } from "next/headers";
 import { cache } from "react";
 import { nanoid } from "nanoid";
-import { getCfRequestContext } from "@/lib/cf-request-context";
-import { getAuth } from "@/lib/auth";
 import { getDB } from "@/lib/db";
-import { isPlatformAdminRole, PLATFORM_ADMIN_ROLE } from "@/lib/platform-admin";
+import { PLATFORM_ADMIN_ROLE } from "@/lib/platform-admin";
+import {
+  requirePlatformAdminActor,
+  requirePlatformOrTenantAdminActor,
+} from "@/lib/admin-authz";
+import { setPasswordChangeRequired } from "@/lib/password-change";
 
 const LEGACY_ADMIN = "admin";
 const PAGE_SIZE_DEFAULT = 20;
@@ -45,34 +47,12 @@ export type ListUsersAdminParams = {
   q?: string;
   /** all | user | platform_admin */
   role?: string;
+  tenantId?: string;
   page?: number;
   pageSize?: number;
 };
 
 export type PlatformUserRole = "user" | "platform_admin";
-
-async function requirePlatformAdminActor() {
-  const context = getCfRequestContext();
-  if (!context?.env) {
-    throw new Error("Cloudflare 환경에 연결할 수 없습니다.");
-  }
-  const auth = getAuth(context.env);
-  const session = await auth.api.getSession({ headers: await headers() });
-  const userId = session?.user?.id;
-  if (!userId) {
-    throw new Error("로그인이 필요합니다.");
-  }
-
-  const row = await context.env.DB.prepare("SELECT role, email FROM user WHERE id = ?")
-    .bind(userId)
-    .first<{ role?: string | null; email?: string | null }>();
-
-  if (!isPlatformAdminRole(row?.role)) {
-    throw new Error("플랫폼 관리자 권한이 필요합니다.");
-  }
-
-  return { actorId: userId, actorEmail: row?.email ?? "unknown" };
-}
 
 function isStoredPlatformAdmin(role: string | null | undefined): boolean {
   return role === PLATFORM_ADMIN_ROLE || role === LEGACY_ADMIN;
@@ -178,7 +158,12 @@ export async function listPlanCodeOptionsAdmin(): Promise<PlanCodeOption[]> {
 }
 
 export async function listUsersAdmin(params: ListUsersAdminParams = {}) {
-  await requirePlatformAdminActor();
+  const tenantId = (params.tenantId ?? "").trim() || null;
+  if (tenantId) {
+    await requirePlatformOrTenantAdminActor(tenantId, "admin");
+  } else {
+    await requirePlatformAdminActor();
+  }
 
   const db = getDB();
   const colNames = await getUserTableColNames();
@@ -215,6 +200,12 @@ export async function listUsersAdmin(params: ListUsersAdminParams = {}) {
   } else if (roleFilter === "platform_admin") {
     conditions.push(`(u.role IN (?, ?))`);
     binds.push(PLATFORM_ADMIN_ROLE, LEGACY_ADMIN);
+  }
+  if (tenantId) {
+    conditions.push(
+      "EXISTS (SELECT 1 FROM tenant_members tm_scope WHERE tm_scope.user_id = u.id AND tm_scope.tenant_id = ?)"
+    );
+    binds.push(tenantId);
   }
 
   const whereSql = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
@@ -263,7 +254,7 @@ export async function listUsersAdmin(params: ListUsersAdminParams = {}) {
  * 플랫폼(전역) 역할만 변경합니다. 테넌트 멤버십과는 무관합니다.
  */
 export async function updateUserPlatformRole(targetUserId: string, nextRole: PlatformUserRole) {
-  const { actorId, actorEmail } = await requirePlatformAdminActor();
+  const { userId: actorId, email: actorEmail } = await requirePlatformAdminActor();
   const db = getDB();
   const { updatedAt: updatedAtCol } = await getUserTableColNames();
 
@@ -314,7 +305,7 @@ export async function updateUserPlatformRole(targetUserId: string, nextRole: Pla
 }
 
 export async function updateUserEmailAdmin(targetUserId: string, newEmailRaw: string) {
-  const { actorId, actorEmail } = await requirePlatformAdminActor();
+  const { userId: actorId, email: actorEmail } = await requirePlatformAdminActor();
   const db = getDB();
   const { updatedAt: updatedAtCol } = await getUserTableColNames();
   const id = targetUserId?.trim();
@@ -378,7 +369,7 @@ function assertPasswordPolicy(password: string) {
  * OAuth 전용 사용자의 경우 credential 계정이 없으면 새로 만듭니다.
  */
 export async function adminSetUserPassword(targetUserId: string, newPassword: string) {
-  const { actorId, actorEmail } = await requirePlatformAdminActor();
+  const { userId: actorId, email: actorEmail } = await requirePlatformAdminActor();
   const db = getDB();
   const id = targetUserId?.trim();
   if (!id) {
@@ -421,6 +412,7 @@ export async function adminSetUserPassword(targetUserId: string, newPassword: st
   }
 
   await db.prepare("DELETE FROM session WHERE userId = ?").bind(id).run();
+  await setPasswordChangeRequired(db, id, true);
 
   await writeAdminAudit(actorEmail, "platform_user_password_reset", {
     targetUserId: id,
@@ -459,7 +451,7 @@ async function resolveValidPlanCode(db: ReturnType<typeof getDB>, raw: string): 
 }
 
 export async function updateUserSubscriptionStatusAdmin(targetUserId: string, subscriptionCode: string) {
-  const { actorId, actorEmail } = await requirePlatformAdminActor();
+  const { userId: actorId, email: actorEmail } = await requirePlatformAdminActor();
   const db = getDB();
   const { updatedAt: updatedAtCol, subscriptionStatus: subCol } = await getUserTableColNames();
   if (!subCol) {
@@ -507,7 +499,7 @@ export async function updateUserSubscriptionStatusAdmin(targetUserId: string, su
 }
 
 export async function deleteUserAdmin(targetUserId: string) {
-  const { actorId, actorEmail } = await requirePlatformAdminActor();
+  const { userId: actorId, email: actorEmail } = await requirePlatformAdminActor();
   const db = getDB();
   const id = targetUserId?.trim();
   if (!id) {

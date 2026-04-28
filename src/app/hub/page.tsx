@@ -35,6 +35,7 @@ import {
   getDashboardPathForUserTenant,
 } from "@/lib/mode-visibility";
 import type { D1Database } from "@cloudflare/workers-types";
+import { isPasswordChangeRequired } from "@/lib/password-change";
 
 export const runtime = "edge";
 
@@ -141,6 +142,9 @@ export default async function HubPage({
 
   if (!session) {
     redirect("/login");
+  }
+  if (await isPasswordChangeRequired(context.env.DB, session.user.id)) {
+    redirect("/force-password");
   }
   const consent = await getUserConsentStatus(session.user.id);
   if (!consent.hasRequired) {
@@ -310,13 +314,6 @@ export default async function HubPage({
               {storageQuota.extraQuotaMb > 0 ? ` (추가 ${storageQuota.extraQuotaMb}MB)` : " (기본 512MB)"}
             </p>
           )}
-          <a
-            href="/hub/org/new"
-            className="inline-flex items-center gap-1.5 text-sm font-black text-teal-600 hover:text-teal-700 min-h-10"
-          >
-            조직 만들기 (B2B)
-            <ChevronRight className="h-3.5 w-3.5" />
-          </a>
         </header>
 
         {isWelcomeOnboarding && (
@@ -566,50 +563,59 @@ export default async function HubPage({
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
               소속 조직 (B2B)
             </p>
-            <div className="space-y-2">
-              {tenants.map((t) => {
-                const usage = tenantUsageMap[t.id] ?? null;
-                return (
-                  <div
-                    key={t.id}
-                    className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm"
-                  >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
-                      <Building2 className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-black text-slate-900 truncate">{t.name}</p>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">
-                        {t.role === "owner" ? "소유자" : t.role === "admin" ? "관리자" : "멤버"}
-                      </p>
-                      {usage ? (
-                        <p className="text-[10px] font-bold text-teal-700 mt-0.5">
-                          {usage.planName} · 펫 {limitText(usage.petUsed, usage.petLimit)} · 태그 {limitText(usage.tagUsed, usage.tagLimit)}
-                        </p>
-                      ) : (
-                        <p className="text-[10px] font-bold text-amber-600 mt-0.5">활성 조직 플랜 없음</p>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      {(t.role === "owner" || t.role === "admin") && (
-                        <a
-                          href={`/hub/org/${encodeURIComponent(t.id)}/manage`}
-                          className="rounded-xl border border-teal-200 bg-teal-50 px-3 py-1.5 text-[10px] font-black text-teal-700 hover:bg-teal-100"
-                        >
-                          조직 관리
-                        </a>
-                      )}
-                      <a
-                        href={tenantDashboardHrefs[t.id] ?? `/dashboard/pet?tenant=${encodeURIComponent(t.id)}`}
-                        className="rounded-xl bg-slate-900 px-3 py-2 text-[10px] font-black text-white hover:bg-teal-600"
-                      >
-                        대시보드
-                      </a>
-                    </div>
+            {(() => {
+              const primaryTenant = tenants[0]!;
+              const usage = tenantUsageMap[primaryTenant.id] ?? null;
+              return (
+                <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+                    <Building2 className="h-5 w-5" />
                   </div>
-                );
-              })}
-            </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-black text-slate-900 truncate">{primaryTenant.name}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">
+                      {primaryTenant.role === "owner"
+                        ? "소유자"
+                        : primaryTenant.role === "admin"
+                        ? "관리자"
+                        : "멤버"}
+                    </p>
+                    {usage ? (
+                      <p className="text-[10px] font-bold text-teal-700 mt-0.5">
+                        {usage.planName} · 펫 {limitText(usage.petUsed, usage.petLimit)} · 태그{" "}
+                        {limitText(usage.tagUsed, usage.tagLimit)}
+                      </p>
+                    ) : (
+                      <p className="text-[10px] font-bold text-amber-600 mt-0.5">활성 조직 플랜 없음</p>
+                    )}
+                    {tenants.length > 1 ? (
+                      <p className="text-[10px] font-bold text-amber-700 mt-1">
+                        다중 조직 소속이 감지되었습니다. 슈퍼어드민에게 정리를 요청하세요.
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    {(primaryTenant.role === "owner" || primaryTenant.role === "admin") && (
+                      <a
+                        href="/hub/org/manage"
+                        className="rounded-xl border border-teal-200 bg-teal-50 px-3 py-1.5 text-[10px] font-black text-teal-700 hover:bg-teal-100"
+                      >
+                        조직 관리
+                      </a>
+                    )}
+                    <a
+                      href={
+                        tenantDashboardHrefs[primaryTenant.id] ??
+                        `/dashboard/pet?tenant=${encodeURIComponent(primaryTenant.id)}`
+                      }
+                      className="rounded-xl bg-slate-900 px-3 py-2 text-[10px] font-black text-white hover:bg-teal-600"
+                    >
+                      대시보드
+                    </a>
+                  </div>
+                </div>
+              );
+            })()}
             <p className="text-[10px] text-slate-400 font-medium leading-relaxed">
               조직 대시보드에서는 등록 데이터가 <code className="text-[9px]">tenant_id</code>로 묶입니다.
               (개인 대시보드와 목록이 분리됩니다.)

@@ -6,6 +6,8 @@ import { isPlatformAdminRole } from "@/lib/platform-admin";
 import { AdminSidebarNav } from "@/components/admin/layout/AdminSidebarNav";
 import { AdminHeaderBar } from "@/components/admin/layout/AdminHeaderBar";
 import { getUserConsentStatus } from "@/lib/privacy-consent";
+import { listTenantsForUser } from "@/lib/tenant-membership";
+import { isPasswordChangeRequired } from "@/lib/password-change";
 
 export const runtime = "edge";
 
@@ -20,15 +22,27 @@ export default async function AdminAuthenticatedLayout({
   const session = await auth.api.getSession({
     headers: await headers(),
   });
+  const userId = session?.user?.id ?? null;
   const user = session?.user as SessionUser | undefined;
-  const roleRow = user
+  const roleRow = userId
     ? await context.env.DB
         .prepare("SELECT role FROM user WHERE id = ?")
-        .bind(user.id)
+        .bind(userId)
         .first<{ role?: string | null }>()
     : null;
 
-  if (!session || !isPlatformAdminRole(roleRow?.role)) {
+  if (!session) {
+    redirect("/admin/login");
+  }
+  if (await isPasswordChangeRequired(context.env.DB, session.user.id)) {
+    redirect("/force-password");
+  }
+  if (!isPlatformAdminRole(roleRow?.role)) {
+    const tenants = await listTenantsForUser(context.env.DB, session.user.id).catch(() => []);
+    const hasOrgAdminRole = tenants.some((t) => t.role === "owner" || t.role === "admin");
+    if (hasOrgAdminRole) {
+      redirect("/hub/org/manage");
+    }
     redirect("/admin/login");
   }
   const consent = await getUserConsentStatus(session.user.id);

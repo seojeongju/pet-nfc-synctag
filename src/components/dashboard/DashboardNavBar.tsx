@@ -92,12 +92,13 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
         currentModeDescription={currentModeDescription}
         orgManageHref={orgManageHref}
         logoutLandingKind={kind}
+        dashboardHref={`/dashboard/${kind}${tenantQs}`}
       />
       <div className="border-t border-slate-100">
         <div className="container flex max-w-5xl flex-col gap-2 px-4 py-2.5 xl:flex-row xl:items-center xl:justify-between xl:py-2">
           <div className="flex min-w-0 items-center justify-between gap-2.5 xl:justify-start">
             <a
-              href="/hub"
+              href={`/dashboard/${kind}${tenantQs}`}
               className="flex min-w-0 max-w-[10rem] items-center gap-1.5 font-bold text-xl text-primary hover:opacity-90 min-[390px]:max-w-[12rem]"
             >
               <PawPrint className="h-6 w-6 shrink-0" />

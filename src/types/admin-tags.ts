@@ -6,6 +6,8 @@ export type TagsInventoryPageParams = {
   status?: TagsInventoryStatusFilter;
   /** 정확히 일치하는 batch_id (빈 문자열이면 전체) */
   batch?: string;
+  /** 조직 스코프(선택). 지정 시 해당 조직 데이터만 조회 */
+  tenantId?: string;
   page?: number;
   pageSize?: number;
 };

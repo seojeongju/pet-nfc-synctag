@@ -11,8 +11,14 @@ import {
 
 export const runtime = "edge";
 
-export default async function AdminNfcTagsOverviewPage() {
-  const opsStats = await getTagOpsStats();
+export default async function AdminNfcTagsOverviewPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tenant?: string }>;
+}) {
+  const sp = await searchParams;
+  const tenantId = (sp.tenant ?? "").trim() || undefined;
+  const opsStats = await getTagOpsStats(tenantId);
 
   return (
     <div className={cn("relative overflow-hidden", adminUi.pageBottomSafe)}>
