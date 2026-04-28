@@ -133,3 +133,60 @@ export async function updateOrderShippingInfo(formData: FormData): Promise<{ suc
   revalidatePath(`/shop/orders/${orderId}`);
   return { success: true };
 }
+
+export async function completeOrderPaymentPlaceholder(
+  formData: FormData
+): Promise<{ success: boolean; error?: string }> {
+  const context = getCfRequestContext();
+  const auth = getAuth(context.env);
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session?.user?.id) return { success: false, error: "로그인이 필요합니다." };
+
+  const orderId = String(formData.get("orderId") ?? "").trim();
+  if (!orderId) return { success: false, error: "주문 정보가 올바르지 않습니다." };
+
+  const db = getDB();
+  const order = await db
+    .prepare("SELECT id, status FROM shop_orders WHERE id = ? AND user_id = ?")
+    .bind(orderId, session.user.id)
+    .first<{ id: string; status: string }>();
+  if (!order) return { success: false, error: "주문을 찾을 수 없습니다." };
+
+  if (order.status === "paid") {
+    revalidatePath(`/shop/orders/${orderId}`);
+    return { success: true };
+  }
+  if (order.status !== "pending") {
+    return { success: false, error: "결제를 진행할 수 없는 주문 상태입니다." };
+  }
+
+  const orderCols = new Set(
+    (
+      await db
+        .prepare("PRAGMA table_info(shop_orders)")
+        .all<{ name: string }>()
+        .catch(() => ({ results: [] as { name: string }[] }))
+    ).results.map((x) => x.name)
+  );
+
+  const updates: string[] = ["status = 'paid'"];
+  const binds: unknown[] = [];
+  if (orderCols.has("payment_provider")) {
+    updates.push("payment_provider = ?");
+    binds.push("manual-placeholder");
+  }
+  if (orderCols.has("updated_at")) {
+    updates.push("updated_at = CURRENT_TIMESTAMP");
+  }
+  if (orderCols.has("paid_at")) {
+    updates.push("paid_at = CURRENT_TIMESTAMP");
+  }
+
+  await db
+    .prepare(`UPDATE shop_orders SET ${updates.join(", ")} WHERE id = ? AND user_id = ?`)
+    .bind(...binds, orderId, session.user.id)
+    .run();
+
+  revalidatePath(`/shop/orders/${orderId}`);
+  return { success: true };
+}

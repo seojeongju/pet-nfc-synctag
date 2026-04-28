@@ -5,8 +5,9 @@ import Link from "next/link";
 import { CheckCircle2, Package, MapPin, Phone, User, CreditCard, ChevronRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatKrw, subjectKindLabel } from "@/lib/shop";
-import { updateOrderShippingInfo } from "@/app/actions/shop";
+import { completeOrderPaymentPlaceholder, updateOrderShippingInfo } from "@/app/actions/shop";
 import type { ShopOrderPublic } from "@/types/shop";
+import { useRouter } from "next/navigation";
 
 type ShopOrderClientProps = {
   order: ShopOrderPublic;
@@ -30,8 +31,12 @@ const statusLabel: Record<string, string> = {
 };
 
 export function ShopOrderClient({ order, session }: ShopOrderClientProps) {
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPaying, setIsPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [payError, setPayError] = useState<string | null>(null);
+  const [status, setStatus] = useState(order.status);
   const [success, setSuccess] = useState(Boolean(order.recipientName));
   const [shippingZip, setShippingZip] = useState(order.shippingZip || "");
   const [shippingAddress, setShippingAddress] = useState(order.shippingAddress || "");
@@ -100,8 +105,24 @@ export function ShopOrderClient({ order, session }: ShopOrderClientProps) {
     setIsSubmitting(false);
   };
 
-  const st = order.status;
+  const st = status;
   const statusKo = statusLabel[st] ?? st;
+
+  const handleCompletePayment = async () => {
+    setIsPaying(true);
+    setPayError(null);
+    const formData = new FormData();
+    formData.set("orderId", order.id);
+    const res = await completeOrderPaymentPlaceholder(formData);
+    if (!res.success) {
+      setPayError(res.error || "결제 처리에 실패했습니다.");
+      setIsPaying(false);
+      return;
+    }
+    setStatus("paid");
+    setIsPaying(false);
+    router.refresh();
+  };
 
   return (
     <div className="w-full max-w-none lg:max-w-screen-sm mx-auto space-y-6">
@@ -316,9 +337,24 @@ export function ShopOrderClient({ order, session }: ShopOrderClientProps) {
             배송 정보가 확인되었습니다. 이제 아래 결제 수단을 통해 주문을 완료해 주세요. 
             (현재는 안내 단계이며 실제 결제 연동 시 결제창이 나타납니다.)
           </p>
-          <button className="w-full h-14 rounded-2xl bg-teal-600 text-white text-[15px] font-black shadow-lg shadow-teal-200 hover:bg-teal-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-            결제하기 (PG 연동 준비 중)
+          <button
+            type="button"
+            onClick={handleCompletePayment}
+            disabled={isPaying}
+            className="w-full h-14 rounded-2xl bg-teal-600 text-white text-[15px] font-black shadow-lg shadow-teal-200 hover:bg-teal-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+          >
+            {isPaying ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" />
+                결제 처리 중...
+              </>
+            ) : (
+              "결제 완료 처리하기 (PG 연동 전)"
+            )}
           </button>
+          {payError ? (
+            <p className="text-[12px] font-bold text-rose-500 text-center">{payError}</p>
+          ) : null}
         </div>
       )}
 
