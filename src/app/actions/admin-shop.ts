@@ -334,6 +334,18 @@ export async function listAdminShopOrders(options: {
     const like = `%${q}%`;
     binds.push(like, like, like, like);
   }
+  const orderCols = new Set(
+    (
+      await db
+        .prepare("PRAGMA table_info(shop_orders)")
+        .all<{ name: string }>()
+        .catch(() => ({ results: [] as { name: string }[] }))
+    ).results.map((x) => x.name)
+  );
+  const hasOrderCol = (name: string) => orderCols.has(name);
+  const selectOrderCol = (name: string, alias?: string) =>
+    hasOrderCol(name) ? `o.${name}${alias ? ` AS ${alias}` : ""}` : `NULL AS ${alias ?? name}`;
+
   const hasResalePolicyTable = Boolean(
     await db
       .prepare(
@@ -366,8 +378,14 @@ export async function listAdminShopOrders(options: {
 
   const sql = `SELECT o.id, o.user_id, u.email AS user_email, o.subject_kind, o.product_id,
           p.name AS product_name, p.slug AS product_slug, o.amount_krw, o.status,
-          o.payment_provider, o.external_payment_id, o.options_selected_json,
-          o.recipient_name, o.recipient_phone, o.shipping_zip, o.shipping_address, o.shipping_memo,
+          ${selectOrderCol("payment_provider")},
+          ${selectOrderCol("external_payment_id")},
+          ${selectOrderCol("options_selected_json")},
+          ${selectOrderCol("recipient_name")},
+          ${selectOrderCol("recipient_phone")},
+          ${selectOrderCol("shipping_zip")},
+          ${selectOrderCol("shipping_address")},
+          ${selectOrderCol("shipping_memo")},
           ${resaleSelect}
           o.created_at, o.updated_at
        FROM shop_orders o
