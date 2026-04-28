@@ -55,6 +55,8 @@ export default function MultiModeHomeClient({
   const [selectedKind, setSelectedKind] = useState<SubjectKind | null>(null);
   const [isRouting, setIsRouting] = useState(false);
   const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null);
+  const [openGuardianStep, setOpenGuardianStep] = useState<Record<string, boolean>>({});
+  const [openFinderStep, setOpenFinderStep] = useState<Record<string, boolean>>({});
   const heroTitle = "당신의 일상을 지키는 가장 스마트한 선택,\nLink-U";
   const heroBody =
     "반려동물·어르신·아이·수하물·주얼리까지.\n링크유는 스캔 이후의 안내와 연결 흐름을 쉽고 다정하게 이어줍니다.";
@@ -145,6 +147,14 @@ export default function MultiModeHomeClient({
     window.setTimeout(() => {
       router.push(`/${kind}?from=home`);
     }, 260);
+  };
+
+  const toggleGuardianStep = (id: string) => {
+    setOpenGuardianStep((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const toggleFinderStep = (id: string) => {
+    setOpenFinderStep((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   return (
@@ -344,40 +354,52 @@ export default function MultiModeHomeClient({
         >
           <p className="mb-3 text-[11px] font-black uppercase tracking-[0.18em] text-teal-600">보호자 이용 순서</p>
           <div className="grid grid-cols-1 gap-2.5 min-[390px]:grid-cols-3">
-            {guardianSteps.map((step, index) => (
-              <article
-                key={step.id}
-                tabIndex={0}
-                className="group rounded-2xl border border-teal-100/90 bg-white/90 px-3 py-3 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300/70"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
-                    <step.Icon className="h-4 w-4" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-black text-slate-900 break-keep [word-break:keep-all]">
-                      {step.title}
-                    </p>
-                    <p className="text-[10px] font-semibold text-slate-500">{index + 1}단계</p>
-                  </div>
-                </div>
-                <div className="grid grid-rows-[0fr] transition-all duration-300 group-hover:grid-rows-[1fr] group-focus-within:grid-rows-[1fr]">
-                  <div className="overflow-hidden">
-                    <div className="mt-2 space-y-1.5 rounded-xl border border-teal-100 bg-teal-50/70 px-2.5 py-2">
-                      <p className="text-[10px] font-semibold leading-relaxed text-slate-700 break-keep [word-break:keep-all]">
-                        {step.summary}
+            {guardianSteps.map((step, index) => {
+              const expanded = Boolean(openGuardianStep[step.id]);
+              return (
+                <article
+                  key={step.id}
+                  className="rounded-2xl border border-teal-100/90 bg-white/90 px-3 py-3 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggleGuardianStep(step.id)}
+                    aria-expanded={expanded}
+                    className="flex w-full min-w-0 items-center gap-2 rounded-xl text-left transition hover:bg-teal-50/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-300/70"
+                  >
+                    <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
+                      <step.Icon className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-black text-slate-900 break-keep [word-break:keep-all]">
+                        {step.title}
                       </p>
-                      <p className="text-[10px] font-semibold leading-relaxed text-teal-800 break-keep [word-break:keep-all]">
-                        {step.detail}
-                      </p>
+                      <p className="text-[10px] font-semibold text-slate-500">{index + 1}단계</p>
+                    </div>
+                  </button>
+                  <div
+                    className={cn(
+                      "grid transition-all duration-300",
+                      expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                    )}
+                  >
+                    <div className="overflow-hidden">
+                      <div className="mt-2 space-y-1.5 rounded-xl border border-teal-100 bg-teal-50/70 px-2.5 py-2">
+                        <p className="text-[10px] font-semibold leading-relaxed text-slate-700 break-keep [word-break:keep-all]">
+                          {step.summary}
+                        </p>
+                        <p className="text-[10px] font-semibold leading-relaxed text-teal-800 break-keep [word-break:keep-all]">
+                          {step.detail}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </div>
           <p className="mt-2 text-[10px] font-semibold text-slate-500 break-keep [word-break:keep-all]">
-            아이콘 카드는 기본 접힘 상태이며, 마우스를 올리면 설명이 펼쳐집니다.
+            단계를 누르면 설명이 펼쳐지고, 다시 누르면 접힙니다.
           </p>
         </motion.section>
 
@@ -390,40 +412,52 @@ export default function MultiModeHomeClient({
           </div>
 
           <div className="grid grid-cols-1 gap-2.5 min-[390px]:grid-cols-3">
-            {finderSteps.map((step, index) => (
-              <article
-                key={step.id}
-                tabIndex={0}
-                className="group rounded-2xl border border-indigo-100/90 bg-white/90 px-3 py-3 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300/70"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-                    <step.Icon className="h-4 w-4" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-black text-slate-900 break-keep [word-break:keep-all]">
-                      {step.title}
-                    </p>
-                    <p className="text-[10px] font-semibold text-slate-500">{index + 1}단계</p>
-                  </div>
-                </div>
-                <div className="grid grid-rows-[0fr] transition-all duration-300 group-hover:grid-rows-[1fr] group-focus-within:grid-rows-[1fr]">
-                  <div className="overflow-hidden">
-                    <div className="mt-2 space-y-1.5 rounded-xl border border-indigo-100 bg-indigo-50/70 px-2.5 py-2">
-                      <p className="text-[10px] font-semibold leading-relaxed text-slate-700 break-keep [word-break:keep-all]">
-                        {step.summary}
+            {finderSteps.map((step, index) => {
+              const expanded = Boolean(openFinderStep[step.id]);
+              return (
+                <article
+                  key={step.id}
+                  className="rounded-2xl border border-indigo-100/90 bg-white/90 px-3 py-3 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggleFinderStep(step.id)}
+                    aria-expanded={expanded}
+                    className="flex w-full min-w-0 items-center gap-2 rounded-xl text-left transition hover:bg-indigo-50/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300/70"
+                  >
+                    <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                      <step.Icon className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-black text-slate-900 break-keep [word-break:keep-all]">
+                        {step.title}
                       </p>
-                      <p className="text-[10px] font-semibold leading-relaxed text-indigo-800 break-keep [word-break:keep-all]">
-                        {step.detail}
-                      </p>
+                      <p className="text-[10px] font-semibold text-slate-500">{index + 1}단계</p>
+                    </div>
+                  </button>
+                  <div
+                    className={cn(
+                      "grid transition-all duration-300",
+                      expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                    )}
+                  >
+                    <div className="overflow-hidden">
+                      <div className="mt-2 space-y-1.5 rounded-xl border border-indigo-100 bg-indigo-50/70 px-2.5 py-2">
+                        <p className="text-[10px] font-semibold leading-relaxed text-slate-700 break-keep [word-break:keep-all]">
+                          {step.summary}
+                        </p>
+                        <p className="text-[10px] font-semibold leading-relaxed text-indigo-800 break-keep [word-break:keep-all]">
+                          {step.detail}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </div>
           <p className="mt-2 text-[10px] font-semibold text-slate-500 break-keep [word-break:keep-all]">
-            아이콘 카드는 기본 접힘 상태이며, 마우스를 올리면 설명이 펼쳐집니다.
+            단계를 누르면 설명이 펼쳐지고, 다시 누르면 접힙니다.
           </p>
           {!session ? (
             <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-100 bg-white px-3 py-1.5 text-[10px] font-semibold text-slate-600">
