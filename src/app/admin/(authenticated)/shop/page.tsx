@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Package, ChevronRight, Coins } from "lucide-react";
+import { Package, ChevronRight, Coins, BookOpen } from "lucide-react";
 import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
 
@@ -52,6 +52,26 @@ export default function AdminShopHomePage() {
               <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">시세</p>
               <p className="text-lg font-black text-slate-900">금 시세 관리</p>
               <p className="mt-0.5 text-[12px] font-semibold text-slate-500">자동 연동 · 수동 설정</p>
+            </div>
+          </div>
+          <ChevronRight className="h-5 w-5 shrink-0 text-slate-300" />
+        </Link>
+
+        <Link
+          href="/admin/shop/catalogs"
+          className={cn(
+            "flex items-center justify-between gap-3 rounded-3xl border border-slate-100 bg-white p-6 shadow-md transition hover:border-teal-200 hover:shadow-lg",
+            adminUi.subtleCard
+          )}
+        >
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+              <BookOpen className="h-7 w-7" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">카달로그</p>
+              <p className="text-lg font-black text-slate-900">카달로그 관리</p>
+              <p className="mt-0.5 text-[12px] font-semibold text-slate-500">사용자·모드별 구성</p>
             </div>
           </div>
           <ChevronRight className="h-5 w-5 shrink-0 text-slate-300" />

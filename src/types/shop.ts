@@ -33,6 +33,31 @@ export type ShopProductPublic = {
   subjectKind: SubjectKind;
 };
 
+/**
+ * 상품 카달로그 정의
+ */
+export interface ShopCatalog {
+  id: string;
+  tenantId: string | null;
+  userId: string | null;
+  mode: string;
+  title: string;
+  description: string | null;
+  productIds: string[];
+  config: CatalogConfig;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CatalogConfig {
+  themeColor?: string;
+  layout?: "grid" | "list" | "featured";
+  showPrice?: boolean;
+  showDescription?: boolean;
+  heroImageUrl?: string | null;
+}
+
 export type ShopOrderPublic = {
   id: string;
   subjectKind: SubjectKind;
