@@ -7,9 +7,11 @@ import { getPetTags } from "@/app/actions/tag";
 import { listRecentHealthRecordsForPet, healthRecordTypeLabel, healthRecordTypeColor } from "@/lib/health-records-db";
 import type { HealthRecordType } from "@/lib/health-records-db";
 import { getScanLogsWithDb } from "@/lib/scan-logs-db";
+import { getActiveWarrantyByPetId } from "@/lib/jewelry-warranty-db";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
 import { getTenantStatus } from "@/lib/tenant-status";
 import { LostModeToggle } from "@/components/pet/LostModeToggle";
+import { GoldWarrantySection } from "@/components/pet/GoldWarrantySection";
 import { OpenNativePetNfcSectionButton } from "@/components/pet/OpenNativePetNfcSectionButton";
 import SafePetImage from "@/components/pet/SafePetImage";
 import { TagManageCard } from "@/components/TagManageCard";
@@ -87,12 +89,15 @@ export default async function PetDetailPage({
     : false;
 
   // 병렬 데이터 로드
-  const [tags, recentHealth, recentScansRaw] = await Promise.all([
+  const [tags, recentHealth, recentScansRaw, activeWarranty] = await Promise.all([
     getPetTags(pet.id, tenantId).catch(() => []),
     listRecentHealthRecordsForPet(context.env.DB, pet.id, 3),
     getScanLogsWithDb(context.env.DB, session.user.id, subjectKind, tenantId ?? undefined)
       .then((logs) => logs.slice(0, 3))
       .catch(() => []),
+    subjectKind === "gold"
+      ? getActiveWarrantyByPetId(context.env.DB, pet.id).catch(() => null)
+      : Promise.resolve(null),
   ]);
   // D1 결과를 타입 안전하게 캐스팅
   const recentScans = recentScansRaw as ScanLogRow[];
@@ -182,6 +187,27 @@ export default async function PetDetailPage({
             writeLocked={tenantSuspended}
           />
         </section>
+
+        {/* 링크유 골드 — 전자 보증서 */}
+        {subjectKind === "gold" && (
+          <GoldWarrantySection
+            petId={pet.id}
+            subjectKind="gold"
+            tenantId={tenantId}
+            writeLocked={tenantSuspended}
+            initial={
+              activeWarranty
+                ? {
+                    id: activeWarranty.id,
+                    certificate_no: activeWarranty.certificate_no,
+                    public_verify_id: activeWarranty.public_verify_id,
+                    issued_at: activeWarranty.issued_at,
+                    valid_until: activeWarranty.valid_until,
+                  }
+                : null
+            }
+          />
+        )}
 
         {/* NFC 태그 섹션 (앱/딥링크에서 #nfc 로 스크롤) */}
         <section

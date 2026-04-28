@@ -1,6 +1,7 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import { nanoid } from "nanoid";
 import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
+import { getCurrentGoldPrice } from "@/lib/gold-price";
 import type {
   ShopOrderPublic,
   ShopOrderStatus,
@@ -44,6 +45,9 @@ type ProductRow = {
   options_json: string | null;
   stock_quantity: number;
   sort_order: number;
+  weight_grams: number | null;
+  labor_fee_krw: number | null;
+  is_gold_linked: number;
 };
 
 function parseProductOptionsJson(raw: string | null): ShopProductOptionGroup[] | null {
@@ -57,7 +61,7 @@ function parseProductOptionsJson(raw: string | null): ShopProductOptionGroup[] |
   }
 }
 
-function rowToPublic(row: ProductRow, kind: SubjectKind): ShopProductPublic {
+function rowToPublic(row: ProductRow, kind: SubjectKind, currentGoldPrice: number): ShopProductPublic {
   let additionalImages: string[] | null = null;
   if (row.additional_images) {
     try {
@@ -69,18 +73,28 @@ function rowToPublic(row: ProductRow, kind: SubjectKind): ShopProductPublic {
 
   const options = parseProductOptionsJson(row.options_json);
 
+  // 금 시세 연동 상품인 경우 가격 재계산
+  let finalPrice = row.price_krw;
+  if (row.is_gold_linked && row.weight_grams) {
+    const goldValue = currentGoldPrice * row.weight_grams;
+    finalPrice = Math.floor(goldValue + (row.labor_fee_krw ?? 0));
+  }
+
   return {
     id: row.id,
     slug: row.slug,
     name: row.name,
     description: row.description,
-    priceKrw: row.price_krw,
+    priceKrw: finalPrice,
     imageUrl: row.image_url,
     videoUrl: row.video_url,
     contentHtml: row.content_html,
     additionalImages: additionalImages,
     options: options,
     stockQuantity: row.stock_quantity,
+    weightGrams: row.weight_grams,
+    laborFeeKrw: row.labor_fee_krw,
+    isGoldLinked: row.is_gold_linked === 1,
     subjectKind: kind,
   };
 }
@@ -92,9 +106,10 @@ export async function listShopProductsForKind(
   db: D1Database,
   kind: SubjectKind
 ): Promise<ShopProductPublic[]> {
+  const currentGoldPrice = await getCurrentGoldPrice(db);
   const res = await db
     .prepare(
-      `SELECT id, slug, name, description, price_krw, active, target_modes, image_url, video_url, content_html, additional_images, options_json, stock_quantity, sort_order
+      `SELECT id, slug, name, description, price_krw, active, target_modes, image_url, video_url, content_html, additional_images, options_json, stock_quantity, sort_order, weight_grams, labor_fee_krw, is_gold_linked
        FROM shop_products
        WHERE active = 1
        ORDER BY sort_order ASC, name ASC`
@@ -105,7 +120,7 @@ export async function listShopProductsForKind(
   const out: ShopProductPublic[] = [];
   for (const row of rows) {
     if (productTargetsKind(row.target_modes, kind)) {
-      out.push(rowToPublic(row, kind));
+      out.push(rowToPublic(row, kind, currentGoldPrice));
     }
   }
   return out;
@@ -116,9 +131,10 @@ export async function getShopProductBySlugForKind(
   slug: string,
   kind: SubjectKind
 ): Promise<ShopProductPublic | null> {
+  const currentGoldPrice = await getCurrentGoldPrice(db);
   const row = await db
     .prepare(
-      `SELECT id, slug, name, description, price_krw, active, target_modes, image_url, video_url, content_html, additional_images, options_json, stock_quantity, sort_order
+      `SELECT id, slug, name, description, price_krw, active, target_modes, image_url, video_url, content_html, additional_images, options_json, stock_quantity, sort_order, weight_grams, labor_fee_krw, is_gold_linked
        FROM shop_products
        WHERE slug = ? AND active = 1`
     )
@@ -128,7 +144,7 @@ export async function getShopProductBySlugForKind(
   if (!row || !productTargetsKind(row.target_modes, kind)) {
     return null;
   }
-  return rowToPublic(row, kind);
+  return rowToPublic(row, kind, currentGoldPrice);
 }
 
 export function formatKrw(n: number): string {
@@ -191,7 +207,7 @@ export async function createPendingShopOrder(input: {
 
   const product = await db
     .prepare(
-      `SELECT id, name, price_krw, target_modes, active, options_json, stock_quantity FROM shop_products WHERE id = ?`
+      `SELECT id, name, price_krw, target_modes, active, options_json, stock_quantity, weight_grams, labor_fee_krw, is_gold_linked FROM shop_products WHERE id = ?`
     )
     .bind(productId)
     .first<{
@@ -202,6 +218,9 @@ export async function createPendingShopOrder(input: {
       active: number;
       options_json: string | null;
       stock_quantity: number;
+      weight_grams: number | null;
+      labor_fee_krw: number | null;
+      is_gold_linked: number;
     }>();
 
   if (!product || !product.active) {
@@ -216,7 +235,15 @@ export async function createPendingShopOrder(input: {
   }
 
   const orderId = nanoid();
-  let amountKrw = Math.max(0, Math.floor(Number(product.price_krw)));
+  
+  // 가격 결정 로직
+  let basePrice = product.price_krw;
+  if (product.is_gold_linked && product.weight_grams) {
+    const currentGoldPrice = await getCurrentGoldPrice(db);
+    basePrice = Math.floor(currentGoldPrice * product.weight_grams + (product.labor_fee_krw ?? 0));
+  }
+
+  let amountKrw = Math.max(0, Math.floor(Number(basePrice)));
 
   // 옵션 처리
   if (product.options_json) {

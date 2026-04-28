@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Package, Receipt, ChevronRight } from "lucide-react";
+import { Package, ChevronRight, Coins } from "lucide-react";
 import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
 
@@ -38,20 +38,20 @@ export default function AdminShopHomePage() {
         </Link>
 
         <Link
-          href="/admin/shop/orders"
+          href="/admin/shop/gold-price"
           className={cn(
             "flex items-center justify-between gap-3 rounded-3xl border border-slate-100 bg-white p-6 shadow-md transition hover:border-teal-200 hover:shadow-lg",
             adminUi.subtleCard
           )}
         >
           <div className="flex items-center gap-4 min-w-0">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
-              <Receipt className="h-7 w-7" />
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
+              <Coins className="h-7 w-7" />
             </div>
             <div className="min-w-0">
-              <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">주문</p>
-              <p className="text-lg font-black text-slate-900">주문·결제 상태</p>
-              <p className="mt-0.5 text-[12px] font-semibold text-slate-500">사용자·금액·상태 변경</p>
+              <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">시세</p>
+              <p className="text-lg font-black text-slate-900">금 시세 관리</p>
+              <p className="mt-0.5 text-[12px] font-semibold text-slate-500">자동 연동 · 수동 설정</p>
             </div>
           </div>
           <ChevronRight className="h-5 w-5 shrink-0 text-slate-300" />

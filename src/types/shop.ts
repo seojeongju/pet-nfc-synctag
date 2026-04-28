@@ -25,6 +25,10 @@ export type ShopProductPublic = {
   additionalImages?: string[] | null;
   options?: ShopProductOptionGroup[] | null;
   stockQuantity: number;
+  /** 골드바 관련 */
+  weightGrams?: number | null;
+  laborFeeKrw?: number | null;
+  isGoldLinked?: boolean;
   /** 노출 검증에 쓴 모드 (UI 표시용) */
   subjectKind: SubjectKind;
 };

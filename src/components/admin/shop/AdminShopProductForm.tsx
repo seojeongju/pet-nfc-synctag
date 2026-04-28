@@ -22,6 +22,7 @@ import {
   ExternalLink,
   Package,
   CheckCircle2,
+  Coins,
 } from "lucide-react";
 import type { ShopProductOptionGroup, ShopProductOptionValue } from "@/types/shop";
 
@@ -335,6 +336,62 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                   className={cn("w-full", adminUi.input, "h-11 font-mono")}
                 />
               </div>
+            </div>
+
+            {/* 골드바 특성 설정 (주얼리/골드 모드용) */}
+            <div className="rounded-3xl border border-amber-100 bg-amber-50/30 p-6 space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-amber-100 text-amber-600">
+                  <Coins className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900">골드바 / 시세 연동 설정</h3>
+                  <p className="text-[11px] font-bold text-slate-500">금 시세에 따라 가격이 자동 변동되는 상품인 경우 설정합니다.</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500">상품 중량 (g)</label>
+                  <div className="relative">
+                    <input
+                      name="weight_grams"
+                      type="number"
+                      step="0.001"
+                      defaultValue={product?.weight_grams ?? ""}
+                      className={cn("w-full pr-10", adminUi.input, "h-11 font-mono bg-white")}
+                      placeholder="예: 3.75"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[11px] font-black text-slate-300">g</span>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500">고정 공임비 (KRW)</label>
+                  <div className="relative">
+                    <input
+                      name="labor_fee_krw"
+                      type="number"
+                      defaultValue={product?.labor_fee_krw ?? ""}
+                      className={cn("w-full pr-10", adminUi.input, "h-11 font-mono bg-white")}
+                      placeholder="예: 50000"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[11px] font-black text-slate-300">원</span>
+                  </div>
+                </div>
+              </div>
+
+              <label className="flex items-center gap-3 cursor-pointer group w-fit">
+                <input 
+                  type="checkbox" 
+                  name="is_gold_linked" 
+                  defaultChecked={product?.is_gold_linked === 1}
+                  className="h-5 w-5 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                />
+                <div>
+                  <p className="text-xs font-black text-slate-800 group-hover:text-amber-700 transition">실시간 금 시세 연동 활성화</p>
+                  <p className="text-[10px] text-slate-500 font-bold">활성화 시 위의 중량/공임비를 기준으로 판매가가 자동 계산됩니다.</p>
+                </div>
+              </label>
             </div>
 
             <div className="space-y-3">

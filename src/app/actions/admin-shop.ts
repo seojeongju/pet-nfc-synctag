@@ -9,6 +9,7 @@ import { getCfRequestContext } from "@/lib/cf-request-context";
 import { getDB } from "@/lib/db";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
 import { SUBJECT_KINDS, type SubjectKind } from "@/lib/subject-kind";
+import { getGoldSettings, updateGoldSettings, fetchAndSaveGoldPrice } from "@/lib/gold-price";
 
 async function assertAdminRole(): Promise<void> {
   const context = getCfRequestContext();
@@ -37,6 +38,9 @@ export type AdminShopProductRow = {
   options_json: string | null;
   stock_quantity: number;
   sort_order: number;
+  weight_grams: number | null;
+  labor_fee_krw: number | null;
+  is_gold_linked: number;
   created_at: string;
   updated_at: string;
 };
@@ -45,7 +49,7 @@ export async function listAdminShopProducts(): Promise<AdminShopProductRow[]> {
   await assertAdminRole();
   const res = await getDB()
     .prepare(
-      `SELECT id, slug, name, description, price_krw, active, target_modes, image_url, video_url, content_html, additional_images, options_json, stock_quantity, sort_order, created_at, updated_at
+      `SELECT id, slug, name, description, price_krw, active, target_modes, image_url, video_url, content_html, additional_images, options_json, stock_quantity, sort_order, weight_grams, labor_fee_krw, is_gold_linked, created_at, updated_at
        FROM shop_products
        ORDER BY sort_order ASC, name ASC`
     )
@@ -57,7 +61,7 @@ export async function getAdminShopProduct(id: string): Promise<AdminShopProductR
   await assertAdminRole();
   const row = await getDB()
     .prepare(
-      `SELECT id, slug, name, description, price_krw, active, target_modes, image_url, video_url, content_html, additional_images, options_json, stock_quantity, sort_order, created_at, updated_at
+      `SELECT id, slug, name, description, price_krw, active, target_modes, image_url, video_url, content_html, additional_images, options_json, stock_quantity, sort_order, weight_grams, labor_fee_krw, is_gold_linked, created_at, updated_at
        FROM shop_products WHERE id = ?`
     )
     .bind(id)
@@ -91,6 +95,9 @@ export async function saveShopProduct(formData: FormData): Promise<void> {
   const contentHtml = String(formData.get("content_html") ?? "").trim();
   const additionalImagesRaw = String(formData.get("additional_images") ?? "").trim();
   const optionsJsonRaw = String(formData.get("options_json") ?? "").trim();
+  const weightGramsRaw = formData.get("weight_grams");
+  const laborFeeRaw = formData.get("labor_fee_krw");
+  const isGoldLinked = formData.get("is_gold_linked") === "on" ? 1 : 0;
 
   const modes = parseKindsFromForm(formData);
   const target_modes = JSON.stringify(modes);
@@ -119,6 +126,8 @@ export async function saveShopProduct(formData: FormData): Promise<void> {
   const additional_images = additionalImagesRaw.length > 0 ? additionalImagesRaw : null;
   const content_html = contentHtml.length > 0 ? contentHtml : null;
   const options_json = optionsJsonRaw.length > 0 ? optionsJsonRaw : null;
+  const weight_grams = weightGramsRaw ? parseFloat(String(weightGramsRaw)) : null;
+  const labor_fee_krw = laborFeeRaw ? parseInt(String(laborFeeRaw)) : null;
 
   const db = getDB();
 
@@ -132,9 +141,9 @@ export async function saveShopProduct(formData: FormData): Promise<void> {
     }
     await db
       .prepare(
-        `UPDATE shop_products SET slug = ?, name = ?, description = ?, price_krw = ?, active = ?, target_modes = ?, image_url = ?, video_url = ?, content_html = ?, additional_images = ?, options_json = ?, stock_quantity = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+        `UPDATE shop_products SET slug = ?, name = ?, description = ?, price_krw = ?, active = ?, target_modes = ?, image_url = ?, video_url = ?, content_html = ?, additional_images = ?, options_json = ?, stock_quantity = ?, sort_order = ?, weight_grams = ?, labor_fee_krw = ?, is_gold_linked = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
       )
-      .bind(slugRaw, name, description, price_krw, active, target_modes, image_url, video_url, content_html, additional_images, options_json, stock_quantity, sort_order, idExisting)
+      .bind(slugRaw, name, description, price_krw, active, target_modes, image_url, video_url, content_html, additional_images, options_json, stock_quantity, sort_order, weight_grams, labor_fee_krw, isGoldLinked, idExisting)
       .run();
     revalidatePath("/admin/shop");
     revalidatePath("/admin/shop/products");
@@ -150,10 +159,10 @@ export async function saveShopProduct(formData: FormData): Promise<void> {
   const newId = nanoid();
   await db
     .prepare(
-      `INSERT INTO shop_products (id, slug, name, description, price_krw, active, target_modes, image_url, video_url, content_html, additional_images, options_json, stock_quantity, sort_order, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
+      `INSERT INTO shop_products (id, slug, name, description, price_krw, active, target_modes, image_url, video_url, content_html, additional_images, options_json, stock_quantity, sort_order, weight_grams, labor_fee_krw, is_gold_linked, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
     )
-    .bind(newId, slugRaw, name, description, price_krw, active, target_modes, image_url, video_url, content_html, additional_images, options_json, stock_quantity, sort_order)
+    .bind(newId, slugRaw, name, description, price_krw, active, target_modes, image_url, video_url, content_html, additional_images, options_json, stock_quantity, sort_order, weight_grams, labor_fee_krw, isGoldLinked)
     .run();
   revalidatePath("/admin/shop");
   revalidatePath("/admin/shop/products");
@@ -267,4 +276,36 @@ export async function updateShopOrderStatus(formData: FormData): Promise<void> {
   revalidatePath("/admin/shop/orders");
   revalidatePath("/shop");
   redirect("/admin/shop/orders?ok=1");
+}
+
+// 금 시세 관련 액션
+export async function getAdminGoldSettings() {
+  await assertAdminRole();
+  return await getGoldSettings(getDB());
+}
+
+export async function saveAdminGoldSettings(formData: FormData) {
+  await assertAdminRole();
+  const useAutoFetch = formData.get("use_auto_fetch") === "on";
+  const manualPriceRaw = formData.get("manual_override_price");
+  const manualOverridePrice = manualPriceRaw ? parseFloat(String(manualPriceRaw)) : null;
+
+  await updateGoldSettings(getDB(), { useAutoFetch, manualOverridePrice });
+  
+  revalidatePath("/admin/shop/gold-price");
+  revalidatePath("/shop");
+}
+
+export async function triggerGoldPriceFetch() {
+  await assertAdminRole();
+  const context = getCfRequestContext();
+  const apiKey = context.env.PUBLIC_DATA_API_KEY as string;
+  if (!apiKey) throw new Error("PUBLIC_DATA_API_KEY 환경변수가 설정되지 않았습니다.");
+  
+  const price = await fetchAndSaveGoldPrice(getDB(), apiKey);
+  if (price === null) throw new Error("금 시세를 가져오는 데 실패했습니다.");
+  
+  revalidatePath("/admin/shop/gold-price");
+  revalidatePath("/shop");
+  return price;
 }
