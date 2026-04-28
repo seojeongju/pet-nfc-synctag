@@ -399,6 +399,14 @@ export async function getShopOrderByIdForUser(
   const orderCols = await getShopOrdersColumnSet(db);
   const pickOrder = (name: string, alias = name) =>
     orderCols.has(name) ? `o.${name} AS ${alias}` : `NULL AS ${alias}`;
+  const hasShippingDetailTable = Boolean(
+    await db
+      .prepare(
+        `SELECT 1 AS ok FROM sqlite_master WHERE type='table' AND name='shop_order_shipping_details' LIMIT 1`
+      )
+      .first<{ ok: number }>()
+      .catch(() => null)
+  );
   const hasResalePolicyTable = Boolean(
     await db
       .prepare(
@@ -414,16 +422,21 @@ export async function getShopOrderByIdForUser(
   const resaleJoin = hasResalePolicyTable
     ? "LEFT JOIN gold_order_resale_policies rp ON rp.order_id = o.id"
     : "";
+  const shippingJoin = hasShippingDetailTable
+    ? "LEFT JOIN shop_order_shipping_details sd ON sd.order_id = o.id AND sd.user_id = o.user_id"
+    : "";
 
   const row = await db
     .prepare(
       `SELECT o.id, o.subject_kind, o.amount_krw, o.status, ${pickOrder("options_selected_json")},
-              ${pickOrder("recipient_name")}, ${pickOrder("recipient_phone")}, ${pickOrder("shipping_zip")}, ${pickOrder("shipping_address")}, ${pickOrder("shipping_memo")},
+              ${pickOrder("recipient_name")}, ${pickOrder("recipient_phone")}, ${pickOrder("shipping_zip")}, ${pickOrder("shipping_address")}, ${pickOrder("shipping_address_detail")}, ${pickOrder("shipping_memo")},
+              ${hasShippingDetailTable ? "sd.recipient_name AS sd_recipient_name, sd.recipient_phone AS sd_recipient_phone, sd.shipping_zip AS sd_shipping_zip, sd.shipping_address AS sd_shipping_address, sd.shipping_address_detail AS sd_shipping_address_detail, sd.shipping_memo AS sd_shipping_memo" : "NULL AS sd_recipient_name, NULL AS sd_recipient_phone, NULL AS sd_shipping_zip, NULL AS sd_shipping_address, NULL AS sd_shipping_address_detail, NULL AS sd_shipping_memo"},
               o.created_at, o.updated_at,
               p.id AS p_id, p.name AS p_name, p.slug AS p_slug,
               ${resaleSelect}
        FROM shop_orders o
        INNER JOIN shop_products p ON p.id = o.product_id
+       ${shippingJoin}
        ${resaleJoin}
        WHERE o.id = ? AND o.user_id = ?`
     )
@@ -438,7 +451,14 @@ export async function getShopOrderByIdForUser(
       recipient_phone: string | null;
       shipping_zip: string | null;
       shipping_address: string | null;
+      shipping_address_detail: string | null;
       shipping_memo: string | null;
+      sd_recipient_name: string | null;
+      sd_recipient_phone: string | null;
+      sd_shipping_zip: string | null;
+      sd_shipping_address: string | null;
+      sd_shipping_address_detail: string | null;
+      sd_shipping_memo: string | null;
       created_at: string;
       updated_at: string;
       p_id: string;
@@ -509,11 +529,12 @@ export async function getShopOrderByIdForUser(
     resaleVisibleFrom,
     product: { id: row.p_id, name: row.p_name, slug: row.p_slug },
     selectedOptions,
-    recipientName: row.recipient_name,
-    recipientPhone: row.recipient_phone,
-    shippingZip: row.shipping_zip,
-    shippingAddress: row.shipping_address,
-    shippingMemo: row.shipping_memo,
+    recipientName: row.recipient_name ?? row.sd_recipient_name,
+    recipientPhone: row.recipient_phone ?? row.sd_recipient_phone,
+    shippingZip: row.shipping_zip ?? row.sd_shipping_zip,
+    shippingAddress: row.shipping_address ?? row.sd_shipping_address,
+    shippingAddressDetail: row.shipping_address_detail ?? row.sd_shipping_address_detail,
+    shippingMemo: row.shipping_memo ?? row.sd_shipping_memo,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

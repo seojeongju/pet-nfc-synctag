@@ -17,6 +17,7 @@ export async function updateOrderShippingInfo(formData: FormData): Promise<{ suc
   const recipientPhone = String(formData.get("recipientPhone") ?? "").trim();
   const shippingZip = String(formData.get("shippingZip") ?? "").trim();
   const shippingAddress = String(formData.get("shippingAddress") ?? "").trim();
+  const shippingAddressDetail = String(formData.get("shippingAddressDetail") ?? "").trim();
   const shippingMemo = String(formData.get("shippingMemo") ?? "").trim();
 
   if (!orderId || !recipientName || !recipientPhone || !shippingAddress) {
@@ -24,6 +25,22 @@ export async function updateOrderShippingInfo(formData: FormData): Promise<{ suc
   }
 
   const db = getDB();
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS shop_order_shipping_details (
+        order_id TEXT PRIMARY KEY REFERENCES shop_orders(id) ON DELETE CASCADE,
+        user_id TEXT NOT NULL,
+        recipient_name TEXT,
+        recipient_phone TEXT,
+        shipping_zip TEXT,
+        shipping_address TEXT,
+        shipping_address_detail TEXT,
+        shipping_memo TEXT,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`
+    )
+    .run()
+    .catch(() => null);
   const orderCols = new Set(
     (
       await db
@@ -56,7 +73,15 @@ export async function updateOrderShippingInfo(formData: FormData): Promise<{ suc
   }
   if (orderCols.has("shipping_address")) {
     updates.push("shipping_address = ?");
-    binds.push(shippingAddress);
+    const composedAddress =
+      !orderCols.has("shipping_address_detail") && shippingAddressDetail
+        ? `${shippingAddress} ${shippingAddressDetail}`.trim()
+        : shippingAddress;
+    binds.push(composedAddress);
+  }
+  if (orderCols.has("shipping_address_detail")) {
+    updates.push("shipping_address_detail = ?");
+    binds.push(shippingAddressDetail || null);
   }
   if (orderCols.has("shipping_memo")) {
     updates.push("shipping_memo = ?");
@@ -75,6 +100,35 @@ export async function updateOrderShippingInfo(formData: FormData): Promise<{ suc
       .bind(...binds, orderId, session.user.id)
       .run();
   }
+
+  // 구버전 shop_orders 스키마에서도 누락 없이 보여주기 위한 백업 저장소
+  await db
+    .prepare(
+      `INSERT INTO shop_order_shipping_details
+         (order_id, user_id, recipient_name, recipient_phone, shipping_zip, shipping_address, shipping_address_detail, shipping_memo, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+       ON CONFLICT(order_id) DO UPDATE SET
+         user_id = excluded.user_id,
+         recipient_name = excluded.recipient_name,
+         recipient_phone = excluded.recipient_phone,
+         shipping_zip = excluded.shipping_zip,
+         shipping_address = excluded.shipping_address,
+         shipping_address_detail = excluded.shipping_address_detail,
+         shipping_memo = excluded.shipping_memo,
+         updated_at = CURRENT_TIMESTAMP`
+    )
+    .bind(
+      orderId,
+      session.user.id,
+      recipientName,
+      recipientPhone,
+      shippingZip || null,
+      shippingAddress,
+      shippingAddressDetail || null,
+      shippingMemo || null
+    )
+    .run()
+    .catch(() => null);
 
   revalidatePath(`/shop/orders/${orderId}`);
   return { success: true };
