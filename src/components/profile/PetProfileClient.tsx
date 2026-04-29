@@ -504,45 +504,44 @@ export default function PetProfileClient({
           </Card>
         </motion.section>
 
-        {/* Detailed info: 소유자 전체 / 공개 방문자는 민감 메모 비노출 (S3) */}
+        {/* Detailed info: 건강 정보 및 메모 */}
         <motion.section variants={itemVariants}>
            <Card className="rounded-[40px] border-none shadow-sm bg-white overflow-hidden">
-              {!treatAsPublicVisitor ? (
-                <>
-              <div className="flex gap-1 p-2 bg-slate-50 mx-6 mt-6 rounded-2xl">
-                 <button type="button" className="flex-1 py-3 text-[10px] font-black bg-white rounded-xl shadow-sm text-teal-600 uppercase tracking-wider transition-all">건강 정보</button>
-                 <button type="button" className="flex-1 py-3 text-[10px] font-black text-slate-400 hover:text-slate-600 transition-all uppercase tracking-wider">활동 기록</button>
-                 <button type="button" className="flex-1 py-3 text-[10px] font-black text-slate-400 hover:text-slate-600 transition-all uppercase tracking-wider">갤러리</button>
-              </div>
-              <CardContent className="p-8 pt-6 space-y-6">
+              <CardContent className="p-8 space-y-6">
+                 {/* 소유자에게만 탭 메뉴 표시 (기록/갤러리 등 추가 기능용) */}
+                 {!treatAsPublicVisitor && (
+                   <div className="flex gap-1 p-2 bg-slate-50 -mt-2 mb-4 rounded-2xl">
+                      <button type="button" className="flex-1 py-3 text-[10px] font-black bg-white rounded-xl shadow-sm text-teal-600 uppercase tracking-wider transition-all">건강 정보</button>
+                      <button type="button" className="flex-1 py-3 text-[10px] font-black text-slate-400 hover:text-slate-600 transition-all uppercase tracking-wider">활동 기록</button>
+                      <button type="button" className="flex-1 py-3 text-[10px] font-black text-slate-400 hover:text-slate-600 transition-all uppercase tracking-wider">갤러리</button>
+                   </div>
+                 )}
+
                  <div className="space-y-2">
                     <h4 className="text-xs font-black text-slate-800 flex items-center gap-2">
-                       <Activity className="w-4 h-4 text-teal-500" />
-                       {subjectKind === "pet"
-                         ? "의료 기록 및 특이사항"
-                         : subjectKind === "elder"
-                           ? "건강 · 특이사항"
-                           : "메모 · 특이사항"}
+                       <ShieldCheck className="w-4 h-4 text-teal-500" />
+                       {treatAsPublicVisitor ? "보호자가 남긴 상세 안내" : (
+                         subjectKind === "pet" ? "의료 기록 및 특이사항" : "상세 메모 및 특이사항"
+                       )}
                     </h4>
                     <div className="p-5 rounded-[24px] bg-slate-50 border border-slate-100 italic">
-                       <p className="text-xs font-bold text-slate-500 leading-relaxed italic">
-                         &quot;{pet.medical_info || (subjectKind === "pet" ? "등록된 건강 정보가 없습니다." : "등록된 메모가 없습니다.")}&quot;
+                       <p className="text-xs font-bold text-slate-600 leading-relaxed italic">
+                         {pet.medical_info ? (
+                           <>
+                             &quot;{pet.medical_info}&quot;
+                           </>
+                         ) : (
+                           <span className="text-slate-400">등록된 안내 사항이 없습니다.</span>
+                         )}
                        </p>
                     </div>
+                    {treatAsPublicVisitor && pet.medical_info && (
+                      <p className="text-[10px] font-bold text-slate-400 px-2 leading-relaxed">
+                        * 발견 시 아이의 상태나 복용약 정보를 꼭 확인해 주세요.
+                      </p>
+                    )}
                  </div>
               </CardContent>
-                </>
-              ) : (
-              <CardContent className="p-8 space-y-2">
-                <h4 className="text-xs font-black text-slate-500 flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-teal-500" />
-                  상세 메모 비공개
-                </h4>
-                <p className="text-xs font-bold text-slate-500 leading-relaxed">
-                  병원 기록·가족 메모는 가족만 볼 수 있어요. 지금은 위 전화·문자·위치 보내기로 도움을 주시면 됩니다.
-                </p>
-              </CardContent>
-              )}
            </Card>
         </motion.section>
 
