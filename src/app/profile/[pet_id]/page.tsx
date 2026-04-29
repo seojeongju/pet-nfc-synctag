@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { getPet } from "@/app/actions/pet";
 import { getPetTags } from "@/app/actions/tag";
-import { notFound } from "next/navigation";
 import { getAuth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import PetProfileClient from "@/components/profile/PetProfileClient";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
 import { getTenantStatus } from "@/lib/tenant-status";
+import NotFoundView from "./NotFoundView";
 
 export const runtime = "edge";
 
@@ -62,7 +62,7 @@ export default async function PublicProfilePage({
   const tagId = tag || null;
 
   if (!pet) {
-    notFound();
+    return <NotFoundView />;
   }
 
   const isOwner = session?.user.id === pet.owner_id;

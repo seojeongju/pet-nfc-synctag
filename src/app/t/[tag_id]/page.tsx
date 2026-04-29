@@ -1,10 +1,11 @@
 import { getDB } from "@/lib/db";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { parseSubjectKind } from "@/lib/subject-kind";
 import { getAuth } from "@/lib/auth";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { decodeTagPathParam, normalizeTagUid } from "@/lib/tag-uid-format";
+import UnknownTagView from "./UnknownTagView";
 
 export const runtime = "edge";
 
@@ -84,16 +85,16 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
       .bind(normalizedTagId, ip, userAgent)
       .run()
       .catch(() => {});
-    notFound();
+    return <UnknownTagView tagId={normalizedTagId} />;
   }
 
   if (!tag.pet_id) {
-    notFound();
+    return <UnknownTagView tagId={tag.id} />;
   }
   /** 0 / false만 비활성. null·undefined(구 스키마)는 활성으로 간주 */
   const explicitlyInactive = tag.is_active === 0 || tag.is_active === false;
   if (explicitlyInactive) {
-    notFound();
+    return <UnknownTagView tagId={tag.id} />;
   }
 
   const headerList = await headers();
@@ -135,3 +136,4 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
   if (tenantForLinks) profileQs.set("tenant", tenantForLinks);
   redirect(`/profile/${tag.pet_id}?${profileQs.toString()}`);
 }
+
