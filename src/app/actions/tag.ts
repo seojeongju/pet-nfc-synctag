@@ -317,6 +317,45 @@ export async function prepareGuardianNfcNativeHandoff(input: {
     };
 }
 
+export async function logGuardianNfcAppEvent(input: {
+    event:
+        | "app_open_attempt"
+        | "app_opened"
+        | "store_fallback"
+        | "install_page_fallback";
+    subjectKind: SubjectKind;
+    petId: string;
+    tenantId?: string | null;
+}) {
+    const db = getDB();
+    const { userId, email } = await requireActor();
+    const tenant = (input.tenantId ?? "").trim() || null;
+    await db.prepare(`
+        CREATE TABLE IF NOT EXISTS admin_action_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            action TEXT NOT NULL,
+            actor_email TEXT,
+            success BOOLEAN NOT NULL DEFAULT 1,
+            payload TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `).run();
+    await db
+        .prepare("INSERT INTO admin_action_logs (action, actor_email, success, payload) VALUES (?, ?, 1, ?)")
+        .bind(
+            "guardian_nfc_app_event",
+            email ?? "system",
+            JSON.stringify({
+                event: input.event,
+                subjectKind: input.subjectKind,
+                petId: input.petId,
+                tenantId: tenant,
+                userId,
+            })
+        )
+        .run();
+}
+
 export async function unlinkTag(tagId: string) {
     const db = getDB();
     await assertMigration0008Applied(db);

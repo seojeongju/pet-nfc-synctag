@@ -578,6 +578,16 @@ export type LandingAutoRouteRow = {
   created_at: string;
 };
 
+export type GuardianNfcAppEventRow = {
+  id: number;
+  event: string;
+  subject_kind: string | null;
+  pet_id: string | null;
+  tenant_id: string | null;
+  user_id: string | null;
+  created_at: string;
+};
+
 export async function getUnknownTagAccesses(limit = 30) {
   const db = getDB();
   const safe = Math.max(1, Math.min(limit, 100));
@@ -655,6 +665,42 @@ export async function getLandingAutoRouteEventsPage(params: {
     .bind(pageSize, offset)
     .all<LandingAutoRouteRow>()
     .catch(() => ({ results: [] as LandingAutoRouteRow[] }));
+  return { rows: results ?? [], total, page, pageSize };
+}
+
+export async function getGuardianNfcAppEventsPage(params: {
+  page?: number;
+  pageSize?: number;
+} = {}): Promise<MonitoringPageResult<GuardianNfcAppEventRow>> {
+  const db = getDB();
+  const pageSize = normalizePageSize(params.pageSize, 10, 5, 50);
+  const pageRaw = normalizePage(params.page);
+  const totalRow = await db
+    .prepare(
+      "SELECT COUNT(*) AS c FROM admin_action_logs WHERE action = 'guardian_nfc_app_event'"
+    )
+    .first<{ c: number }>()
+    .catch(() => ({ c: 0 }));
+  const total = Number(totalRow?.c ?? 0);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const page = Math.min(pageRaw, totalPages);
+  const offset = (page - 1) * pageSize;
+  const { results } = await db
+    .prepare(
+      "SELECT id, " +
+        "json_extract(payload, '$.event') AS event, " +
+        "json_extract(payload, '$.subjectKind') AS subject_kind, " +
+        "json_extract(payload, '$.petId') AS pet_id, " +
+        "json_extract(payload, '$.tenantId') AS tenant_id, " +
+        "json_extract(payload, '$.userId') AS user_id, " +
+        "created_at " +
+        "FROM admin_action_logs " +
+        "WHERE action = 'guardian_nfc_app_event' " +
+        "ORDER BY datetime(created_at) DESC LIMIT ? OFFSET ?"
+    )
+    .bind(pageSize, offset)
+    .all<GuardianNfcAppEventRow>()
+    .catch(() => ({ results: [] as GuardianNfcAppEventRow[] }));
   return { rows: results ?? [], total, page, pageSize };
 }
 

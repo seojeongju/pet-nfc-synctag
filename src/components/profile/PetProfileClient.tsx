@@ -440,44 +440,37 @@ export default function PetProfileClient({
                 </div>
               ) : null}
 
-              {/* Action Buttons — 앵커는 block w-full, 내용은 flex 래퍼로 가운데(WebView 정렬 이슈 방지) */}
-              <div className="grid gap-4 mt-2 focus-within:ring-0">
+              {/* Action Buttons */}
+              <div className="mt-2 focus-within:ring-0">
                  {pet.emergency_contact ? (
-                 <>
-                   <a
-                     href={`tel:${pet.emergency_contact}`}
-                     className="group block w-full min-w-0"
-                     onClick={() => logFinderClick("call_click")}
-                   >
-                      <Button className="flex h-20 w-full min-w-0 rounded-[28px] border-b-4 border-teal-700 bg-teal-500 px-4 text-lg font-black text-white shadow-xl shadow-teal-500/20 transition-all hover:bg-teal-600 active:scale-[0.97]">
-                        <span className="flex w-full min-w-0 items-center justify-center gap-3 sm:gap-4">
-                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20">
-                            <Phone className="h-6 w-6 animate-pulse" />
+                 <div className="grid grid-cols-2 gap-3">
+                    <a
+                      href={`tel:${pet.emergency_contact}`}
+                      className="group block w-full min-w-0"
+                      onClick={() => logFinderClick("call_click")}
+                    >
+                       <Button className="flex h-20 w-full min-w-0 flex-col items-center justify-center gap-1 rounded-[28px] border-b-4 border-teal-700 bg-teal-500 px-2 text-white shadow-xl shadow-teal-500/20 transition-all hover:bg-teal-600 active:scale-[0.97]">
+                          <Phone className="h-6 w-6 animate-pulse" />
+                          <span className="text-[13px] font-black leading-tight">
+                            {treatAsPublicVisitor ? nfc.callCta : "보호자 전화"}
                           </span>
-                          <span className="min-w-0 text-center leading-tight">
-                            {treatAsPublicVisitor ? nfc.callCta : "보호자님 호출하기"}
-                          </span>
-                        </span>
-                      </Button>
-                   </a>
-                   {treatAsPublicVisitor ? (
-                     <a
-                       href={`sms:${pet.emergency_contact}`}
-                       className="group block w-full min-w-0"
-                       onClick={() => logFinderClick("sms_click")}
-                     >
-                       <Button
-                         variant="outline"
-                         className="flex h-12 w-full min-w-0 rounded-2xl border-slate-200 bg-white px-4 text-sm font-black text-slate-700 hover:bg-slate-50"
-                       >
-                         <span className="flex w-full min-w-0 items-center justify-center gap-2">
-                           <MessageCircle className="h-4 w-4 shrink-0 text-teal-600" />
-                           <span className="text-center">문자로도 알리기</span>
-                         </span>
                        </Button>
-                     </a>
-                   ) : null}
-                 </>
+                    </a>
+                    <a
+                      href={`sms:${pet.emergency_contact}`}
+                      className="group block w-full min-w-0"
+                      onClick={() => logFinderClick("sms_click")}
+                    >
+                      <Button
+                        className="flex h-20 w-full min-w-0 flex-col items-center justify-center gap-1 rounded-[28px] border-b-4 border-slate-300 bg-slate-100 px-2 text-slate-700 shadow-lg transition-all hover:bg-slate-200 active:scale-[0.97]"
+                      >
+                         <MessageCircle className="h-6 w-6 text-teal-600" />
+                         <span className="text-[13px] font-black leading-tight">
+                           {treatAsPublicVisitor ? "문자로 알리기" : "보호자 문자"}
+                         </span>
+                      </Button>
+                    </a>
+                 </div>
                  ) : (
                     <Button disabled className="w-full h-16 rounded-[28px] text-slate-400 font-bold">
                       등록된 연락처가 없습니다

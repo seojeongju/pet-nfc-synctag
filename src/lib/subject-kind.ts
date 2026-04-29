@@ -132,13 +132,13 @@ export const subjectKindNfcPublic: Record<
   SubjectKind,
   { roleLine: string; callCta: string; hideMedicalBlock: boolean; idCardLabel: string; scanHintLabel: string; scanHintBody: string }
 > = {
-  pet: { roleLine: "가족이 남긴 연락 화면 · 링크유-펫", callCta: "가족(보호자)에게 전화·문자", hideMedicalBlock: true, idCardLabel: "참고", scanHintLabel: "도움말", scanHintBody: "가능하면 위치도 보내 주시면 가족에게 큰 도움이 돼요." },
-  elder: { roleLine: "가족이 남긴 연락 화면 · 링크유-메모리", callCta: "가족에게 전화·문자", hideMedicalBlock: true, idCardLabel: "참고", scanHintLabel: "도움말", scanHintBody: "필요할 때 위 전화(문자)로 가족에게 연락해 주세요." },
-  child: { roleLine: "가족이 남긴 연락 화면 · 링크유-키즈", callCta: "가족(보호자)에게 전화·문자", hideMedicalBlock: true, idCardLabel: "참고", scanHintLabel: "도움말", scanHintBody: "가족에게 먼저 연락해 주세요." },
-  luggage: { roleLine: "가족이 남긴 연락 화면 · 링크유-러기지", callCta: "주인에게 전화·문자", hideMedicalBlock: true, idCardLabel: "물품", scanHintLabel: "도움말", scanHintBody: "주인에게 연락해 주시면 감사합니다." },
+  pet: { roleLine: "가족이 남긴 연락 화면 · 링크유-펫", callCta: "전화로 알리기", hideMedicalBlock: true, idCardLabel: "참고", scanHintLabel: "도움말", scanHintBody: "가능하면 위치도 보내 주시면 가족에게 큰 도움이 돼요." },
+  elder: { roleLine: "가족이 남긴 연락 화면 · 링크유-메모리", callCta: "전화로 알리기", hideMedicalBlock: true, idCardLabel: "참고", scanHintLabel: "도움말", scanHintBody: "필요할 때 위 전화(문자)로 가족에게 연락해 주세요." },
+  child: { roleLine: "가족이 남긴 연락 화면 · 링크유-키즈", callCta: "전화로 알리기", hideMedicalBlock: true, idCardLabel: "참고", scanHintLabel: "도움말", scanHintBody: "가족에게 먼저 연락해 주세요." },
+  luggage: { roleLine: "가족이 남긴 연락 화면 · 링크유-러기지", callCta: "전화로 알리기", hideMedicalBlock: true, idCardLabel: "물품", scanHintLabel: "도움말", scanHintBody: "주인에게 연락해 주시면 감사합니다." },
   gold: {
     roleLine: "가족이 남긴 연락 화면 · 링크유-골드",
-    callCta: "주인에게 전화·문자",
+    callCta: "전화로 알리기",
     hideMedicalBlock: true,
     idCardLabel: "제품",
     scanHintLabel: "도움말",

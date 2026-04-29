@@ -26,6 +26,7 @@ import {
 import { motion } from "framer-motion";
 import type {
   LandingAutoRouteRow,
+  GuardianNfcAppEventRow,
   LowBatteryRow,
   MapTelemetryHealthSummary,
   MapTelemetryAlertState,
@@ -86,6 +87,7 @@ export default function AdminMonitoringClient({
   recentNfcPage,
   unknownAccessPage,
   autoRouteEventsPage,
+  guardianNfcAppEventsPage,
   recentBle,
   lowBattery,
   nativeRejectTop,
@@ -100,6 +102,7 @@ export default function AdminMonitoringClient({
   recentNfcPage: MonitoringPageResult<RecentNfcScanRow>;
   unknownAccessPage: MonitoringPageResult<UnknownAccessRow>;
   autoRouteEventsPage: MonitoringPageResult<LandingAutoRouteRow>;
+  guardianNfcAppEventsPage: MonitoringPageResult<GuardianNfcAppEventRow>;
   recentBle: RecentBleRow[];
   lowBattery: LowBatteryRow[];
   nativeRejectTop: NativeRejectReasonRow[];
@@ -116,7 +119,7 @@ export default function AdminMonitoringClient({
   const chartRef = useRef<SVGSVGElement | null>(null);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
-  const buildMonitoringHref = (next: { np?: number; up?: number; ap?: number; period?: "1h" | "24h" | "7d" }) => {
+  const buildMonitoringHref = (next: { np?: number; up?: number; ap?: number; gp?: number; period?: "1h" | "24h" | "7d" }) => {
     const p = new URLSearchParams();
     const nextPeriod = next.period ?? period;
     if (nextPeriod !== "24h") p.set("period", nextPeriod);
@@ -124,9 +127,11 @@ export default function AdminMonitoringClient({
     const np = next.np ?? recentNfcPage.page;
     const up = next.up ?? unknownAccessPage.page;
     const ap = next.ap ?? autoRouteEventsPage.page;
+    const gp = next.gp ?? guardianNfcAppEventsPage.page;
     if (np > 1) p.set("np", String(np));
     if (up > 1) p.set("up", String(up));
     if (ap > 1) p.set("ap", String(ap));
+    if (gp > 1) p.set("gp", String(gp));
     const qs = p.toString();
     return qs ? `/admin/monitoring?${qs}` : "/admin/monitoring";
   };
@@ -823,6 +828,54 @@ export default function AdminMonitoringClient({
           ) : null}
         </Section>
       </div>
+
+      <Section title="보호자 앱 실행 이벤트" subtitle="앱 실행 시도/성공/스토어 fallback" icon={Activity}>
+        <p className="px-2 pb-1 text-[10px] font-black text-slate-400">
+          총 {guardianNfcAppEventsPage.total}건 · {guardianNfcAppEventsPage.page}/{Math.max(1, Math.ceil(guardianNfcAppEventsPage.total / guardianNfcAppEventsPage.pageSize))}페이지
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-[10px] lg:text-xs">
+            <thead>
+              <AdminTableHeadRow>
+                <AdminTableHeadCell>이벤트</AdminTableHeadCell>
+                <AdminTableHeadCell>모드</AdminTableHeadCell>
+                <AdminTableHeadCell>pet_id</AdminTableHeadCell>
+                <AdminTableHeadCell>tenant_id</AdminTableHeadCell>
+                <AdminTableHeadCell>시각</AdminTableHeadCell>
+              </AdminTableHeadRow>
+            </thead>
+            <tbody>
+              {guardianNfcAppEventsPage.rows.length === 0 ? (
+                <AdminTableRow>
+                  <td colSpan={5} className="p-4 text-slate-400 text-center">
+                    기록 없음
+                  </td>
+                </AdminTableRow>
+              ) : (
+                guardianNfcAppEventsPage.rows.map((r) => (
+                  <AdminTableRow key={r.id}>
+                    <td className="p-2 font-mono">{r.event}</td>
+                    <td className="p-2">{r.subject_kind ?? "—"}</td>
+                    <td className="p-2 font-mono truncate max-w-[140px]">{r.pet_id ?? "—"}</td>
+                    <td className="p-2 font-mono truncate max-w-[140px]">{r.tenant_id ?? "—"}</td>
+                    <td className="p-2 whitespace-nowrap">{r.created_at}</td>
+                  </AdminTableRow>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        {guardianNfcAppEventsPage.total > 0 ? (
+          <div className="px-2 pt-2">
+            <AdminPagination
+              aria-label="보호자 앱 실행 이벤트 페이지"
+              currentPage={guardianNfcAppEventsPage.page}
+              totalPages={Math.max(1, Math.ceil(guardianNfcAppEventsPage.total / guardianNfcAppEventsPage.pageSize))}
+              buildHref={(p) => buildMonitoringHref({ gp: p })}
+            />
+          </div>
+        ) : null}
+      </Section>
 
       <div className="grid lg:grid-cols-2 gap-6">
         <Section title="저전력 후보 (30일)" subtitle="battery_low 유형 이벤트 기준" icon={BatteryWarning}>
