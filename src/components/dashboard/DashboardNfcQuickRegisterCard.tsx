@@ -302,7 +302,7 @@ export function DashboardNfcQuickRegisterCard({
     }
   };
 
-  const openAppFirstRegister = () => {
+  const openAppFirstRegister = async () => {
     if (tenantSuspended) return;
     if (!selectedSubjectId) {
       setTagMessage({ type: "error", text: "먼저 연결할 관리 대상을 선택해 주세요." });
@@ -316,13 +316,38 @@ export function DashboardNfcQuickRegisterCard({
       text: "전용 앱 실행을 시도합니다. 앱이 열리면 NFC 등록을 진행해 주세요.",
     });
 
-    const params = new URLSearchParams();
-    params.set("kind", subjectKind);
-    params.set("pet_id", selectedSubjectId);
-    if (tenantId?.trim()) params.set("tenant", tenantId.trim());
-    params.set("entry", "dashboard_quick_register");
-    const appHref = `petidconnect://nfc/pet?${params.toString()}`;
-    const fallbackHref = NFC_NATIVE_APP_STORE_URL || "/install";
+    const envBase = normalizeAppBaseUrl(process.env.NEXT_PUBLIC_APP_URL);
+    const appBase = envBase || (typeof window !== "undefined" ? window.location.origin : "");
+    const normalizedTag = normalizeTagUid(tagId);
+    const hasUid = Boolean(normalizedTag && normalizedTag.trim().length > 0);
+
+    let appHref = "";
+    if (hasUid) {
+      try {
+        const handoff = await prepareGuardianNfcNativeHandoff({
+          petId: selectedSubjectId,
+          tagIdRaw: normalizedTag,
+        });
+        if (handoff.ok) {
+          appHref = handoff.appLink;
+        }
+      } catch {
+        /* ignore and fallback to nfc/pet */
+      }
+    }
+    if (!appHref) {
+      const params = new URLSearchParams();
+      params.set("kind", subjectKind);
+      params.set("pet_id", selectedSubjectId);
+      if (tenantId?.trim()) params.set("tenant", tenantId.trim());
+      params.set("entry", "dashboard_quick_register");
+      if (appBase) params.set("app_base", appBase);
+      if (hasUid) params.set("uid", normalizedTag);
+      appHref = `petidconnect://nfc/pet?${params.toString()}`;
+    }
+
+    const installFallback = `/install?next=${encodeURIComponent(appHref)}`;
+    const fallbackHref = NFC_NATIVE_APP_STORE_URL || installFallback;
     const logEvent = (event: "app_open_attempt" | "app_opened" | "store_fallback" | "install_page_fallback") => {
       void logGuardianNfcAppEvent({
         event,

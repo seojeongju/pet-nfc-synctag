@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Download, Share, PlusSquare, ArrowDown, CheckCircle2, Smartphone, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 type BeforeInstallPromptEvent = Event & {
@@ -11,10 +11,12 @@ type BeforeInstallPromptEvent = Event & {
 
 export default function InstallPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isIOS, setIsIOS] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const nextAppHref = (searchParams.get("next") || "").trim();
   useEffect(() => {
     setIsMounted(true);
     
@@ -52,6 +54,11 @@ export default function InstallPage() {
       setDeferredPrompt(null);
       router.push("/hub");
     }
+  };
+
+  const openLinkedApp = () => {
+    if (!nextAppHref || typeof window === "undefined") return;
+    window.location.href = nextAppHref;
   };
 
   if (!isMounted) return null;
@@ -200,6 +207,15 @@ export default function InstallPage() {
                   앱 설치 후에는 바탕화면의 아이콘을 통해 <br />
                   언제든지 즉시 접속할 수 있습니다.
                 </p>
+                {nextAppHref ? (
+                  <button
+                    type="button"
+                    onClick={openLinkedApp}
+                    className="mt-3 inline-flex h-10 items-center justify-center rounded-xl border border-teal-200 bg-white px-4 text-[11px] font-black text-teal-700 hover:bg-teal-50"
+                  >
+                    설치 후 앱 바로 열기
+                  </button>
+                ) : null}
               </div>
             </div>
           )}
