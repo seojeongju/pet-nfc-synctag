@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, Home, MessageCircle, HelpCircle } from "lucide-react";
+import { AlertCircle, Home, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -54,12 +54,6 @@ export default function UnknownTagView({ tagId }: { tagId: string }) {
             홈으로 돌아가기
           </Button>
         </Link>
-        <a href="https://link-u.kr" target="_blank" rel="noopener noreferrer" className="w-full">
-          <Button variant="outline" className="h-15 w-full rounded-2xl border-slate-200 bg-white text-base font-bold text-slate-700 hover:bg-slate-50 active:scale-[0.98] transition-all">
-            <HelpCircle className="mr-2 h-5 w-5 text-teal-500" />
-            도움말 확인하기
-          </Button>
-        </a>
       </motion.div>
 
       <motion.div
