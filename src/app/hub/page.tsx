@@ -14,6 +14,9 @@ import {
   CheckCircle2,
   CircleDashed,
   Store,
+  LayoutGrid,
+  ScanLine,
+  WalletCards,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
@@ -41,6 +44,14 @@ const hubIcons: Record<SubjectKind, typeof PawPrint> = {
   child: Baby,
   luggage: Briefcase,
   gold: Gem,
+};
+
+const modeIconTone: Record<SubjectKind, string> = {
+  pet: "bg-teal-50 text-teal-600",
+  elder: "bg-indigo-50 text-indigo-600",
+  child: "bg-sky-50 text-sky-600",
+  luggage: "bg-amber-50 text-amber-600",
+  gold: "bg-fuchsia-50 text-fuchsia-600",
 };
 
 function limitText(used: number, limit: number | null): string {
@@ -261,33 +272,34 @@ export default async function HubPage({
       <FlowTopNav variant="landing" session={session} isAdmin={isPlatformAdmin} />
       <div className="px-4 min-[430px]:px-5 py-6 min-[430px]:py-8 pb-20">
       <div className="w-full max-w-none lg:max-w-screen-sm mx-auto space-y-6 min-[430px]:space-y-8">
-        <header className="space-y-2">
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-600">
-            링크유 Link-U
-          </p>
-          <h1 className="text-[30px] font-black text-slate-900 leading-tight tracking-tight">
-            어떤 동행으로
-            <br />
-            <span className="text-teal-500">시작할까요?</span>
-          </h1>
-          <p className="text-base text-slate-500 font-medium leading-relaxed">
-            돌봄과 연결을 위해 맞춤 화면이 달라요. 나중에 언제든 바꿀 수 있어요.
-          </p>
-          {personalPlan && (
-            <p className="text-[11px] font-bold text-slate-400">
-              개인 플랜: <span className="text-slate-600">{personalPlan.plan.name}</span>
-              {personalPlan.source === "subscription" ? " · 구독" : " · 계정 설정"}
+        <header className="space-y-4">
+          <div className="rounded-3xl border border-teal-100 bg-gradient-to-br from-white via-teal-50/45 to-white px-5 py-5 shadow-sm">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-600">
+              링크유 Link-U
             </p>
-          )}
-          {storageQuota && (
-            <p className="text-[11px] font-bold text-slate-400">
-              앨범 저장공간:{" "}
-              <span className="text-slate-600">
-                {storageQuota.usedQuotaMb}MB / {storageQuota.effectiveQuotaMb}MB
-              </span>
-              {storageQuota.extraQuotaMb > 0 ? ` (추가 ${storageQuota.extraQuotaMb}MB)` : " (기본 512MB)"}
+            <h1 className="mt-1 text-[30px] font-black text-slate-900 leading-tight tracking-tight">
+              어떤 동행으로
+              <br />
+              <span className="text-teal-500">시작할까요?</span>
+            </h1>
+            <p className="mt-2 text-[14px] text-slate-600 font-semibold leading-relaxed">
+              아이콘을 눌러 바로 모드로 이동하세요. 나중에 언제든 바꿀 수 있어요.
             </p>
-          )}
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">개인 플랜</p>
+                <p className="mt-0.5 text-[13px] font-black text-slate-800">
+                  {personalPlan ? personalPlan.plan.name : "Free"}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">앨범 저장공간</p>
+                <p className="mt-0.5 text-[13px] font-black text-slate-800">
+                  {storageQuota ? `${storageQuota.usedQuotaMb}MB / ${storageQuota.effectiveQuotaMb}MB` : "0MB / 512MB"}
+                </p>
+              </div>
+            </div>
+          </div>
         </header>
 
         {isWelcomeOnboarding && (
@@ -366,33 +378,55 @@ export default async function HubPage({
           </section>
         )}
 
-        <section className="rounded-2xl border border-teal-100 bg-teal-50/50 p-4 space-y-2">
-          <p className="text-[10px] font-black uppercase text-teal-600">이용 순서</p>
-          <ol className="text-xs font-semibold text-slate-600 space-y-1 list-decimal list-inside leading-relaxed">
-            <li>
-              아래에서 사용할 <strong className="text-slate-800">모드</strong>를 고릅니다.
-            </li>
-            <li>대시보드에서 관리 대상을 등록하고 NFC 태그를 연결합니다.</li>
-            <li>조직(B2B)은 소속 조직 카드에서 관리·대시보드로 이동할 수 있습니다.</li>
-          </ol>
+        <section className="rounded-2xl border border-teal-100 bg-teal-50/50 p-4 space-y-3">
+          <p className="text-[10px] font-black uppercase text-teal-600">빠른 시작</p>
+          <div className="grid grid-cols-1 min-[430px]:grid-cols-3 gap-2">
+            <div className="rounded-xl border border-slate-100 bg-white px-3 py-3">
+              <LayoutGrid className="h-4 w-4 text-teal-600" />
+              <p className="mt-1 text-[11px] font-black text-slate-800">모드 선택</p>
+              <p className="text-[10px] font-semibold text-slate-500">상황에 맞는 모드로 시작</p>
+            </div>
+            <div className="rounded-xl border border-slate-100 bg-white px-3 py-3">
+              <ScanLine className="h-4 w-4 text-indigo-600" />
+              <p className="mt-1 text-[11px] font-black text-slate-800">등록/연결</p>
+              <p className="text-[10px] font-semibold text-slate-500">대상 등록 후 태그 연결</p>
+            </div>
+            <div className="rounded-xl border border-slate-100 bg-white px-3 py-3">
+              <Building2 className="h-4 w-4 text-amber-600" />
+              <p className="mt-1 text-[11px] font-black text-slate-800">조직 관리</p>
+              <p className="text-[10px] font-semibold text-slate-500">B2B 조직 대시보드 이동</p>
+            </div>
+          </div>
         </section>
 
-        <a
-          href={`/shop?kind=${encodeURIComponent(hubVisibleKinds[0] ?? "pet")}`}
-          className="flex items-center gap-3 rounded-2xl border border-teal-200 bg-gradient-to-r from-white to-teal-50/90 p-4 shadow-sm transition hover:border-teal-300 hover:shadow-md active:scale-[0.99]"
-        >
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-700">
-            <Store className="h-6 w-6" aria-hidden />
-          </div>
-          <div className="min-w-0 flex-1 text-left">
-            <p className="text-[10px] font-black uppercase tracking-widest text-teal-600">스토어</p>
-            <p className="text-[14px] font-black text-slate-900 leading-snug">모드 맞춤 상품 둘러보기</p>
-            <p className="mt-0.5 text-[11px] font-semibold text-slate-500 leading-snug">
-              모드별 맞춤 상품을 볼 수 있어요.
-            </p>
-          </div>
-          <ChevronRight className="h-5 w-5 text-slate-300 shrink-0" />
-        </a>
+        <div className="grid grid-cols-1 min-[430px]:grid-cols-2 gap-2">
+          <a
+            href={`/shop?kind=${encodeURIComponent(hubVisibleKinds[0] ?? "pet")}`}
+            className="flex items-center gap-3 rounded-2xl border border-teal-200 bg-gradient-to-r from-white to-teal-50/90 p-4 shadow-sm transition hover:border-teal-300 hover:shadow-md active:scale-[0.99]"
+          >
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-700">
+              <Store className="h-6 w-6" aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1 text-left">
+              <p className="text-[10px] font-black uppercase tracking-widest text-teal-600">스토어</p>
+              <p className="text-[13px] font-black text-slate-900 leading-snug">모드 맞춤 상품</p>
+            </div>
+            <ChevronRight className="h-5 w-5 text-slate-300 shrink-0" />
+          </a>
+          <a
+            href={onboardingDashboardHref}
+            className="flex items-center gap-3 rounded-2xl border border-indigo-200 bg-gradient-to-r from-white to-indigo-50/70 p-4 shadow-sm transition hover:border-indigo-300 hover:shadow-md active:scale-[0.99]"
+          >
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-700">
+              <WalletCards className="h-6 w-6" aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1 text-left">
+              <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">바로가기</p>
+              <p className="text-[13px] font-black text-slate-900 leading-snug">최근 모드 대시보드</p>
+            </div>
+            <ChevronRight className="h-5 w-5 text-slate-300 shrink-0" />
+          </a>
+        </div>
 
         {billingMessage && (
           <section className="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 shadow-sm">
@@ -598,6 +632,11 @@ export default async function HubPage({
         )}
 
         <nav className="space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <p className="text-[11px] font-black uppercase tracking-widest text-slate-500">모드 선택</p>
+            <p className="text-[10px] font-bold text-slate-400">{hubVisibleKinds.length}개 모드</p>
+          </div>
+          <div className="grid grid-cols-1 min-[430px]:grid-cols-2 gap-3">
           {hubVisibleKinds.map((kind) => {
             const meta = subjectKindMeta[kind];
             const Icon = hubIcons[kind];
@@ -606,21 +645,27 @@ export default async function HubPage({
                 key={kind}
                 href={`/dashboard/${kind}`}
                 className={cn(
-                  "flex items-center gap-4 rounded-[24px] border border-slate-100 bg-white p-4 min-[430px]:p-5 shadow-sm",
+                  "flex items-center gap-3 rounded-[24px] border border-slate-100 bg-white p-4 min-[430px]:p-5 shadow-sm",
                   "transition-all hover:border-teal-200 hover:shadow-md active:scale-[0.99]"
                 )}
               >
-                <div className="flex h-12 w-12 min-[430px]:h-14 min-[430px]:w-14 shrink-0 items-center justify-center rounded-2xl bg-teal-50 text-teal-600">
+                <div
+                  className={cn(
+                    "flex h-12 w-12 min-[430px]:h-14 min-[430px]:w-14 shrink-0 items-center justify-center rounded-2xl",
+                    modeIconTone[kind]
+                  )}
+                >
                   <Icon className="h-6 w-6 min-[430px]:h-7 min-[430px]:w-7" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="font-black text-slate-900 text-[15px] min-[430px]:text-base">{meta.label}</p>
-                  <p className="text-[13px] text-slate-500 font-medium mt-0.5 leading-snug">{meta.description}</p>
+                  <p className="text-[12px] text-slate-500 font-medium mt-0.5 leading-snug line-clamp-2">{meta.description}</p>
                 </div>
                 <ChevronRight className="h-5 w-5 text-slate-300 shrink-0" />
               </a>
             );
           })}
+          </div>
         </nav>
 
         {isPlatformAdmin && (
