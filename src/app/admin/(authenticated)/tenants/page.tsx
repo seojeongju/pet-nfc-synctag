@@ -116,7 +116,8 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
           조직 · 멤버 관리
         </h1>
         <p className="text-[15px] font-semibold leading-relaxed text-slate-600 sm:text-sm sm:font-medium sm:text-slate-500">
-          조직 생성(허용 모드 지정) · 멤버/역할 · 보호자에게 열릴 Link-U 모드까지 이 화면에서 처리할 수 있어요.
+          조직 생성 · 멤버/역할 · 계약/통계용 모드 태그. 보호자 앱의 모드 사용은 정책상 제한하지 않으며, 아래 &quot;보호자
+          모드&quot; 필드는 참고·기록용입니다.
         </p>
       </header>
 
@@ -209,10 +210,10 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
           </div>
           <div className="rounded-2xl border border-amber-100 bg-amber-50/50 p-4 space-y-3">
             <div>
-              <p className="text-[11px] font-black uppercase text-amber-800">보호자에게 보이는 Link-U 모드</p>
+              <p className="text-[11px] font-black uppercase text-amber-800">계약·통계용 모드 태그 (앱 접근 비연동)</p>
               <p className="text-[11px] font-semibold text-amber-900/80 mt-1">
-                전체 허용이면 소속 보호자는 허브에서 5가지 모드를 볼 수 있어요. 특정 제품만 쓰면 제한하세요. (생성 직후에도
-                아래 조직 카드에서 변경 가능)
+                앱에서는 모든 보호자가 5가지 모드를 사용할 수 있어요. 여기서는 제품·계약 정리를 위해 &quot;주로 쓰는
+                모드&quot;만 기록할 수 있습니다(앱 접근을 막지 않음). 생성 직후에도 조직 카드에서 변경 가능합니다.
               </p>
             </div>
             <label className="flex items-start gap-2 cursor-pointer">
@@ -226,7 +227,7 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
               <span className="text-sm font-bold text-slate-800">전체 모드 허용 (제한 없음)</span>
             </label>
             <div className="pl-6 space-y-2 border-t border-amber-100/80 pt-3">
-              <p className="text-[10px] font-black text-slate-500 uppercase">또는 허용할 모드만 선택</p>
+              <p className="text-[10px] font-black text-slate-500 uppercase">또는 기록할 모드만 선택</p>
               <div className="flex flex-wrap gap-x-4 gap-y-2">
                 {SUBJECT_KINDS.map((k) => (
                   <label key={k} className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700">
@@ -298,7 +299,9 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
               <form action={adminUpdateTenantAllowedModesFormAction} className="rounded-2xl border border-amber-100 bg-amber-50/50 p-4 space-y-3">
                 <input type="hidden" name="tenant_id" value={tenant.id} />
                 <input type="hidden" name="return_qs" value={backQs} />
-                <p className="text-[11px] font-black uppercase text-amber-800">보호자 허용 모드 (인라인 편집)</p>
+                <p className="text-[11px] font-black uppercase text-amber-800">
+                  계약·통계용 모드 태그 (인라인 · 앱 접근 비연동)
+                </p>
                 <label className="flex items-start gap-2 cursor-pointer">
                   <input
                     type="checkbox"
@@ -310,7 +313,7 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
                   <span className="text-sm font-bold text-slate-800">전체 모드 허용 (제한 없음)</span>
                 </label>
                 <div className="pl-6 space-y-2 border-t border-amber-100/80 pt-3">
-                  <p className="text-[10px] font-black text-slate-500 uppercase">또는 허용할 모드만 선택</p>
+                  <p className="text-[10px] font-black text-slate-500 uppercase">또는 기록할 모드만 선택</p>
                   <div className="flex flex-wrap gap-x-4 gap-y-2">
                     {SUBJECT_KINDS.map((k) => (
                       <label key={k} className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700">
@@ -330,7 +333,7 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
                   type="submit"
                   className="h-9 rounded-xl bg-amber-700 text-white text-xs font-black px-4 hover:bg-amber-800"
                 >
-                  허용 모드 저장
+                  모드 태그 저장
                 </button>
               </form>
 

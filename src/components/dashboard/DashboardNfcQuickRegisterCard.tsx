@@ -525,18 +525,24 @@ export function DashboardNfcQuickRegisterCard({
             ) : null}
           </>
         ) : (
-          <div className="space-y-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center">
+          <div className="relative z-10 space-y-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center">
             <p className="text-xs font-bold text-slate-500">{emptyRegisterHint}</p>
-            <a
-              href={tenantSuspended ? "#" : `/dashboard/${subjectKind}/pets/new${kindQs}`}
-              aria-disabled={tenantSuspended}
+            <button
+              type="button"
+              onClick={() => {
+                if (tenantSuspended) return;
+                router.push(`/dashboard/${subjectKind}/pets/new${kindQs}`);
+              }}
+              disabled={tenantSuspended}
               className={cn(
-                "text-xs font-black underline underline-offset-4",
-                tenantSuspended ? "pointer-events-none text-slate-400" : "text-teal-600"
+                "min-h-11 w-full max-w-sm rounded-lg px-2 text-xs font-black underline underline-offset-4 transition active:scale-[0.99]",
+                tenantSuspended
+                  ? "cursor-not-allowed text-slate-400"
+                  : "cursor-pointer text-teal-600 hover:text-teal-700"
               )}
             >
               등록하러 가기
-            </a>
+            </button>
           </div>
         )}
 

@@ -1,3 +1,7 @@
+/**
+ * 전자앨범 저장 — 정책상 기능은 개방하고, 비용·용량만 제한(M/B 단위 프로필; 운영상 바이트 기준과 동일하게 적용 가능).
+ * @see access-and-privacy-policy.ts
+ */
 import type { D1Database } from "@cloudflare/workers-types";
 import type {
   StorageAddonProductSummary,

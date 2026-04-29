@@ -54,7 +54,7 @@ async function resolveActorModePermission(
 export async function linkTag(petId: string, tagId: string) {
     const db = getDB();
     await assertMigration0008Applied(db);
-    type ExistingTag = { id: string; status: string; pet_id?: string | null };
+    type ExistingTag = { id: string; status: string; pet_id?: string | null; tenant_id?: string | null };
     const normalizedTagId = normalizeTagUid(tagId);
 
     if (!isValidTagUidFormat(normalizedTagId)) {
@@ -62,7 +62,7 @@ export async function linkTag(petId: string, tagId: string) {
     }
 
     const existingTag = await db
-        .prepare("SELECT id, status, pet_id FROM tags WHERE id = ?")
+        .prepare("SELECT id, status, pet_id, tenant_id FROM tags WHERE id = ?")
         .bind(normalizedTagId)
         .first<ExistingTag>();
 
@@ -97,13 +97,18 @@ export async function linkTag(petId: string, tagId: string) {
         throw new Error("현재 모드에서는 태그 연결 기능을 사용할 수 없습니다.");
     }
 
+    /** 조직 출고 시 부여된 tags.tenant_id 유지 → 조직 대시보드에서 태그 연결 사용자 집계 가능 */
+    const inventoryTenantId = (existingTag.tenant_id ?? "").trim() || null;
+    const petTenantId = (petScope.tenant_id ?? "").trim() || null;
+    const resolvedTagTenantId = inventoryTenantId ?? petTenantId;
+
     // 같은 관리 대상에 이미 연결된 태그를 다시 스캔한 경우도 idempotent 하게 성공 처리합니다.
     await db.prepare(`
         UPDATE tags
         SET pet_id = ?, tenant_id = ?, status = 'active', is_active = 1, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
     `)
-    .bind(petId, petScope.tenant_id, normalizedTagId)
+    .bind(petId, resolvedTagTenantId, normalizedTagId)
     .run();
 
     const modeRow = await db

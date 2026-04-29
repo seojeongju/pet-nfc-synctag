@@ -29,11 +29,7 @@ import {
 import { requestStorageAddonCheckout } from "@/app/actions/storage-billing";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
 import { getUserConsentStatus } from "@/lib/privacy-consent";
-import {
-  getEffectiveAllowedSubjectKinds,
-  getHubRedirectForGuardian,
-  getDashboardPathForUserTenant,
-} from "@/lib/mode-visibility";
+import { getDashboardPathForUserTenant } from "@/lib/mode-visibility";
 import type { D1Database } from "@cloudflare/workers-types";
 import { isPasswordChangeRequired } from "@/lib/password-change";
 
@@ -158,25 +154,14 @@ export default async function HubPage({
     .bind(session.user.id)
     .first<{ role?: string | null }>();
   const isPlatformAdmin = isPlatformAdminRole(roleRow?.role);
-  const allowedSubjectKinds = await getEffectiveAllowedSubjectKinds(db, session.user.id, {
-    isPlatformAdmin,
-  });
-  const hubVisibleKinds: SubjectKind[] = isPlatformAdmin
-    ? [...SUBJECT_KINDS]
-    : allowedSubjectKinds;
+  /** 정책: 모든 보호자에게 5개 모드 노출 */
+  const hubVisibleKinds: SubjectKind[] = [...SUBJECT_KINDS];
 
   const isWelcomeOnboarding = sp.onboarding === "welcome";
   const billingMessage =
     typeof sp.billing_msg === "string" && sp.billing_msg.trim()
       ? decodeURIComponent(sp.billing_msg.trim())
       : null;
-  if (!isPlatformAdmin && !isWelcomeOnboarding) {
-    const oneShot = getHubRedirectForGuardian(allowedSubjectKinds);
-    if (oneShot) {
-      redirect(oneShot);
-    }
-  }
-
   const deviceHint =
     (typeof sp.device === "string" && sp.device.trim()) ||
     (typeof sp.uid === "string" && sp.uid.trim()) ||
@@ -184,10 +169,7 @@ export default async function HubPage({
   if (deviceHint) {
     const kind = await resolveDeviceAssignedKind(context.env.DB, deviceHint);
     if (kind) {
-      const canUseDevice = isPlatformAdmin || allowedSubjectKinds.includes(kind);
-      if (canUseDevice) {
-        redirect(`/dashboard/${encodeURIComponent(kind)}`);
-      }
+      redirect(`/dashboard/${encodeURIComponent(kind)}`);
     }
   }
 
@@ -223,9 +205,6 @@ export default async function HubPage({
     typeof sp.kind === "string" && (SUBJECT_KINDS as readonly string[]).includes(sp.kind)
       ? (sp.kind as SubjectKind)
       : null;
-  if (!isPlatformAdmin && onboardingKind && !allowedSubjectKinds.includes(onboardingKind)) {
-    onboardingKind = null;
-  }
   const defaultOnboardingKind = hubVisibleKinds[0] ?? "pet";
   const onboardingDashboardHref = onboardingKind
     ? `/dashboard/${onboardingKind}`
@@ -294,11 +273,6 @@ export default async function HubPage({
           <p className="text-base text-slate-500 font-medium leading-relaxed">
             돌봄과 연결을 위해 맞춤 화면이 달라요. 나중에 언제든 바꿀 수 있어요.
           </p>
-          {!isPlatformAdmin && hubVisibleKinds.length < SUBJECT_KINDS.length ? (
-            <p className="text-[12px] font-bold text-amber-700/90">
-              이 계정·소속에 허용된 모드만 표시됩니다.
-            </p>
-          ) : null}
           {personalPlan && (
             <p className="text-[11px] font-bold text-slate-400">
               개인 플랜: <span className="text-slate-600">{personalPlan.plan.name}</span>
@@ -414,7 +388,7 @@ export default async function HubPage({
             <p className="text-[10px] font-black uppercase tracking-widest text-teal-600">스토어</p>
             <p className="text-[14px] font-black text-slate-900 leading-snug">모드 맞춤 상품 둘러보기</p>
             <p className="mt-0.5 text-[11px] font-semibold text-slate-500 leading-snug">
-              허용된 모드에 맞는 상품만 표시됩니다.
+              모드별 맞춤 상품을 볼 수 있어요.
             </p>
           </div>
           <ChevronRight className="h-5 w-5 text-slate-300 shrink-0" />
@@ -589,8 +563,8 @@ export default async function HubPage({
                       <p className="text-[10px] font-bold text-amber-600 mt-0.5">활성 조직 플랜 없음</p>
                     )}
                     {tenants.length > 1 ? (
-                      <p className="text-[10px] font-bold text-amber-700 mt-1">
-                        다중 조직 소속이 감지되었습니다. 슈퍼어드민에게 정리를 요청하세요.
+                      <p className="text-[10px] font-bold text-teal-700 mt-1">
+                        여러 조직에 소속된 경우, 각 조직에서 발급한 태그를 한 계정으로 함께 사용할 수 있어요.
                       </p>
                     ) : null}
                   </div>

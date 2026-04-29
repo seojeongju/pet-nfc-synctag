@@ -7,11 +7,12 @@ import {
   adminUpdateTenantAllowedModes,
   getTenantOrgAuditLogs,
   getTenantOrgManageContext,
+  listTenantTagConnectedCustomers,
   type TenantAuditLogRow,
 } from "@/app/actions/admin-tenants";
 import { TENANT_AUDIT_ACTIONS } from "@/lib/tenant-audit-constants";
 import { auditActionLabelKo, formatTenantAuditRow } from "@/lib/tenant-audit-format";
-import { Building2, ChevronLeft, FileDown, ScrollText, ShieldCheck, UserPlus2 } from "lucide-react";
+import { Building2, ChevronLeft, FileDown, ScrollText, ShieldCheck, UserPlus2, Users } from "lucide-react";
 import Link from "next/link";
 import { SUBJECT_KINDS, subjectKindMeta } from "@/lib/subject-kind";
 import { parseAllowedModesForForm } from "@/lib/mode-visibility";
@@ -77,13 +78,16 @@ export default async function TenantOrgManagePage({
   const auditFromRaw = typeof qs.audit_from === "string" ? qs.audit_from.trim() : "";
   const auditToRaw = typeof qs.audit_to === "string" ? qs.audit_to.trim() : "";
 
-  const auditLogs = await getTenantOrgAuditLogs(tenantId, {
-    action: auditActionRaw || undefined,
-    actorContains: auditQRaw || undefined,
-    dateFrom: auditFromRaw || undefined,
-    dateTo: auditToRaw || undefined,
-    limit: 200,
-  }).catch(() => [] as TenantAuditLogRow[]);
+  const [auditLogs, tagCustomers] = await Promise.all([
+    getTenantOrgAuditLogs(tenantId, {
+      action: auditActionRaw || undefined,
+      actorContains: auditQRaw || undefined,
+      dateFrom: auditFromRaw || undefined,
+      dateTo: auditToRaw || undefined,
+      limit: 200,
+    }).catch(() => [] as TenantAuditLogRow[]),
+    listTenantTagConnectedCustomers(tenantId).catch(() => []),
+  ]);
 
   const publicOrigin = await getPublicOrigin();
 
@@ -359,6 +363,57 @@ export default async function TenantOrgManagePage({
           </div>
         ) : null}
 
+        <section className="rounded-2xl border border-teal-100 bg-teal-50/40 p-4 space-y-3">
+          <div className="flex items-start gap-2">
+            <Users className="h-5 w-5 shrink-0 text-teal-600 mt-0.5" aria-hidden />
+            <div className="min-w-0 space-y-1">
+              <p className="text-[11px] font-black uppercase text-teal-700">태그로 연결된 보호자 (최종 사용자)</p>
+              <p className="text-[11px] font-semibold text-slate-600 leading-relaxed">
+                이 조직에서 출고·등록된 NFC 태그(<code className="text-[10px]">tags.tenant_id</code>)가 관리 대상에
+                연결된 계정만 표시됩니다. 조직 멤버(운영) 목록과는 별도입니다.
+              </p>
+            </div>
+          </div>
+          <div className="overflow-x-auto rounded-xl border border-teal-100/80 bg-white">
+            <table className="w-full min-w-[640px]">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="text-left text-[11px] font-black text-slate-500 px-3 py-2 uppercase">보호자</th>
+                  <th className="text-right text-[11px] font-black text-slate-500 px-3 py-2 uppercase">연결 태그 수</th>
+                  <th className="text-left text-[11px] font-black text-slate-500 px-3 py-2 uppercase">최근 연결 갱신</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tagCustomers.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="px-3 py-6 text-center text-xs font-semibold text-slate-500">
+                      표시할 사용자가 없습니다. 태그가 조직 재고로 등록되어 있고, 보호자가 해당 태그를 관리 대상에 연결하면
+                      여기에 나타납니다.
+                    </td>
+                  </tr>
+                ) : (
+                  tagCustomers.map((c) => (
+                    <tr key={c.user_id} className="border-t border-slate-100">
+                      <td className="px-3 py-3">
+                        <p className="text-sm font-black text-slate-800">{c.email}</p>
+                        <p className="text-xs font-semibold text-slate-400">{c.name ?? "—"}</p>
+                      </td>
+                      <td className="px-3 py-3 text-right text-sm font-black text-teal-700">{c.linked_tag_count}</td>
+                      <td className="px-3 py-3 text-xs font-semibold text-slate-500">
+                        {c.last_linked_at
+                          ? new Date(c.last_linked_at).toLocaleString("ko-KR")
+                          : "—"}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <div className="space-y-2">
+          <p className="text-[11px] font-black uppercase text-slate-500 px-0.5">조직 멤버 (운영 계정)</p>
         <div className="overflow-x-auto rounded-2xl border border-slate-100">
           <table className="w-full min-w-[700px]">
             <thead className="bg-slate-50">
@@ -454,6 +509,7 @@ export default async function TenantOrgManagePage({
               ))}
             </tbody>
           </table>
+        </div>
         </div>
       </article>
 

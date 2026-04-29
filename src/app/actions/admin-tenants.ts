@@ -14,6 +14,10 @@ import {
   requirePlatformAdminActor,
   requirePlatformOrTenantAdminActor,
 } from "@/lib/admin-authz";
+import {
+  queryTenantTagConnectedUsers,
+  type TenantTagCustomerRow,
+} from "@/lib/tenant-tag-customers";
 import { setPasswordChangeRequired } from "@/lib/password-change";
 
 type TenantRole = "owner" | "admin" | "member";
@@ -512,6 +516,15 @@ export async function getTenantOrgManageContext(tenantId: string): Promise<{
   if (!view) return null;
   return { view, isPlatformAdmin: actor.isPlatformAdmin };
 }
+
+/** 조직 관리 대시보드: 이 테넌트 태그(tags.tenant_id)로 연결된 최종 보호자만 (RBAC 동일 · 쿼리 스코프). */
+export async function listTenantTagConnectedCustomers(tenantId: string): Promise<TenantTagCustomerRow[]> {
+  await requirePlatformOrTenantOrgAdmin(tenantId);
+  const db = getDB();
+  return queryTenantTagConnectedUsers(db, tenantId);
+}
+
+export type { TenantTagCustomerRow };
 
 export async function adminCreateTenantWithOwner(
   formData: FormData

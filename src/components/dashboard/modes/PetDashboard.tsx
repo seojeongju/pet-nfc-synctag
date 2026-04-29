@@ -517,7 +517,7 @@ export default function PetDashboard({
 
               <motion.div whileTap={{ scale: writeLocked ? 1 : 0.95 }}>
                 <a
-                  href={writeLocked ? "#" : `/dashboard/pets/new${kindQs}`}
+                  href={writeLocked ? "#" : `/dashboard/${subjectKind}/pets/new${kindQs}`}
                   aria-disabled={writeLocked}
                   className={writeLocked ? "pointer-events-none opacity-50" : ""}
                 >

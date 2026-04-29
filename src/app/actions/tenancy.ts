@@ -49,6 +49,7 @@ function slugify(name: string): string {
 
 /**
  * Creates a tenant and makes the current user `owner`.
+ * 정책: 조직 생성은 슈퍼관리자(플랫폼 관리자)만 — 일반 보호자 경로에서는 거부.
  */
 export async function createTenant(
   name: string
