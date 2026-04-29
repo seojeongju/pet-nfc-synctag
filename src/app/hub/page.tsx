@@ -380,24 +380,64 @@ export default async function HubPage({
 
         <section className="rounded-2xl border border-teal-100 bg-teal-50/50 p-4 space-y-3">
           <p className="text-[10px] font-black uppercase text-teal-600">빠른 시작</p>
-          <div className="grid grid-cols-1 min-[430px]:grid-cols-3 gap-2">
-            <div className="rounded-xl border border-slate-100 bg-white px-3 py-3">
-              <LayoutGrid className="h-4 w-4 text-teal-600" />
-              <p className="mt-1 text-[11px] font-black text-slate-800">모드 선택</p>
-              <p className="text-[10px] font-semibold text-slate-500">상황에 맞는 모드로 시작</p>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="rounded-xl border border-slate-100 bg-white px-2 py-4 flex flex-col items-center text-center shadow-sm">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-teal-50 mb-2">
+                <LayoutGrid className="h-5 w-5 text-teal-600" />
+              </div>
+              <p className="text-[11px] font-black text-slate-800">모드 선택</p>
             </div>
-            <div className="rounded-xl border border-slate-100 bg-white px-3 py-3">
-              <ScanLine className="h-4 w-4 text-indigo-600" />
-              <p className="mt-1 text-[11px] font-black text-slate-800">등록/연결</p>
-              <p className="text-[10px] font-semibold text-slate-500">대상 등록 후 태그 연결</p>
+            <div className="rounded-xl border border-slate-100 bg-white px-2 py-4 flex flex-col items-center text-center shadow-sm">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-50 mb-2">
+                <ScanLine className="h-5 w-5 text-indigo-600" />
+              </div>
+              <p className="text-[11px] font-black text-slate-800">등록/연결</p>
             </div>
-            <div className="rounded-xl border border-slate-100 bg-white px-3 py-3">
-              <Building2 className="h-4 w-4 text-amber-600" />
-              <p className="mt-1 text-[11px] font-black text-slate-800">조직 관리</p>
-              <p className="text-[10px] font-semibold text-slate-500">B2B 조직 대시보드 이동</p>
+            <div className="rounded-xl border border-slate-100 bg-white px-2 py-4 flex flex-col items-center text-center shadow-sm">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-50 mb-2">
+                <Building2 className="h-5 w-5 text-amber-600" />
+              </div>
+              <p className="text-[11px] font-black text-slate-800">조직 관리</p>
             </div>
           </div>
         </section>
+
+        <nav className="space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <p className="text-[11px] font-black uppercase tracking-widest text-slate-500">모드 선택</p>
+            <p className="text-[10px] font-bold text-slate-400">{hubVisibleKinds.length}개 모드</p>
+          </div>
+          <div className="grid grid-cols-1 min-[430px]:grid-cols-2 gap-3">
+          {hubVisibleKinds.map((kind) => {
+            const meta = subjectKindMeta[kind];
+            const Icon = hubIcons[kind];
+            return (
+              <a
+                key={kind}
+                href={`/dashboard/${kind}`}
+                className={cn(
+                  "flex items-center gap-3 rounded-[24px] border border-slate-100 bg-white p-4 min-[430px]:p-5 shadow-sm",
+                  "transition-all hover:border-teal-200 hover:shadow-md active:scale-[0.99]"
+                )}
+              >
+                <div
+                  className={cn(
+                    "flex h-12 w-12 min-[430px]:h-14 min-[430px]:w-14 shrink-0 items-center justify-center rounded-2xl",
+                    modeIconTone[kind]
+                  )}
+                >
+                  <Icon className="h-6 w-6 min-[430px]:h-7 min-[430px]:w-7" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-black text-slate-900 text-[15px] min-[430px]:text-base">{meta.label}</p>
+                  <p className="text-[12px] text-slate-500 font-medium mt-0.5 leading-snug line-clamp-2">{meta.description}</p>
+                </div>
+                <ChevronRight className="h-5 w-5 text-slate-300 shrink-0" />
+              </a>
+            );
+          })}
+          </div>
+        </nav>
 
         <div className="grid grid-cols-1 min-[430px]:grid-cols-2 gap-2">
           <a
@@ -631,42 +671,6 @@ export default async function HubPage({
           </section>
         )}
 
-        <nav className="space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <p className="text-[11px] font-black uppercase tracking-widest text-slate-500">모드 선택</p>
-            <p className="text-[10px] font-bold text-slate-400">{hubVisibleKinds.length}개 모드</p>
-          </div>
-          <div className="grid grid-cols-1 min-[430px]:grid-cols-2 gap-3">
-          {hubVisibleKinds.map((kind) => {
-            const meta = subjectKindMeta[kind];
-            const Icon = hubIcons[kind];
-            return (
-              <a
-                key={kind}
-                href={`/dashboard/${kind}`}
-                className={cn(
-                  "flex items-center gap-3 rounded-[24px] border border-slate-100 bg-white p-4 min-[430px]:p-5 shadow-sm",
-                  "transition-all hover:border-teal-200 hover:shadow-md active:scale-[0.99]"
-                )}
-              >
-                <div
-                  className={cn(
-                    "flex h-12 w-12 min-[430px]:h-14 min-[430px]:w-14 shrink-0 items-center justify-center rounded-2xl",
-                    modeIconTone[kind]
-                  )}
-                >
-                  <Icon className="h-6 w-6 min-[430px]:h-7 min-[430px]:w-7" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-black text-slate-900 text-[15px] min-[430px]:text-base">{meta.label}</p>
-                  <p className="text-[12px] text-slate-500 font-medium mt-0.5 leading-snug line-clamp-2">{meta.description}</p>
-                </div>
-                <ChevronRight className="h-5 w-5 text-slate-300 shrink-0" />
-              </a>
-            );
-          })}
-          </div>
-        </nav>
 
         {isPlatformAdmin && (
           <a
