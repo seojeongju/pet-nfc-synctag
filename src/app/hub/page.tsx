@@ -201,7 +201,7 @@ export default async function HubPage({
       })
     )
   );
-  let onboardingKind: SubjectKind | null =
+  const onboardingKind: SubjectKind | null =
     typeof sp.kind === "string" && (SUBJECT_KINDS as readonly string[]).includes(sp.kind)
       ? (sp.kind as SubjectKind)
       : null;
