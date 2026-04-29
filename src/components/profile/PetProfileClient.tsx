@@ -326,24 +326,6 @@ export default function PetProfileClient({
           </div>
         </div>
       )}
-
-      {nfcEntry && treatAsPublicVisitor && (
-        <div
-          className={cn(
-            "w-full max-w-md min-w-0 -mt-2 mb-2 relative z-20",
-            publicPagePadX
-          )}
-        >
-          <div className="rounded-2xl bg-teal-600/10 border border-teal-200 px-4 py-3 text-center">
-            <p className="text-[12px] font-bold text-teal-900 leading-relaxed">
-              {scanEntrySource === "scan"
-                ? "인식표(스마트 태그)로 이 화면에 오셨어요. ① 먼저 가족에게 전화·문자 → ② 가능하면 아래에서 위치를 보내 주세요. 큰 도움이 됩니다."
-                : "가족이 연락을 받을 수 있게 열어 둔 화면이에요. 아래 안내대로 먼저 연락해 주시면 감사하겠습니다."}
-            </p>
-          </div>
-        </div>
-      )}
-
       {nfcOwnerGate && !ownerUnlocked && (
         <div
           className={cn(
@@ -418,7 +400,7 @@ export default function PetProfileClient({
                       )}
                     </h2>
                     <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-                      {treatAsPublicVisitor ? nfc.roleLine : "Digital Identification"}
+                      {treatAsPublicVisitor ? nfc.roleLine : "디지털 신원 확인"}
                     </p>
                  </div>
                  <motion.div 
@@ -434,14 +416,27 @@ export default function PetProfileClient({
               </div>
 
               <p className="text-[13px] text-slate-500 font-bold leading-relaxed">
-                 {finderParagraph}
+                 {treatAsPublicVisitor 
+                   ? "가족이 남긴 긴급 연락처와 안내입니다. 아래 순서대로 도와주시면 큰 힘이 됩니다."
+                   : finderParagraph}
               </p>
+
               {treatAsPublicVisitor ? (
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <p className="text-[11px] font-black text-slate-800">지금 하실 일</p>
-                  <p className="text-[12px] font-semibold text-slate-600 mt-1.5 leading-snug">
-                    ① 가족에게 전화(또는 문자) ② 여유가 되시면 아래에서 &apos;위치 보내기&apos;까지
-                  </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col items-center p-4 rounded-3xl bg-teal-50 border border-teal-100/50 shadow-sm">
+                    <div className="w-10 h-10 rounded-2xl bg-teal-500 flex items-center justify-center text-white mb-2 shadow-lg shadow-teal-500/20">
+                      <Phone className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-black text-teal-600/70 mb-0.5 tracking-tighter">STEP 1</span>
+                    <span className="text-[13px] font-black text-teal-900">가족에게 연락</span>
+                  </div>
+                  <div className="flex flex-col items-center p-4 rounded-3xl bg-slate-50 border border-slate-100 shadow-sm">
+                    <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center text-slate-400 mb-2 shadow-sm">
+                      <MapPin className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-black text-slate-400 mb-0.5 tracking-tighter">STEP 2</span>
+                    <span className="text-[13px] font-black text-slate-600">위치 보내기</span>
+                  </div>
                 </div>
               ) : null}
 
@@ -516,44 +511,15 @@ export default function PetProfileClient({
           </Card>
         </motion.section>
 
-        {/* Feature Grid */}
-        <motion.section
-          variants={itemVariants}
-          className="grid w-full min-w-0 grid-cols-2 gap-4"
-        >
-           <div className="bg-white p-6 rounded-[32px] shadow-sm border border-slate-100 space-y-3">
-              <div className="w-10 h-10 rounded-[14px] bg-slate-50 flex items-center justify-center text-slate-400"><Fingerprint className="w-5 h-5" /></div>
-              <div>
-                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                   {treatAsPublicVisitor ? nfc.idCardLabel : "Identification"}
-                 </p>
-                 <p className="text-xs font-black text-slate-900 mt-0.5">{breedForDisplay}</p>
-              </div>
-           </div>
-           <div className="bg-white p-6 rounded-[32px] shadow-sm border border-slate-100 space-y-3">
-              <div className="w-10 h-10 rounded-[14px] bg-slate-50 flex items-center justify-center text-slate-400">
-                {treatAsPublicVisitor ? <MapPin className="w-5 h-5" /> : <Calendar className="w-5 h-5" />}
-              </div>
-              <div>
-                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                   {treatAsPublicVisitor ? nfc.scanHintLabel : "Age Status"}
-                 </p>
-                 <p className="text-xs font-black text-slate-900 mt-0.5 leading-snug">
-                   {treatAsPublicVisitor ? nfc.scanHintBody : "최신 기록 확인"}
-                 </p>
-              </div>
-           </div>
-        </motion.section>
-
         {/* Detailed info: 소유자 전체 / 공개 방문자는 민감 메모 비노출 (S3) */}
         <motion.section variants={itemVariants}>
            <Card className="rounded-[40px] border-none shadow-sm bg-white overflow-hidden">
               {!treatAsPublicVisitor ? (
                 <>
               <div className="flex gap-1 p-2 bg-slate-50 mx-6 mt-6 rounded-2xl">
-                 <button type="button" className="flex-1 py-3 text-[10px] font-black bg-white rounded-xl shadow-sm text-teal-600 uppercase tracking-wider transition-all">Health</button>
-                 <button type="button" className="flex-1 py-3 text-[10px] font-black text-slate-400 hover:text-slate-600 transition-all uppercase tracking-wider">Reports</button>
-                 <button type="button" className="flex-1 py-3 text-[10px] font-black text-slate-400 hover:text-slate-600 transition-all uppercase tracking-wider">Gallery</button>
+                 <button type="button" className="flex-1 py-3 text-[10px] font-black bg-white rounded-xl shadow-sm text-teal-600 uppercase tracking-wider transition-all">건강 정보</button>
+                 <button type="button" className="flex-1 py-3 text-[10px] font-black text-slate-400 hover:text-slate-600 transition-all uppercase tracking-wider">활동 기록</button>
+                 <button type="button" className="flex-1 py-3 text-[10px] font-black text-slate-400 hover:text-slate-600 transition-all uppercase tracking-wider">갤러리</button>
               </div>
               <CardContent className="p-8 pt-6 space-y-6">
                  <div className="space-y-2">
@@ -605,7 +571,7 @@ export default function PetProfileClient({
         <motion.section variants={itemVariants} className="text-center space-y-4 pt-4 pb-12">
            <div className="h-px w-20 bg-slate-200 mx-auto opacity-50" />
            <p className="text-[10px] text-slate-300 font-black uppercase tracking-[0.4em] leading-relaxed max-w-[200px] mx-auto">
-             링크유 Link-U <br /> Safe Secure Technology
+             링크유 Link-U <br /> 안전 보안 기술
            </p>
         </motion.section>
       </motion.div>
@@ -693,29 +659,29 @@ export default function PetProfileClient({
       <div className={cn(floatNavShell, floatNavPadX)}>
         <div className="mx-auto w-full min-w-0 max-w-sm">
       <nav className="pointer-events-auto w-full min-w-0 min-h-20 glass-dark rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center justify-around px-2 sm:px-3 border border-white/20">
-         <Link href={`/dashboard/${subjectKind}${kindQs}`} className="flex flex-col items-center gap-1 group">
+          <Link href={`/dashboard/${subjectKind}${kindQs}`} className="flex flex-col items-center gap-1 group">
             <div className="p-2.5 rounded-2xl text-slate-400 group-hover:text-white transition-all active:scale-90">
                <Home className="w-6 h-6" />
             </div>
-            <span className="text-[9px] font-black text-slate-400 group-hover:text-white uppercase tracking-widest">Home</span>
+            <span className="text-[9px] font-black text-slate-400 group-hover:text-white uppercase tracking-widest">홈</span>
          </Link>
          <Link href={`/dashboard/${subjectKind}/pets${kindQs}`} className="flex flex-col items-center gap-1 group">
             <div className="p-2.5 rounded-2xl text-slate-400 group-hover:text-white transition-all active:scale-90">
                <PawPrint className="w-6 h-6" />
             </div>
-            <span className="text-[9px] font-black text-slate-400 group-hover:text-white uppercase tracking-widest">Pets</span>
+            <span className="text-[9px] font-black text-slate-400 group-hover:text-white uppercase tracking-widest">내 목록</span>
          </Link>
          <div className="flex flex-col items-center gap-1">
             <div className="p-3.5 -mt-10 rounded-full bg-teal-500 text-white shadow-xl shadow-teal-500/40 border-4 border-slate-950 transition-all active:scale-90">
                <Share2 className="w-6 h-6" />
             </div>
-            <span className="text-[9px] font-black text-teal-400 uppercase tracking-widest mt-1">Share</span>
+            <span className="text-[9px] font-black text-teal-400 uppercase tracking-widest mt-1">공유</span>
          </div>
          <Link href={`/dashboard/${subjectKind}/scans${kindQs}`} className="flex flex-col items-center gap-1 group">
             <div className="p-2.5 rounded-2xl text-slate-400 group-hover:text-white transition-all active:scale-90">
                <Activity className="w-6 h-6" />
             </div>
-            <span className="text-[9px] font-black text-slate-400 group-hover:text-white uppercase tracking-widest">Activity</span>
+            <span className="text-[9px] font-black text-slate-400 group-hover:text-white uppercase tracking-widest">활동</span>
          </Link>
          <Link
             href={isOwner && !writeLocked ? `/dashboard/${subjectKind}/pets/${pet.id}/edit${kindQs}` : `/dashboard/${subjectKind}${kindQs}`}
@@ -726,7 +692,7 @@ export default function PetProfileClient({
             <div className="p-2.5 rounded-2xl text-slate-400 group-hover:text-white transition-all active:scale-90">
                <Settings className="w-6 h-6" />
             </div>
-            <span className="text-[9px] font-black text-slate-400 group-hover:text-white uppercase tracking-widest">Edit</span>
+            <span className="text-[9px] font-black text-slate-400 group-hover:text-white uppercase tracking-widest">수정</span>
          </Link>
       </nav>
         </div>
