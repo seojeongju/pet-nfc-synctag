@@ -14,7 +14,6 @@ import { normalizeTagUid } from "@/lib/tag-uid-format";
 import { getNfcOriginMismatchMessage, normalizeAppBaseUrl } from "@/lib/nfc-app-origin-guard";
 
 const STALE_ACTION_RELOAD_KEY = "dashboard-nfc-stale-action-reload-once";
-const SHOW_NFC_NATIVE_HANDOFF = process.env.NEXT_PUBLIC_NFC_NATIVE_HANDOFF_ENABLED === "true";
 const NFC_NATIVE_APP_STORE_URL = (process.env.NEXT_PUBLIC_NFC_NATIVE_APP_STORE_URL || "").trim();
 
 type NDEFWriterCtor = new () => {
@@ -188,6 +187,82 @@ export function DashboardNfcQuickRegisterCard({
     }
   };
 
+  /**
+   * petidconnect 딥링크 (nfc/write → nfc/pet) + 미설치 시 /install?next= 또는 스토어. 연결 직후·상단 CTA·고급 보조 버튼에서 공통 사용.
+   */
+  const runPetIdConnectAppLaunch = async (input: { petId: string; tagIdRaw: string }) => {
+    if (tenantSuspended || typeof window === "undefined") return;
+    const { petId, tagIdRaw } = input;
+    setIsNativeWriteOpening(true);
+    setTagMessage({
+      type: "success",
+      text: "앱을 띄우는 중이에요. 열리면 보호자 연동 화면에서 태그에 대고 저장하세요. 앱이 없으면 설치 안내로 이어갑니다.",
+    });
+
+    const envBase = normalizeAppBaseUrl(process.env.NEXT_PUBLIC_APP_URL);
+    const appBase = envBase || window.location.origin;
+    const normalizedTag = normalizeTagUid(tagIdRaw);
+    const hasUid = Boolean(normalizedTag && normalizedTag.trim().length > 0);
+
+    let appHref = "";
+    if (hasUid) {
+      try {
+        const handoff = await prepareGuardianNfcNativeHandoff({
+          petId,
+          tagIdRaw: normalizedTag,
+        });
+        if (handoff.ok) {
+          appHref = handoff.appLink;
+        }
+      } catch {
+        /* nfc/pet */
+      }
+    }
+    if (!appHref) {
+      const params = new URLSearchParams();
+      params.set("kind", subjectKind);
+      params.set("pet_id", petId);
+      if (tenantId?.trim()) params.set("tenant", tenantId.trim());
+      params.set("entry", "dashboard_quick_register");
+      if (appBase) params.set("app_base", appBase);
+      if (hasUid) params.set("uid", normalizedTag);
+      appHref = `petidconnect://nfc/pet?${params.toString()}`;
+    }
+
+    const installFallback = `/install?next=${encodeURIComponent(appHref)}`;
+    const fallbackHref = NFC_NATIVE_APP_STORE_URL || installFallback;
+    const logEvent = (event: "app_open_attempt" | "app_opened" | "store_fallback" | "install_page_fallback") => {
+      void logGuardianNfcAppEvent({
+        event,
+        subjectKind,
+        petId,
+        tenantId,
+      }).catch(() => {});
+    };
+    logEvent("app_open_attempt");
+
+    const fallbackTimer = window.setTimeout(() => {
+      logEvent(NFC_NATIVE_APP_STORE_URL ? "store_fallback" : "install_page_fallback");
+      window.location.href = fallbackHref;
+    }, 1200);
+    const clearFallback = () => {
+      window.clearTimeout(fallbackTimer);
+      window.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("pagehide", clearFallback);
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        logEvent("app_opened");
+        clearFallback();
+      }
+    };
+    window.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("pagehide", clearFallback);
+
+    window.location.href = appHref;
+    window.setTimeout(() => setIsNativeWriteOpening(false), 1400);
+  };
+
   const registerTagToSubject = (uid: string) => {
     if (!selectedSubjectId) return;
     setTagMessage(null);
@@ -208,21 +283,10 @@ export function DashboardNfcQuickRegisterCard({
           }
           return;
         }
-        const writeResult = await writeTagUrlToNfc(uid, { silent: true });
-        if (writeResult.ok) {
-          setTagMessage({
-            type: "success",
-            text: "NFC 태그 연결과 프로필 주소 기록이 완료되었습니다. 이제 태그를 스캔하면 프로필이 열립니다.",
-          });
-        } else {
-          setTagMessage({
-            type: "success",
-            text: `NFC 태그 연결은 완료되었습니다. 다만 태그에 프로필 주소 자동 기록은 되지 않았습니다 (${writeResult.message}). 아래 '태그에 프로필 주소 기록'으로 다시 시도해 주세요.`,
-          });
-        }
         onTagLinkSessionSuccess?.();
         setTagId(normalizeTagUid(uid));
         router.refresh();
+        void runPetIdConnectAppLaunch({ petId: selectedSubjectId, tagIdRaw: uid });
       } catch (e: unknown) {
         if (isStaleServerActionError(e)) {
           const reloaded = reloadOnceForStaleAction();
@@ -238,37 +302,6 @@ export function DashboardNfcQuickRegisterCard({
         setTagMessage({ type: "error", text: err });
       }
     });
-  };
-
-  const openNativeAppForNfcWrite = async () => {
-    if (!selectedSubjectId || !tagId.trim()) {
-      setTagMessage({ type: "error", text: "먼저 연결할 대상과 태그 UID를 확인해 주세요." });
-      return;
-    }
-    setIsNativeWriteOpening(true);
-    setTagMessage(null);
-    try {
-      const handoff = await prepareGuardianNfcNativeHandoff({
-        petId: selectedSubjectId,
-        tagIdRaw: tagId,
-      });
-      if (!handoff.ok) {
-        setTagMessage({ type: "error", text: handoff.error });
-        return;
-      }
-      if (typeof window !== "undefined") {
-        window.location.href = handoff.appLink;
-      }
-      setTagMessage({
-        type: "success",
-        text: "기록 앱 실행을 시도했습니다. 앱에서 태그 기록 후 다시 돌아오면 연결 상태를 확인할 수 있습니다.",
-      });
-    } catch (error: unknown) {
-      const err = error instanceof Error ? error.message : String(error);
-      setTagMessage({ type: "error", text: `앱 실행 준비에 실패했습니다: ${err}` });
-    } finally {
-      setIsNativeWriteOpening(false);
-    }
   };
 
   const handleQuickNfcRegister = () => {
@@ -308,76 +341,7 @@ export function DashboardNfcQuickRegisterCard({
       setTagMessage({ type: "error", text: "먼저 연결할 관리 대상을 선택해 주세요." });
       return;
     }
-    if (typeof window === "undefined") return;
-
-    setIsNativeWriteOpening(true);
-    setTagMessage({
-      type: "success",
-      text: "앱을 띄우는 중이에요. 열리면 화면만 따라가 태그에 대고 저장하세요.",
-    });
-
-    const envBase = normalizeAppBaseUrl(process.env.NEXT_PUBLIC_APP_URL);
-    const appBase = envBase || (typeof window !== "undefined" ? window.location.origin : "");
-    const normalizedTag = normalizeTagUid(tagId);
-    const hasUid = Boolean(normalizedTag && normalizedTag.trim().length > 0);
-
-    let appHref = "";
-    if (hasUid) {
-      try {
-        const handoff = await prepareGuardianNfcNativeHandoff({
-          petId: selectedSubjectId,
-          tagIdRaw: normalizedTag,
-        });
-        if (handoff.ok) {
-          appHref = handoff.appLink;
-        }
-      } catch {
-        /* ignore and fallback to nfc/pet */
-      }
-    }
-    if (!appHref) {
-      const params = new URLSearchParams();
-      params.set("kind", subjectKind);
-      params.set("pet_id", selectedSubjectId);
-      if (tenantId?.trim()) params.set("tenant", tenantId.trim());
-      params.set("entry", "dashboard_quick_register");
-      if (appBase) params.set("app_base", appBase);
-      if (hasUid) params.set("uid", normalizedTag);
-      appHref = `petidconnect://nfc/pet?${params.toString()}`;
-    }
-
-    const installFallback = `/install?next=${encodeURIComponent(appHref)}`;
-    const fallbackHref = NFC_NATIVE_APP_STORE_URL || installFallback;
-    const logEvent = (event: "app_open_attempt" | "app_opened" | "store_fallback" | "install_page_fallback") => {
-      void logGuardianNfcAppEvent({
-        event,
-        subjectKind,
-        petId: selectedSubjectId,
-        tenantId,
-      }).catch(() => {});
-    };
-    logEvent("app_open_attempt");
-
-    const fallbackTimer = window.setTimeout(() => {
-      logEvent(NFC_NATIVE_APP_STORE_URL ? "store_fallback" : "install_page_fallback");
-      window.location.href = fallbackHref;
-    }, 1200);
-    const clearFallback = () => {
-      window.clearTimeout(fallbackTimer);
-      window.removeEventListener("visibilitychange", onVisibilityChange);
-      window.removeEventListener("pagehide", clearFallback);
-    };
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "hidden") {
-        logEvent("app_opened");
-        clearFallback();
-      }
-    };
-    window.addEventListener("visibilitychange", onVisibilityChange);
-    window.addEventListener("pagehide", clearFallback);
-
-    window.location.href = appHref;
-    window.setTimeout(() => setIsNativeWriteOpening(false), 1400);
+    await runPetIdConnectAppLaunch({ petId: selectedSubjectId, tagIdRaw: tagId });
   };
 
   useEffect(() => {
@@ -521,8 +485,11 @@ export function DashboardNfcQuickRegisterCard({
             {showWebFallback ? (
               <>
                 <p className="text-[11px] font-bold text-slate-600">
-                  <span className="font-black text-slate-800">고급:</span> Android Chrome + NFC일 때만 아래로 연결·기록이 가능해요. 순서는{" "}
-                  <span className="text-teal-700">태그 번호(스캔) → 연결</span> → <span className="text-emerald-700">태그에 주소 쓰기</span> 입니다.
+                  <span className="font-black text-slate-800">고급(Chrome + NFC):</span>{" "}
+                  <span className="text-teal-700">스캔(또는 번호 입력)</span> →{" "}
+                  <span className="text-slate-800">① 연결</span>하면 서버에 묶이고, 곧바로{" "}
+                  <span className="text-indigo-700">앱</span>이 열려 보호자 연동에서 UID·주소를 맞춥니다. 앱이 없으면 설치/스토어로
+                  이어집니다.
                 </p>
                 <div className="flex items-center gap-2">
                   <Input
@@ -549,6 +516,7 @@ export function DashboardNfcQuickRegisterCard({
                     ① 연결
                   </Button>
                 </div>
+                <p className="text-[10px] font-bold text-slate-400">선택: Chrome에서 태그에 바로 NDEF 쓰기(① 연결 후, 앱 없이 끝낼 때만)</p>
                 <Button
                   type="button"
                   onClick={() => {
@@ -563,9 +531,10 @@ export function DashboardNfcQuickRegisterCard({
                     !tagId.trim() ||
                     !webNfcWriteSupported
                   }
-                  className="h-11 w-full rounded-2xl bg-emerald-600 font-black text-white hover:bg-emerald-500"
+                  className="h-10 w-full rounded-2xl border border-emerald-200 bg-white font-bold text-emerald-800 hover:bg-emerald-50/80"
+                  variant="outline"
                 >
-                  {isNfcWriting ? "쓰는 중…" : "② 태그에 이 주소 기록(Chrome+NDEF)"}
+                  {isNfcWriting ? "쓰는 중…" : "이 브라우저로 태그에 주소 쓰기(선택)"}
                 </Button>
                 {!webNfcSupported && (
                   <div className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
@@ -573,42 +542,38 @@ export function DashboardNfcQuickRegisterCard({
                     <p className="text-[10px] font-bold text-slate-600">이 환경에서는 스캔이 안 될 수 있어요. 윗칸에 번호를 직접 넣어 주세요.</p>
                   </div>
                 )}
-                {!webNfcWriteSupported && webNfcSupported && (
+                {webNfcSupported && !webNfcWriteSupported && (
                   <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-2.5">
                     <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
-                    <p className="text-[10px] font-bold text-amber-900/90">이 브라우저는 태그 &quot;쓰기&quot;가 막힐 수 있어요. 앱(위쪽 버튼)을 쓰시면 가장 쉬워요.</p>
+                    <p className="text-[10px] font-bold text-amber-900/90">
+                      이 브라우저는 주소 &quot;쓰기&quot;가 막힐 수 있어요. ① 연결 뒤 자동으로 열리는 <strong>앱</strong>을 쓰는 편이 가장 쉽습니다.
+                    </p>
                   </div>
                 )}
                 {webNfcSupported && webNfcWriteSupported && (
                   <div className="flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50/60 p-2.5">
                     <BadgeCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
-                    <p className="text-[10px] font-bold text-emerald-900/85">②를 누른 뒤 휴대폰 뒤에 태그를 가까이 대면 주소가 자동으로 들어가요(직접 URL 칠 필요 없음).</p>
+                    <p className="text-[10px] font-bold text-emerald-900/85">위 &quot;선택&quot; 쓰기는 NDEF가 될 때만. 보통은 ① 연결 후 뜨는 앱이면 됩니다.</p>
                   </div>
                 )}
-                {!webNfcWriteSupported ? (
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      void openNativeAppForNfcWrite();
-                    }}
-                    disabled={
-                      tenantSuspended ||
-                      isPending ||
-                      isNfcScanning ||
-                      isNfcWriting ||
-                      isNativeWriteOpening ||
-                      !selectedSubjectId ||
-                      !tagId.trim()
-                    }
-                    className="h-11 w-full rounded-2xl bg-indigo-600 font-black text-white hover:bg-indigo-500"
-                  >
-                    {isNativeWriteOpening
-                      ? "앱 실행 중…"
-                      : SHOW_NFC_NATIVE_HANDOFF
-                        ? "앱으로 태그 주소 기록"
-                        : "앱 설치/열기"}
-                  </Button>
-                ) : null}
+                <Button
+                  type="button"
+                  onClick={() => {
+                    void runPetIdConnectAppLaunch({ petId: selectedSubjectId, tagIdRaw: tagId });
+                  }}
+                  disabled={
+                    tenantSuspended ||
+                    isPending ||
+                    isNfcScanning ||
+                    isNfcWriting ||
+                    isNativeWriteOpening ||
+                    !selectedSubjectId ||
+                    !tagId.trim()
+                  }
+                  className="h-11 w-full rounded-2xl bg-indigo-600 font-black text-white hover:bg-indigo-500"
+                >
+                  {isNativeWriteOpening ? "앱을 여는 중…" : "이미 연결돼 있을 때: 앱으로 다시 열기"}
+                </Button>
               </>
             ) : null}
             {selectedSubjectId ? (
