@@ -1,7 +1,19 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { PawPrint, MapPin, LayoutDashboard, ClipboardList, ScanLine, Images, Store } from "lucide-react";
+import { useState } from "react";
+import {
+  PawPrint,
+  MapPin,
+  LayoutDashboard,
+  ClipboardList,
+  ScanLine,
+  Images,
+  Store,
+  ChevronDown,
+  ChevronUp,
+  LayoutGrid,
+} from "lucide-react";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
 import { subjectKindFromDashboardPathname } from "@/lib/dashboard-path-kind";
 import { useDashboardNavSearchSnapshot } from "@/hooks/use-dashboard-nav-search-snapshot";
@@ -27,6 +39,8 @@ type DashboardNavBarProps = {
 /** 데스크톱 가로 탭은 xl(1280px) 이상만. pointer:fine은 안드 Chrome·OAuth 직후에 오탐되어 모바일에서도 PC 탭이 뜰 수 있음 */
 export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNavBarProps) {
   const pathname = usePathname();
+  /** 휴대폰: 기본 접어 맵·본문 여유 확보, 탭 시 6칸 메뉴 펼침 */
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const searchSnap = useDashboardNavSearchSnapshot();
   const pathKind = subjectKindFromDashboardPathname(pathname);
   const kind =
@@ -82,6 +96,8 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
     },
   ] as const;
 
+  const activeNavItem = navItems.find((item) => item.active);
+
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200/90 bg-white/90 backdrop-blur-md">
       <FlowTopNavContent
@@ -129,27 +145,59 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
             ))}
           </nav>
 
-          <nav
-            className="xl:hidden"
-            aria-label="대시보드 메뉴"
-          >
-            <div className="grid grid-cols-3 gap-2 text-slate-700">
-              {navItems.map((item) => (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  aria-current={item.active ? "page" : undefined}
-                  className={cn(
-                    "flex min-h-[3.75rem] flex-col items-center justify-center gap-1 rounded-xl border px-1.5 py-2 text-center",
-                    item.active
-                      ? "border-teal-200 bg-teal-50 text-teal-800"
-                      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                  )}
-                >
-                  <item.Icon className="h-4.5 w-4.5 shrink-0" />
-                  <span className="text-[11px] font-black leading-tight tracking-[-0.01em]">{item.label}</span>
-                </a>
-              ))}
+          <nav className="xl:hidden" aria-label="대시보드 메뉴">
+            <div className="space-y-2">
+              <button
+                type="button"
+                id="dashboard-mobile-nav-toggle"
+                aria-expanded={mobileMenuOpen}
+                aria-controls="dashboard-mobile-nav-grid"
+                onClick={() => setMobileMenuOpen((o) => !o)}
+                className={cn(
+                  "flex min-h-11 w-full items-center justify-between gap-2 rounded-2xl border px-3 py-2.5 text-left transition-colors",
+                  mobileMenuOpen
+                    ? "border-teal-200 bg-teal-50/80"
+                    : "border-slate-200 bg-slate-50/90 hover:border-slate-300 hover:bg-white"
+                )}
+              >
+                <span className="flex min-w-0 flex-1 items-center gap-2.5">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-white text-slate-600">
+                    <LayoutGrid className="h-4.5 w-4.5" aria-hidden />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-[10px] font-black uppercase tracking-wide text-slate-500">대시보드 메뉴</span>
+                    <span className="block truncate text-sm font-black text-slate-800">
+                      {mobileMenuOpen ? "닫기" : activeNavItem ? activeNavItem.label : "빠른 이동"}
+                    </span>
+                  </span>
+                </span>
+                {mobileMenuOpen ? (
+                  <ChevronUp className="h-5 w-5 shrink-0 text-slate-500" aria-hidden />
+                ) : (
+                  <ChevronDown className="h-5 w-5 shrink-0 text-slate-500" aria-hidden />
+                )}
+              </button>
+              {mobileMenuOpen ? (
+                <div id="dashboard-mobile-nav-grid" className="grid grid-cols-3 gap-2 text-slate-700">
+                  {navItems.map((item) => (
+                    <a
+                      key={item.href}
+                      href={item.href}
+                      aria-current={item.active ? "page" : undefined}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={cn(
+                        "flex min-h-[3.75rem] flex-col items-center justify-center gap-1 rounded-xl border px-1.5 py-2 text-center",
+                        item.active
+                          ? "border-teal-200 bg-teal-50 text-teal-800"
+                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                      )}
+                    >
+                      <item.Icon className="h-4.5 w-4.5 shrink-0" />
+                      <span className="text-[11px] font-black leading-tight tracking-[-0.01em]">{item.label}</span>
+                    </a>
+                  ))}
+                </div>
+              ) : null}
             </div>
           </nav>
         </div>
