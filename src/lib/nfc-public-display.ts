@@ -23,36 +23,27 @@ export const nfcPublicEmergencyBadge: Record<SubjectKind, string> = {
 };
 
 /**
- * 기억 동행·어린이 모드: 공개 열람 시 이름 일부만 표시
+ * 발견자·보호자 공통: 보호자가 정보공개용으로 입력한 이름은 모드와 관계없이 그대로 표시한다.
+ * (함수명은 기존 호출부 유지용 — 마스킹은 하지 않음.)
  */
 export function maskNameForPublicViewer(
   name: string,
-  kind: SubjectKind,
-  isPublicViewer: boolean
+  _kind: SubjectKind,
+  _isPublicViewer: boolean
 ): string {
-  if (!isPublicViewer) return name;
-  if (kind !== "child" && kind !== "elder") return name;
-  const t = name.trim();
-  if (t.length <= 1) return t;
-  if (t.length === 2) return `${t[0]}*`;
-  return `${t[0]}${"*".repeat(Math.min(t.length - 1, 3))}${t.length > 4 ? "…" : ""}`;
+  return typeof name === "string" ? name.trim() : String(name ?? "").trim();
 }
 
 /**
- * 기억 동행·어린이: 공개 시 비고(breed 필드) 마스킹. 반려·수화물은 식별에 필요해 그대로 둠.
+ * breed 등 보조 필드: 보호자 입력값을 마스킹하지 않고 표시. 비어 있을 때만 emptyFallback.
  */
 export function maskBreedFieldForPublic(
   breed: string | null | undefined,
-  kind: SubjectKind,
-  isPublicViewer: boolean,
+  _kind: SubjectKind,
+  _isPublicViewer: boolean,
   emptyFallback: string
 ): string {
-  if (!isPublicViewer) {
-    return breed?.trim() ? breed.trim() : emptyFallback;
-  }
   const s = breed?.trim();
   if (!s) return emptyFallback;
-  if (kind !== "child" && kind !== "elder") return s;
-  if (s.length <= 2) return "· · ·";
-  return `${s.slice(0, 1)}··· (일부만 표시)`;
+  return s;
 }
