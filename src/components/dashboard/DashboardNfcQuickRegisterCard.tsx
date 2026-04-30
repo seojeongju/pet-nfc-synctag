@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { linkTagSafe, logGuardianNfcAppEvent, prepareGuardianNfcNativeHandoff } from "@/app/actions/tag";
-import { CheckCircle, AlertCircle, Smartphone, ScanLine, TriangleAlert, PenLine, BadgeCheck } from "lucide-react";
+import { CheckCircle, AlertCircle, Smartphone, ScanLine, TriangleAlert, BadgeCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type SubjectKind } from "@/lib/subject-kind";
 import { isWebNfcReadSupported, readNfcTagUidOnce } from "@/lib/web-nfc-read-uid";
@@ -313,7 +313,7 @@ export function DashboardNfcQuickRegisterCard({
     setIsNativeWriteOpening(true);
     setTagMessage({
       type: "success",
-      text: "전용 앱 실행을 시도합니다. 앱이 열리면 NFC 등록을 진행해 주세요.",
+      text: "앱을 띄우는 중이에요. 열리면 화면만 따라가 태그에 대고 저장하세요.",
     });
 
     const envBase = normalizeAppBaseUrl(process.env.NEXT_PUBLIC_APP_URL);
@@ -447,13 +447,34 @@ export function DashboardNfcQuickRegisterCard({
             <Smartphone className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-base font-black text-slate-900">NFC 연결 관리</h3>
-            <p className="text-[11px] font-bold text-slate-400">{subtitle}</p>
+            <h3 className="text-base font-black text-slate-900">태그에 프로필 연결</h3>
+            <p className="text-[11px] font-bold text-slate-500 leading-relaxed">스캔하면 이 대상의 안내로 이어집니다.</p>
+            {subtitle ? <p className="text-[10px] font-bold text-slate-400 leading-relaxed">{subtitle}</p> : null}
           </div>
         </div>
 
         {subjects.length > 0 ? (
           <>
+            <ol className="flex flex-wrap items-center gap-2 text-[10px] font-bold text-slate-500">
+              <li className="flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">
+                <span className="font-black text-teal-600">1</span> 대상 선택
+              </li>
+              <span className="text-slate-300" aria-hidden>
+                →
+              </span>
+              <li className="flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">
+                <span className="font-black text-indigo-600">2</span> 아래 버튼으로 앱
+              </li>
+              <span className="text-slate-300" aria-hidden>
+                →
+              </span>
+              <li className="flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">
+                <span className="font-black text-slate-600">3</span> 앱에서 태그에 대고 저장
+              </li>
+            </ol>
+            <p className="text-xs font-bold text-slate-600 leading-snug">
+              주소(URL)는 앱·서비스가 맞춰 둡니다. 길게 입력하거나 복사할 일은 거의 없어요.
+            </p>
             <select
               value={selectedSubjectId}
               onChange={(e) => onChangeSubject(e.target.value)}
@@ -477,40 +498,38 @@ export function DashboardNfcQuickRegisterCard({
               }
               className="h-12 w-full rounded-2xl bg-indigo-600 font-black text-white hover:bg-indigo-500"
             >
-              {isNativeWriteOpening ? "앱 실행 중…" : "앱으로 NFC 등록하기"}
+              {isNativeWriteOpening ? "앱을 여는 중…" : "앱에서 이어서 연결·저장"}
             </Button>
-            <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-3">
-              <div className="flex items-start gap-2">
-                <Smartphone className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600" />
-                <div className="min-w-0">
-                  <p className="text-[11px] font-black text-indigo-800">기기·브라우저 상관없이 앱에서 등록</p>
-                  <p className="mt-0.5 text-[11px] font-bold text-indigo-700/90 leading-relaxed">
-                    등록 버튼 한 번으로 앱 실행을 먼저 시도합니다. 앱이 없으면 설치 화면으로 자동 이동합니다.
-                  </p>
-                </div>
-              </div>
-            </div>
+            <p className="text-[11px] font-bold text-slate-500 text-center leading-relaxed">
+              앱이 없으면 잠시 뒤 설치 안내(또는 스토어)로 안내해 드려요. 설치 뒤에는 같은 화면만 이어가면 됩니다.
+            </p>
             <a
               href={NFC_NATIVE_APP_STORE_URL || "/install"}
-              className="inline-flex items-center text-[11px] font-black text-indigo-700 underline underline-offset-2"
+              className="block text-center text-[11px] font-bold text-indigo-600 underline underline-offset-2"
             >
-              앱이 없나요? {NFC_NATIVE_APP_STORE_URL ? "스토어에서 설치하기" : "설치 안내 보기"}
+              앱이 전혀 없을 때만: {NFC_NATIVE_APP_STORE_URL ? "스토어에서 설치" : "설치 방법 보기"}
             </a>
             <button
               type="button"
               onClick={() => setShowWebFallback((prev) => !prev)}
-              className="text-[11px] font-black text-slate-500 underline underline-offset-2"
+              className="w-full text-[11px] font-bold text-slate-500 underline underline-offset-2"
             >
-              {showWebFallback ? "브라우저 직접 등록 접기" : "브라우저에서 직접 등록(고급) 열기"}
+              {showWebFallback
+                ? "닫기 — 앱 쓰기 권장"
+                : "이 휴대폰의 Chrome에서만 직접 하기(고급) — 앱이 더 쉬워요"}
             </button>
             {showWebFallback ? (
               <>
+                <p className="text-[11px] font-bold text-slate-600">
+                  <span className="font-black text-slate-800">고급:</span> Android Chrome + NFC일 때만 아래로 연결·기록이 가능해요. 순서는{" "}
+                  <span className="text-teal-700">태그 번호(스캔) → 연결</span> → <span className="text-emerald-700">태그에 주소 쓰기</span> 입니다.
+                </p>
                 <div className="flex items-center gap-2">
                   <Input
                     value={tagId}
                     onChange={(e) => setTagId(e.target.value)}
                     disabled={tenantSuspended || isPending || isNfcScanning}
-                    placeholder="NFC 태그 UID 입력"
+                    placeholder="탭 옆에 적힌 번호를 넣거나"
                     className="h-12 flex-1 rounded-2xl border-slate-100 bg-slate-50 font-bold"
                   />
                   <Button
@@ -519,7 +538,7 @@ export function DashboardNfcQuickRegisterCard({
                     disabled={tenantSuspended || isPending || isNfcScanning || isNfcWriting || !selectedSubjectId}
                     className="h-12 shrink-0 rounded-2xl bg-teal-600 px-4 font-black text-white hover:bg-teal-500"
                   >
-                    {isNfcScanning ? "스캔 중…" : "NFC 스캔"}
+                    {isNfcScanning ? "스캔 중…" : "NFC로 읽기"}
                   </Button>
                   <Button
                     type="button"
@@ -527,7 +546,7 @@ export function DashboardNfcQuickRegisterCard({
                     disabled={tenantSuspended || isPending || isNfcScanning || isNfcWriting || !selectedSubjectId || !tagId.trim()}
                     className="h-12 shrink-0 rounded-2xl bg-slate-900 px-5 font-black text-white hover:bg-teal-500"
                   >
-                    등록
+                    ① 연결
                   </Button>
                 </div>
                 <Button
@@ -546,56 +565,24 @@ export function DashboardNfcQuickRegisterCard({
                   }
                   className="h-11 w-full rounded-2xl bg-emerald-600 font-black text-white hover:bg-emerald-500"
                 >
-                  {isNfcWriting ? "기록 중…" : "태그에 프로필 주소 기록"}
+                  {isNfcWriting ? "쓰는 중…" : "② 태그에 이 주소 기록(Chrome+NDEF)"}
                 </Button>
-                {!webNfcSupported ? (
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    <div className="flex items-start gap-2">
-                      <ScanLine className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
-                      <div className="min-w-0">
-                        <p className="text-[11px] font-black text-slate-700">NFC 스캔 미지원 브라우저</p>
-                        <p className="mt-0.5 text-[11px] font-bold text-slate-500 leading-relaxed">
-                          현재 기기에서는 NFC 스캔이 어려워요. 위 입력칸에 UID를 직접 넣어 등록해 주세요.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="rounded-xl border border-teal-100 bg-teal-50/60 p-3">
-                    <div className="flex items-start gap-2">
-                      <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-teal-600" />
-                      <div className="min-w-0">
-                        <p className="text-[11px] font-black text-teal-800">빠른 스캔 안내</p>
-                        <p className="mt-0.5 text-[11px] font-bold text-teal-700/90 leading-relaxed">
-                          안드로이드 Chrome에서 NFC 스캔 버튼을 누른 뒤, 태그를 휴대폰 뒷면에 가까이 대 주세요.
-                        </p>
-                      </div>
-                    </div>
+                {!webNfcSupported && (
+                  <div className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+                    <ScanLine className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-500" />
+                    <p className="text-[10px] font-bold text-slate-600">이 환경에서는 스캔이 안 될 수 있어요. 윗칸에 번호를 직접 넣어 주세요.</p>
                   </div>
                 )}
-                {!webNfcWriteSupported ? (
-                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
-                    <div className="flex items-start gap-2">
-                      <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-                      <div className="min-w-0">
-                        <p className="text-[11px] font-black text-amber-800">브라우저 직접 기록 제한</p>
-                        <p className="mt-0.5 text-[11px] font-bold text-amber-700 leading-relaxed">
-                          이 브라우저에서는 태그 주소를 바로 쓰기 어려울 수 있어요. 가능하면 위의 앱 등록 버튼을 사용해 주세요.
-                        </p>
-                      </div>
-                    </div>
+                {!webNfcWriteSupported && webNfcSupported && (
+                  <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-2.5">
+                    <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
+                    <p className="text-[10px] font-bold text-amber-900/90">이 브라우저는 태그 &quot;쓰기&quot;가 막힐 수 있어요. 앱(위쪽 버튼)을 쓰시면 가장 쉬워요.</p>
                   </div>
-                ) : (
-                  <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-3">
-                    <div className="flex items-start gap-2">
-                      <PenLine className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                      <div className="min-w-0">
-                        <p className="text-[11px] font-black text-emerald-800">자동 주소 기록 지원</p>
-                        <p className="mt-0.5 text-[11px] font-bold text-emerald-700/90 leading-relaxed">
-                          주소를 직접 입력하지 않아도 됩니다. 버튼을 누른 뒤 태그를 폰 뒷면에 대면 서비스가 자동 기록해요.
-                        </p>
-                      </div>
-                    </div>
+                )}
+                {webNfcSupported && webNfcWriteSupported && (
+                  <div className="flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50/60 p-2.5">
+                    <BadgeCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                    <p className="text-[10px] font-bold text-emerald-900/85">②를 누른 뒤 휴대폰 뒤에 태그를 가까이 대면 주소가 자동으로 들어가요(직접 URL 칠 필요 없음).</p>
                   </div>
                 )}
                 {!webNfcWriteSupported ? (
