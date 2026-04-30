@@ -70,6 +70,8 @@ class MainActivity : ComponentActivity() {
     private var draftUid by mutableStateOf("")
     private var draftUrl by mutableStateOf("")
     private var draftHandoff by mutableStateOf("")
+    /** [nfc/write] `exp`(unix sec). 없으면 앱에서 만료를 판정하지 않음(서버 검증에 맡김) */
+    private var handoffExpUnixSec: Long? by mutableStateOf(null)
     /** 기록 시작 후 태그 쓰기에 사용하는 스냅샷 */
     private var pendingWrite: WritePayload? = null
     private var awaitingTag by mutableStateOf(false)
@@ -155,6 +157,7 @@ class MainActivity : ComponentActivity() {
                         draftUid = ""
                         draftUrl = ""
                         draftHandoff = ""
+                        handoffExpUnixSec = null
                         pendingWrite = null
                         awaitingTag = false
                         busy = false
@@ -232,6 +235,7 @@ class MainActivity : ComponentActivity() {
                     },
                     onDraftHandoff = {
                         draftHandoff = it
+                        handoffExpUnixSec = null
                         tagWriteSuccess = false
                     },
                     onFillProfileUrl = { fillProfileUrlFromUid() },
@@ -257,6 +261,7 @@ class MainActivity : ComponentActivity() {
                             draftUid = ""
                             draftUrl = ""
                             draftHandoff = ""
+                            handoffExpUnixSec = null
                             pendingWrite = null
                             awaitingTag = false
                             busy = false
@@ -458,6 +463,11 @@ class MainActivity : ComponentActivity() {
         val tok = draftHandoff.trim()
         // handoff(한번 쓰기)가 있으면 Link-U 서버 기록·웹과 합의된 세 값이 모두 있어야 함. 없으면 URL만으로 일반 쓰기
         val requireHandoff = tok.isNotEmpty()
+        if (requireHandoff && handoffExpUnixSec != null && nowUnixSec() > handoffExpUnixSec!!) {
+            statusText =
+                "한번 쓰기(인증)이 만료됐어요. 웹에서 [앱으로 NFC 등록하기]를 다시 눌러 새 인증을 받은 뒤 [태그에 쓰기]를 쓰세요."
+            return
+        }
         val missingRequired = if (requireHandoff) {
             u.isEmpty() || purl.isEmpty() || tok.isEmpty()
         } else {
@@ -584,28 +594,49 @@ class MainActivity : ComponentActivity() {
         val path = data.path.orEmpty()
         when {
             path == "/write" || path.startsWith("/write/") -> applyNfcWriteDeepLink(data)
-            path == "/pet" || path.startsWith("/pet/") -> openPetDashboardFromDeepLink(data)
+            path == "/pet" || path.startsWith("/pet/") -> applyNfcPetDeepLink(data)
             else -> { }
         }
     }
 
+    private fun nowUnixSec(): Long = System.currentTimeMillis() / 1000L
+
     /**
-     * [petidconnect://nfc/write?uid=&url=&handoffToken=]
+     * [petidconnect://nfc/write?uid=&url=&handoffToken=[&exp=]]
      * 세 쿼리가 **모두 비어 있지 않을 때만** 필드를 덮어쓴다. 하나라도 비면 상태는 유지하고 안내만 한다.
+     * [exp]가 있고 이미 지났으면 인증만 비우고 UID/URL은 남긴 뒤 재발급을 안내한다.
      */
     private fun applyNfcWriteDeepLink(data: Uri) {
         val uid = data.getQueryParameter("uid")?.trim().orEmpty()
         val profileUrl = data.getQueryParameter("url")?.trim().orEmpty()
         val handoffToken = data.getQueryParameter("handoffToken")?.trim().orEmpty()
+        val expSec = data.getQueryParameter("exp")?.trim().orEmpty().toLongOrNull()
 
         if (uid.isBlank() || profileUrl.isBlank() || handoffToken.isBlank()) {
             statusText = "자동으로 못 가져왔어요. 웹에서 다시 열어 주시거나 아래에 직접 넣어 주세요. (딥링크에 uid·url·handoffToken이 모두 있어야 덮어씁니다)"
             return
         }
 
+        if (expSec != null && nowUnixSec() > expSec) {
+            draftUid = uid
+            draftUrl = profileUrl
+            draftHandoff = ""
+            handoffExpUnixSec = null
+            appMode = AppMode.Tools
+            toolsTemplate = "linku"
+            entryFromDeepLink = true
+            pendingWrite = null
+            awaitingTag = false
+            tagWriteSuccess = false
+            statusText =
+                "한번 쓰기(인증)이 만료됐어요. 웹에서 [앱으로 NFC 등록하기]를 다시 눌러 새 인증을 받은 뒤 [태그에 쓰기]를 쓰세요. (UID·URL은 맞게 남겨뒀어요.)"
+            return
+        }
+
         draftUid = uid
         draftUrl = profileUrl
         draftHandoff = handoffToken
+        handoffExpUnixSec = expSec
         appMode = AppMode.Tools
         toolsTemplate = "linku"
         entryFromDeepLink = true
@@ -624,36 +655,63 @@ class MainActivity : ComponentActivity() {
         return BuildConfig.NATIVE_API_BASE_URL.trim().trimEnd('/')
     }
 
+    private val nfcPetAllowedKinds = setOf("pet", "elder", "child", "luggage", "gold")
+
     /**
-     * [petidconnect://nfc/pet?kind=dog&pet_id=...&tenant=...]
-     * 기기 브라우저에서 `…/dashboard/{kind}/pets/{id}?tenant#nfc` 를 연다(관리·태그 UI는 웹).
+     * [petidconnect://nfc/pet?kind=&pet_id=&...&app_base=&uid=&...]
+     * 앱퍼스트: **브라우저로 보내지 않고** ‘보호자 연동’ NFC 쓰기 화면에 값을 맞춘다.
+     * (웹 대시보드 [앱으로 NFC 등록하기] / handoff 실패 시 `nfc/pet`로 진입)
      */
-    private fun openPetDashboardFromDeepLink(data: Uri) {
+    private fun applyNfcPetDeepLink(data: Uri) {
         val kind = data.getQueryParameter("kind")?.trim().orEmpty()
         val petId = data.getQueryParameter("pet_id")?.trim().orEmpty()
         val tenant = data.getQueryParameter("tenant")?.trim()?.takeIf { it.isNotEmpty() }
+        val appBaseParam = data.getQueryParameter("app_base")?.trim().orEmpty()
+        val uid = data.getQueryParameter("uid")?.trim().orEmpty()
+        val entry = data.getQueryParameter("entry")?.trim().orEmpty()
+
         if (kind.isBlank() || petId.isBlank()) {
-            statusText = "반려 상세(웹)를 열려면 kind·pet_id 쿼리가 필요해요. 예: …/nfc/pet?kind=dog&pet_id=…"
+            statusText =
+                "딥링크에 kind·pet_id가 필요해요. 예: …/nfc/pet?kind=pet&pet_id=…"
             return
         }
-        val origin = siteOriginForDashboard()
-        if (origin.isEmpty()) {
-            statusText = "웹 주소(Link-U 서비스/프로필 사이트)를 [Link-U 서비스에 기록]에 넣은 뒤 다시 시도해 주세요."
+        if (kind !in nfcPetAllowedKinds) {
+            statusText =
+                "kind는 pet, elder, child, luggage, gold 중 하나여야 해요. (받은 값: $kind)"
             return
         }
-        val tenantQs = if (tenant != null) {
-            "?tenant=" + URLEncoder.encode(tenant, Charsets.UTF_8.name())
+
+        val base = appBaseParam.trim().trimEnd('/').ifEmpty { null } ?: siteOriginForDashboard()
+        if (base.isEmpty()) {
+            statusText =
+                "웹 앱 주소를 알 수 없어요. 딥링크에 app_base=… 를 넣거나, 앱 [Link-U 서비스에 기록]에 프로필/서비스 주소를 넣고 저장하세요."
+            return
+        }
+
+        draftHandoff = ""
+        handoffExpUnixSec = null
+        draftUid = uid
+        if (uid.isNotBlank()) {
+            val enc = URLEncoder.encode(uid, Charsets.UTF_8.name())
+            draftUrl = "$base/t/$enc"
         } else {
-            ""
+            draftUrl = ""
         }
-        val url = "$origin/dashboard/$kind/pets/$petId$tenantQs#nfc"
-        val view = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-        if (view.resolveActivity(packageManager) == null) {
-            statusText = "이 링크를 열 앱(브라우저)이 없어요."
-            return
+
+        appMode = AppMode.Tools
+        toolsTemplate = "linku"
+        entryFromDeepLink = true
+        pendingWrite = null
+        awaitingTag = false
+        tagWriteSuccess = false
+
+        val entryHint = if (entry.isNotEmpty()) " · $entry" else ""
+        val tenantHint = if (tenant != null) " · tenant=$tenant" else ""
+        statusText = if (uid.isNotBlank()) {
+            "‘$kind’ $petId$entryHint$tenantHint 연동. 태그 URL을 맞췄어요. [태그에 쓰기]로 태그에 대 주세요."
+        } else {
+            "‘$kind’ $petId$entryHint$tenantHint 연동. ‘태그·제품 ID’(UID)를 아래에 넣고 [번호만 넣고 주소 자동으로 만들기] 뒤 [태그에 쓰기]를 쓰세요. (또는 상세에서 태그에 대 읽기)"
         }
-        startActivity(view)
-        statusText = "브라우저에서 이 반려의 NFC 태그 섹션을 열었어요. 앱으로 돌아올 수 있어요."
     }
 
     private fun applyToolsTemplate(template: String) {

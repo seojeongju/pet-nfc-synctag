@@ -43,17 +43,16 @@ NATIVE_HMAC_SECRET_NEXT=
 
 **딥링크 vs 수동 입력:** `…/nfc/write`에 `uid`·`url`·`handoffToken`이 **셋 다** 있을 때만 필드를 덮어쓴다. 하나라도 비어 있으면 기존 입력은 유지되고, 안내 문구만 갱신된다.
 
-### 4-2) 반려 상세(웹) — `…/nfc/pet` (태그 섹션으로 열기)
+### 4-2) 보호자 대시보드에서 온 `…/nfc/pet` (앱 퍼스트)
 
-태그 **관리 UI는 웹**에 두고, 앱은 기본 브라우저로 보호자 대시보드의 해당 반려 페이지를 연다(앵커 `#nfc`).
+앱은 **브라우저로 보내지 않고**, `Link-U 연동(보호자)` NFC 쓰기 화면으로 진입하며 `app_base`·`uid`가 있으면 `…/t/{uid}` URL을 맞춰 둡니다(웹 `앱으로 NFC 등록하기`와 동일한 계약).
 
-`petidconnect://nfc/pet?kind=dog&pet_id=<UUID>&tenant=<선택>`
+`petidconnect://nfc/pet?kind=pet&pet_id=<id>&tenant=<선택>&app_base=<https://…>&uid=<선택>`
 
-- `kind`: 대시보드 경로의 주제 종류(예: `dog`, `cat` — 웹 ` /dashboard/{kind}/pets/...` 와 동일).
-- `tenant`: 멀티 테넌트일 때만(쿼리 `?tenant=` 와 동일).
-- 열리는 URL: `{Link-U 서비스 주소 또는 프로필 사이트}/dashboard/{kind}/pets/{pet_id}?tenant=…#nfc`  
-  앱에 저장한 **Link-U 서비스 주소·프로필 사이트**(`local.properties` / 앱 내 설정)가 비어 있으면 동작하지 않는다.
-- 보호자 **대시보드 홈**(`NFC 빠른 등록`)·**반려 상세** 화면에서도 동일 딥링크 버튼이 나올 수 있음(웹 `NEXT_PUBLIC_NFC_NATIVE_HANDOFF_ENABLED`·Android).
+- `kind`: `pet` | `elder` | `child` | `luggage` | `gold` (웹 `subjectKind`와 동일).
+- `app_base`가 있으면 우선, 없으면 `local.properties` / 앱 **[Link-U 서비스에 기록]** 에 저장한 프로필/서비스 주소를 씀.
+- `uid`가 있으면 `draftUrl`까지 채움(인증 토큰은 없음 → 태그에 쓰기만, 서버 `native-write` handoff는 생략).
+- 상세(고급)로 접은 뒤 **「번호만 넣고 주소 자동으로 만들기」**로 URL을 만들 수 있음(UID가 비어 있을 때).
 
 서버에 쓰기 완료를 보고하려면 `NFC_NATIVE_APP_API_KEY`·`NFC_NATIVE_HANDOFF_SECRET` 등이 서버에 맞게 설정돼 있어야 하며, 앱 쪽 API URL·키가 비어 있으면 **태그 쓰기는 성공해도 서버 보고는 건너뛰고** 안내만 합니다(개발용).
 
