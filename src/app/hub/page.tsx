@@ -106,7 +106,7 @@ async function getPersonalOnboardingProgress(
        FROM pets
        WHERE owner_id = ?
          AND tenant_id IS NULL
-         AND COALESCE(subject_kind, 'pet') = ?`
+         AND subject_kind = ?`
     )
     .bind(ownerId, subjectKind)
     .first<{ count?: number | string | null }>();
@@ -118,7 +118,7 @@ async function getPersonalOnboardingProgress(
        INNER JOIN pets p ON p.id = t.pet_id
        WHERE p.owner_id = ?
          AND p.tenant_id IS NULL
-         AND COALESCE(p.subject_kind, 'pet') = ?
+         AND p.subject_kind = ?
          AND t.pet_id IS NOT NULL`
     )
     .bind(ownerId, subjectKind)

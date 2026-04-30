@@ -116,13 +116,18 @@ export async function linkTag(petId: string, tagId: string) {
       .bind(normalizedTagId)
       .first<{ assigned_subject_kind: string | null }>()
       .catch(() => null);
+    // 출고 태그의 assigned_subject_kind는 재고 메타용. 관리 대상 모드(링크유-메모리 등)는 pets.subject_kind가 본질이며,
+    // 이미 설정된 프로필을 'pet' 등으로 덮어쓰지 않음(구 데이터: subject_kind 비어 있을 때만 태그로 보정).
     if (modeRow?.assigned_subject_kind) {
       const k = parseSubjectKind(modeRow.assigned_subject_kind);
-      await db
-        .prepare("UPDATE pets SET subject_kind = ? WHERE id = ?")
-        .bind(k, petId)
-        .run()
-        .catch(() => {});
+      const currentKind = (petScope.subject_kind ?? "").trim();
+      if (!currentKind) {
+        await db
+          .prepare("UPDATE pets SET subject_kind = ? WHERE id = ?")
+          .bind(k, petId)
+          .run()
+          .catch(() => {});
+      }
     }
 
     await db.prepare(`

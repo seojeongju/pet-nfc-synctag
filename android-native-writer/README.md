@@ -31,11 +31,14 @@ NATIVE_HMAC_SECRET_NEXT=
 2. Gradle sync
 3. `app` 실행
 
+**일반(앱만 켠) 사용자:** 랜딩 → **「NFC 쓰기」** → 기존 **NFC 쓰기(도구 격자, 모바일 웹 링크·명함 등)**. 보호자(Link-U)는 격자에서 **「보호자 연동」** 타일을 누르면 됩니다.  
+**웹 연동 사용자:** `petidconnect://nfc/write` / `…/nfc/pet` 딥링크로 앱이 열릴 때만 **보호자 전용(태그 쓰기 CTA 위주)** 화면이 먼저 뜹니다.
+
 ## 4) 딥링크·수동 입력
 
 ### 4-1) 태그 쓰기(Link-U) — `…/nfc/write`
 
-딥링크로 앱을 열면 **UID / URL / 토큰** 필드가 채워집니다. **「기록 시작」** 을 누른 뒤 태그를 대면 NDEF URL 쓰기가 진행됩니다.
+딥링크로 앱을 열면 **보호자 연동 전용 화면**이 열리고 **UID / URL / 토큰** 필드가 채워집니다. **「태그에 쓰기」** 를 누른 뒤 태그를 대면 NDEF URL 쓰기가 진행됩니다.
 
 `petidconnect://nfc/write?uid=04:A1:B2&url=https://example.com/t/...&handoffToken=...`
 
@@ -45,7 +48,7 @@ NATIVE_HMAC_SECRET_NEXT=
 
 ### 4-2) 보호자 대시보드에서 온 `…/nfc/pet` (앱 퍼스트)
 
-앱은 **브라우저로 보내지 않고**, `Link-U 연동(보호자)` NFC 쓰기 화면으로 진입하며 `app_base`·`uid`가 있으면 `…/t/{uid}` URL을 맞춰 둡니다(웹 `앱으로 NFC 등록하기`와 동일한 계약).
+앱은 **브라우저로 보내지 않고**, `…/nfc/write`·`…/nfc/pet` 딥링크로 열릴 때 **「보호자 연동」전용 화면**을 먼저 띄웁니다(일반 NFC 쓰기의 도구 격자·3단계 힌트 없음). **「태그에 쓰기」**가 위쪽에 바로 보이고, **[다른 쓰기]**로 기존 명함·Wi-Fi 등 격자 화면으로 전환할 수 있습니다. `app_base`·`uid`가 있으면 `…/t/{uid}` URL을 맞춰 둡니다(웹 `앱으로 NFC 등록하기`와 동일한 계약).
 
 `petidconnect://nfc/pet?kind=pet&pet_id=<id>&tenant=<선택>&app_base=<https://…>&uid=<선택>`
 

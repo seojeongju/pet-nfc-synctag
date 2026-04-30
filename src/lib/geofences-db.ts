@@ -29,7 +29,7 @@ export async function listGeofencesForOwnerKind(
        INNER JOIN pets p ON p.id = g.pet_id
        WHERE g.owner_id = ?
          AND p.tenant_id = ?
-         AND COALESCE(p.subject_kind, 'pet') = ?
+         AND p.subject_kind = ?
        ORDER BY datetime(g.updated_at) DESC`
     : `SELECT g.id, g.owner_id, g.pet_id, g.name, g.latitude, g.longitude, g.radius_meters,
               g.is_active, g.created_at, g.updated_at, p.name AS pet_name
@@ -37,7 +37,7 @@ export async function listGeofencesForOwnerKind(
        INNER JOIN pets p ON p.id = g.pet_id
        WHERE g.owner_id = ?
          AND p.tenant_id IS NULL
-         AND COALESCE(p.subject_kind, 'pet') = ?
+         AND p.subject_kind = ?
        ORDER BY datetime(g.updated_at) DESC`;
   const stmt = db.prepare(query);
   const { results } = await (tenant

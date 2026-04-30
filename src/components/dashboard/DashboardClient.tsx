@@ -9,7 +9,14 @@ import GoldDashboard from "./modes/GoldDashboard";
 
 interface DashboardClientProps {
   session: { user: { name?: string | null; image?: string | null } };
-  pets: Array<{ id: string; name: string; breed?: string | null; photo_url?: string | null; is_lost?: number | null }>;
+  pets: Array<{
+    id: string;
+    name: string;
+    breed?: string | null;
+    photo_url?: string | null;
+    is_lost?: number | null;
+    subject_kind?: SubjectKind;
+  }>;
   isAdmin: boolean;
   subjectKind: SubjectKind;
   modeAnnouncements: ModeAnnouncementRow[];

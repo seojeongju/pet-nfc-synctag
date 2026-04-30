@@ -22,6 +22,9 @@ function sanitizeFlightUrl(value: unknown): string | null {
 /** D1 행을 RSC 직렬화에 안전한 순수 JSON 형태로 맞춤 */
 function normalizePetListRow(row: Record<string, unknown>) {
   const id = sanitizeFlightString(row.id).trim();
+  const rawSk = row.subject_kind;
+  const skTrim =
+    rawSk == null ? null : sanitizeFlightString(rawSk).trim() || null;
   return {
     id,
     name: sanitizeFlightString(row.name),
@@ -29,6 +32,7 @@ function normalizePetListRow(row: Record<string, unknown>) {
     photo_url: row.photo_url == null ? null : sanitizeFlightUrl(row.photo_url),
     /** 0 = 안전, 1 = 실종 신고 중 */
     is_lost: row.is_lost == null ? 0 : Number(row.is_lost),
+    subject_kind: parseSubjectKind(skTrim ?? undefined),
   };
 }
 
@@ -43,8 +47,8 @@ export async function getPetsWithDb(
   const kind = parseSubjectKind(subjectKind);
   const tenant = (tenantId ?? "").trim();
   const query = tenant
-    ? "SELECT * FROM pets WHERE owner_id = ? AND tenant_id = ? AND COALESCE(subject_kind, 'pet') = ? ORDER BY created_at DESC"
-    : "SELECT * FROM pets WHERE owner_id = ? AND tenant_id IS NULL AND COALESCE(subject_kind, 'pet') = ? ORDER BY created_at DESC";
+    ? "SELECT * FROM pets WHERE owner_id = ? AND tenant_id = ? AND subject_kind = ? ORDER BY created_at DESC"
+    : "SELECT * FROM pets WHERE owner_id = ? AND tenant_id IS NULL AND subject_kind = ? ORDER BY created_at DESC";
   const stmt = db.prepare(query);
   const { results } = await (tenant
     ? stmt.bind(ownerId, tenant, kind)

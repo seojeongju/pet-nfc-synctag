@@ -40,7 +40,7 @@ export async function fetchVisibleAnnouncementsForGuardianWithDb(
               )
               AND t.batch_id IS NOT NULL
               AND t.batch_id = m.target_batch_id
-              AND COALESCE(p.subject_kind, 'pet') = m.subject_kind
+              AND p.subject_kind = m.subject_kind
           )
         )
       ORDER BY m.priority DESC, datetime(COALESCE(m.published_at, m.created_at)) DESC

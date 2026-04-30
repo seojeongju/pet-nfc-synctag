@@ -422,20 +422,22 @@ export default function PetProfileClient({
               </p>
 
               {treatAsPublicVisitor ? (
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex flex-col items-center p-4 rounded-3xl bg-teal-50 border border-teal-100/50 shadow-sm">
-                    <div className="w-10 h-10 rounded-2xl bg-teal-500 flex items-center justify-center text-white mb-2 shadow-lg shadow-teal-500/20">
-                      <Phone className="w-5 h-5" />
+                <div className="mx-auto w-full max-w-[11.5rem] sm:max-w-[12.5rem]">
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div className="flex flex-col items-center p-2 rounded-2xl bg-teal-50 border border-teal-100/50 shadow-sm">
+                      <div className="w-5 h-5 rounded-lg bg-teal-500 flex items-center justify-center text-white mb-1 shadow-md shadow-teal-500/20">
+                        <Phone className="h-2.5 w-2.5" />
+                      </div>
+                      <span className="text-[8px] font-black text-teal-600/70 mb-0.5 tracking-tighter">STEP 1</span>
+                      <span className="text-[10px] font-black text-teal-900 leading-tight text-center">가족에게 연락</span>
                     </div>
-                    <span className="text-[10px] font-black text-teal-600/70 mb-0.5 tracking-tighter">STEP 1</span>
-                    <span className="text-[13px] font-black text-teal-900">가족에게 연락</span>
-                  </div>
-                  <div className="flex flex-col items-center p-4 rounded-3xl bg-slate-50 border border-slate-100 shadow-sm">
-                    <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center text-slate-400 mb-2 shadow-sm">
-                      <MapPin className="w-5 h-5" />
+                    <div className="flex flex-col items-center p-2 rounded-2xl bg-slate-50 border border-slate-100 shadow-sm">
+                      <div className="w-5 h-5 rounded-lg bg-white flex items-center justify-center text-slate-400 mb-1 shadow-sm">
+                        <MapPin className="h-2.5 w-2.5" />
+                      </div>
+                      <span className="text-[8px] font-black text-slate-400 mb-0.5 tracking-tighter">STEP 2</span>
+                      <span className="text-[10px] font-black text-slate-600 leading-tight text-center">위치 보내기</span>
                     </div>
-                    <span className="text-[10px] font-black text-slate-400 mb-0.5 tracking-tighter">STEP 2</span>
-                    <span className="text-[13px] font-black text-slate-600">위치 보내기</span>
                   </div>
                 </div>
               ) : null}
@@ -443,15 +445,15 @@ export default function PetProfileClient({
               {/* Action Buttons */}
               <div className="mt-2 focus-within:ring-0">
                  {pet.emergency_contact ? (
-                 <div className="grid grid-cols-2 gap-3">
+                 <div className="grid grid-cols-1 gap-3">
                     <a
                       href={`tel:${pet.emergency_contact}`}
                       className="group block w-full min-w-0"
                       onClick={() => logFinderClick("call_click")}
                     >
-                       <Button className="flex h-20 w-full min-w-0 flex-col items-center justify-center gap-1 rounded-[28px] border-b-4 border-teal-700 bg-teal-500 px-2 text-white shadow-xl shadow-teal-500/20 transition-all hover:bg-teal-600 active:scale-[0.97]">
-                          <Phone className="h-6 w-6 animate-pulse" />
-                          <span className="text-[13px] font-black leading-tight">
+                       <Button className="flex h-24 w-full min-w-0 flex-col items-center justify-center gap-1.5 rounded-[28px] border-b-4 border-teal-700 bg-teal-500 px-3 text-white shadow-xl shadow-teal-500/20 transition-all hover:bg-teal-600 active:scale-[0.97] sm:h-28">
+                          <Phone className="h-7 w-7 sm:h-8 sm:w-8 animate-pulse" />
+                          <span className="text-sm font-black leading-tight sm:text-[15px]">
                             {treatAsPublicVisitor ? nfc.callCta : "보호자 전화"}
                           </span>
                        </Button>
@@ -462,10 +464,10 @@ export default function PetProfileClient({
                       onClick={() => logFinderClick("sms_click")}
                     >
                       <Button
-                        className="flex h-20 w-full min-w-0 flex-col items-center justify-center gap-1 rounded-[28px] border-b-4 border-slate-300 bg-slate-100 px-2 text-slate-700 shadow-lg transition-all hover:bg-slate-200 active:scale-[0.97]"
+                        className="flex h-24 w-full min-w-0 flex-col items-center justify-center gap-1.5 rounded-[28px] border-b-4 border-slate-300 bg-slate-100 px-3 text-slate-700 shadow-lg transition-all hover:bg-slate-200 active:scale-[0.97] sm:h-28"
                       >
-                         <MessageCircle className="h-6 w-6 text-teal-600" />
-                         <span className="text-[13px] font-black leading-tight">
+                         <MessageCircle className="h-7 w-7 text-teal-600 sm:h-8 sm:w-8" />
+                         <span className="text-sm font-black leading-tight sm:text-[15px]">
                            {treatAsPublicVisitor ? "문자로 알리기" : "보호자 문자"}
                          </span>
                       </Button>

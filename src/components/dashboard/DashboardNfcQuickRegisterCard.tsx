@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { linkTagSafe, logGuardianNfcAppEvent, prepareGuardianNfcNativeHandoff } from "@/app/actions/tag";
 import { CheckCircle, AlertCircle, Smartphone, ScanLine } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { type SubjectKind } from "@/lib/subject-kind";
+import { parseSubjectKind, type SubjectKind } from "@/lib/subject-kind";
 import { isWebNfcReadSupported, readNfcTagUidOnce } from "@/lib/web-nfc-read-uid";
 import { normalizeTagUid } from "@/lib/tag-uid-format";
 import { normalizeAppBaseUrl } from "@/lib/nfc-app-origin-guard";
@@ -16,7 +16,12 @@ import { normalizeAppBaseUrl } from "@/lib/nfc-app-origin-guard";
 const STALE_ACTION_RELOAD_KEY = "dashboard-nfc-stale-action-reload-once";
 const NFC_NATIVE_APP_STORE_URL = (process.env.NEXT_PUBLIC_NFC_NATIVE_APP_STORE_URL || "").trim();
 
-export type DashboardNfcSubject = { id: string; name: string; breed?: string | null };
+export type DashboardNfcSubject = {
+  id: string;
+  name: string;
+  breed?: string | null;
+  subject_kind?: SubjectKind;
+};
 
 type Props = {
   subjectKind: SubjectKind;
@@ -66,6 +71,12 @@ export function DashboardNfcQuickRegisterCard({
   const tenantQs = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : "";
   const kindQs = tenantQs;
   const webNfcSupported = isWebNfcReadSupported();
+
+  /** 서버/캐시 이슈에도 현재 대시보드 모드와 일치하는 대상만 선택 목록에 노출 */
+  const subjectsInMode = useMemo(
+    () => subjects.filter((s) => parseSubjectKind(s.subject_kind) === subjectKind),
+    [subjects, subjectKind]
+  );
 
   const isStaleServerActionError = (error: unknown): boolean => {
     const message = error instanceof Error ? error.message : String(error ?? "");
@@ -251,23 +262,23 @@ export function DashboardNfcQuickRegisterCard({
   };
 
   useEffect(() => {
-    if (subjects.length === 0) {
+    if (subjectsInMode.length === 0) {
       setSelectedSubjectId("");
       onSelectedSubjectIdChange?.("");
       return;
     }
     const subQ = searchParams.get("pet");
-    if (subQ && subjects.some((p) => p.id === subQ)) {
+    if (subQ && subjectsInMode.some((p) => p.id === subQ)) {
       setSelectedSubjectId(subQ);
       onSelectedSubjectIdChange?.(subQ);
       return;
     }
     setSelectedSubjectId((prev) => {
-      const next = prev || subjects[0].id;
+      const next = prev && subjectsInMode.some((p) => p.id === prev) ? prev : subjectsInMode[0]!.id;
       onSelectedSubjectIdChange?.(next);
       return next;
     });
-  }, [subjects, searchParams, onSelectedSubjectIdChange]);
+  }, [subjectsInMode, searchParams, onSelectedSubjectIdChange]);
 
   useEffect(() => {
     if (searchParams.get("onboarding") !== "nfc") {
@@ -323,7 +334,7 @@ export function DashboardNfcQuickRegisterCard({
           </div>
         </div>
 
-        {subjects.length > 0 ? (
+        {subjectsInMode.length > 0 ? (
           <>
             <ol className="list-decimal space-y-1.5 pl-4 text-[11px] font-bold text-slate-600 leading-relaxed">
               <li>연결할 대상(프로필)을 고릅니다.</li>
@@ -341,7 +352,7 @@ export function DashboardNfcQuickRegisterCard({
               disabled={tenantSuspended}
               className="h-12 w-full rounded-2xl border border-slate-100 bg-slate-50 px-4 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/20"
             >
-              {subjects.map((s) => (
+              {subjectsInMode.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name} {s.breed ? `(${s.breed})` : ""}
                 </option>

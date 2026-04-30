@@ -150,11 +150,515 @@ class WriterNfcUiProps(
     val onOpenNfcSettings: () -> Unit
 )
 
+/**
+ * 웹 `nfc/write`·`nfc/pet` 딥링크로만 진입(랜딩 [NFC 쓰기]와 무관). 도구 격자·NFC 3단계 힌트 없이
+ * [태그에 쓰기]·불러온 값을 위에 둡니다. [onOpenFullNfcTools]로 일반 NFC 쓰기(격자)로 전환.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun GuardianDedicatedHandoffScreen(
+    onOpenFullNfcTools: () -> Unit,
+    nfcUi: WriterNfcUiProps,
+    status: String,
+    draftUid: String,
+    draftUrl: String,
+    draftHandoff: String,
+    onDraftUid: (String) -> Unit,
+    onDraftUrl: (String) -> Unit,
+    onDraftHandoff: (String) -> Unit,
+    onFillProfileUrl: () -> Unit,
+    linkUWriteReady: Boolean,
+    awaitingTag: Boolean,
+    busy: Boolean,
+    onPrepareWrite: (String?) -> Unit,
+    readOnlyMode: Boolean,
+    onToggleReadOnly: (Boolean) -> Unit,
+    showServerFields: Boolean,
+    onToggleServerFields: (Boolean) -> Unit,
+    serverBaseInput: String,
+    serverKeyInput: String,
+    profileSiteInput: String,
+    onServerBase: (String) -> Unit,
+    onServerKey: (String) -> Unit,
+    onProfileSite: (String) -> Unit,
+    onSaveServer: () -> Unit
+) {
+    val scroll = rememberScrollState()
+    var showTechnicalDetails by remember { mutableStateOf(false) }
+    val hasHandoff = draftHandoff.isNotBlank()
+    val hasUid = draftUid.isNotBlank()
+    val hasUrl = draftUrl.isNotBlank()
+    val tone = statusToneFor(status, awaitingTag, busy)
+    val canTapWrite = (linkUWriteReady || awaitingTag) && !busy && !nfcUi.tagWriteSuccess
+    val showSuccessPill = nfcUi.tagWriteSuccess && !busy
+
+    BackHandler {
+        onOpenFullNfcTools()
+    }
+    Box(Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.surface)
+                .imePadding()
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.linearGradient(
+                            listOf(
+                                Color(0xFF0D9488),
+                                Color(0xFF0F766E),
+                                Color(0xFF0D9488)
+                            )
+                        )
+                    )
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color.White.copy(0.15f))
+                            .border(1.dp, Color.White.copy(0.2f), RoundedCornerShape(12.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Link,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                            tint = Color.White
+                        )
+                    }
+                    Column(Modifier.padding(start = 12.dp)) {
+                        Text(
+                            "Link-U / 보호자",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White.copy(0.7f),
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp
+                        )
+                        Text(
+                            "보호자 연동",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Color.White,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-0.3).sp
+                        )
+                        Text(
+                            "웹에서 넘어온 UID·링크(·인증)로 태그에 저장합니다. 아래 [태그에 쓰기]만 쓰면 돼요.",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontSize = 10.sp,
+                            color = Color.White.copy(0.65f),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    Spacer(Modifier.weight(1f))
+                    TextButton(
+                        onClick = onOpenFullNfcTools,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color.White.copy(0.12f))
+                    ) {
+                        Text(
+                            "다른 쓰기",
+                            color = Color.White,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                }
+            }
+
+            NfcUserEducationalBanner(
+                state = nfcUi.nfcUserBanner,
+                onOpenNfcSettings = nfcUi.onOpenNfcSettings
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ModeSelectOption(
+                    modifier = Modifier.weight(1f),
+                    title = "읽기/쓰기",
+                    subtitle = "내용 읽기 + 기록",
+                    icon = Icons.Filled.Nfc,
+                    selected = !readOnlyMode,
+                    onSelect = { onToggleReadOnly(false) }
+                )
+                ModeSelectOption(
+                    modifier = Modifier.weight(1f),
+                    title = "읽기 전용",
+                    subtitle = "읽기만 가능, 잠금",
+                    icon = Icons.Filled.Key,
+                    selected = readOnlyMode,
+                    onSelect = { onToggleReadOnly(true) }
+                )
+            }
+            Text(
+                "읽기 전용이면 일부 태그는 쓰기를 막을 수 있어요.",
+                style = MaterialTheme.typography.labelSmall,
+                fontSize = 9.sp,
+                color = Color(0xFF9E9E9E),
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 2.dp)
+            )
+
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(scroll)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    "① [태그에 쓰기] → ② 휴대폰 뒤에 태그를 대기",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                if (status.isNotBlank()) {
+                    StatusMessageCard(message = status, tone = tone)
+                }
+
+                Button(
+                    onClick = { onPrepareWrite(null) },
+                    enabled = canTapWrite,
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (showSuccessPill) {
+                            Color(0xFF0F766E)
+                        } else {
+                            MaterialTheme.colorScheme.primary
+                        },
+                        contentColor = Color.White,
+                        disabledContainerColor = if (showSuccessPill) {
+                            Color(0xFF0F766E)
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        },
+                        disabledContentColor = if (showSuccessPill) {
+                            Color.White
+                        } else {
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
+                        }
+                    )
+                ) {
+                    when {
+                        nfcUi.tagWriteSuccess && !busy -> {
+                            Icon(
+                                imageVector = Icons.Filled.Check,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .padding(end = 8.dp)
+                                    .size(20.dp)
+                            )
+                            Text(
+                                "쓰기 완료",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Black
+                            )
+                        }
+                        busy && awaitingTag -> {
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .padding(end = 8.dp)
+                                    .size(16.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                            Text(
+                                "태그에 쓰는 중…",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Black
+                            )
+                        }
+                        busy -> {
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .padding(end = 8.dp)
+                                    .size(16.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                            Text("잠시만요…", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
+                        }
+                        else -> {
+                            Icon(
+                                imageVector = if (awaitingTag) Icons.Filled.Nfc else Icons.Filled.PhoneAndroid,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .padding(end = 8.dp)
+                                    .size(20.dp)
+                            )
+                            Text(
+                                if (awaitingTag) "휴대폰 뒤에 태그를 대 주세요" else "태그에 쓰기",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Black
+                            )
+                        }
+                    }
+                }
+                if (!linkUWriteReady && !awaitingTag && !nfcUi.tagWriteSuccess && status.isBlank()) {
+                    Text(
+                        "열릴 URL(또는 인증)을 채우면 [태그에 쓰기]를 쓸 수 있어요. 웹 ‘연결·저장’이 있으면 자동으로 내려옵니다.",
+                        style = MaterialTheme.typography.labelSmall,
+                        lineHeight = 16.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                    )
+                ) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        if (linkUWriteReady) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Filled.Check,
+                                    null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                                Spacer(Modifier.width(10.dp))
+                                Text(
+                                    "쓰기 준비가 됐어요. 누른 뒤 휴대폰 뒤에 태그를 가까이 대면 됩니다.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    lineHeight = 20.sp,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        } else {
+                            Text(
+                                "필수 값이 아직 모자라면 아래 [상세]에서 넣을 수 있어요.",
+                                style = MaterialTheme.typography.bodySmall,
+                                lineHeight = 20.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.88f)
+                            )
+                        }
+                        DraftStatusRow(
+                            ok = hasUid,
+                            title = "태그·제품 ID(UID)",
+                            shortLine = if (hasUid) summarizeUidForDisplay(draftUid) else "필요 시 입력"
+                        )
+                        DraftStatusRow(
+                            ok = hasUrl,
+                            title = "열릴 링크(URL)",
+                            shortLine = if (hasUrl) summarizeUrlForDisplay(draftUrl) else "없음"
+                        )
+                        DraftStatusRow(
+                            ok = hasHandoff,
+                            title = if (hasHandoff) "한번 쓰는 인증" else "한번 쓰는 인증(선택)",
+                            shortLine = if (hasHandoff) {
+                                summarizeHandoffForDisplay(draftHandoff)
+                            } else {
+                                "없으면 URL만 쓰기(또는 nfc/pet)"
+                            }
+                        )
+                    }
+                }
+
+                TextButton(
+                    onClick = { showTechnicalDetails = !showTechnicalDetails },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        if (showTechnicalDetails) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .padding(end = 8.dp)
+                            .size(20.dp)
+                    )
+                    Text(if (showTechnicalDetails) "접기" else "상세 입력·직접 붙여넣기")
+                }
+
+                AnimatedVisibility(
+                    visible = showTechnicalDetails,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedTextField(
+                            value = draftUid,
+                            onValueChange = onDraftUid,
+                            label = { Text("태그·제품 ID") },
+                            leadingIcon = { Icon(Icons.Filled.Fingerprint, null) },
+                            singleLine = true,
+                            enabled = !busy,
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                            keyboardOptions = KeyboardOptions(
+                                capitalization = KeyboardCapitalization.Characters
+                            )
+                        )
+                        OutlinedTextField(
+                            value = draftUrl,
+                            onValueChange = onDraftUrl,
+                            label = { Text("스캔 시 열릴 링크(URL)") },
+                            leadingIcon = { Icon(Icons.Filled.Link, null) },
+                            minLines = 2,
+                            enabled = !busy,
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        FilledTonalButton(
+                            onClick = onFillProfileUrl,
+                            enabled = !busy,
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                Icons.Filled.TouchApp,
+                                null,
+                                modifier = Modifier
+                                    .padding(end = 8.dp)
+                                    .size(20.dp)
+                            )
+                            Text("번호만 넣고 주소 자동으로 만들기")
+                        }
+                        OutlinedTextField(
+                            value = draftHandoff,
+                            onValueChange = onDraftHandoff,
+                            label = { Text("웹에서 받은 한번용 인증(있을 때만)") },
+                            leadingIcon = { Icon(Icons.Filled.Key, null) },
+                            minLines = 2,
+                            maxLines = 6,
+                            enabled = !busy,
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+
+                Text(
+                    "고급 (운영·서버에 보고)",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                    fontWeight = FontWeight.Bold
+                )
+                TextButton(
+                    onClick = { onToggleServerFields(!showServerFields) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        Icons.Filled.Settings,
+                        null,
+                        modifier = Modifier
+                            .padding(end = 8.dp)
+                            .size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    )
+                    Text(
+                        if (showServerFields) "Link-U 서버 설정 · 닫기" else "Link-U 서버 설정 (대부분 생략) · 열기",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                    )
+                }
+                AnimatedVisibility(
+                    visible = showServerFields,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
+                ) {
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = serverBaseInput,
+                                onValueChange = onServerBase,
+                                label = { Text("Link-U 서비스 주소 (https://…)") },
+                                singleLine = true,
+                                leadingIcon = { Icon(Icons.Filled.PhoneAndroid, null) },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            OutlinedTextField(
+                                value = serverKeyInput,
+                                onValueChange = onServerKey,
+                                label = { Text("연결 암호 (관리자 안내)") },
+                                singleLine = true,
+                                visualTransformation = PasswordVisualTransformation(),
+                                leadingIcon = { Icon(Icons.Filled.Key, null) },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            OutlinedTextField(
+                                value = profileSiteInput,
+                                onValueChange = onProfileSite,
+                                label = { Text("“주소 자동”에 쓸 사이트") },
+                                minLines = 1,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            Button(
+                                onClick = onSaveServer,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(14.dp)
+                            ) { Text("저장") }
+                        }
+                    }
+                }
+
+                AppFooterBrand(Modifier.fillMaxWidth().padding(top = 8.dp))
+                Spacer(Modifier.height(20.dp))
+            }
+        }
+
+        if (nfcUi.nfcOffDialogKind != NfcOffDialogKind.Hidden) {
+            NfcOffForWriteDialog(
+                kind = nfcUi.nfcOffDialogKind,
+                onDismiss = nfcUi.onDismissNfcOffDialog,
+                onOpenSettings = nfcUi.onOpenNfcSettingsFromDialog
+            )
+        }
+        if (awaitingTag && !busy) {
+            NfcTapGuideDialog()
+        }
+        if (nfcUi.tagWriteSuccess && !awaitingTag) {
+            WriteSuccessOverlay(
+                onConfirm = nfcUi.onTagWriteSuccessGoToModeSelection
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WriterAppScreen(
     appMode: String,
     entryFromDeepLink: Boolean,
+    /**
+     * `true`는 웹 `nfc/write` | `nfc/pet` 딥링크로 열었을 때만(일반 랜딩→NFC 쓰기는 `false`).
+     * 전용 [보호자 연동] 화면(격자·3단계 힌트 생략, [태그에 쓰기] 위로). [onOpenFullNfcTools]로 격자로 전환.
+     */
+    guardianDedicatedPage: Boolean,
+    onOpenFullNfcTools: () -> Unit,
     /** 랜딩 전용: 휴대폰 NFC 설정 화면 */
     onLandingOpenNfcSettings: () -> Unit,
     onSelectTools: () -> Unit,
@@ -202,6 +706,43 @@ fun WriterAppScreen(
         return
     }
 
+    val hasUid = draftUid.isNotBlank()
+    val hasUrl = draftUrl.isNotBlank()
+    val hasHandoff = draftHandoff.isNotBlank()
+    /** [MainActivity.onUserStartWrite]: 인증이 있으면 UID+URL+토큰, 없으면 URL만으로 쓰기 가능 */
+    val linkUWriteReady = if (hasHandoff) (hasUid && hasUrl) else hasUrl
+
+    if (appMode == "Tools" && guardianDedicatedPage) {
+        GuardianDedicatedHandoffScreen(
+            onOpenFullNfcTools = onOpenFullNfcTools,
+            nfcUi = nfcUi,
+            status = status,
+            draftUid = draftUid,
+            draftUrl = draftUrl,
+            draftHandoff = draftHandoff,
+            onDraftUid = onDraftUid,
+            onDraftUrl = onDraftUrl,
+            onDraftHandoff = onDraftHandoff,
+            onFillProfileUrl = onFillProfileUrl,
+            linkUWriteReady = linkUWriteReady,
+            awaitingTag = awaitingTag,
+            busy = busy,
+            onPrepareWrite = onPrepareWrite,
+            readOnlyMode = readOnlyMode,
+            onToggleReadOnly = onToggleReadOnly,
+            showServerFields = showServerFields,
+            onToggleServerFields = onToggleServerFields,
+            serverBaseInput = serverBaseInput,
+            serverKeyInput = serverKeyInput,
+            profileSiteInput = profileSiteInput,
+            onServerBase = onServerBase,
+            onServerKey = onServerKey,
+            onProfileSite = onProfileSite,
+            onSaveServer = onSaveServer
+        )
+        return
+    }
+
     val modeTitle = "NFC 쓰기"
     val modeDescription = "URL, 명함, Wi-Fi, 보호자·웹에서 넘어온 기록"
     val scroll = rememberScrollState()
@@ -210,8 +751,8 @@ fun WriterAppScreen(
     var linkUSectionExpanded by remember { mutableStateOf(false) }
     var activeTemplateEditor by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(entryFromDeepLink) {
-        if (entryFromDeepLink) {
+    LaunchedEffect(entryFromDeepLink, guardianDedicatedPage) {
+        if (entryFromDeepLink && !guardianDedicatedPage) {
             linkUSectionExpanded = true
         }
     }
@@ -230,10 +771,7 @@ fun WriterAppScreen(
         }
     }
 
-    val hasUid = draftUid.isNotBlank()
-    val hasUrl = draftUrl.isNotBlank()
-    val hasHandoff = draftHandoff.isNotBlank()
-    val allReady = hasUid && hasUrl && hasHandoff
+    val allReady = linkUWriteReady
     val showTemplateInputPage = activeTemplateEditor != null
 
     Box(Modifier.fillMaxSize()) {

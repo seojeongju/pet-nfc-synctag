@@ -26,7 +26,7 @@ export async function getScanLogsWithDb(
     JOIN pets p ON t.pet_id = p.id
     WHERE p.owner_id = ?
       AND p.tenant_id = ?
-      AND COALESCE(p.subject_kind, 'pet') = ?
+      AND p.subject_kind = ?
     ORDER BY sl.scanned_at DESC
     LIMIT ? OFFSET ?
   `
@@ -42,7 +42,7 @@ export async function getScanLogsWithDb(
     JOIN pets p ON t.pet_id = p.id
     WHERE p.owner_id = ?
       AND p.tenant_id IS NULL
-      AND COALESCE(p.subject_kind, 'pet') = ?
+      AND p.subject_kind = ?
     ORDER BY sl.scanned_at DESC
     LIMIT ? OFFSET ?
   `;
@@ -71,7 +71,7 @@ export async function getScanLogsCountWithDb(
     JOIN pets p ON t.pet_id = p.id
     WHERE p.owner_id = ?
       AND p.tenant_id = ?
-      AND COALESCE(p.subject_kind, 'pet') = ?
+      AND p.subject_kind = ?
   `
     : `
     SELECT COUNT(*) as count
@@ -80,7 +80,7 @@ export async function getScanLogsCountWithDb(
     JOIN pets p ON t.pet_id = p.id
     WHERE p.owner_id = ?
       AND p.tenant_id IS NULL
-      AND COALESCE(p.subject_kind, 'pet') = ?
+      AND p.subject_kind = ?
   `;
   const row = await (tenant
     ? db.prepare(query).bind(ownerId, tenant, kind).first<{ count: number }>()

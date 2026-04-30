@@ -97,7 +97,7 @@ export async function listBleLocationEventsForOwner(
        INNER JOIN pets p ON p.id = e.pet_id
        WHERE e.owner_id = ?
          AND p.tenant_id = ?
-         AND COALESCE(p.subject_kind, 'pet') = ?
+         AND p.subject_kind = ?
        ORDER BY datetime(e.created_at) DESC
        LIMIT ?`
     : `SELECT e.id, e.pet_id, e.event_type, e.latitude, e.longitude, e.rssi, e.raw_payload, e.created_at,
@@ -106,7 +106,7 @@ export async function listBleLocationEventsForOwner(
        INNER JOIN pets p ON p.id = e.pet_id
        WHERE e.owner_id = ?
          AND p.tenant_id IS NULL
-         AND COALESCE(p.subject_kind, 'pet') = ?
+         AND p.subject_kind = ?
        ORDER BY datetime(e.created_at) DESC
        LIMIT ?`;
   const stmt = db.prepare(query);

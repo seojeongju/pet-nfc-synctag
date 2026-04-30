@@ -47,10 +47,10 @@ export default async function PublicProfilePage({
   searchParams 
 }: { 
   params: Promise<{ pet_id: string }>,
-  searchParams: Promise<{ tag?: string; from?: string }>
+  searchParams: Promise<{ tag?: string; from?: string; kind?: string }>
 }) {
   const { pet_id } = await params;
-  const { tag, from } = await searchParams;
+  const { tag, from, kind: kindFromQuery } = await searchParams;
 
   const context = getCfRequestContext();
   const auth = getAuth(context.env);
@@ -71,7 +71,10 @@ export default async function PublicProfilePage({
   const tenantId =
     typeof pet.tenant_id === "string" && pet.tenant_id.trim() ? pet.tenant_id.trim() : null;
   const petTags = isOwner && !nfcOwnerGate ? await getPetTags(pet.id, tenantId) : [];
-  const subjectKind = parseSubjectKind(pet.subject_kind);
+  const kindFromScan =
+    typeof kindFromQuery === "string" && kindFromQuery.trim() ? kindFromQuery.trim() : null;
+  /** /t/… 스캔 시 ?kind=와 DB subject_kind 정합. 쿼리가 없거나 잘못되면 DB(→ parseSubjectKind) */
+  const subjectKind = parseSubjectKind(kindFromScan ?? pet.subject_kind);
   const tenantSuspended = tenantId
     ? (await getTenantStatus(context.env.DB, tenantId)) === "suspended"
     : false;

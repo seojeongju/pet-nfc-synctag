@@ -66,6 +66,8 @@ private sealed class ServerReport {
 class MainActivity : ComponentActivity() {
     private var appMode by mutableStateOf(AppMode.Landing)
     private var entryFromDeepLink by mutableStateOf(false)
+    /** 웹 `nfc/write`·`nfc/pet` 딥링크로 들어올 때: 도구 격자·단계 힌트 대신 [보호자 연동] 전용 화면(태그 쓰기 CTA 상단) */
+    private var guardianDedicatedPage by mutableStateOf(false)
     private var statusText by mutableStateOf("")
     private var draftUid by mutableStateOf("")
     private var draftUrl by mutableStateOf("")
@@ -153,7 +155,9 @@ class MainActivity : ComponentActivity() {
                     },
                     onSelectTools = {
                         appMode = AppMode.Tools
-                        // 랜딩에서 일반 쓰기: Link-U 자동 연동값을 끌고 가지 않도록 새로 시작
+                        // 순수 앱·일반 NFC 사용자: 보호자 전용 화면 없이 기존 NFC 쓰기(도구 격자)로. 보호자 UI는 nfc/write·nfc/pet 딥링크로만.
+                        toolsTemplate = "url"
+                        guardianDedicatedPage = false
                         draftUid = ""
                         draftUrl = ""
                         draftHandoff = ""
@@ -165,11 +169,18 @@ class MainActivity : ComponentActivity() {
                         clearNfcOffDialogState()
                         statusText = ""
                     },
+                    guardianDedicatedPage = guardianDedicatedPage,
+                    onOpenFullNfcTools = {
+                        guardianDedicatedPage = false
+                        statusText =
+                            "일반 NFC 쓰기 화면이에요. 명함·Wi-Fi 등은 격자에서, 보호자(Link-U)는 [보호자 연동] 타일을 눌러 이어가면 돼요."
+                    },
                     onBackToLanding = {
                         if (entryFromDeepLink) {
                             statusText = "웹에서 열었어요. 이어서 기록을 진행해 주세요."
                         } else {
                             appMode = AppMode.Landing
+                            guardianDedicatedPage = false
                             awaitingTag = false
                             busy = false
                             pendingWrite = null
@@ -257,6 +268,7 @@ class MainActivity : ComponentActivity() {
                             tagWriteSuccess = false
                             // 랜딩이 아니라 "일반 NFC 도구 모드" 대시보드(도구 격자)로 복귀
                             appMode = AppMode.Tools
+                            guardianDedicatedPage = false
                             entryFromDeepLink = false
                             draftUid = ""
                             draftUrl = ""
@@ -625,6 +637,7 @@ class MainActivity : ComponentActivity() {
             appMode = AppMode.Tools
             toolsTemplate = "linku"
             entryFromDeepLink = true
+            guardianDedicatedPage = true
             pendingWrite = null
             awaitingTag = false
             tagWriteSuccess = false
@@ -640,6 +653,7 @@ class MainActivity : ComponentActivity() {
         appMode = AppMode.Tools
         toolsTemplate = "linku"
         entryFromDeepLink = true
+        guardianDedicatedPage = true
         pendingWrite = null
         awaitingTag = false
         tagWriteSuccess = false
@@ -701,6 +715,7 @@ class MainActivity : ComponentActivity() {
         appMode = AppMode.Tools
         toolsTemplate = "linku"
         entryFromDeepLink = true
+        guardianDedicatedPage = true
         pendingWrite = null
         awaitingTag = false
         tagWriteSuccess = false

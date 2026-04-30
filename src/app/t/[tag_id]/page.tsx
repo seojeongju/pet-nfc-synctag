@@ -108,9 +108,8 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
     .bind(tag.id, ip, userAgent)
     .run();
 
-  const effectiveKind = parseSubjectKind(
-    tag.assigned_subject_kind ?? tag.pet_subject_kind
-  );
+  // 발견자·리다이렉트: 연결된 관리 대상(프로필)의 subject_kind가 본질. 태그 출고용 assigned_subject_kind는 덮어쓰지 않음(구 제품=펫+실제=메모리 충돌 방지)
+  const effectiveKind = parseSubjectKind(tag.pet_subject_kind);
   const tenantForLinks =
     typeof tag.pet_tenant_id === "string" && tag.pet_tenant_id.trim() ? tag.pet_tenant_id.trim() : null;
 

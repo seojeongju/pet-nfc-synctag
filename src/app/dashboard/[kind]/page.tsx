@@ -32,14 +32,14 @@ async function getLinkedTagCountByScope(
        INNER JOIN pets p ON p.id = t.pet_id
        WHERE p.owner_id = ?
          AND p.tenant_id = ?
-         AND COALESCE(p.subject_kind, 'pet') = ?
+         AND p.subject_kind = ?
          AND t.pet_id IS NOT NULL`
     : `SELECT COUNT(*) AS count
        FROM tags t
        INNER JOIN pets p ON p.id = t.pet_id
        WHERE p.owner_id = ?
          AND p.tenant_id IS NULL
-         AND COALESCE(p.subject_kind, 'pet') = ?
+         AND p.subject_kind = ?
          AND t.pet_id IS NOT NULL`;
 
   const row = await (tenant
