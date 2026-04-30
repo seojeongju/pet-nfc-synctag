@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { getAuth } from "@/lib/auth";
 import { getDB, getR2 } from "@/lib/db";
+import { getPetById } from "@/lib/pet-read";
 import { nanoid } from "nanoid";
 import { parseSubjectKind, type SubjectKind } from "@/lib/subject-kind";
 import { assertPersonalPetQuota, assertTenantPetQuota } from "@/lib/tenant-quota";
@@ -299,9 +300,7 @@ export async function createPetSafe(ownerId: string, data: PetData): Promise<Pet
 }
 
 export async function getPet(petId: string) {
-    const db = getDB();
-    await assertMigration0008Applied(db);
-    return await db.prepare("SELECT * FROM pets WHERE id = ?").bind(petId).first();
+    return getPetById(petId);
 }
 
 /** 실종 모드 토글 — 소유자만 호출 가능 */

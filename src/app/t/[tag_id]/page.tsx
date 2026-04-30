@@ -106,22 +106,37 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
       "INSERT INTO scan_logs (tag_id, ip_address, user_agent) VALUES (?, ?, ?)"
     )
     .bind(tag.id, ip, userAgent)
-    .run();
+    .run()
+    .catch((e) => {
+      console.error("[tag-resolve] scan_logs insert failed (non-fatal):", e);
+    });
 
   // 발견자·리다이렉트: 연결된 관리 대상(프로필)의 subject_kind가 본질. 태그 출고용 assigned_subject_kind는 덮어쓰지 않음(구 제품=펫+실제=메모리 충돌 방지)
   const effectiveKind = parseSubjectKind(tag.pet_subject_kind);
   const tenantForLinks =
     typeof tag.pet_tenant_id === "string" && tag.pet_tenant_id.trim() ? tag.pet_tenant_id.trim() : null;
 
-  const context = getCfRequestContext();
-  const auth = getAuth(context.env);
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (session?.user?.id) {
+  type SessionUser = { id: string } | null;
+  let session: SessionUser = null;
+  try {
+    const context = getCfRequestContext();
+    const auth = getAuth(context.env);
+    const s = await auth.api.getSession({ headers: await headers() });
+    session = s && s.user ? { id: s.user.id } : null;
+  } catch (e) {
+    console.error("[tag-resolve] session lookup (non-fatal, continue to public profile):", e);
+  }
+
+  if (session?.id) {
     const owner = await db
       .prepare("SELECT owner_id FROM pets WHERE id = ?")
       .bind(tag.pet_id)
-      .first<{ owner_id: string }>();
-    if (owner?.owner_id === session.user.id) {
+      .first<{ owner_id: string }>()
+      .catch((e) => {
+        console.error("[tag-resolve] owner lookup (non-fatal):", e);
+        return null;
+      });
+    if (owner?.owner_id === session.id) {
       const dashQs = new URLSearchParams({ kind: effectiveKind });
       if (tenantForLinks) dashQs.set("tenant", tenantForLinks);
       redirect(`/dashboard?${dashQs.toString()}`);
