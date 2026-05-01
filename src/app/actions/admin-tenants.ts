@@ -186,6 +186,7 @@ async function resolveOrCreateOwnerUserByEmailWithPassword(email: string, passwo
   createdCredential: boolean;
 }> {
   const db = getDB();
+  await ensureUserSubscriptionStatusColumn(db);
   assertPasswordPolicy(password);
   const hashed = await hashPassword(password);
 
@@ -265,6 +266,20 @@ async function ensureTenantsAllowedSubjectKindsColumn(db: D1Database): Promise<v
   if (names.has("allowed_subject_kinds")) return;
   await db
     .prepare("ALTER TABLE tenants ADD COLUMN allowed_subject_kinds TEXT")
+    .run()
+    .catch(() => {});
+}
+
+/** 일부 D1(user 테이블이 예전 스키마)에서 조직 소유자 INSERT 실패 방지 */
+async function ensureUserSubscriptionStatusColumn(db: D1Database): Promise<void> {
+  const r = await db
+    .prepare("PRAGMA table_info(user)")
+    .all<{ name?: string }>()
+    .catch(() => ({ results: [] as { name?: string }[] }));
+  const names = new Set((r.results ?? []).map((row) => String(row.name ?? "").trim()).filter(Boolean));
+  if (names.has("subscriptionStatus")) return;
+  await db
+    .prepare("ALTER TABLE user ADD COLUMN subscriptionStatus TEXT DEFAULT 'free'")
     .run()
     .catch(() => {});
 }
