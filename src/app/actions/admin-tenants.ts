@@ -255,6 +255,20 @@ async function writeAdminAudit(actorEmail: string, action: string, payload: unkn
     .catch(() => {});
 }
 
+/** 일부 환경에서 마이그레이션만 빠진 경우 INSERT/SELECT 실패 방지 */
+async function ensureTenantsAllowedSubjectKindsColumn(db: D1Database): Promise<void> {
+  const r = await db
+    .prepare("PRAGMA table_info(tenants)")
+    .all<{ name?: string }>()
+    .catch(() => ({ results: [] as { name?: string }[] }));
+  const names = new Set((r.results ?? []).map((row) => String(row.name ?? "").trim()).filter(Boolean));
+  if (names.has("allowed_subject_kinds")) return;
+  await db
+    .prepare("ALTER TABLE tenants ADD COLUMN allowed_subject_kinds TEXT")
+    .run()
+    .catch(() => {});
+}
+
 async function ensureTenantInvitesTable() {
   const db = getDB();
   await db.prepare(
@@ -297,6 +311,7 @@ export async function getTenantsAdminView(filters?: {
   await requirePlatformAdmin();
   const db = getDB();
   await ensureTenantInvitesTable();
+  await ensureTenantsAllowedSubjectKindsColumn(db);
 
   const q = String(filters?.q ?? "").trim();
   const email = String(filters?.email ?? "").trim();
@@ -423,6 +438,7 @@ export async function getTenantsAdminView(filters?: {
 
 async function loadTenantAdminView(db: ReturnType<typeof getDB>, tenantId: string): Promise<TenantAdminView | null> {
   await ensureTenantInvitesTable();
+  await ensureTenantsAllowedSubjectKindsColumn(db);
   const t = await db
     .prepare(
       "SELECT id, name, slug, status, created_at, allowed_subject_kinds FROM tenants WHERE id = ? LIMIT 1"
@@ -531,6 +547,7 @@ export async function adminCreateTenantWithOwner(
 ): Promise<{ tenantId: string; tenantName: string }> {
   const { actorEmail } = await requirePlatformAdmin();
   const db = getDB();
+  await ensureTenantsAllowedSubjectKindsColumn(db);
 
   const name = String(formData.get("name") ?? "").trim();
   const ownerEmail = String(formData.get("owner_email") ?? "").trim();
@@ -759,22 +776,26 @@ export async function adminRenameTenant(formData: FormData) {
   revalidateTenantSurfaces(tenantId);
 }
 
+function isUnrestrictedFromForm(formData: FormData): boolean {
+  for (const v of formData.getAll("unrestricted")) {
+    const s = String(v).trim().toLowerCase();
+    if (s === "1" || s === "on" || s === "true" || s === "yes") return true;
+  }
+  return false;
+}
+
 /**
  * 폼: unrestricted 체크 → NULL(전체). 아니면 선택한 mode[] 를 JSON. 전체 수 선택이면 NULL.
- * @throws Error 제한 모드인데 0개 선택
+ * 모드가 하나도 전달되지 않으면 NULL(전체 허용) — 계약 태그만의 필드이며, 빈 전송으로 생성이 막히지 않게 함.
  */
 function allowedSubjectKindsJsonFromForm(formData: FormData): string | null {
-  const unrestricted =
-    formData.get("unrestricted") === "1" ||
-    formData.get("unrestricted") === "on" ||
-    formData.get("unrestricted") === "true";
-  if (unrestricted) return null;
+  if (isUnrestrictedFromForm(formData)) return null;
   const selected = formData
     .getAll("mode")
     .map((x) => String(x).trim())
     .filter((x) => (SUBJECT_KINDS as readonly string[]).includes(x)) as SubjectKind[];
   if (selected.length === 0) {
-    throw new Error("‘전체 모드 허용’에 체크하거나, 허용할 모드를 한 개 이상 선택하세요.");
+    return null;
   }
   if (selected.length >= SUBJECT_KINDS.length) return null;
   return JSON.stringify(SUBJECT_KINDS.filter((k) => selected.includes(k)));
@@ -790,6 +811,7 @@ export async function adminUpdateTenantAllowedModes(formData: FormData) {
   }
   const actor = await requirePlatformOrTenantOrgAdmin(tenantId);
   const db = getDB();
+  await ensureTenantsAllowedSubjectKindsColumn(db);
 
   const allowedJson = allowedSubjectKindsJsonFromForm(formData);
 
