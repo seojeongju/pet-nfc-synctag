@@ -50,7 +50,7 @@ async function getLinkedTagCountByScope(
   return Number.isFinite(count) && count > 0 ? count : 0;
 }
 
-export default async function DashboardNfcDiaryPage({
+export default async function DashboardNfcReadPage({
   params,
   searchParams,
 }: {
@@ -125,7 +125,7 @@ export default async function DashboardNfcDiaryPage({
                 <NotebookPen className="h-3.5 w-3.5" aria-hidden />
                 NFC
               </div>
-              <h1 className="text-2xl font-black leading-tight text-slate-900 sm:text-[26px]">NFC일기</h1>
+              <h1 className="text-2xl font-black leading-tight text-slate-900 sm:text-[26px]">NFC 읽기</h1>
               <p className="text-sm font-semibold leading-relaxed text-slate-600">
                 {meta.label} 모드에서 태그 UID를 맞추고 프로필에 연결합니다. 모바일·데스크톱 너비에 맞춰 한 화면에서 진행해요.
               </p>
@@ -145,12 +145,12 @@ export default async function DashboardNfcDiaryPage({
       );
     } catch (dataError: unknown) {
       rethrowNextControlFlowErrors(dataError);
-      console.error("NFC diary page data error:", dataError);
+      console.error("NFC read page data error:", dataError);
       redirect(`/dashboard/${subjectKind}${tenantQs}`);
     }
   } catch (error: unknown) {
     rethrowNextControlFlowErrors(error);
-    console.error("NFC diary page auth error:", error);
+    console.error("NFC read page auth error:", error);
     redirect("/login");
   }
 }

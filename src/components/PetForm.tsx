@@ -178,7 +178,7 @@ export function PetForm({ ownerId, subjectKind: kindProp, tenantId, initialData,
                     setSubmitError(result.error);
                     return;
                 }
-                // 신규 등록 직후 NFC일기(태그 연결)로 유도
+                // 신규 등록 직후 NFC 읽기(태그 연결)로 유도
                 const params = new URLSearchParams();
                 if (tenantId) params.set("tenant", tenantId);
                 if (result.id) params.set("pet", result.id);

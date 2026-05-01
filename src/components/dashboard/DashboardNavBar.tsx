@@ -75,7 +75,7 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
     },
     {
       href: `/dashboard/${kind}/nfc${tenantQs}`,
-      label: "NFC일기",
+      label: "NFC 읽기",
       active: dashNfc,
       Icon: NotebookPen,
     },

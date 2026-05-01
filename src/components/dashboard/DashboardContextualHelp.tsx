@@ -76,7 +76,7 @@ function helpCopy(parsed: Parsed, meta: (typeof subjectKindMeta)[SubjectKind]): 
             <p>
               현재 모드(<strong>{meta.label}</strong>)의 요약 화면입니다. 상단 &quot;모드 선택&quot;에서 다른 시나리오로 바꿀 수 있어요.
             </p>
-            <p>가로 탭(또는 모바일 메뉴)에서 관리 대상·NFC일기·스캔 기록·안심 구역으로 이동합니다.</p>
+            <p>가로 탭(또는 모바일 메뉴)에서 관리 대상·NFC 읽기·스캔 기록·안심 구역으로 이동합니다.</p>
           </>
         ),
       };
@@ -125,7 +125,7 @@ function helpCopy(parsed: Parsed, meta: (typeof subjectKindMeta)[SubjectKind]): 
       };
     case "nfc_diary":
       return {
-        title: "NFC일기",
+        title: "NFC 읽기",
         body: (
           <>
             <p>

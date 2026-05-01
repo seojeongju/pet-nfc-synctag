@@ -26,7 +26,7 @@ export function isDashboardAlbums(pathname: string): boolean {
          (pathname.includes("/dashboard/") && pathname.includes("/albums"));
 }
 
-/** /dashboard/[kind]/nfc — NFC 태그 연결(NFC일기) */
+/** /dashboard/[kind]/nfc — NFC 태그 연결(NFC 읽기 화면) */
 export function isDashboardNfc(pathname: string): boolean {
   const segments = pathname.split("/").filter(Boolean);
   return segments.length >= 3 && segments[0] === "dashboard" && segments[2] === "nfc";
