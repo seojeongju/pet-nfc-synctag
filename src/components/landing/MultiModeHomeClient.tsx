@@ -55,8 +55,9 @@ export default function MultiModeHomeClient({
   const [selectedKind, setSelectedKind] = useState<SubjectKind | null>(null);
   const [isRouting, setIsRouting] = useState(false);
   const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null);
-  const [openGuardianStep, setOpenGuardianStep] = useState<Record<string, boolean>>({});
-  const [openFinderStep, setOpenFinderStep] = useState<Record<string, boolean>>({});
+  /** 단계 카드는 1×3 고정, 설명은 행 아래 전체 너비 패널에만 표시 */
+  const [openGuardianStepId, setOpenGuardianStepId] = useState<string | null>(null);
+  const [openFinderStepId, setOpenFinderStepId] = useState<string | null>(null);
   const heroTitle = "당신의 일상을 지키는 가장 스마트한 선택,\nLink-U";
   const heroBody =
     "반려동물·어르신·아이·수하물·주얼리까지.\n링크유는 스캔 이후의 안내와 연결 흐름을 쉽고 다정하게 이어줍니다.";
@@ -150,11 +151,11 @@ export default function MultiModeHomeClient({
   };
 
   const toggleGuardianStep = (id: string) => {
-    setOpenGuardianStep((prev) => ({ ...prev, [id]: !prev[id] }));
+    setOpenGuardianStepId((prev) => (prev === id ? null : id));
   };
 
   const toggleFinderStep = (id: string) => {
-    setOpenFinderStep((prev) => ({ ...prev, [id]: !prev[id] }));
+    setOpenFinderStepId((prev) => (prev === id ? null : id));
   };
 
   return (
@@ -355,16 +356,21 @@ export default function MultiModeHomeClient({
           <p className="mb-3 text-[11px] font-black uppercase tracking-[0.18em] text-teal-600">보호자 이용 순서</p>
           <div className="grid grid-cols-3 gap-1.5 min-[390px]:gap-2.5 sm:gap-3">
             {guardianSteps.map((step, index) => {
-              const expanded = Boolean(openGuardianStep[step.id]);
+              const selected = openGuardianStepId === step.id;
               return (
                 <article
                   key={step.id}
-                  className="flex h-full min-w-0 flex-col rounded-2xl border border-teal-100/90 bg-white/90 px-1.5 py-2 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md min-[390px]:px-2.5 min-[390px]:py-3"
+                  className={cn(
+                    "flex min-w-0 flex-col rounded-2xl border bg-white/90 px-1.5 py-2 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md min-[390px]:px-2.5 min-[390px]:py-3",
+                    selected
+                      ? "border-teal-400/70 ring-2 ring-teal-300/50 bg-teal-50/40"
+                      : "border-teal-100/90"
+                  )}
                 >
                   <button
                     type="button"
                     onClick={() => toggleGuardianStep(step.id)}
-                    aria-expanded={expanded}
+                    aria-expanded={selected}
                     className="flex w-full min-w-0 flex-col items-center gap-1 rounded-xl px-0.5 py-1 text-center transition hover:bg-teal-50/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-300/70 min-[390px]:gap-1.5 min-[390px]:py-1.5"
                   >
                     <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600 min-[390px]:h-9 min-[390px]:w-9">
@@ -377,29 +383,45 @@ export default function MultiModeHomeClient({
                       <p className="text-[8px] font-semibold text-slate-500 min-[390px]:text-[10px]">{index + 1}단계</p>
                     </div>
                   </button>
-                  <div
-                    className={cn(
-                      "grid transition-all duration-300",
-                      expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-                    )}
-                  >
-                    <div className="overflow-hidden">
-                      <div className="mt-2 space-y-1.5 rounded-xl border border-teal-100 bg-teal-50/70 px-2.5 py-2">
-                        <p className="text-[10px] font-semibold leading-relaxed text-slate-700 break-keep [word-break:keep-all]">
-                          {step.summary}
-                        </p>
-                        <p className="text-[10px] font-semibold leading-relaxed text-teal-800 break-keep [word-break:keep-all]">
-                          {step.detail}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
                 </article>
               );
             })}
           </div>
+          <AnimatePresence initial={false}>
+            {openGuardianStepId ? (
+              <motion.div
+                key={openGuardianStepId}
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.2 }}
+                className="mt-3 w-full rounded-2xl border border-teal-100 bg-teal-50/85 px-3.5 py-3 text-left shadow-sm min-[390px]:px-4 min-[390px]:py-3.5"
+              >
+                {guardianSteps
+                  .filter((s) => s.id === openGuardianStepId)
+                  .map((step) => {
+                    const stepIndex = guardianSteps.findIndex((s) => s.id === step.id);
+                    return (
+                    <div key={step.id} className="w-full min-w-0 space-y-2">
+                      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-teal-600">
+                          {stepIndex + 1}단계 · {step.title}
+                        </span>
+                      </div>
+                      <p className="text-[12px] font-semibold leading-relaxed text-slate-800 min-[390px]:text-[13px]">
+                        {step.summary}
+                      </p>
+                      <p className="text-[11px] font-semibold leading-relaxed text-teal-900/90 min-[390px]:text-[12px]">
+                        {step.detail}
+                      </p>
+                    </div>
+                    );
+                  })}
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
           <p className="mt-2 text-[10px] font-semibold text-slate-500 break-keep [word-break:keep-all]">
-            단계를 누르면 설명이 펼쳐지고, 다시 누르면 접힙니다.
+            단계를 누르면 아래에 가로로 설명이 펼쳐지고, 같은 단계를 다시 누르면 접힙니다.
           </p>
         </motion.section>
 
@@ -413,16 +435,21 @@ export default function MultiModeHomeClient({
 
           <div className="grid grid-cols-3 gap-1.5 min-[390px]:gap-2.5 sm:gap-3">
             {finderSteps.map((step, index) => {
-              const expanded = Boolean(openFinderStep[step.id]);
+              const selected = openFinderStepId === step.id;
               return (
                 <article
                   key={step.id}
-                  className="flex h-full min-w-0 flex-col rounded-2xl border border-indigo-100/90 bg-white/90 px-1.5 py-2 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md min-[390px]:px-2.5 min-[390px]:py-3"
+                  className={cn(
+                    "flex min-w-0 flex-col rounded-2xl border bg-white/90 px-1.5 py-2 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md min-[390px]:px-2.5 min-[390px]:py-3",
+                    selected
+                      ? "border-indigo-400/70 ring-2 ring-indigo-300/50 bg-indigo-50/35"
+                      : "border-indigo-100/90"
+                  )}
                 >
                   <button
                     type="button"
                     onClick={() => toggleFinderStep(step.id)}
-                    aria-expanded={expanded}
+                    aria-expanded={selected}
                     className="flex w-full min-w-0 flex-col items-center gap-1 rounded-xl px-0.5 py-1 text-center transition hover:bg-indigo-50/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300/70 min-[390px]:gap-1.5 min-[390px]:py-1.5"
                   >
                     <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 min-[390px]:h-9 min-[390px]:w-9">
@@ -435,29 +462,45 @@ export default function MultiModeHomeClient({
                       <p className="text-[8px] font-semibold text-slate-500 min-[390px]:text-[10px]">{index + 1}단계</p>
                     </div>
                   </button>
-                  <div
-                    className={cn(
-                      "grid transition-all duration-300",
-                      expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-                    )}
-                  >
-                    <div className="overflow-hidden">
-                      <div className="mt-2 space-y-1.5 rounded-xl border border-indigo-100 bg-indigo-50/70 px-2.5 py-2">
-                        <p className="text-[10px] font-semibold leading-relaxed text-slate-700 break-keep [word-break:keep-all]">
-                          {step.summary}
-                        </p>
-                        <p className="text-[10px] font-semibold leading-relaxed text-indigo-800 break-keep [word-break:keep-all]">
-                          {step.detail}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
                 </article>
               );
             })}
           </div>
+          <AnimatePresence initial={false}>
+            {openFinderStepId ? (
+              <motion.div
+                key={openFinderStepId}
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.2 }}
+                className="mt-3 w-full rounded-2xl border border-indigo-100 bg-indigo-50/85 px-3.5 py-3 text-left shadow-sm min-[390px]:px-4 min-[390px]:py-3.5"
+              >
+                {finderSteps
+                  .filter((s) => s.id === openFinderStepId)
+                  .map((step) => {
+                    const stepIndex = finderSteps.findIndex((s) => s.id === step.id);
+                    return (
+                    <div key={step.id} className="w-full min-w-0 space-y-2">
+                      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600">
+                          {stepIndex + 1}단계 · {step.title}
+                        </span>
+                      </div>
+                      <p className="text-[12px] font-semibold leading-relaxed text-slate-800 min-[390px]:text-[13px]">
+                        {step.summary}
+                      </p>
+                      <p className="text-[11px] font-semibold leading-relaxed text-indigo-900/90 min-[390px]:text-[12px]">
+                        {step.detail}
+                      </p>
+                    </div>
+                    );
+                  })}
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
           <p className="mt-2 text-[10px] font-semibold text-slate-500 break-keep [word-break:keep-all]">
-            단계를 누르면 설명이 펼쳐지고, 다시 누르면 접힙니다.
+            단계를 누르면 아래에 가로로 설명이 펼쳐지고, 같은 단계를 다시 누르면 접힙니다.
           </p>
           {!session ? (
             <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-100 bg-white px-3 py-1.5 text-[10px] font-semibold text-slate-600">

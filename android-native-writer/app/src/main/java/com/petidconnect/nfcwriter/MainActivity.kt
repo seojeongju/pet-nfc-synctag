@@ -66,7 +66,7 @@ private sealed class ServerReport {
 class MainActivity : ComponentActivity() {
     private var appMode by mutableStateOf(AppMode.Landing)
     private var entryFromDeepLink by mutableStateOf(false)
-    /** 웹 `nfc/write`·`nfc/pet` 딥링크로 들어올 때: 도구 격자·단계 힌트 대신 [보호자 연동] 전용 화면(태그 쓰기 CTA 상단) */
+    /** 웹 `nfc/write`·`nfc/pet` 딥링크로 들어올 때: 도구 격자·단계 힌트 대신 보호자연동(Link-U 전용 모드) 화면(태그 쓰기 CTA 상단) */
     private var guardianDedicatedPage by mutableStateOf(false)
     private var statusText by mutableStateOf("")
     private var draftUid by mutableStateOf("")
@@ -173,7 +173,7 @@ class MainActivity : ComponentActivity() {
                     onOpenFullNfcTools = {
                         guardianDedicatedPage = false
                         statusText =
-                            "일반 NFC 쓰기 화면이에요. 명함·Wi-Fi 등은 격자에서, 보호자(Link-U)는 [보호자 연동] 타일을 눌러 이어가면 돼요."
+                            "일반 NFC 쓰기 화면이에요. 명함·Wi-Fi 등은 격자에서, 보호자(Link-U)는 [보호자연동(Link-U 전용 모드)] 타일을 눌러 이어가면 돼요."
                     },
                     onBackToLanding = {
                         if (entryFromDeepLink) {
@@ -489,7 +489,7 @@ class MainActivity : ComponentActivity() {
             statusText = if (requireHandoff) {
                 "웹에서 보낸 ‘한번 쓰기(인증)’를 쓰는 중이에요. 태그·ID, 링크, 인증을 모두 채운 뒤 다시 시도해 주세요. 웹 ‘앱으로 기록’이면 대부분 자동으로 들어갑니다."
             } else {
-                "URL/정보를 먼저 채워 주세요. 위에서 도구를 고르거나, 아래 ‘보호자 연동’에서 붙여 넣을 수 있어요."
+                "URL/정보를 먼저 채워 주세요. 위에서 도구를 고르거나, ‘보호자연동(Link-U 전용 모드)’ 화면에서 붙여 넣을 수 있어요."
             }
             return
         }
@@ -673,7 +673,7 @@ class MainActivity : ComponentActivity() {
 
     /**
      * [petidconnect://nfc/pet?kind=&pet_id=&...&app_base=&uid=&...]
-     * 앱퍼스트: **브라우저로 보내지 않고** ‘보호자 연동’ NFC 쓰기 화면에 값을 맞춘다.
+     * 앱퍼스트: **브라우저로 보내지 않고** 보호자연동(Link-U 전용 모드) NFC 쓰기 화면에 값을 맞춘다.
      * (웹 대시보드 [앱으로 NFC 등록하기] / handoff 실패 시 `nfc/pet`로 진입)
      */
     private fun applyNfcPetDeepLink(data: Uri) {

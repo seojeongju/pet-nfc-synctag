@@ -118,7 +118,7 @@ export function DashboardNfcQuickRegisterCard({
     setIsNativeWriteOpening(true);
     setTagMessage({
       type: "success",
-      text: "앱을 띄우는 중이에요. 앱이 없으면 설치 안내로 이어집니다. 열리면 보호자 연동(정보는 자동)에서 태그에 대고 저장하세요.",
+      text: "앱을 띄우는 중이에요. 앱이 없으면 설치 안내로 이어집니다. 열리면 보호자연동(Link-U 전용 모드)에서 태그에 대고 저장하세요. (정보는 자동)",
     });
 
     const envBase = normalizeAppBaseUrl(process.env.NEXT_PUBLIC_APP_URL);
@@ -343,7 +343,7 @@ export function DashboardNfcQuickRegisterCard({
                 <span className="font-black text-slate-800">「연결하고 앱에서 저장」</span>을 누르면 서버에 태그가 연결되고, 이어서 앱이
                 열립니다. (앱이 없으면 설치 안내로 먼저 갑니다.)
               </li>
-              <li>앱의 <span className="font-black text-slate-800">보호자 연동</span> 화면(UID·URL은 자동)에서 태그에 대고 <span className="font-black text-slate-800">저장</span>으로 마칩니다.</li>
+              <li>앱의 <span className="font-black text-slate-800">보호자연동(Link-U 전용 모드)</span> 화면(UID·URL은 자동)에서 태그에 대고 <span className="font-black text-slate-800">저장</span>으로 마칩니다.</li>
             </ol>
             <p className="text-[10px] font-bold text-slate-400">이 화면에서는 URL을 길게 입력하거나 복사할 일이 없습니다. 주소는 연결·앱 쪽에서 맞춥니다.</p>
             <select
@@ -401,7 +401,7 @@ export function DashboardNfcQuickRegisterCard({
               {isPending ? "서버에 연결하는 중…" : isNativeWriteOpening ? "앱을 여는 중…" : "연결하고 앱에서 저장"}
             </Button>
             <p className="text-center text-[10px] font-bold text-slate-500 leading-relaxed">
-              앱이 이미 있으면 보호자 연동으로 바로 이어지고, 없을 때는 설치를 거친 뒤에도 위와 같은 화면만 밟으면 됩니다.
+              앱이 이미 있으면 보호자연동(Link-U 전용 모드)으로 바로 이어지고, 없을 때는 설치를 거친 뒤에도 위와 같은 화면만 밟으면 됩니다.
             </p>
             {selectedSubjectId ? (
               <a
