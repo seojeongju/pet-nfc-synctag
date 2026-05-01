@@ -18,8 +18,17 @@ import { OpenNativePetNfcSectionButton } from "@/components/pet/OpenNativePetNfc
 import SafePetImage from "@/components/pet/SafePetImage";
 import { TagManageCard } from "@/components/TagManageCard";
 import {
-  ArrowLeft, Edit3, Heart, Activity,
-  Nfc, Stethoscope, Clock, AlertTriangle, ChevronRight
+  ArrowLeft,
+  Edit3,
+  Heart,
+  Activity,
+  Nfc,
+  Stethoscope,
+  Clock,
+  AlertTriangle,
+  ChevronRight,
+  Link2,
+  ScanLine,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatMonthDayTimeKoSeoul } from "@/lib/format-datetime-ko-seoul";
@@ -82,6 +91,10 @@ export default async function PetDetailPage({
   const kindQs = tenantQs;
   const listLink = `/dashboard/${subjectKind}/pets${tenantQs}`;
   const scansLink = `/dashboard/${subjectKind}/scans${tenantQs}`;
+  const nfcReadQs = new URLSearchParams();
+  if (tenantId) nfcReadQs.set("tenant", tenantId);
+  nfcReadQs.set("pet", pet.id);
+  const nfcReadHref = `/dashboard/${subjectKind}/nfc?${nfcReadQs.toString()}`;
 
   const meta = subjectKindMeta[subjectKind];
   const isLost = Boolean(pet.is_lost);
@@ -224,24 +237,34 @@ export default async function PetDetailPage({
         {/* NFC 태그 섹션 (앱/딥링크에서 #nfc 로 스크롤) */}
         <section
           id="nfc"
-          className="bg-white rounded-[28px] border border-slate-100 shadow-sm overflow-hidden scroll-mt-4"
+          className="scroll-mt-4 overflow-hidden rounded-[28px] border border-teal-100/70 bg-gradient-to-br from-white via-teal-50/25 to-cyan-50/20 shadow-[0_12px_40px_rgba(15,23,42,0.06)]"
         >
-          <div className="px-5 pt-5 pb-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-[10px] bg-teal-50 flex items-center justify-center text-teal-500">
-                  <Nfc className="w-4 h-4" />
+          <div className="space-y-4 px-5 pb-5 pt-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex min-w-0 items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-500 text-white shadow-md shadow-teal-500/25">
+                  <Nfc className="h-5 w-5" aria-hidden />
                 </div>
-                <p className="text-sm font-black text-slate-800">NFC 연결 관리</p>
+                <div className="min-w-0 space-y-1">
+                  <p className="text-sm font-black tracking-tight text-slate-900">NFC 연결 관리</p>
+                  <p className="max-w-[min(100%,20rem)] text-[11px] font-bold leading-relaxed text-slate-600 sm:max-w-none">
+                    태그를 스캔하거나 UID를 입력해 연결하고, 태그 주소 기록까지 한 번에 진행해요.
+                  </p>
+                </div>
               </div>
-              <span className="text-[10px] font-black text-teal-600 bg-teal-50 px-2 py-1 rounded-full">
-                연결된 태그 {tags.length}개
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-teal-200/70 bg-teal-50/90 px-2.5 py-1 text-[10px] font-black text-teal-800">
+                <Link2 className="h-3.5 w-3.5 text-teal-600" aria-hidden />
+                연결 {tags.length}개
               </span>
             </div>
 
-            <p className="text-[11px] font-bold text-slate-500">
-              태그를 스캔하거나 UID를 입력해 연결하고, 태그 주소 기록까지 한 번에 진행해요.
-            </p>
+            <a
+              href={nfcReadHref}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-teal-200/80 bg-white/90 py-2.5 text-[11px] font-black text-teal-800 shadow-sm transition hover:border-teal-300 hover:bg-teal-50/80 sm:w-auto sm:px-4"
+            >
+              <ScanLine className="h-4 w-4 shrink-0 text-teal-600" aria-hidden />
+              NFC 읽기에서 이 프로필로 빠르게 연결
+            </a>
 
             <TagManageCard
               petId={pet.id}

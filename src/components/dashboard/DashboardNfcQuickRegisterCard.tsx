@@ -1,12 +1,23 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { linkTagSafe, logGuardianNfcAppEvent, prepareGuardianNfcNativeHandoff } from "@/app/actions/tag";
-import { CheckCircle, AlertCircle, Smartphone, ScanLine } from "lucide-react";
+import {
+  CheckCircle,
+  AlertCircle,
+  Smartphone,
+  ScanLine,
+  ChevronDown,
+  MoreVertical,
+  List,
+  Unlink,
+  PlusCircle,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { parseSubjectKind, type SubjectKind } from "@/lib/subject-kind";
 import { isWebNfcReadSupported, readNfcTagUidOnce } from "@/lib/web-nfc-read-uid";
@@ -64,6 +75,11 @@ export function DashboardNfcQuickRegisterCard({
   const [isNfcScanning, setIsNfcScanning] = useState(false);
   const [isNativeWriteOpening, setIsNativeWriteOpening] = useState(false);
   const [nfcSectionHighlight, setNfcSectionHighlight] = useState(false);
+  /** 「태그에 프로필 연결」안내(단계 설명) 접기 — 폼 입력은 항상 노출 */
+  const [guideExpanded, setGuideExpanded] = useState(false);
+  /** 프로필 상세 NFC로 이동하는 메뉴(목록·해제·추가) */
+  const [tagActionsOpen, setTagActionsOpen] = useState(false);
+  const tagActionsRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -71,6 +87,27 @@ export function DashboardNfcQuickRegisterCard({
   const tenantQs = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : "";
   const kindQs = tenantQs;
   const webNfcSupported = isWebNfcReadSupported();
+
+  const petDetailNfcHref = selectedSubjectId
+    ? `/dashboard/${subjectKind}/pets/${selectedSubjectId}${tenantQs ? `${tenantQs}&` : "?"}nfc=1#nfc`
+    : "";
+
+  useEffect(() => {
+    if (!tagActionsOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setTagActionsOpen(false);
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      if (tagActionsRef.current?.contains(e.target as Node)) return;
+      setTagActionsOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [tagActionsOpen]);
 
   /** 서버/캐시 이슈에도 현재 대시보드 모드와 일치하는 대상만 선택 목록에 노출 */
   const subjectsInMode = useMemo(
@@ -297,6 +334,7 @@ export function DashboardNfcQuickRegisterCard({
       });
     }, 400);
     setNfcSectionHighlight(true);
+    setGuideExpanded(true);
     const hlT = window.setTimeout(() => setNfcSectionHighlight(false), 5200);
     const p = new URLSearchParams(searchParams.toString());
     p.delete("onboarding");
@@ -323,29 +361,71 @@ export function DashboardNfcQuickRegisterCard({
       )}
     >
       <CardContent className="p-6 space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-50 text-teal-500">
-            <Smartphone className="h-5 w-5" />
-          </div>
-          <div>
-            <h3 className="text-base font-black text-slate-900">태그에 프로필 연결</h3>
-            <p className="text-[11px] font-bold text-slate-500 leading-relaxed">스캔하면 이 대상의 안내로 이어집니다.</p>
-            {subtitle ? <p className="text-[10px] font-bold text-slate-400 leading-relaxed">{subtitle}</p> : null}
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => setGuideExpanded((v) => !v)}
+            aria-expanded={guideExpanded}
+            aria-controls="nfc-profile-link-guide"
+            id="nfc-profile-link-menu"
+            className={cn(
+              "flex w-full min-w-0 items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 px-3 py-2.5 text-left transition hover:border-teal-200 hover:bg-teal-50/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/30"
+            )}
+          >
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-50 text-teal-500">
+              <Smartphone className="h-5 w-5" aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-base font-black text-slate-900">태그에 프로필 연결</h3>
+              <p className="text-[10px] font-bold text-slate-500">
+                {guideExpanded ? "설명을 접으려면 다시 누르세요." : "사용 방법을 보려면 누르세요."}
+              </p>
+            </div>
+            <ChevronDown
+              className={cn(
+                "h-5 w-5 shrink-0 text-slate-400 transition-transform duration-200",
+                guideExpanded && "rotate-180"
+              )}
+              aria-hidden
+            />
+          </button>
+
+          <div
+            id="nfc-profile-link-guide"
+            role="region"
+            aria-labelledby="nfc-profile-link-menu"
+            className={cn("grid transition-[grid-template-rows] duration-300 ease-out", guideExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}
+          >
+            <div className="min-h-0 overflow-hidden">
+              <div className="space-y-3 border-t border-slate-100/90 pt-3">
+                <p className="text-[11px] font-bold text-slate-500 leading-relaxed">스캔하면 이 대상의 안내로 이어집니다.</p>
+                {subtitle ? <p className="text-[10px] font-bold text-slate-400 leading-relaxed">{subtitle}</p> : null}
+                {subjectsInMode.length > 0 ? (
+                  <>
+                    <ol className="list-decimal space-y-1.5 pl-4 text-[11px] font-bold text-slate-600 leading-relaxed">
+                      <li>연결할 대상(프로필)을 고릅니다.</li>
+                      <li>태그를 휴대폰에 대서 NFC로 읽거나, 태그/패키지에 적힌 UID를 직접 넣어 번호를 맞춥니다.</li>
+                      <li>
+                        <span className="font-black text-slate-800">「연결하고 앱에서 저장」</span>을 누르면 서버에 태그가 연결되고, 이어서 앱이
+                        열립니다. (앱이 없으면 설치 안내로 먼저 갑니다.)
+                      </li>
+                      <li>
+                        앱의 <span className="font-black text-slate-800">보호자연동(Link-U 전용 모드)</span> 화면(UID·URL은 자동)에서 태그에 대고{" "}
+                        <span className="font-black text-slate-800">저장</span>으로 마칩니다.
+                      </li>
+                    </ol>
+                    <p className="text-[10px] font-bold text-slate-400">
+                      이 화면에서는 URL을 길게 입력하거나 복사할 일이 없습니다. 주소는 연결·앱 쪽에서 맞춥니다.
+                    </p>
+                  </>
+                ) : null}
+              </div>
+            </div>
           </div>
         </div>
 
         {subjectsInMode.length > 0 ? (
           <>
-            <ol className="list-decimal space-y-1.5 pl-4 text-[11px] font-bold text-slate-600 leading-relaxed">
-              <li>연결할 대상(프로필)을 고릅니다.</li>
-              <li>태그를 휴대폰에 대서 NFC로 읽거나, 태그/패키지에 적힌 UID를 직접 넣어 번호를 맞춥니다.</li>
-              <li>
-                <span className="font-black text-slate-800">「연결하고 앱에서 저장」</span>을 누르면 서버에 태그가 연결되고, 이어서 앱이
-                열립니다. (앱이 없으면 설치 안내로 먼저 갑니다.)
-              </li>
-              <li>앱의 <span className="font-black text-slate-800">보호자연동(Link-U 전용 모드)</span> 화면(UID·URL은 자동)에서 태그에 대고 <span className="font-black text-slate-800">저장</span>으로 마칩니다.</li>
-            </ol>
-            <p className="text-[10px] font-bold text-slate-400">이 화면에서는 URL을 길게 입력하거나 복사할 일이 없습니다. 주소는 연결·앱 쪽에서 맞춥니다.</p>
             <select
               value={selectedSubjectId}
               onChange={(e) => onChangeSubject(e.target.value)}
@@ -404,12 +484,81 @@ export function DashboardNfcQuickRegisterCard({
               앱이 이미 있으면 보호자연동(Link-U 전용 모드)으로 바로 이어지고, 없을 때는 설치를 거친 뒤에도 위와 같은 화면만 밟으면 됩니다.
             </p>
             {selectedSubjectId ? (
-              <a
-                href={`/dashboard/${subjectKind}/pets/${selectedSubjectId}${tenantQs ? `${tenantQs}&` : "?"}nfc=1`}
-                className="text-[11px] font-black text-slate-400 underline underline-offset-2"
-              >
-                태그 목록·해제·추가는 상세 NFC 화면에서
-              </a>
+              <div ref={tagActionsRef} className="relative flex justify-center pt-1">
+                <button
+                  type="button"
+                  onClick={() => setTagActionsOpen((o) => !o)}
+                  aria-expanded={tagActionsOpen}
+                  aria-haspopup="menu"
+                  aria-controls="nfc-tag-detail-actions"
+                  id="nfc-tag-detail-trigger"
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-[11px] font-black text-slate-700 shadow-sm transition hover:border-teal-200 hover:bg-teal-50/70 active:scale-[0.99]"
+                >
+                  <MoreVertical className="h-4 w-4 shrink-0 text-teal-600" aria-hidden />
+                  태그 관리
+                </button>
+
+                {tagActionsOpen ? (
+                  <div
+                    id="nfc-tag-detail-actions"
+                    role="menu"
+                    aria-labelledby="nfc-tag-detail-trigger"
+                    className="absolute bottom-full left-1/2 z-40 mb-2 w-[min(calc(100vw-2rem),17.5rem)] -translate-x-1/2 rounded-2xl border border-slate-200/90 bg-white py-2 shadow-[0_16px_40px_rgba(15,23,42,0.12)]"
+                  >
+                    <Link
+                      href={petDetailNfcHref}
+                      role="menuitem"
+                      prefetch={false}
+                      onClick={() => setTagActionsOpen(false)}
+                      className="flex items-start gap-3 px-3 py-2.5 text-left transition hover:bg-teal-50/80"
+                    >
+                      <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
+                        <List className="h-4 w-4" aria-hidden />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-[12px] font-black text-slate-900">태그 목록</span>
+                        <span className="mt-0.5 block text-[10px] font-bold leading-snug text-slate-500">
+                          연결된 UID를 프로필에서 확인해요.
+                        </span>
+                      </span>
+                    </Link>
+                    <Link
+                      href={petDetailNfcHref}
+                      role="menuitem"
+                      prefetch={false}
+                      onClick={() => setTagActionsOpen(false)}
+                      className="flex items-start gap-3 px-3 py-2.5 text-left transition hover:bg-rose-50/80"
+                    >
+                      <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600">
+                        <Unlink className="h-4 w-4" aria-hidden />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-[12px] font-black text-slate-900">연결 해제</span>
+                        <span className="mt-0.5 block text-[10px] font-bold leading-snug text-slate-500">
+                          상세 화면 NFC 연결 관리에서 해제할 수 있어요.
+                        </span>
+                      </span>
+                    </Link>
+                    <Link
+                      href={petDetailNfcHref}
+                      role="menuitem"
+                      prefetch={false}
+                      onClick={() => setTagActionsOpen(false)}
+                      className="flex items-start gap-3 px-3 py-2.5 text-left transition hover:bg-indigo-50/80"
+                    >
+                      <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                        <PlusCircle className="h-4 w-4" aria-hidden />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-[12px] font-black text-slate-900">태그 추가 연결</span>
+                        <span className="mt-0.5 block text-[10px] font-bold leading-snug text-slate-500">
+                          같은 프로필에 UID를 더 연결할 때 사용해요.
+                        </span>
+                      </span>
+                    </Link>
+                  </div>
+                ) : null}
+              </div>
             ) : null}
             {linkedTagCount > 0 ? (
               <p className="text-[11px] font-bold text-teal-600">연결된 태그: {linkedTagCount}개</p>
