@@ -222,12 +222,13 @@ async function resolveOrCreateOwnerUserByEmailWithPassword(email: string, passwo
   }
 
   const userId = nanoid();
+  const defaultName = email.split("@")[0] || "user";
   await db
     .prepare(
       `INSERT INTO user (id, email, name, emailVerified, role, subscriptionStatus, createdAt, updatedAt)
-       VALUES (?, ?, NULL, 0, 'user', 'free', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+       VALUES (?, ?, ?, 0, 'user', 'free', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
     )
-    .bind(userId, email)
+    .bind(userId, email, defaultName)
     .run();
   await db
     .prepare(
