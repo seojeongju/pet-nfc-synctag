@@ -234,7 +234,9 @@ export function TagManageCard({
                           >
                             {tag.id}
                           </span>
-                          <ShieldCheck className="w-3.5 h-3.5 text-teal-500 shrink-0" aria-hidden title="연결됨" />
+                          <span title="연결됨" className="inline-flex shrink-0">
+                            <ShieldCheck className="w-3.5 h-3.5 text-teal-500" aria-hidden />
+                          </span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <span
