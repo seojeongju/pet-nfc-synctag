@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, Home, MessageCircle } from "lucide-react";
+import { AlertCircle, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -46,11 +46,14 @@ export default function UnknownTagView({ tagId }: { tagId: string }) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.2 }}
-        className="mt-10 flex w-full max-w-xs flex-col gap-3"
+        className="mt-10 flex w-full max-w-lg flex-col gap-4 px-2 sm:px-0"
       >
-        <Link href="/" className="w-full">
-          <Button className="h-15 w-full rounded-2xl bg-teal-500 text-base font-black shadow-xl shadow-teal-500/20 hover:bg-teal-600 active:scale-[0.98] transition-all">
-            <Home className="mr-2 h-5 w-5" />
+        <Link href="/" className="w-full touch-manipulation" prefetch={false}>
+          <Button
+            size="lg"
+            className="min-h-[3.75rem] w-full rounded-[1.35rem] bg-teal-500 px-6 py-4 text-lg font-black tracking-tight text-white shadow-[0_20px_40px_-12px_rgba(20,184,166,0.45)] ring-2 ring-teal-400/30 transition-all hover:bg-teal-600 hover:shadow-[0_24px_48px_-12px_rgba(13,148,136,0.5)] hover:ring-teal-300/40 active:scale-[0.98] sm:min-h-[4rem] sm:rounded-3xl sm:text-xl sm:py-5"
+          >
+            <Home className="mr-3 h-6 w-6 shrink-0 sm:h-7 sm:w-7" aria-hidden />
             홈으로 돌아가기
           </Button>
         </Link>

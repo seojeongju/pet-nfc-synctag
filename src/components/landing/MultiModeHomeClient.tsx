@@ -353,28 +353,28 @@ export default function MultiModeHomeClient({
           className="rounded-[26px] border border-teal-100/90 bg-gradient-to-br from-teal-50/95 to-white p-[18px] shadow-[0_12px_30px_rgba(15,23,42,0.05)] min-[390px]:rounded-[28px] min-[390px]:p-5"
         >
           <p className="mb-3 text-[11px] font-black uppercase tracking-[0.18em] text-teal-600">보호자 이용 순서</p>
-          <div className="grid grid-cols-1 gap-2.5 min-[390px]:grid-cols-3">
+          <div className="grid grid-cols-3 gap-1.5 min-[390px]:gap-2.5 sm:gap-3">
             {guardianSteps.map((step, index) => {
               const expanded = Boolean(openGuardianStep[step.id]);
               return (
                 <article
                   key={step.id}
-                  className="rounded-2xl border border-teal-100/90 bg-white/90 px-3 py-3 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
+                  className="flex h-full min-w-0 flex-col rounded-2xl border border-teal-100/90 bg-white/90 px-1.5 py-2 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md min-[390px]:px-2.5 min-[390px]:py-3"
                 >
                   <button
                     type="button"
                     onClick={() => toggleGuardianStep(step.id)}
                     aria-expanded={expanded}
-                    className="flex w-full min-w-0 items-center gap-2 rounded-xl text-left transition hover:bg-teal-50/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-300/70"
+                    className="flex w-full min-w-0 flex-col items-center gap-1 rounded-xl px-0.5 py-1 text-center transition hover:bg-teal-50/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-300/70 min-[390px]:gap-1.5 min-[390px]:py-1.5"
                   >
-                    <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
-                      <step.Icon className="h-4 w-4" />
+                    <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600 min-[390px]:h-9 min-[390px]:w-9">
+                      <step.Icon className="h-3.5 w-3.5 min-[390px]:h-4 min-[390px]:w-4" />
                     </span>
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-black text-slate-900 break-keep [word-break:keep-all]">
+                    <div className="min-w-0 w-full">
+                      <p className="text-[9px] font-black leading-snug text-slate-900 break-keep [word-break:keep-all] min-[390px]:text-[11px]">
                         {step.title}
                       </p>
-                      <p className="text-[10px] font-semibold text-slate-500">{index + 1}단계</p>
+                      <p className="text-[8px] font-semibold text-slate-500 min-[390px]:text-[10px]">{index + 1}단계</p>
                     </div>
                   </button>
                   <div
@@ -411,28 +411,28 @@ export default function MultiModeHomeClient({
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 gap-2.5 min-[390px]:grid-cols-3">
+          <div className="grid grid-cols-3 gap-1.5 min-[390px]:gap-2.5 sm:gap-3">
             {finderSteps.map((step, index) => {
               const expanded = Boolean(openFinderStep[step.id]);
               return (
                 <article
                   key={step.id}
-                  className="rounded-2xl border border-indigo-100/90 bg-white/90 px-3 py-3 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
+                  className="flex h-full min-w-0 flex-col rounded-2xl border border-indigo-100/90 bg-white/90 px-1.5 py-2 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md min-[390px]:px-2.5 min-[390px]:py-3"
                 >
                   <button
                     type="button"
                     onClick={() => toggleFinderStep(step.id)}
                     aria-expanded={expanded}
-                    className="flex w-full min-w-0 items-center gap-2 rounded-xl text-left transition hover:bg-indigo-50/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300/70"
+                    className="flex w-full min-w-0 flex-col items-center gap-1 rounded-xl px-0.5 py-1 text-center transition hover:bg-indigo-50/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300/70 min-[390px]:gap-1.5 min-[390px]:py-1.5"
                   >
-                    <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-                      <step.Icon className="h-4 w-4" />
+                    <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 min-[390px]:h-9 min-[390px]:w-9">
+                      <step.Icon className="h-3.5 w-3.5 min-[390px]:h-4 min-[390px]:w-4" />
                     </span>
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-black text-slate-900 break-keep [word-break:keep-all]">
+                    <div className="min-w-0 w-full">
+                      <p className="text-[9px] font-black leading-snug text-slate-900 break-keep [word-break:keep-all] min-[390px]:text-[11px]">
                         {step.title}
                       </p>
-                      <p className="text-[10px] font-semibold text-slate-500">{index + 1}단계</p>
+                      <p className="text-[8px] font-semibold text-slate-500 min-[390px]:text-[10px]">{index + 1}단계</p>
                     </div>
                   </button>
                   <div
