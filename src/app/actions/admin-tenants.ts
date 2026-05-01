@@ -19,6 +19,7 @@ import {
   type TenantTagCustomerRow,
 } from "@/lib/tenant-tag-customers";
 import { setPasswordChangeRequired } from "@/lib/password-change";
+import { ORG_ADMIN_ROLE } from "@/lib/platform-admin";
 
 type TenantRole = "owner" | "admin" | "member";
 const MIN_PASSWORD_LEN = 8;
@@ -226,9 +227,9 @@ async function resolveOrCreateOwnerUserByEmailWithPassword(email: string, passwo
   await db
     .prepare(
       `INSERT INTO user (id, email, name, emailVerified, role, subscriptionStatus, createdAt, updatedAt)
-       VALUES (?, ?, ?, 0, 'user', 'free', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+       VALUES (?, ?, ?, 0, ?, 'free', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
     )
-    .bind(userId, email, defaultName)
+    .bind(userId, email, defaultName, ORG_ADMIN_ROLE)
     .run();
   await db
     .prepare(
@@ -599,6 +600,14 @@ export async function adminCreateTenantWithOwner(
      VALUES (?, ?, 'owner', CURRENT_TIMESTAMP)`
   ).bind(tenantId, owner.id).run();
 
+  await db
+    .prepare(
+      `UPDATE user SET role = ?, updatedAt = CURRENT_TIMESTAMP
+       WHERE id = ? AND (role IS NULL OR role = '' OR role = 'user')`
+    )
+    .bind(ORG_ADMIN_ROLE, owner.id)
+    .run();
+
   await writeAdminAudit(actorEmail, "tenant_create_by_admin", {
     tenantId,
     name,
@@ -608,6 +617,7 @@ export async function adminCreateTenantWithOwner(
     ownerCredentialCreated: ownerResolved.createdCredential,
     allowed_subject_kinds: allowedJson,
   });
+  revalidatePath("/admin/users");
   revalidateTenantSurfaces(tenantId);
   return { tenantId, tenantName: name };
 }

@@ -36,6 +36,8 @@ export type AdminUserListRow = {
   subscriptionStatus: string | null;
   createdAt: string;
   pet_count: number;
+  /** 1이면 tenant_members에서 owner/admin (플랫폼 role이 user여도 목록에서 조직 관리자로 표시) */
+  has_tenant_org_role?: number;
 };
 
 export type PlanCodeOption = {
@@ -168,6 +170,13 @@ export async function listUsersAdmin(params: ListUsersAdminParams = {}) {
   const db = getDB();
   const colNames = await getUserTableColNames();
   const hasPetsTable = await d1TableExists(db, "pets");
+  const hasTenantMembersTable = await d1TableExists(db, "tenant_members");
+  const tenantOrgManagerExistsSql = hasTenantMembersTable
+    ? `EXISTS (SELECT 1 FROM tenant_members tm WHERE tm.user_id = u.id AND tm.role IN ('owner', 'admin'))`
+    : null;
+  const tenantOrgRoleSelectSql = tenantOrgManagerExistsSql
+    ? `CASE WHEN ${tenantOrgManagerExistsSql} THEN 1 ELSE 0 END`
+    : `0`;
   let petCountSql = "0";
   if (hasPetsTable) {
     const petCols = await d1TableColumnSet(db, "pets");
@@ -200,8 +209,15 @@ export async function listUsersAdmin(params: ListUsersAdminParams = {}) {
 
   if (roleFilter === "user") {
     conditions.push("(u.role IS NULL OR u.role = '' OR u.role = 'user')");
+    if (tenantOrgManagerExistsSql) {
+      conditions.push(`NOT (${tenantOrgManagerExistsSql})`);
+    }
   } else if (roleFilter === "org_admin") {
-    conditions.push("u.role = ?");
+    if (tenantOrgManagerExistsSql) {
+      conditions.push(`(u.role = ? OR (${tenantOrgManagerExistsSql}))`);
+    } else {
+      conditions.push("u.role = ?");
+    }
     binds.push(ORG_ADMIN_ROLE);
   } else if (roleFilter === "platform_admin") {
     conditions.push(`(u.role IN (?, ?))`);
@@ -230,7 +246,8 @@ export async function listUsersAdmin(params: ListUsersAdminParams = {}) {
       `SELECT u.id, u.email, u.name, u.${colNames.emailVerified} AS emailVerified, u.image, u.role,
               ${subSelect} AS subscriptionStatus,
               u.${colNames.createdAt} AS createdAt,
-              ${petCountSql} AS pet_count
+              ${petCountSql} AS pet_count,
+              ${tenantOrgRoleSelectSql} AS has_tenant_org_role
        FROM user u
        ${whereSql}
        ORDER BY u.${colNames.createdAt} DESC

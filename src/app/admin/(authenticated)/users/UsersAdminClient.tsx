@@ -52,23 +52,27 @@ function isPlatformAdminStored(role: string | null): boolean {
   return role === PLATFORM_ADMIN_ROLE || role === "admin";
 }
 
-function storedRoleToSelect(role: string | null): PlatformUserRole {
-  if (isPlatformAdminStored(role)) return "platform_admin";
-  if (role === ORG_ADMIN_ROLE) return "org_admin";
+function isTenantOrgManagerRow(row: Pick<AdminUserListRow, "has_tenant_org_role">): boolean {
+  return Number(row.has_tenant_org_role ?? 0) === 1;
+}
+
+function storedRoleToSelect(row: AdminUserListRow): PlatformUserRole {
+  if (isPlatformAdminStored(row.role)) return "platform_admin";
+  if (row.role === ORG_ADMIN_ROLE || isTenantOrgManagerRow(row)) return "org_admin";
   return "user";
 }
 
-function roleLabel(role: string | null): string {
-  if (isPlatformAdminStored(role)) return "플랫폼 관리자(슈퍼어드민)";
-  if (role === ORG_ADMIN_ROLE) return "조직 관리자";
+function roleLabel(row: AdminUserListRow): string {
+  if (isPlatformAdminStored(row.role)) return "플랫폼 관리자(슈퍼어드민)";
+  if (row.role === ORG_ADMIN_ROLE || isTenantOrgManagerRow(row)) return "조직 관리자";
   return "일반 사용자";
 }
 
-function roleBadgeClass(role: string | null): string {
-  if (isPlatformAdminStored(role)) {
+function roleBadgeClass(row: AdminUserListRow): string {
+  if (isPlatformAdminStored(row.role)) {
     return "border-violet-200 bg-violet-50 text-violet-800";
   }
-  if (role === ORG_ADMIN_ROLE) {
+  if (row.role === ORG_ADMIN_ROLE || isTenantOrgManagerRow(row)) {
     return "border-teal-200 bg-teal-50 text-teal-800";
   }
   return "border-slate-200 bg-slate-50 text-slate-700";
@@ -146,7 +150,7 @@ export default function UsersAdminClient({
   const handleRoleSave = (userId: string, next: PlatformUserRole) => {
     if (!isPlatformAdmin) return;
     const row = initialRows.find((r) => r.id === userId);
-    const currentRole: PlatformUserRole = storedRoleToSelect(row?.role ?? null);
+    const currentRole: PlatformUserRole = row ? storedRoleToSelect(row) : "user";
     if (currentRole === next) return;
     const verb =
       next === "platform_admin"
@@ -318,9 +322,9 @@ export default function UsersAdminClient({
                     <p className="mt-0.5 text-[13px] font-semibold text-slate-500">{u.name || "이름 없음"}</p>
                   </div>
                   <span
-                    className={cn("shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-black", roleBadgeClass(u.role))}
+                    className={cn("shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-black", roleBadgeClass(u))}
                   >
-                    {roleLabel(u.role)}
+                    {roleLabel(u)}
                   </span>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-[12px] font-semibold text-slate-500">
@@ -352,7 +356,7 @@ export default function UsersAdminClient({
                         adminUi.input,
                         "min-h-12 flex-1 rounded-xl text-[14px] font-bold sm:min-h-10 sm:text-xs"
                       )}
-                      defaultValue={storedRoleToSelect(u.role)}
+                      defaultValue={storedRoleToSelect(u)}
                       disabled={pending || !isPlatformAdmin}
                       onChange={(e) => handleRoleSave(u.id, e.target.value as PlatformUserRole)}
                     >
@@ -434,12 +438,12 @@ export default function UsersAdminClient({
                       <span className="inline-flex items-center gap-1">
                         {isPlatformAdminStored(u.role) ? (
                           <Shield className="h-3.5 w-3.5 text-violet-500" aria-hidden />
-                        ) : u.role === ORG_ADMIN_ROLE ? (
+                        ) : u.role === ORG_ADMIN_ROLE || isTenantOrgManagerRow(u) ? (
                           <Building2 className="h-3.5 w-3.5 text-teal-600" aria-hidden />
                         ) : (
                           <UserRound className="h-3.5 w-3.5 text-slate-400" aria-hidden />
                         )}
-                        {roleLabel(u.role)}
+                        {roleLabel(u)}
                       </span>
                     </td>
                     <td className={adminUi.tableBodyCell}>
@@ -463,7 +467,7 @@ export default function UsersAdminClient({
                     <td className="py-3 px-4">
                       <select
                         className={cn(adminUi.input, "min-h-9 w-full max-w-[180px] text-[11px] font-bold")}
-                        defaultValue={storedRoleToSelect(u.role)}
+                        defaultValue={storedRoleToSelect(u)}
                         disabled={pending || !isPlatformAdmin}
                         onChange={(e) => handleRoleSave(u.id, e.target.value as PlatformUserRole)}
                       >

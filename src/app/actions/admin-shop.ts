@@ -323,7 +323,18 @@ export async function saveShopProduct(formData: FormData): Promise<void> {
       `/admin/shop/products${idExisting ? `/${encodeURIComponent(idExisting)}` : "/new"}?e=${encodeURIComponent("shop_products 스키마에 저장 가능한 컬럼이 없습니다.")}`
     );
   }
-  const writeBinds = buildShopProductWriteBinds(writeCols, {
+  /** 상품 폼에서 골드 연동 필드를 제거한 경우: 수정 시 DB 기존 값 유지 (금 시세 메뉴 등과 중복 방지) */
+  const formIncludesGoldFields =
+    formData.has("weight_grams") ||
+    formData.has("labor_fee_krw") ||
+    formData.has("is_gold_linked");
+  const colsForSave =
+    idExisting && !formIncludesGoldFields
+      ? writeCols.filter(
+          (c) => c !== "weight_grams" && c !== "labor_fee_krw" && c !== "is_gold_linked"
+        )
+      : writeCols;
+  const writeBinds = buildShopProductWriteBinds(colsForSave, {
     slugRaw,
     name,
     description,
