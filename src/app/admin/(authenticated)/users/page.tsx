@@ -18,7 +18,8 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
   const scope = await resolveAdminScope("admin");
   const sp = await searchParams;
   const q = (sp.q ?? "").trim();
-  const role = sp.role === "user" || sp.role === "platform_admin" ? sp.role : "all";
+  const role =
+    sp.role === "user" || sp.role === "org_admin" || sp.role === "platform_admin" ? sp.role : "all";
   const requestedTenantId = (sp.tenant ?? "").trim() || null;
   const tenantId = scope.actor.isPlatformAdmin
     ? requestedTenantId

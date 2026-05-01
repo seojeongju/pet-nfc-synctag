@@ -1,4 +1,5 @@
 "use server";
+import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { getAuth } from "@/lib/auth";
@@ -436,7 +437,69 @@ export async function deletePet(petId: string): Promise<void> {
         throw new Error("현재 모드에서는 삭제 기능을 사용할 수 없습니다.");
     }
 
+    const actorEmail = (await requireActorUser()).email ?? "system";
+
+    const tagRows = await db
+        .prepare("SELECT id FROM tags WHERE pet_id = ?")
+        .bind(petId)
+        .all<{ id: string }>();
+    const releasedTagIds = (tagRows.results ?? []).map((r) => r.id).filter(Boolean);
+
+    if (releasedTagIds.length > 0) {
+        await db
+            .prepare(
+                `UPDATE tags
+                 SET pet_id = NULL, tenant_id = NULL, is_active = 0, updated_at = CURRENT_TIMESTAMP
+                 WHERE pet_id = ?`
+            )
+            .bind(petId)
+            .run();
+
+        await db.prepare(`
+            CREATE TABLE IF NOT EXISTS tag_link_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tag_id TEXT NOT NULL,
+                pet_id TEXT NOT NULL,
+                action TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `).run();
+        for (const tid of releasedTagIds) {
+            await db
+                .prepare("INSERT INTO tag_link_logs (tag_id, pet_id, action) VALUES (?, ?, 'unlink')")
+                .bind(tid, petId)
+                .run();
+        }
+
+        await db.prepare(`
+            CREATE TABLE IF NOT EXISTS admin_action_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                action TEXT NOT NULL,
+                actor_email TEXT,
+                success BOOLEAN NOT NULL DEFAULT 1,
+                payload TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `).run();
+        await db
+            .prepare(
+                "INSERT INTO admin_action_logs (action, actor_email, success, payload) VALUES (?, ?, 1, ?)"
+            )
+            .bind(
+                "tags_released_on_pet_delete",
+                actorEmail,
+                JSON.stringify({ petId, tagIds: releasedTagIds, actorId })
+            )
+            .run();
+
+        revalidatePath(`/profile/${petId}`);
+    }
+
     await db.prepare("DELETE FROM pets WHERE id = ?").bind(petId).run();
+
+    const dashboardKind = target.subject_kind ? parseSubjectKind(target.subject_kind) : "pet";
+    revalidatePath(`/dashboard`);
+    revalidatePath(`/dashboard/${dashboardKind}/pets`);
 
     const photoKey = extractR2KeyFromPhotoUrl(target.photo_url);
     if (photoKey) {

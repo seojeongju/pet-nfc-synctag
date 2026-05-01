@@ -5,7 +5,7 @@ import { hashPassword } from "better-auth/crypto";
 import { cache } from "react";
 import { nanoid } from "nanoid";
 import { getDB } from "@/lib/db";
-import { PLATFORM_ADMIN_ROLE } from "@/lib/platform-admin";
+import { ORG_ADMIN_ROLE, PLATFORM_ADMIN_ROLE } from "@/lib/platform-admin";
 import {
   requirePlatformAdminActor,
   requirePlatformOrTenantAdminActor,
@@ -45,14 +45,14 @@ export type PlanCodeOption = {
 
 export type ListUsersAdminParams = {
   q?: string;
-  /** all | user | platform_admin */
+  /** all | user | org_admin | platform_admin */
   role?: string;
   tenantId?: string;
   page?: number;
   pageSize?: number;
 };
 
-export type PlatformUserRole = "user" | "platform_admin";
+export type PlatformUserRole = "user" | "org_admin" | "platform_admin";
 
 function isStoredPlatformAdmin(role: string | null | undefined): boolean {
   return role === PLATFORM_ADMIN_ROLE || role === LEGACY_ADMIN;
@@ -179,7 +179,10 @@ export async function listUsersAdmin(params: ListUsersAdminParams = {}) {
     ? `u.${colNames.subscriptionStatus}`
     : "NULL";
   const qRaw = (params.q ?? "").trim().slice(0, 120);
-  const roleFilter = params.role === "user" || params.role === "platform_admin" ? params.role : "all";
+  const roleFilter =
+    params.role === "user" || params.role === "org_admin" || params.role === "platform_admin"
+      ? params.role
+      : "all";
   let page = Number(params.page) || 1;
   if (!Number.isFinite(page) || page < 1) page = 1;
   let pageSize = Number(params.pageSize) || PAGE_SIZE_DEFAULT;
@@ -197,6 +200,9 @@ export async function listUsersAdmin(params: ListUsersAdminParams = {}) {
 
   if (roleFilter === "user") {
     conditions.push("(u.role IS NULL OR u.role = '' OR u.role = 'user')");
+  } else if (roleFilter === "org_admin") {
+    conditions.push("u.role = ?");
+    binds.push(ORG_ADMIN_ROLE);
   } else if (roleFilter === "platform_admin") {
     conditions.push(`(u.role IN (?, ?))`);
     binds.push(PLATFORM_ADMIN_ROLE, LEGACY_ADMIN);
@@ -273,17 +279,22 @@ export async function updateUserPlatformRole(targetUserId: string, nextRole: Pla
   }
 
   const prevRole = target.role;
-  const wasAdmin = isStoredPlatformAdmin(prevRole);
-  const willBeAdmin = nextRole === "platform_admin";
+  const wasPlatformAdmin = isStoredPlatformAdmin(prevRole);
+  const willBePlatformAdmin = nextRole === "platform_admin";
 
-  if (wasAdmin && !willBeAdmin) {
+  if (wasPlatformAdmin && !willBePlatformAdmin) {
     const admins = await countStoredPlatformAdmins(db);
     if (admins <= 1) {
-      throw new Error("마지막 플랫폼 관리자는 일반 사용자로 바꿀 수 없습니다.");
+      throw new Error("마지막 플랫폼 관리자는 다른 역할로 바꿀 수 없습니다.");
     }
   }
 
-  const storedRole = nextRole === "platform_admin" ? PLATFORM_ADMIN_ROLE : "user";
+  const storedRole =
+    nextRole === "platform_admin"
+      ? PLATFORM_ADMIN_ROLE
+      : nextRole === "org_admin"
+        ? ORG_ADMIN_ROLE
+        : "user";
 
   await db
     .prepare(

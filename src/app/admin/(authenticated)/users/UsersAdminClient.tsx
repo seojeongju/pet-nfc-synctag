@@ -23,11 +23,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PLATFORM_ADMIN_ROLE } from "@/lib/platform-admin";
+import { ORG_ADMIN_ROLE, PLATFORM_ADMIN_ROLE } from "@/lib/platform-admin";
 import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeftRight,
+  Building2,
   ChevronLeft,
   ChevronRight,
   KeyRound,
@@ -51,8 +52,26 @@ function isPlatformAdminStored(role: string | null): boolean {
   return role === PLATFORM_ADMIN_ROLE || role === "admin";
 }
 
+function storedRoleToSelect(role: string | null): PlatformUserRole {
+  if (isPlatformAdminStored(role)) return "platform_admin";
+  if (role === ORG_ADMIN_ROLE) return "org_admin";
+  return "user";
+}
+
 function roleLabel(role: string | null): string {
-  return isPlatformAdminStored(role) ? "플랫폼 관리자" : "일반 사용자";
+  if (isPlatformAdminStored(role)) return "플랫폼 관리자(슈퍼어드민)";
+  if (role === ORG_ADMIN_ROLE) return "조직 관리자";
+  return "일반 사용자";
+}
+
+function roleBadgeClass(role: string | null): string {
+  if (isPlatformAdminStored(role)) {
+    return "border-violet-200 bg-violet-50 text-violet-800";
+  }
+  if (role === ORG_ADMIN_ROLE) {
+    return "border-teal-200 bg-teal-50 text-teal-800";
+  }
+  return "border-slate-200 bg-slate-50 text-slate-700";
 }
 
 function mergePlanOpts(planOptions: PlanCodeOption[], subscriptionStatus: string | null): PlanCodeOption[] {
@@ -127,13 +146,14 @@ export default function UsersAdminClient({
   const handleRoleSave = (userId: string, next: PlatformUserRole) => {
     if (!isPlatformAdmin) return;
     const row = initialRows.find((r) => r.id === userId);
-    const currentRole: PlatformUserRole =
-      row && isPlatformAdminStored(row.role) ? "platform_admin" : "user";
+    const currentRole: PlatformUserRole = storedRoleToSelect(row?.role ?? null);
     if (currentRole === next) return;
     const verb =
       next === "platform_admin"
-        ? "이 사용자를 플랫폼 관리자로 승격할까요?"
-        : "플랫폼 관리자에서 일반 사용자로 내릴까요? 마지막 관리자는 변경할 수 없습니다.";
+        ? "이 사용자를 플랫폼 관리자(슈퍼어드민)로 지정할까요?"
+        : next === "org_admin"
+          ? "이 사용자를 조직 관리자로 지정할까요?"
+          : "이 사용자를 일반 사용자로 변경할까요? (마지막 플랫폼 관리자는 변경할 수 없습니다)";
     if (!confirm(verb)) return;
     startTransition(async () => {
       try {
@@ -251,6 +271,7 @@ export default function UsersAdminClient({
               >
                 <option value="all">전체</option>
                 <option value="user">일반 사용자만</option>
+                <option value="org_admin">조직 관리자만</option>
                 <option value="platform_admin">플랫폼 관리자만</option>
               </select>
             </label>
@@ -297,12 +318,7 @@ export default function UsersAdminClient({
                     <p className="mt-0.5 text-[13px] font-semibold text-slate-500">{u.name || "이름 없음"}</p>
                   </div>
                   <span
-                    className={cn(
-                      "shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-black",
-                      isPlatformAdminStored(u.role)
-                        ? "border-violet-200 bg-violet-50 text-violet-800"
-                        : "border-slate-200 bg-slate-50 text-slate-700"
-                    )}
+                    className={cn("shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-black", roleBadgeClass(u.role))}
                   >
                     {roleLabel(u.role)}
                   </span>
@@ -336,12 +352,13 @@ export default function UsersAdminClient({
                         adminUi.input,
                         "min-h-12 flex-1 rounded-xl text-[14px] font-bold sm:min-h-10 sm:text-xs"
                       )}
-                      defaultValue={isPlatformAdminStored(u.role) ? "platform_admin" : "user"}
+                      defaultValue={storedRoleToSelect(u.role)}
                       disabled={pending || !isPlatformAdmin}
                       onChange={(e) => handleRoleSave(u.id, e.target.value as PlatformUserRole)}
                     >
                       <option value="user">일반 사용자</option>
-                      <option value="platform_admin">플랫폼 관리자</option>
+                      <option value="org_admin">조직 관리자</option>
+                      <option value="platform_admin">플랫폼 관리자(슈퍼어드민)</option>
                     </select>
                   </div>
                 </label>
@@ -417,6 +434,8 @@ export default function UsersAdminClient({
                       <span className="inline-flex items-center gap-1">
                         {isPlatformAdminStored(u.role) ? (
                           <Shield className="h-3.5 w-3.5 text-violet-500" aria-hidden />
+                        ) : u.role === ORG_ADMIN_ROLE ? (
+                          <Building2 className="h-3.5 w-3.5 text-teal-600" aria-hidden />
                         ) : (
                           <UserRound className="h-3.5 w-3.5 text-slate-400" aria-hidden />
                         )}
@@ -444,12 +463,13 @@ export default function UsersAdminClient({
                     <td className="py-3 px-4">
                       <select
                         className={cn(adminUi.input, "min-h-9 w-full max-w-[180px] text-[11px] font-bold")}
-                        defaultValue={isPlatformAdminStored(u.role) ? "platform_admin" : "user"}
+                        defaultValue={storedRoleToSelect(u.role)}
                         disabled={pending || !isPlatformAdmin}
                         onChange={(e) => handleRoleSave(u.id, e.target.value as PlatformUserRole)}
                       >
                         <option value="user">일반 사용자</option>
-                        <option value="platform_admin">플랫폼 관리자</option>
+                        <option value="org_admin">조직 관리자</option>
+                        <option value="platform_admin">플랫폼 관리자(슈퍼어드민)</option>
                       </select>
                     </td>
                     <td className="py-3 px-4">
@@ -531,8 +551,9 @@ export default function UsersAdminClient({
         <ArrowLeftRight className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" aria-hidden />
         {isPlatformAdmin ? (
           <>
-            플랫폼 관리자는 `/admin` 전역 메뉴에 접근할 수 있습니다. 개인 플랜 코드는 활성 개인 구독이 있을 때보다 우선하지
-            않을 수 있습니다. 조직(B2B) 요금은{" "}
+            플랫폼 역할은 일반 사용자 · 조직 관리자 · 플랫폼 관리자(슈퍼어드민) 세 단계입니다. 플랫폼 관리자는 `/admin` 전역
+            메뉴와 크로스 테넌트 작업에 접근할 수 있습니다. 조직 관리자는 테넌트 운영 계정에 부여할 수 있으며, 개인 플랜 코드는
+            활성 개인 구독이 있을 때보다 우선하지 않을 수 있습니다. 조직(B2B) 요금은{" "}
             <Link href="/admin/tenants" className="font-black text-teal-700 underline-offset-2 hover:underline">
               테넌트 관리
             </Link>

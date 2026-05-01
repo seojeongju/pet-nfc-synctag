@@ -70,7 +70,19 @@ export async function linkTag(petId: string, tagId: string) {
         throw new Error("등록되지 않은 정품 NFC 태그가 아닙니다. 관리자에게 문의하세요.");
     }
 
-    if (existingTag.status === "active" && existingTag.pet_id && existingTag.pet_id !== petId) {
+    /** 삭제된 펫을 가리키는 고아 pet_id는 재연결을 막지 않습니다(FK 미적용·레거시 데이터). */
+    let blockingPetId = existingTag.pet_id ?? null;
+    if (blockingPetId) {
+        const petStillExists = await db
+            .prepare("SELECT id FROM pets WHERE id = ?")
+            .bind(blockingPetId)
+            .first<{ id: string }>();
+        if (!petStillExists) {
+            blockingPetId = null;
+        }
+    }
+
+    if (existingTag.status === "active" && blockingPetId && blockingPetId !== petId) {
         throw new Error("이미 다른 반려동물에게 연결된 태그입니다.");
     }
 

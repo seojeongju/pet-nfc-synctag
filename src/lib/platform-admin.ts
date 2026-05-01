@@ -4,8 +4,15 @@
  */
 export const PLATFORM_ADMIN_ROLE = "platform_admin";
 
+/** 조직(B2B) 단위 운영자. `user.role`에 저장되며 테넌트 멤버십과 조합되어 쓰입니다. */
+export const ORG_ADMIN_ROLE = "org_admin";
+
 const LEGACY_PLATFORM_ADMIN_ROLE = "admin";
 
 export function isPlatformAdminRole(role: string | null | undefined): boolean {
   return role === PLATFORM_ADMIN_ROLE || role === LEGACY_PLATFORM_ADMIN_ROLE;
+}
+
+export function isOrgAdminRole(role: string | null | undefined): boolean {
+  return role === ORG_ADMIN_ROLE;
 }
