@@ -174,6 +174,74 @@ export async function getAdminShopProduct(id: string): Promise<AdminShopProductR
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
+/** save 시에도 PRAGMA 결과와 맞출 것 — 마이그레이션 누락 D1에서 확장 컬럼 없으면 고정 UPDATE/INSERT가 500 */
+const SHOP_PRODUCT_WRITABLE_COLUMNS = [
+  "slug",
+  "name",
+  "description",
+  "price_krw",
+  "active",
+  "target_modes",
+  "image_url",
+  "video_url",
+  "content_html",
+  "additional_images",
+  "options_json",
+  "stock_quantity",
+  "sort_order",
+  "weight_grams",
+  "labor_fee_krw",
+  "is_gold_linked",
+] as const;
+
+type ShopProductWritableCol = (typeof SHOP_PRODUCT_WRITABLE_COLUMNS)[number];
+
+function filterShopProductWriteColumns(existing: Set<string>): ShopProductWritableCol[] {
+  return SHOP_PRODUCT_WRITABLE_COLUMNS.filter((c) => existing.has(c));
+}
+
+function buildShopProductWriteBinds(
+  writeCols: ShopProductWritableCol[],
+  p: {
+    slugRaw: string;
+    name: string;
+    description: string;
+    price_krw: number;
+    active: number;
+    target_modes: string;
+    image_url: string | null;
+    video_url: string | null;
+    content_html: string | null;
+    additional_images: string | null;
+    options_json: string | null;
+    stock_quantity: number;
+    sort_order: number;
+    weight_grams: number | null;
+    labor_fee_krw: number | null;
+    isGoldLinked: number;
+  }
+): unknown[] {
+  const m: Record<ShopProductWritableCol, unknown> = {
+    slug: p.slugRaw,
+    name: p.name,
+    description: p.description,
+    price_krw: p.price_krw,
+    active: p.active,
+    target_modes: p.target_modes,
+    image_url: p.image_url,
+    video_url: p.video_url,
+    content_html: p.content_html,
+    additional_images: p.additional_images,
+    options_json: p.options_json,
+    stock_quantity: p.stock_quantity,
+    sort_order: p.sort_order,
+    weight_grams: p.weight_grams,
+    labor_fee_krw: p.labor_fee_krw,
+    is_gold_linked: p.isGoldLinked,
+  };
+  return writeCols.map((c) => m[c]);
+}
+
 function parseKindsFromForm(formData: FormData): SubjectKind[] {
   const out: SubjectKind[] = [];
   for (const k of SUBJECT_KINDS) {
@@ -229,10 +297,50 @@ export async function saveShopProduct(formData: FormData): Promise<void> {
   const additional_images = additionalImagesRaw.length > 0 ? additionalImagesRaw : null;
   const content_html = contentHtml.length > 0 ? contentHtml : null;
   const options_json = optionsJsonRaw.length > 0 ? optionsJsonRaw : null;
-  const weight_grams = weightGramsRaw ? parseFloat(String(weightGramsRaw)) : null;
-  const labor_fee_krw = laborFeeRaw ? parseInt(String(laborFeeRaw)) : null;
+  const weight_grams = weightGramsRaw
+    ? (() => {
+        const n = parseFloat(String(weightGramsRaw));
+        return Number.isFinite(n) ? n : null;
+      })()
+    : null;
+  const labor_fee_krw = laborFeeRaw
+    ? (() => {
+        const n = parseInt(String(laborFeeRaw), 10);
+        return Number.isFinite(n) ? n : null;
+      })()
+    : null;
 
   const db = getDB();
+  const shopCols = await getShopProductsColumnSet();
+  if (!shopCols.has("id")) {
+    redirect(
+      `/admin/shop/products${idExisting ? `/${encodeURIComponent(idExisting)}` : "/new"}?e=${encodeURIComponent("shop_products 테이블이 없습니다. D1 마이그레이션을 확인하세요.")}`
+    );
+  }
+  const writeCols = filterShopProductWriteColumns(shopCols);
+  if (writeCols.length === 0) {
+    redirect(
+      `/admin/shop/products${idExisting ? `/${encodeURIComponent(idExisting)}` : "/new"}?e=${encodeURIComponent("shop_products 스키마에 저장 가능한 컬럼이 없습니다.")}`
+    );
+  }
+  const writeBinds = buildShopProductWriteBinds(writeCols, {
+    slugRaw,
+    name,
+    description,
+    price_krw,
+    active,
+    target_modes,
+    image_url,
+    video_url,
+    content_html,
+    additional_images,
+    options_json,
+    stock_quantity,
+    sort_order,
+    weight_grams,
+    labor_fee_krw,
+    isGoldLinked,
+  });
 
   if (idExisting) {
     const dup = await db
@@ -242,11 +350,11 @@ export async function saveShopProduct(formData: FormData): Promise<void> {
     if (dup) {
       redirect(`/admin/shop/products/${encodeURIComponent(idExisting)}?e=${encodeURIComponent("이미 사용 중인 슬러그입니다.")}`);
     }
+    const setSql = writeCols.map((c) => `${c} = ?`).join(", ");
+    const tsSql = shopCols.has("updated_at") ? ", updated_at = CURRENT_TIMESTAMP" : "";
     await db
-      .prepare(
-        `UPDATE shop_products SET slug = ?, name = ?, description = ?, price_krw = ?, active = ?, target_modes = ?, image_url = ?, video_url = ?, content_html = ?, additional_images = ?, options_json = ?, stock_quantity = ?, sort_order = ?, weight_grams = ?, labor_fee_krw = ?, is_gold_linked = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
-      )
-      .bind(slugRaw, name, description, price_krw, active, target_modes, image_url, video_url, content_html, additional_images, options_json, stock_quantity, sort_order, weight_grams, labor_fee_krw, isGoldLinked, idExisting)
+      .prepare(`UPDATE shop_products SET ${setSql}${tsSql} WHERE id = ?`)
+      .bind(...writeBinds, idExisting)
       .run();
     revalidatePath("/admin/shop");
     revalidatePath("/admin/shop/products");
@@ -260,13 +368,12 @@ export async function saveShopProduct(formData: FormData): Promise<void> {
   }
 
   const newId = nanoid();
-  await db
-    .prepare(
-      `INSERT INTO shop_products (id, slug, name, description, price_krw, active, target_modes, image_url, video_url, content_html, additional_images, options_json, stock_quantity, sort_order, weight_grams, labor_fee_krw, is_gold_linked, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
-    )
-    .bind(newId, slugRaw, name, description, price_krw, active, target_modes, image_url, video_url, content_html, additional_images, options_json, stock_quantity, sort_order, weight_grams, labor_fee_krw, isGoldLinked)
-    .run();
+  const insertCols = ["id", ...writeCols];
+  const placeholders = insertCols.map(() => "?").join(", ");
+  const insertSql = shopCols.has("updated_at")
+    ? `INSERT INTO shop_products (${insertCols.join(", ")}, updated_at) VALUES (${placeholders}, CURRENT_TIMESTAMP)`
+    : `INSERT INTO shop_products (${insertCols.join(", ")}) VALUES (${placeholders})`;
+  await db.prepare(insertSql).bind(newId, ...writeBinds).run();
   revalidatePath("/admin/shop");
   revalidatePath("/admin/shop/products");
   revalidatePath("/shop");
