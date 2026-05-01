@@ -46,6 +46,12 @@ export type RegisterBulkTagsOptions = {
     batchId?: string;
     /** 등록 시점에 태그에 부여할 할당 모드 (허브 자동 진입 등에 사용) */
     assignedSubjectKind?: SubjectKind | null;
+    /**
+     * 이미 인벤토리에 있는 UID 처리
+     * - skip: 기존과 동일(INSERT만, 중복은 건너뜀)
+     * - update_meta: 할당 모드·배치 ID를 현재 등록 설정으로 갱신(펫 연결은 유지)
+     */
+    existingUidBehavior?: "skip" | "update_meta";
 };
 
 /**
@@ -68,6 +74,7 @@ export async function registerBulkTags(uids: string[], options?: RegisterBulkTag
     const invalidCount = uniqueNormalized.length - validUids.length;
     const duplicateInRequest = normalized.length - uniqueNormalized.length;
     let duplicateExisting = 0;
+    let updatedExistingMeta = 0;
 
     try {
         type TableInfoRow = { name?: string | null };
@@ -107,7 +114,53 @@ export async function registerBulkTags(uids: string[], options?: RegisterBulkTag
             for (const row of results) existingSet.add(row.id);
         }
         const toInsert = validUids.filter((uid) => !existingSet.has(uid));
-        
+        const existingUidBehavior = options?.existingUidBehavior ?? "skip";
+
+        if (existingUidBehavior === "update_meta" && hasAssignedKindColumn) {
+            const toUpdateMeta = validUids.filter((uid) => existingSet.has(uid));
+            const setParts: string[] = ["updated_at = CURRENT_TIMESTAMP"];
+            const setBinds: unknown[] = [];
+            setParts.push("assigned_subject_kind = ?");
+            setBinds.push(kind);
+            if (hasBatchIdColumn) {
+                setParts.push("batch_id = ?");
+                setBinds.push(currentBatch);
+            }
+            const setSql = setParts.join(", ");
+
+            let tenantWhere = "";
+            const tenantBinds: unknown[] = [];
+            if (!scope.actor.isPlatformAdmin) {
+                if (forcedTenantId) {
+                    tenantWhere = " AND tenant_id = ?";
+                    tenantBinds.push(forcedTenantId);
+                } else if (scope.tenantIds && scope.tenantIds.length > 0) {
+                    tenantWhere = ` AND tenant_id IN (${scope.tenantIds.map(() => "?").join(", ")})`;
+                    tenantBinds.push(...scope.tenantIds);
+                }
+            }
+
+            const updateChunks = chunkArray(toUpdateMeta, 200);
+            for (const chunk of updateChunks) {
+                if (chunk.length === 0) continue;
+                const ph = chunk.map(() => "?").join(",");
+                const countRow = await db
+                    .prepare(
+                        `SELECT COUNT(*) AS c FROM tags WHERE id IN (${ph})${tenantWhere}`
+                    )
+                    .bind(...chunk, ...tenantBinds)
+                    .first<{ c: number }>();
+                updatedExistingMeta += Number(countRow?.c ?? 0);
+                if (Number(countRow?.c ?? 0) === 0) continue;
+                await db
+                    .prepare(
+                        `UPDATE tags SET ${setSql} WHERE id IN (${ph})${tenantWhere}`
+                    )
+                    .bind(...setBinds, ...chunk, ...tenantBinds)
+                    .run();
+            }
+        }
+
         // 중복 제거 및 트랜잭션 처리 (D1 배치는 순차 처리 권장)
         const queries = toInsert.map((uid) => {
             const columns = ["id"];
@@ -154,6 +207,8 @@ export async function registerBulkTags(uids: string[], options?: RegisterBulkTag
             invalidCount,
             duplicateInRequest,
             duplicateExisting,
+            updatedExistingMeta,
+            existingUidBehavior,
             failedCount: invalidCount + duplicateInRequest + duplicateExisting,
         };
 
@@ -878,6 +933,60 @@ export async function updateTagProductProfile(
                     : e.message
             );
         });
+
+    revalidatePath("/admin/tags");
+    revalidatePath("/admin/nfc-tags");
+    revalidatePath("/admin/nfc-tags/inventory");
+    revalidatePath("/admin/monitoring");
+}
+
+/**
+ * 인벤토리에서 태그 행을 삭제합니다. 관리 대상에 연결된 태그는 삭제할 수 없습니다(먼저 연결 해제).
+ */
+export async function deleteInventoryTagAdmin(tagId: string) {
+    const scope = await resolveAdminScope("admin");
+    const db = getDB();
+    const id = normalizeTagUid(tagId);
+    if (!isValidTagUidFormat(id)) {
+        throw new Error("UID 형식이 올바르지 않습니다.");
+    }
+
+    const row = await db
+        .prepare("SELECT id, pet_id, tenant_id FROM tags WHERE id = ?")
+        .bind(id)
+        .first<{ id: string; pet_id: string | null; tenant_id: string | null }>();
+    if (!row) {
+        throw new Error("태그를 찾을 수 없습니다.");
+    }
+    if (row.pet_id) {
+        throw new Error(
+            "이 태그는 관리 대상에 연결되어 있습니다. 보호자 대시보드에서 태그 연결을 해제한 뒤 삭제하거나, 대량 등록에서「기존 UID 할당 모드 갱신」을 사용해 주세요."
+        );
+    }
+
+    if (!scope.actor.isPlatformAdmin) {
+        const tid = (row.tenant_id ?? "").trim();
+        if (!tid || !scope.tenantIds?.includes(tid)) {
+            throw new Error("이 태그를 삭제할 권한이 없습니다.");
+        }
+    }
+
+    await db.prepare("DELETE FROM tags WHERE id = ?").bind(id).run();
+
+    await db.prepare(`
+        CREATE TABLE IF NOT EXISTS admin_action_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            action TEXT NOT NULL,
+            actor_email TEXT,
+            success BOOLEAN NOT NULL DEFAULT 1,
+            payload TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `).run();
+    await db
+        .prepare("INSERT INTO admin_action_logs (action, actor_email, success, payload) VALUES (?, ?, 1, ?)")
+        .bind("inventory_tag_delete", await getActorEmailSafe(), JSON.stringify({ tagId: id }))
+        .run();
 
     revalidatePath("/admin/tags");
     revalidatePath("/admin/nfc-tags");

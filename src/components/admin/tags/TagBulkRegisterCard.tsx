@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { recordNfcWebReadAudit, registerBulkTags } from "@/app/actions/admin";
+import { recordNfcWebReadAudit, registerBulkTags, type RegisterBulkTagsOptions } from "@/app/actions/admin";
 import { AdminCard } from "@/components/admin/ui/AdminCard";
 import { Button } from "@/components/ui/button";
 import {
@@ -93,6 +93,9 @@ export function TagBulkRegisterCard() {
   const [nfcBusy, setNfcBusy] = useState(false);
   const [nfcContinuous, setNfcContinuous] = useState(false);
   const [nfcHint, setNfcHint] = useState<string | null>(null);
+  /** 이미 DB에 있는 UID: 건너뛰기 vs 현재 모드·배치로 메타 갱신 */
+  const [existingUidBehavior, setExistingUidBehavior] =
+    useState<NonNullable<RegisterBulkTagsOptions["existingUidBehavior"]>>("skip");
   const sessionRef = useRef<NfcUidScanSession | null>(null);
   /** NFC 읽기가 비동기라, 완료 시점의 활성 모드 기준으로 UID를 반영합니다 */
   const activeKindRef = useRef<SubjectKind>(activeKind);
@@ -126,11 +129,18 @@ export function TagBulkRegisterCard() {
 
     startTransition(async () => {
       try {
-        const result = await registerBulkTags(uidList, { assignedSubjectKind: activeKind });
+        const result = await registerBulkTags(uidList, {
+          assignedSubjectKind: activeKind,
+          existingUidBehavior,
+        });
         const modeLabel = subjectKindMeta[activeKind].label;
+        const metaLine =
+          existingUidBehavior === "update_meta" && result.updatedExistingMeta > 0
+            ? ` · 기존 UID 메타 갱신 ${result.updatedExistingMeta}개`
+            : "";
         setMessage({
           type: "success",
-          text: `[${modeLabel}] 등록 완료: 신규 ${result.registeredCount}개 / 요청 ${result.requestedCount}개 · 무효 ${result.invalidCount}개 · 요청 내 중복 ${result.duplicateInRequest}개 · 기존 태그 ${result.duplicateExisting}개 (배치 ${result.batchId})`,
+          text: `[${modeLabel}] 등록 완료: 신규 ${result.registeredCount}개 / 요청 ${result.requestedCount}개 · 무효 ${result.invalidCount}개 · 요청 내 중복 ${result.duplicateInRequest}개 · DB에 이미 있던 UID ${result.duplicateExisting}개${metaLine} (배치 ${result.batchId})`,
         });
         setNfcHint(null);
         setUidsByKind((prev) => ({ ...prev, [activeKind]: "" }));
@@ -354,6 +364,43 @@ export function TagBulkRegisterCard() {
           </span>
         </div>
       </div>
+
+      <fieldset className="space-y-2 rounded-xl border border-slate-200 bg-white/80 p-4">
+        <legend className="text-[11px] font-black uppercase tracking-wide text-slate-600 px-1">
+          이미 등록된 UID가 있을 때
+        </legend>
+        <label className="flex cursor-pointer items-start gap-2.5 touch-manipulation">
+          <input
+            type="radio"
+            name="existingUidBehavior"
+            className="mt-1"
+            checked={existingUidBehavior === "skip"}
+            onChange={() => setExistingUidBehavior("skip")}
+          />
+          <span>
+            <span className="block text-[13px] font-black text-slate-900 sm:text-xs">건너뛰기 (기본)</span>
+            <span className="block text-[12px] font-semibold leading-snug text-slate-500 sm:text-[10px] sm:font-bold">
+              DB에 같은 UID가 있으면 새 행을 만들지 않습니다.
+            </span>
+          </span>
+        </label>
+        <label className="flex cursor-pointer items-start gap-2.5 touch-manipulation">
+          <input
+            type="radio"
+            name="existingUidBehavior"
+            className="mt-1"
+            checked={existingUidBehavior === "update_meta"}
+            onChange={() => setExistingUidBehavior("update_meta")}
+          />
+          <span>
+            <span className="block text-[13px] font-black text-slate-900 sm:text-xs">할당 모드·배치 갱신</span>
+            <span className="block text-[12px] font-semibold leading-snug text-slate-500 sm:text-[10px] sm:font-bold">
+              위에서 선택한 모드·이번 배치 ID로 기존 태그 메타를 덮어씁니다. (펫 연결은 유지됩니다. 완전 삭제는 인벤토리
+              목록의 삭제를 사용하세요.)
+            </span>
+          </span>
+        </label>
+      </fieldset>
 
       <AnimatePresence>
         {message && (

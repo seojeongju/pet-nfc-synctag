@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { updateTagProductProfile } from "@/app/actions/admin";
+import { deleteInventoryTagAdmin, updateTagProductProfile } from "@/app/actions/admin";
 import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
 import { Button } from "@/components/ui/button";
 import { AdminTableRow } from "@/components/admin/ui/AdminTable";
 import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
 import type { AdminTag } from "@/types/admin-tags";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Trash2 } from "lucide-react";
 
 function getStatusLabel(status: string) {
   if (status === "active") return "활성";
@@ -50,6 +50,27 @@ export function TagProductRow({
         onAfterSave();
       } catch {
         /* toast optional */
+      }
+    });
+  };
+
+  const linkedToPet = Boolean((tag.pet_id ?? "").trim() || (tag.pet_name ?? "").trim());
+
+  const removeFromInventory = () => {
+    if (linkedToPet) return;
+    if (
+      !confirm(
+        `인벤토리에서 이 UID를 삭제합니다.\n${tag.id}\n삭제 후 동일 UID는 대량 등록으로 다시 넣을 수 있습니다. 계속할까요?`
+      )
+    ) {
+      return;
+    }
+    startTransition(async () => {
+      try {
+        await deleteInventoryTagAdmin(tag.id);
+        onAfterSave();
+      } catch (e) {
+        alert(e instanceof Error ? e.message : "삭제에 실패했습니다.");
       }
     });
   };
@@ -127,7 +148,7 @@ export function TagProductRow({
               />
             </div>
 
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <span
                 className={cn(
                   "inline-flex rounded-lg border px-2.5 py-1 text-[10px] font-black tracking-wide",
@@ -140,16 +161,34 @@ export function TagProductRow({
               >
                 {getStatusLabel(tag.status)}
               </span>
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                className="h-9 px-3 text-[11px] font-black"
-                disabled={pending}
-                onClick={save}
-              >
-                저장
-              </Button>
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className="h-9 px-3 text-[11px] font-black"
+                  disabled={pending}
+                  onClick={save}
+                >
+                  저장
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-9 border-rose-200 px-3 text-[11px] font-black text-rose-700 hover:bg-rose-50"
+                  disabled={pending || linkedToPet}
+                  title={
+                    linkedToPet
+                      ? "관리 대상에 연결된 태그는 삭제할 수 없습니다. 먼저 연결 해제 후 삭제하세요."
+                      : "인벤토리에서 UID 행 삭제"
+                  }
+                  onClick={removeFromInventory}
+                >
+                  <Trash2 className="mr-1 inline h-3.5 w-3.5" aria-hidden />
+                  삭제
+                </Button>
+              </div>
             </div>
           </div>
         )}
@@ -226,16 +265,33 @@ export function TagProductRow({
         {new Date(tag.created_at).toLocaleDateString()}
       </td>
       <td className="py-4 px-2">
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          className="h-8 text-[9px] font-black uppercase px-2"
-          disabled={pending}
-          onClick={save}
-        >
-          저장
-        </Button>
+        <div className="flex flex-col gap-1.5">
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            className="h-8 text-[9px] font-black uppercase px-2"
+            disabled={pending}
+            onClick={save}
+          >
+            저장
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-8 border-rose-200 px-2 text-[9px] font-black uppercase text-rose-700 hover:bg-rose-50"
+            disabled={pending || linkedToPet}
+            title={
+              linkedToPet
+                ? "연결된 태그는 삭제 불가"
+                : "인벤토리에서 삭제"
+            }
+            onClick={removeFromInventory}
+          >
+            <Trash2 className="mx-auto h-3.5 w-3.5" aria-hidden />
+          </Button>
+        </div>
       </td>
     </AdminTableRow>
   );

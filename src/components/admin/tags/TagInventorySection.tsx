@@ -214,7 +214,7 @@ export function TagInventorySection({
               <AdminTableHeadCell className="px-4 py-5">상태</AdminTableHeadCell>
               <AdminTableHeadCell className="px-4 py-5">연결</AdminTableHeadCell>
               <AdminTableHeadCell className="px-4 py-5">등록일</AdminTableHeadCell>
-              <AdminTableHeadCell className="w-[72px] px-4 py-5">저장</AdminTableHeadCell>
+              <AdminTableHeadCell className="min-w-[88px] px-4 py-5">저장·삭제</AdminTableHeadCell>
             </AdminTableHeadRow>
           </thead>
           <tbody className="divide-y divide-slate-100">

@@ -15,6 +15,7 @@ export type TagsInventoryPageParams = {
 /** 관리자 태그 재고 화면용 데이터 형태 (태그 조인 결과) */
 export type AdminTag = {
   id: string;
+  pet_id?: string | null;
   pet_name?: string | null;
   owner_email?: string | null;
   batch_id?: string | null;
