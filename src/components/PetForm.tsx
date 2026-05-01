@@ -178,13 +178,12 @@ export function PetForm({ ownerId, subjectKind: kindProp, tenantId, initialData,
                     setSubmitError(result.error);
                     return;
                 }
-                // 신규 등록 직후 NFC 태그 연결 단계로 자연스럽게 유도
+                // 신규 등록 직후 NFC일기(태그 연결)로 유도
                 const params = new URLSearchParams();
                 if (tenantId) params.set("tenant", tenantId);
-                params.set("onboarding", "nfc");
                 if (result.id) params.set("pet", result.id);
                 const qs = params.toString();
-                router.push(`/dashboard/${subjectKind}?${qs}`);
+                router.push(`/dashboard/${subjectKind}/nfc${qs ? `?${qs}` : ""}`);
             }
         } catch (error) {
             console.error("Failed to save pet:", error);

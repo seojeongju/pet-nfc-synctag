@@ -88,14 +88,14 @@ export default function PetDashboard({
   const meta = subjectKindMeta[subjectKind];
   const tenantQs = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : "";
   const kindQs = tenantQs;
-  /** 원탁 가이드·태그 연결 바로가기용 (자녀 컴포넌트 [DashboardNfcQuickRegisterCard]가 선택 id를 올려줌) */
+  /** 원탁 가이드·태그 연결 바로가기용 (자녀 컴포넌트 [DashboardNfcQuickRegisterCard]가 선택 id를 올려줌) → NFC일기 화면 */
   const nfcOnboardingHref = (() => {
     const p = new URLSearchParams();
     if (tenantId) p.set("tenant", tenantId);
-    p.set("onboarding", "nfc");
     const pid = nfcSelectedSubjectId || (pets.length === 1 ? pets[0]?.id : "") || "";
     if (pid) p.set("pet", pid);
-    return `/dashboard/${subjectKind}?${p.toString()}`;
+    const qs = p.toString();
+    return `/dashboard/${subjectKind}/nfc${qs ? `?${qs}` : ""}`;
   })();
   const AvatarIcon = PawPrint;
 

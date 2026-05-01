@@ -7,6 +7,7 @@ import {
   MapPin,
   LayoutDashboard,
   ClipboardList,
+  NotebookPen,
   ScanLine,
   Images,
   Store,
@@ -26,6 +27,7 @@ import {
   isDashboardAlbums,
   isDashboardGeofences,
   isDashboardHome,
+  isDashboardNfc,
   isDashboardPets,
   isDashboardScans,
 } from "@/lib/dashboard-nav-active";
@@ -55,6 +57,7 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
   const dashScans = isDashboardScans(pathname);
   const dashGeo = isDashboardGeofences(pathname);
   const dashAlbums = isDashboardAlbums(pathname);
+  const dashNfc = isDashboardNfc(pathname);
   const dashStore = pathname === "/shop" || pathname.startsWith("/shop/");
 
   const navItems = [
@@ -69,6 +72,12 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
       label: "관리대상",
       active: dashPets,
       Icon: ClipboardList,
+    },
+    {
+      href: `/dashboard/${kind}/nfc${tenantQs}`,
+      label: "NFC일기",
+      active: dashNfc,
+      Icon: NotebookPen,
     },
     {
       href: `/dashboard/${kind}/scans${tenantQs}`,

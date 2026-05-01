@@ -12,6 +12,7 @@ type Parsed =
   | { screen: "pet_detail"; kind: SubjectKind }
   | { screen: "pet_edit"; kind: SubjectKind }
   | { screen: "pet_health"; kind: SubjectKind }
+  | { screen: "nfc_diary"; kind: SubjectKind }
   | { screen: "scans"; kind: SubjectKind }
   | { screen: "geofences"; kind: SubjectKind }
   | { screen: "fallback"; kind: SubjectKind };
@@ -28,6 +29,7 @@ function parseDashboardRoute(pathname: string, fallbackKind: SubjectKind): Parse
     if (parts.length === 2) return { screen: "home", kind };
 
     const seg2 = parts[2];
+    if (seg2 === "nfc" && parts.length === 3) return { screen: "nfc_diary", kind };
     if (seg2 === "pets") {
       if (parts.length === 3) return { screen: "pets_list", kind };
       if (parts.length === 4 && parts[3] === "new") return { screen: "pets_new", kind };
@@ -74,7 +76,7 @@ function helpCopy(parsed: Parsed, meta: (typeof subjectKindMeta)[SubjectKind]): 
             <p>
               현재 모드(<strong>{meta.label}</strong>)의 요약 화면입니다. 상단 &quot;모드 선택&quot;에서 다른 시나리오로 바꿀 수 있어요.
             </p>
-            <p>가로 탭(또는 모바일 스크롤 메뉴)에서 관리 대상·스캔 기록·안심 구역으로 이동합니다.</p>
+            <p>가로 탭(또는 모바일 메뉴)에서 관리 대상·NFC일기·스캔 기록·안심 구역으로 이동합니다.</p>
           </>
         ),
       };
@@ -119,6 +121,19 @@ function helpCopy(parsed: Parsed, meta: (typeof subjectKindMeta)[SubjectKind]): 
         title: "건강 기록",
         body: (
           <p>검진·접종 등 기록을 남기고 타임라인으로 확인합니다. 모드에 따라 항목이 다를 수 있어요.</p>
+        ),
+      };
+    case "nfc_diary":
+      return {
+        title: "NFC일기",
+        body: (
+          <>
+            <p>
+              태그 UID를 NFC로 읽거나 직접 입력해 관리 대상 프로필에 연결합니다. 연결 후 앱에서 저장까지 마치면 발견 시 공개
+              프로필로 이어집니다.
+            </p>
+            <p className="text-slate-500">{meta.nfcHelper}</p>
+          </>
         ),
       };
     case "scans":

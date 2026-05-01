@@ -243,7 +243,7 @@ export default async function HubPage({
       id: "tag",
       title: "태그 연결",
       done: onboardingProgress.linkedTagCount > 0,
-      href: onboardingDashboardHref + "?onboarding=nfc",
+      href: `${onboardingDashboardHref}/nfc`,
       cta: "연결하기",
     },
   ] as const;
