@@ -107,13 +107,10 @@ export default function ShopHomeClient({
               링크유 스토어
             </div>
             <h1 className="text-[28px] font-black text-slate-900 leading-tight tracking-tight">
-              모드에 맞는
+              상품을
               <br />
-              <span className="text-teal-600">상품만</span> 보여드려요
+              <span className="text-teal-600">둘러보세요</span>
             </h1>
-            <p className="text-[14px] text-slate-500 font-medium leading-relaxed">
-              선택한 이용 모드와 연결된 상품만 표시됩니다. 결제는 PG·간편결제 연동 단계에서 완료할 수 있게 준비 중이에요.
-            </p>
           </header>
 
           <section className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm">
@@ -331,7 +328,7 @@ export default function ShopHomeClient({
                         <img 
                           src={p.imageUrl} 
                           alt={p.name} 
-                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" 
+                          className="h-full w-full object-contain object-center transition-transform duration-500 group-hover:scale-105" 
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100/50">

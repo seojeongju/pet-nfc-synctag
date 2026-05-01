@@ -118,7 +118,7 @@ export default function ShopProductDetailClient({
 
           {product.imageUrl ? (
             <div className="relative overflow-hidden rounded-[28px] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
-              <img src={product.imageUrl} alt={product.name} className={cn("w-full object-cover aspect-square sm:aspect-video", isSoldOut && "grayscale opacity-50")} />
+              <img src={product.imageUrl} alt={product.name} className={cn("w-full object-contain object-center bg-slate-50 aspect-square sm:aspect-video", isSoldOut && "grayscale opacity-50")} />
               {isSoldOut && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/20">
                   <div className="rounded-full bg-white/90 backdrop-blur-md px-6 py-2.5 shadow-xl border border-white">
