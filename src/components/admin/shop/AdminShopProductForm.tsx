@@ -23,6 +23,10 @@ import {
   Coins,
 } from "lucide-react";
 import type { ShopProductOptionGroup, ShopProductOptionValue } from "@/types/shop";
+import {
+  parseShopProductAdditionalImagesJson,
+  shopProductOptionsForAdmin,
+} from "@/lib/shop";
 import { ProductContentEditorPanel } from "@/components/admin/shop/ProductContentEditorPanel";
 
 function kindsChecked(row: AdminShopProductRow | null): Set<SubjectKind> {
@@ -52,23 +56,12 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
   const [imageUrl, setImageUrl] = useState(product?.image_url ?? "");
   const [videoUrl, setVideoUrl] = useState(product?.video_url ?? "");
   const [contentHtml, setContentHtml] = useState(product?.content_html ?? "");
-  const [additionalImages, setAdditionalImages] = useState<string[]>(() => {
-    if (!product?.additional_images) return [];
-    try {
-      return JSON.parse(product.additional_images);
-    } catch {
-      return [];
-    }
-  });
-  const [options, setOptions] = useState<ShopProductOptionGroup[]>(() => {
-    if (!product?.options_json) return [];
-    try {
-      const v = JSON.parse(product.options_json) as unknown;
-      return Array.isArray(v) ? (v as ShopProductOptionGroup[]) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [additionalImages, setAdditionalImages] = useState<string[]>(() =>
+    parseShopProductAdditionalImagesJson(product?.additional_images)
+  );
+  const [options, setOptions] = useState<ShopProductOptionGroup[]>(() =>
+    shopProductOptionsForAdmin(product?.options_json)
+  );
 
   const [isUploading, setIsUploading] = useState(false);
   const [showPreview, setShowPreview] = useState(true);

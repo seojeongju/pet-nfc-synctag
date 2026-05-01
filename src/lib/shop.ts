@@ -6,6 +6,7 @@ import type {
   ShopOrderPublic,
   ShopOrderStatus,
   ShopProductOptionGroup,
+  ShopProductOptionValue,
   ShopProductPublic,
 } from "@/types/shop";
 
@@ -126,28 +127,72 @@ function normalizeProductRow(raw: Record<string, unknown>, existing: Set<string>
   };
 }
 
-function parseProductOptionsJson(raw: string | null): ShopProductOptionGroup[] | null {
+/**
+ * DB에 저장된 options_json을 안전히 파싱합니다.
+ * 일부 그룹에 values가 없거나 타입이 깨져 있어도 관리자 폼·스토어에서 렌더가 깨지지 않습니다.
+ */
+export function parseShopProductOptionsJson(raw: string | null | undefined): ShopProductOptionGroup[] | null {
   if (raw == null || !String(raw).trim()) return null;
   try {
-    const v = JSON.parse(raw) as unknown;
+    const v = JSON.parse(String(raw)) as unknown;
     if (!Array.isArray(v)) return null;
-    return v as ShopProductOptionGroup[];
+    const out: ShopProductOptionGroup[] = [];
+    for (let idx = 0; idx < v.length; idx++) {
+      const item = v[idx];
+      const o = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
+      const id = typeof o.id === "string" && o.id.trim() ? o.id : nanoid();
+      const name =
+        typeof o.name === "string" && o.name.trim() ? o.name.trim() : `옵션 ${idx + 1}`;
+      let values: ShopProductOptionValue[] = [];
+      if (Array.isArray(o.values)) {
+        for (let j = 0; j < o.values.length; j++) {
+          const val = o.values[j];
+          const vo = val && typeof val === "object" ? (val as Record<string, unknown>) : {};
+          const label =
+            typeof vo.label === "string" && vo.label.trim()
+              ? vo.label.trim()
+              : `항목 ${j + 1}`;
+          const pd = Number(vo.priceDeltaKrw);
+          values.push({
+            label,
+            priceDeltaKrw: Number.isFinite(pd) ? Math.floor(pd) : 0,
+          });
+        }
+      }
+      if (values.length === 0) {
+        values = [{ label: "기본값", priceDeltaKrw: 0 }];
+      }
+      out.push({ id, name, values });
+    }
+    return out.length > 0 ? out : null;
   } catch {
     return null;
   }
 }
 
-function rowToPublic(row: ProductRow, kind: SubjectKind, currentGoldPrice: number): ShopProductPublic {
-  let additionalImages: string[] | null = null;
-  if (row.additional_images) {
-    try {
-      additionalImages = JSON.parse(row.additional_images);
-    } catch {
-      additionalImages = [];
-    }
-  }
+/** 관리자 폼 등 항상 배열이 필요할 때 */
+export function shopProductOptionsForAdmin(raw: string | null | undefined): ShopProductOptionGroup[] {
+  return parseShopProductOptionsJson(raw) ?? [];
+}
 
-  const options = parseProductOptionsJson(row.options_json);
+export function parseShopProductAdditionalImagesJson(raw: string | null | undefined): string[] {
+  if (raw == null || !String(raw).trim()) return [];
+  try {
+    const v = JSON.parse(String(raw)) as unknown;
+    if (!Array.isArray(v)) return [];
+    return v.filter((x): x is string => typeof x === "string" && x.trim().length > 0);
+  } catch {
+    return [];
+  }
+}
+
+function rowToPublic(row: ProductRow, kind: SubjectKind, currentGoldPrice: number): ShopProductPublic {
+  const additionalImages =
+    row.additional_images && String(row.additional_images).trim()
+      ? parseShopProductAdditionalImagesJson(row.additional_images)
+      : [];
+
+  const options = parseShopProductOptionsJson(row.options_json);
 
   // 금 시세 연동 상품인 경우 가격 재계산
   let finalPrice = row.price_krw;
@@ -165,7 +210,7 @@ function rowToPublic(row: ProductRow, kind: SubjectKind, currentGoldPrice: numbe
     imageUrl: row.image_url,
     videoUrl: row.video_url,
     contentHtml: row.content_html,
-    additionalImages: additionalImages,
+    additionalImages: additionalImages.length > 0 ? additionalImages : null,
     options: options,
     stockQuantity: row.stock_quantity,
     weightGrams: row.weight_grams,
@@ -345,7 +390,7 @@ export async function createPendingShopOrder(input: {
   // 옵션 처리
   if (product.options_json) {
     try {
-      const groups = parseProductOptionsJson(product.options_json);
+      const groups = parseShopProductOptionsJson(product.options_json);
       const selected = input.options || {};
       if (groups) {
         for (const g of groups) {

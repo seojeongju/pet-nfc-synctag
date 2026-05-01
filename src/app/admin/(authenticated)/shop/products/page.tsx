@@ -106,6 +106,7 @@ export default async function AdminShopProductsPage({
                     </td>
                     <td className={adminUi.tableBodyCell}>
                       <Link
+                        prefetch={false}
                         href={`/admin/shop/products/${encodeURIComponent(p.id)}`}
                         className="text-[11px] font-black text-teal-700 underline-offset-2 hover:underline"
                       >
