@@ -68,6 +68,8 @@ export type ShopOrderPublic = {
   resaleOfferVisible: boolean;
   resaleOfferPriceKrw?: number | null;
   resaleVisibleFrom?: string | null;
+  /** 되팔기 노출 종료(null이면 종료일 없음) */
+  resaleVisibleUntil?: string | null;
   selectedOptions?: Record<string, string> | null;
   recipientName?: string | null;
   recipientPhone?: string | null;

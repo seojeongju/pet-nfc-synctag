@@ -20,6 +20,27 @@ async function getAdminDataScope(): Promise<{ actorId: string; tenantIds: string
   return { actorId: actor.userId, tenantIds };
 }
 
+/** datetime-local 등 빈 값이면 null */
+function parseOptionalDatetimeToIso(raw: unknown): string | null {
+  const s = String(raw ?? "").trim();
+  if (!s) return null;
+  const dt = new Date(s);
+  if (!Number.isFinite(dt.getTime())) return null;
+  return dt.toISOString();
+}
+
+function redirectIfInvalidResaleWindow(
+  fromIso: string | null,
+  untilIso: string | null,
+  basePath: "/admin/shop/resale" | "/admin/shop/orders"
+): void {
+  if (fromIso && untilIso && new Date(fromIso).getTime() > new Date(untilIso).getTime()) {
+    redirect(
+      `${basePath}?e=` + encodeURIComponent("노출 시작일시는 종료일시 이전이어야 합니다.")
+    );
+  }
+}
+
 function buildTenantUserScopeSql(
   userIdColumnExpr: string,
   tenantIds: string[] | null
@@ -438,6 +459,7 @@ export type AdminShopOrderRow = {
   resale_enabled: number | null;
   resale_offer_price_krw: number | null;
   resale_visible_from: string | null;
+  resale_visible_until: string | null;
   resale_visibility_scope: string | null;
   resale_targets_csv: string | null;
   created_at: string;
@@ -455,6 +477,7 @@ export type AdminGoldResaleBuyerRow = {
   last_policy_enabled: number | null;
   last_resale_offer_price_krw: number | null;
   last_resale_visible_from: string | null;
+  last_resale_visible_until: string | null;
 };
 
 export async function listAdminShopOrders(options: {
@@ -516,13 +539,13 @@ export async function listAdminShopOrders(options: {
   );
 
   const resaleSelect = hasResalePolicyTable
-    ? `rp.id AS resale_policy_id, rp.enabled AS resale_enabled, rp.resale_offer_price_krw, rp.resale_visible_from, rp.visibility_scope AS resale_visibility_scope,
+    ? `rp.id AS resale_policy_id, rp.enabled AS resale_enabled, rp.resale_offer_price_krw, rp.resale_visible_from, rp.resale_visible_until, rp.visibility_scope AS resale_visibility_scope,
           ${
             hasResaleTargetsTable
               ? `(SELECT group_concat(t.user_id, ',') FROM gold_order_resale_targets t WHERE t.policy_id = rp.id)`
               : "NULL"
           } AS resale_targets_csv,`
-    : `NULL AS resale_policy_id, NULL AS resale_enabled, NULL AS resale_offer_price_krw, NULL AS resale_visible_from, NULL AS resale_visibility_scope, NULL AS resale_targets_csv,`;
+    : `NULL AS resale_policy_id, NULL AS resale_enabled, NULL AS resale_offer_price_krw, NULL AS resale_visible_from, NULL AS resale_visible_until, NULL AS resale_visibility_scope, NULL AS resale_targets_csv,`;
 
   const resaleJoin = hasResalePolicyTable
     ? `LEFT JOIN gold_order_resale_policies rp ON rp.order_id = o.id`
@@ -695,7 +718,17 @@ export async function listAdminGoldResaleBuyers(options: {
           AND o3.status = 'paid'
         ORDER BY o3.created_at DESC
         LIMIT 1
-      ) AS last_resale_visible_from
+      ) AS last_resale_visible_from,
+      (
+        SELECT rp.resale_visible_until
+        FROM gold_order_resale_policies rp
+        INNER JOIN shop_orders o3 ON o3.id = rp.order_id
+        WHERE o3.user_id = o.user_id
+          AND o3.subject_kind = 'gold'
+          AND o3.status = 'paid'
+        ORDER BY o3.created_at DESC
+        LIMIT 1
+      ) AS last_resale_visible_until
     FROM shop_orders o
     INNER JOIN user u ON u.id = o.user_id
     ${whereSql}
@@ -736,20 +769,22 @@ export async function applyGoldResalePolicyToBuyers(formData: FormData): Promise
     visibilityScopeRaw === "selected_buyers" ? "selected_buyers" : "order_buyer";
   const priceRaw = Number(formData.get("resale_offer_price_krw"));
   const visibleFromRaw = String(formData.get("resale_visible_from") ?? "").trim();
+  const visibleUntilRaw = String(formData.get("resale_visible_until") ?? "").trim();
   const includeBuyer = formData.get("include_order_buyer") === "on";
   const targetsCsv = String(formData.get("resale_targets_csv") ?? "").trim();
 
   if (!Number.isFinite(priceRaw) || priceRaw < 0) {
     redirect("/admin/shop/resale?e=" + encodeURIComponent("판매가를 올바르게 입력해 주세요."));
   }
-  let visibleFromIso: string | null = null;
-  if (visibleFromRaw) {
-    const dt = new Date(visibleFromRaw);
-    if (!Number.isFinite(dt.getTime())) {
-      redirect("/admin/shop/resale?e=" + encodeURIComponent("노출 시작일시가 올바르지 않습니다."));
-    }
-    visibleFromIso = dt.toISOString();
+  const visibleFromIso = parseOptionalDatetimeToIso(visibleFromRaw);
+  const visibleUntilIso = parseOptionalDatetimeToIso(visibleUntilRaw);
+  if (visibleFromRaw && !visibleFromIso) {
+    redirect("/admin/shop/resale?e=" + encodeURIComponent("노출 시작일시가 올바르지 않습니다."));
   }
+  if (visibleUntilRaw && !visibleUntilIso) {
+    redirect("/admin/shop/resale?e=" + encodeURIComponent("노출 종료일시가 올바르지 않습니다."));
+  }
+  redirectIfInvalidResaleWindow(visibleFromIso, visibleUntilIso, "/admin/shop/resale");
 
   const db = getDB();
   const placeholders = buyerIds.map(() => "?").join(", ");
@@ -796,8 +831,8 @@ export async function applyGoldResalePolicyToBuyers(formData: FormData): Promise
       await db
         .prepare(
           `INSERT INTO gold_order_resale_policies
-            (id, order_id, purchase_price_krw, resale_offer_price_krw, resale_visible_from, visibility_scope, enabled, created_by_user_id, updated_by_user_id, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
+            (id, order_id, purchase_price_krw, resale_offer_price_krw, resale_visible_from, resale_visible_until, visibility_scope, enabled, created_by_user_id, updated_by_user_id, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
         )
         .bind(
           policyId,
@@ -805,6 +840,7 @@ export async function applyGoldResalePolicyToBuyers(formData: FormData): Promise
           order.amount_krw,
           Math.floor(priceRaw),
           visibleFromIso,
+          visibleUntilIso,
           visibilityScope,
           enabled,
           actorId,
@@ -815,10 +851,10 @@ export async function applyGoldResalePolicyToBuyers(formData: FormData): Promise
       await db
         .prepare(
           `UPDATE gold_order_resale_policies
-           SET resale_offer_price_krw = ?, resale_visible_from = ?, visibility_scope = ?, enabled = ?, updated_by_user_id = ?, updated_at = CURRENT_TIMESTAMP
+           SET resale_offer_price_krw = ?, resale_visible_from = ?, resale_visible_until = ?, visibility_scope = ?, enabled = ?, updated_by_user_id = ?, updated_at = CURRENT_TIMESTAMP
            WHERE id = ?`
         )
-        .bind(Math.floor(priceRaw), visibleFromIso, visibilityScope, enabled, actorId, policyId)
+        .bind(Math.floor(priceRaw), visibleFromIso, visibleUntilIso, visibilityScope, enabled, actorId, policyId)
         .run();
     }
 
@@ -884,6 +920,7 @@ export async function saveGoldOrderResalePolicy(formData: FormData): Promise<voi
     scopeRaw === "selected_buyers" ? "selected_buyers" : "order_buyer";
   const priceRaw = Number(formData.get("resale_offer_price_krw"));
   const visibleFromRaw = String(formData.get("resale_visible_from") ?? "").trim();
+  const visibleUntilRaw = String(formData.get("resale_visible_until") ?? "").trim();
   const targetCsv = String(formData.get("resale_targets_csv") ?? "").trim();
   const includeBuyer = formData.get("include_order_buyer") === "on";
 
@@ -905,14 +942,15 @@ export async function saveGoldOrderResalePolicy(formData: FormData): Promise<voi
     redirect("/admin/shop/orders?e=" + encodeURIComponent("골드 주문만 되팔기 설정이 가능합니다."));
   }
 
-  let visibleFromIso: string | null = null;
-  if (visibleFromRaw) {
-    const dt = new Date(visibleFromRaw);
-    if (!Number.isFinite(dt.getTime())) {
-      redirect("/admin/shop/orders?e=" + encodeURIComponent("노출 시작일시가 올바르지 않습니다."));
-    }
-    visibleFromIso = dt.toISOString();
+  const visibleFromIso = parseOptionalDatetimeToIso(visibleFromRaw);
+  const visibleUntilIso = parseOptionalDatetimeToIso(visibleUntilRaw);
+  if (visibleFromRaw && !visibleFromIso) {
+    redirect("/admin/shop/orders?e=" + encodeURIComponent("노출 시작일시가 올바르지 않습니다."));
   }
+  if (visibleUntilRaw && !visibleUntilIso) {
+    redirect("/admin/shop/orders?e=" + encodeURIComponent("노출 종료일시가 올바르지 않습니다."));
+  }
+  redirectIfInvalidResaleWindow(visibleFromIso, visibleUntilIso, "/admin/shop/orders");
 
   const existing = await db
     .prepare(`SELECT id FROM gold_order_resale_policies WHERE order_id = ?`)
@@ -924,8 +962,8 @@ export async function saveGoldOrderResalePolicy(formData: FormData): Promise<voi
     await db
       .prepare(
         `INSERT INTO gold_order_resale_policies
-          (id, order_id, purchase_price_krw, resale_offer_price_krw, resale_visible_from, visibility_scope, enabled, created_by_user_id, updated_by_user_id, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
+          (id, order_id, purchase_price_krw, resale_offer_price_krw, resale_visible_from, resale_visible_until, visibility_scope, enabled, created_by_user_id, updated_by_user_id, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
       )
       .bind(
         policyId,
@@ -933,6 +971,7 @@ export async function saveGoldOrderResalePolicy(formData: FormData): Promise<voi
         order.amount_krw,
         Math.floor(priceRaw),
         visibleFromIso,
+        visibleUntilIso,
         scope,
         enabled,
         actorId,
@@ -943,10 +982,10 @@ export async function saveGoldOrderResalePolicy(formData: FormData): Promise<voi
     await db
       .prepare(
         `UPDATE gold_order_resale_policies
-         SET resale_offer_price_krw = ?, resale_visible_from = ?, visibility_scope = ?, enabled = ?, updated_by_user_id = ?, updated_at = CURRENT_TIMESTAMP
+         SET resale_offer_price_krw = ?, resale_visible_from = ?, resale_visible_until = ?, visibility_scope = ?, enabled = ?, updated_by_user_id = ?, updated_at = CURRENT_TIMESTAMP
          WHERE id = ?`
       )
-      .bind(Math.floor(priceRaw), visibleFromIso, scope, enabled, actorId, policyId)
+      .bind(Math.floor(priceRaw), visibleFromIso, visibleUntilIso, scope, enabled, actorId, policyId)
       .run();
   }
 

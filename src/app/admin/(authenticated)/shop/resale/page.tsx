@@ -4,10 +4,27 @@ import {
 } from "@/app/actions/admin-shop";
 import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
+import { ArrowLeft, ReceiptText } from "lucide-react";
 import Link from "next/link";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
+
+const resaleDtFmt = new Intl.DateTimeFormat("ko-KR", {
+  timeZone: "Asia/Seoul",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+function formatOptionalResaleDt(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (!Number.isFinite(d.getTime())) return "—";
+  return resaleDtFmt.format(d);
+}
 
 export default async function AdminShopResalePage({
   searchParams,
@@ -67,18 +84,39 @@ export default async function AdminShopResalePage({
             소비자 되팔기 판매가 노출 사용
           </label>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <input
-              type="number"
-              name="resale_offer_price_krw"
-              defaultValue={15900}
-              className="h-9 rounded-lg border border-amber-200 bg-white px-2 text-[11px] font-bold"
-              placeholder="판매가(원)"
-            />
-            <input
-              type="datetime-local"
-              name="resale_visible_from"
-              className="h-9 rounded-lg border border-amber-200 bg-white px-2 text-[11px] font-bold"
-            />
+            <label className="space-y-1">
+              <span className="text-[10px] font-black text-amber-900">판매가 (원)</span>
+              <input
+                type="number"
+                name="resale_offer_price_krw"
+                defaultValue={15900}
+                className="h-9 w-full rounded-lg border border-amber-200 bg-white px-2 text-[11px] font-bold"
+                placeholder="판매가(원)"
+              />
+            </label>
+          </div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <label className="space-y-1">
+              <span className="text-[10px] font-black text-amber-900">노출 시작일시</span>
+              <input
+                type="datetime-local"
+                name="resale_visible_from"
+                className="h-9 w-full rounded-lg border border-amber-200 bg-white px-2 text-[11px] font-bold"
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-[10px] font-black leading-snug text-amber-900">
+                노출 종료일시{" "}
+                <span className="block font-semibold text-amber-800/85 sm:inline sm:font-semibold">
+                  (비우면 종료일 없음 · 계속 유지)
+                </span>
+              </span>
+              <input
+                type="datetime-local"
+                name="resale_visible_until"
+                className="h-9 w-full rounded-lg border border-amber-200 bg-white px-2 text-[11px] font-bold"
+              />
+            </label>
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <select
@@ -159,6 +197,12 @@ export default async function AdminShopResalePage({
                           ? "-"
                           : `${new Intl.NumberFormat("ko-KR").format(b.last_resale_offer_price_krw)}원`}
                       </p>
+                      <p className="mt-1 text-[9px] font-semibold leading-relaxed text-slate-400">
+                        노출: {formatOptionalResaleDt(b.last_resale_visible_from)} ~{" "}
+                        {b.last_resale_visible_until
+                          ? formatOptionalResaleDt(b.last_resale_visible_until)
+                          : "무제한"}
+                      </p>
                     </td>
                   </tr>
                 ))
@@ -168,11 +212,28 @@ export default async function AdminShopResalePage({
         </div>
       </form>
 
-      <p className="text-center">
-        <Link href="/admin/shop/orders" className="text-[11px] font-black text-slate-500 hover:text-teal-700">
-          ← 주문 관리로 돌아가기
+      <nav className="mx-auto flex max-w-md justify-center pt-1" aria-label="주문 관리로 이동">
+        <Link
+          href="/admin/shop/orders"
+          className={cn(
+            "group relative flex min-h-[52px] w-full items-center justify-center gap-3 overflow-hidden rounded-[22px] border border-violet-200/90 bg-gradient-to-br from-violet-50 via-white to-slate-50 px-5 py-3.5 shadow-sm ring-1 ring-violet-100/80 transition",
+            "hover:border-violet-300 hover:shadow-md hover:ring-violet-200/60",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2"
+          )}
+        >
+          <ArrowLeft
+            className="h-5 w-5 shrink-0 text-violet-500 transition group-hover:-translate-x-0.5 group-hover:text-violet-700"
+            aria-hidden
+          />
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-100 text-violet-700 shadow-inner ring-1 ring-violet-200/60">
+            <ReceiptText className="h-5 w-5" aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1 text-left">
+            <span className="block text-[10px] font-black uppercase tracking-wider text-violet-600/80">Orders</span>
+            <span className="block text-[13px] font-black leading-tight text-slate-900">주문 관리로 돌아가기</span>
+          </span>
         </Link>
-      </p>
+      </nav>
     </div>
   );
 }

@@ -462,8 +462,8 @@ export async function getShopOrderByIdForUser(
   );
 
   const resaleSelect = hasResalePolicyTable
-    ? "rp.id AS rp_id, rp.enabled AS rp_enabled, rp.resale_offer_price_krw AS rp_price, rp.resale_visible_from AS rp_visible_from, rp.visibility_scope AS rp_scope"
-    : "NULL AS rp_id, NULL AS rp_enabled, NULL AS rp_price, NULL AS rp_visible_from, NULL AS rp_scope";
+    ? "rp.id AS rp_id, rp.enabled AS rp_enabled, rp.resale_offer_price_krw AS rp_price, rp.resale_visible_from AS rp_visible_from, rp.resale_visible_until AS rp_visible_until, rp.visibility_scope AS rp_scope"
+    : "NULL AS rp_id, NULL AS rp_enabled, NULL AS rp_price, NULL AS rp_visible_from, NULL AS rp_visible_until, NULL AS rp_scope";
   const resaleJoin = hasResalePolicyTable
     ? "LEFT JOIN gold_order_resale_policies rp ON rp.order_id = o.id"
     : "";
@@ -513,6 +513,7 @@ export async function getShopOrderByIdForUser(
       rp_enabled: number | null;
       rp_price: number | null;
       rp_visible_from: string | null;
+      rp_visible_until: string | null;
       rp_scope: string | null;
     }>();
 
@@ -537,15 +538,17 @@ export async function getShopOrderByIdForUser(
   let resaleOfferVisible = false;
   let resaleOfferPriceKrw: number | null = null;
   const resaleVisibleFrom = row.rp_visible_from;
+  const resaleVisibleUntil = row.rp_visible_until;
 
-  if (
-    row.subject_kind === "gold" &&
-    row.rp_enabled === 1 &&
-    row.rp_price != null &&
-    row.rp_visible_from
-  ) {
-    const fromMs = new Date(row.rp_visible_from).getTime();
-    const timeOpen = Number.isFinite(fromMs) && Date.now() >= fromMs;
+  if (row.subject_kind === "gold" && row.rp_enabled === 1 && row.rp_price != null) {
+    const now = Date.now();
+    const fromMs = row.rp_visible_from ? new Date(row.rp_visible_from).getTime() : NaN;
+    const untilMs = row.rp_visible_until ? new Date(row.rp_visible_until).getTime() : NaN;
+    const afterStart =
+      !row.rp_visible_from || (Number.isFinite(fromMs) && now >= fromMs);
+    const beforeEnd =
+      !row.rp_visible_until || (Number.isFinite(untilMs) && now <= untilMs);
+    const timeOpen = afterStart && beforeEnd;
     let allowedByScope = row.rp_scope !== "selected_buyers";
     if (!allowedByScope && row.rp_id) {
       const t = await db
@@ -572,6 +575,7 @@ export async function getShopOrderByIdForUser(
     resaleOfferVisible,
     resaleOfferPriceKrw,
     resaleVisibleFrom,
+    resaleVisibleUntil,
     product: { id: row.p_id, name: row.p_name, slug: row.p_slug },
     selectedOptions,
     recipientName: row.recipient_name ?? row.sd_recipient_name,

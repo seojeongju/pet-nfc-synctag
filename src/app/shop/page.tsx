@@ -6,6 +6,10 @@ import { isPlatformAdminRole } from "@/lib/platform-admin";
 import { getUserConsentStatus } from "@/lib/privacy-consent";
 import { SUBJECT_KINDS, type SubjectKind } from "@/lib/subject-kind";
 import { listShopProductsForKind } from "@/lib/shop";
+import {
+  getShopGoldPriceTabPayload,
+  userHasPaidGoldOrder,
+} from "@/lib/shop-gold-price-tab";
 import { getOrgManageHrefForUser } from "@/lib/org-manage-href";
 import ShopHomeClient from "./ShopHomeClient";
 
@@ -20,10 +24,18 @@ function parseKindQuery(v: string | undefined): SubjectKind | null {
   return null;
 }
 
+function parseStoreTab(v: string | undefined): "products" | "gold-price" | null {
+  if (v == null || !String(v).trim()) return null;
+  const t = String(v).trim();
+  if (t === "gold-price") return "gold-price";
+  if (t === "products") return "products";
+  return null;
+}
+
 export default async function ShopPage({
   searchParams,
 }: {
-  searchParams: Promise<{ kind?: string }>;
+  searchParams: Promise<{ kind?: string; tab?: string }>;
 }) {
   const context = getCfRequestContext();
   const auth = getAuth(context.env);
@@ -38,6 +50,7 @@ export default async function ShopPage({
 
   const sp = await searchParams;
   const db = context.env.DB;
+  const hasGoldPurchase = await userHasPaidGoldOrder(db, session.user.id);
   const roleRow = await db
     .prepare("SELECT role FROM user WHERE id = ?")
     .bind(session.user.id)
@@ -51,7 +64,24 @@ export default async function ShopPage({
   const initialKind =
     requested && allowedKinds.includes(requested) ? requested : fallbackKind;
 
+  const requestedTab = parseStoreTab(sp.tab);
+  if (requestedTab === "gold-price" && initialKind !== "gold") {
+    redirect(`/shop?kind=${encodeURIComponent(initialKind)}`);
+  }
+  if (requestedTab === "gold-price" && initialKind === "gold" && !hasGoldPurchase) {
+    redirect(`/shop?kind=gold`);
+  }
+
+  let storeTab: "products" | "gold-price" = "products";
+  if (initialKind === "gold" && hasGoldPurchase && requestedTab === "gold-price") {
+    storeTab = "gold-price";
+  }
+
   const products = await listShopProductsForKind(db, initialKind);
+  const goldPricePayload =
+    initialKind === "gold" && hasGoldPurchase && storeTab === "gold-price"
+      ? await getShopGoldPriceTabPayload(db, session.user.id)
+      : null;
   const orgManageHref = await getOrgManageHrefForUser(session.user.id).catch(() => null);
 
   return (
@@ -62,6 +92,9 @@ export default async function ShopPage({
       allowedKinds={allowedKinds}
       initialKind={initialKind}
       products={products}
+      hasGoldPurchase={hasGoldPurchase}
+      storeTab={storeTab}
+      goldPricePayload={goldPricePayload}
     />
   );
 }
