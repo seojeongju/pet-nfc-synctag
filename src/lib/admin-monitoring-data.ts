@@ -500,6 +500,17 @@ export type RecentNfcScanRow = {
   latitude: number | null;
   longitude: number | null;
   has_location: number;
+  /** tags → pets 연결 시 */
+  pet_id: string | null;
+  pet_name: string | null;
+  subject_kind: string | null;
+  owner_name: string | null;
+  owner_email: string | null;
+  tenant_id: string | null;
+  tenant_name: string | null;
+  tenant_slug: string | null;
+  /** tenant_members + user, 이름 없으면 이메일 — 구분자 · */
+  tenant_members_summary: string | null;
 };
 
 export type MonitoringPageResult<T> = {
@@ -521,15 +532,27 @@ function normalizePageSize(size?: number, defaults = 10, min = 5, max = 100): nu
   return Math.min(max, Math.max(min, Math.floor(v)));
 }
 
+const recentNfcScanSelect =
+  "SELECT sl.id, sl.tag_id, sl.scanned_at, sl.latitude, sl.longitude, " +
+  "CASE WHEN sl.latitude IS NOT NULL AND sl.longitude IS NOT NULL THEN 1 ELSE 0 END AS has_location, " +
+  "p.id AS pet_id, p.name AS pet_name, p.subject_kind AS subject_kind, " +
+  "u.name AS owner_name, u.email AS owner_email, " +
+  "p.tenant_id AS tenant_id, tn.name AS tenant_name, tn.slug AS tenant_slug, " +
+  "(SELECT GROUP_CONCAT(COALESCE(NULLIF(TRIM(u_m.name), ''), u_m.email), ' · ') " +
+  "FROM tenant_members tm " +
+  "INNER JOIN user u_m ON u_m.id = tm.user_id " +
+  "WHERE tm.tenant_id = p.tenant_id) AS tenant_members_summary " +
+  "FROM scan_logs sl " +
+  "LEFT JOIN tags t ON sl.tag_id = t.id " +
+  "LEFT JOIN pets p ON t.pet_id = p.id " +
+  "LEFT JOIN user u ON p.owner_id = u.id " +
+  "LEFT JOIN tenants tn ON p.tenant_id = tn.id ";
+
 export async function getRecentNfcScans(limit = 40) {
   const db = getDB();
   const safe = Math.max(1, Math.min(limit, 100));
   const { results } = await db
-    .prepare(
-      "SELECT id, tag_id, scanned_at, latitude, longitude, " +
-        "CASE WHEN latitude IS NOT NULL AND longitude IS NOT NULL THEN 1 ELSE 0 END AS has_location " +
-        "FROM scan_logs ORDER BY datetime(scanned_at) DESC LIMIT ?"
-    )
+    .prepare(recentNfcScanSelect + "ORDER BY datetime(sl.scanned_at) DESC LIMIT ?")
     .bind(safe)
     .all<RecentNfcScanRow>();
   return results ?? [];
@@ -552,9 +575,7 @@ export async function getRecentNfcScansPage(params: {
   const offset = (page - 1) * pageSize;
   const { results } = await db
     .prepare(
-      "SELECT id, tag_id, scanned_at, latitude, longitude, " +
-        "CASE WHEN latitude IS NOT NULL AND longitude IS NOT NULL THEN 1 ELSE 0 END AS has_location " +
-        "FROM scan_logs ORDER BY datetime(scanned_at) DESC LIMIT ? OFFSET ?"
+      recentNfcScanSelect + "ORDER BY datetime(sl.scanned_at) DESC LIMIT ? OFFSET ?"
     )
     .bind(pageSize, offset)
     .all<RecentNfcScanRow>()
@@ -567,6 +588,17 @@ export type UnknownAccessRow = {
   tag_uid: string;
   ip_address: string | null;
   created_at: string;
+  /** 스캔 이후 등록됐다면 tags.id (당시엔 미등록이었을 수 있음) */
+  matched_tag_id: string | null;
+  pet_id: string | null;
+  pet_name: string | null;
+  subject_kind: string | null;
+  owner_name: string | null;
+  owner_email: string | null;
+  tenant_id: string | null;
+  tenant_name: string | null;
+  tenant_slug: string | null;
+  tenant_members_summary: string | null;
 };
 
 export type LandingAutoRouteRow = {
@@ -586,16 +618,36 @@ export type GuardianNfcAppEventRow = {
   tenant_id: string | null;
   user_id: string | null;
   created_at: string;
+  pet_name: string | null;
+  pet_subject_kind: string | null;
+  owner_name: string | null;
+  owner_email: string | null;
+  actor_name: string | null;
+  actor_email: string | null;
+  tenant_name: string | null;
+  tenant_slug: string | null;
+  tenant_members_summary: string | null;
 };
+
+const unknownAccessSelect =
+  "SELECT uta.id, uta.tag_uid, uta.ip_address, uta.created_at, " +
+  "t.id AS matched_tag_id, p.id AS pet_id, p.name AS pet_name, p.subject_kind AS subject_kind, " +
+  "ow.name AS owner_name, ow.email AS owner_email, " +
+  "p.tenant_id AS tenant_id, tn.name AS tenant_name, tn.slug AS tenant_slug, " +
+  "(SELECT GROUP_CONCAT(COALESCE(NULLIF(TRIM(u_m.name), ''), u_m.email), ' · ') " +
+  "FROM tenant_members tm INNER JOIN user u_m ON u_m.id = tm.user_id WHERE tm.tenant_id = p.tenant_id) " +
+  "AS tenant_members_summary " +
+  "FROM unknown_tag_accesses uta " +
+  "LEFT JOIN tags t ON t.id = uta.tag_uid " +
+  "LEFT JOIN pets p ON p.id = t.pet_id " +
+  "LEFT JOIN user ow ON ow.id = p.owner_id " +
+  "LEFT JOIN tenants tn ON tn.id = p.tenant_id ";
 
 export async function getUnknownTagAccesses(limit = 30) {
   const db = getDB();
   const safe = Math.max(1, Math.min(limit, 100));
   const { results } = await db
-    .prepare(
-      "SELECT id, tag_uid, ip_address, created_at FROM unknown_tag_accesses " +
-        "ORDER BY datetime(created_at) DESC LIMIT ?"
-    )
+    .prepare(unknownAccessSelect + "ORDER BY datetime(uta.created_at) DESC LIMIT ?")
     .bind(safe)
     .all<UnknownAccessRow>()
     .catch(() => ({ results: [] as UnknownAccessRow[] }));
@@ -619,8 +671,7 @@ export async function getUnknownTagAccessesPage(params: {
   const offset = (page - 1) * pageSize;
   const { results } = await db
     .prepare(
-      "SELECT id, tag_uid, ip_address, created_at FROM unknown_tag_accesses " +
-        "ORDER BY datetime(created_at) DESC LIMIT ? OFFSET ?"
+      unknownAccessSelect + "ORDER BY datetime(uta.created_at) DESC LIMIT ? OFFSET ?"
     )
     .bind(pageSize, offset)
     .all<UnknownAccessRow>()
@@ -687,16 +738,27 @@ export async function getGuardianNfcAppEventsPage(params: {
   const offset = (page - 1) * pageSize;
   const { results } = await db
     .prepare(
-      "SELECT id, " +
-        "json_extract(payload, '$.event') AS event, " +
-        "json_extract(payload, '$.subjectKind') AS subject_kind, " +
-        "json_extract(payload, '$.petId') AS pet_id, " +
-        "json_extract(payload, '$.tenantId') AS tenant_id, " +
-        "json_extract(payload, '$.userId') AS user_id, " +
-        "created_at " +
-        "FROM admin_action_logs " +
-        "WHERE action = 'guardian_nfc_app_event' " +
-        "ORDER BY datetime(created_at) DESC LIMIT ? OFFSET ?"
+      "SELECT l.id, " +
+        "json_extract(l.payload, '$.event') AS event, " +
+        "json_extract(l.payload, '$.subjectKind') AS subject_kind, " +
+        "json_extract(l.payload, '$.petId') AS pet_id, " +
+        "json_extract(l.payload, '$.tenantId') AS tenant_id, " +
+        "json_extract(l.payload, '$.userId') AS user_id, " +
+        "l.created_at, " +
+        "p.name AS pet_name, p.subject_kind AS pet_subject_kind, " +
+        "ow.name AS owner_name, ow.email AS owner_email, " +
+        "act.name AS actor_name, act.email AS actor_email, " +
+        "tn.name AS tenant_name, tn.slug AS tenant_slug, " +
+        "(SELECT GROUP_CONCAT(COALESCE(NULLIF(TRIM(u_m.name), ''), u_m.email), ' · ') " +
+        "FROM tenant_members tm INNER JOIN user u_m ON u_m.id = tm.user_id " +
+        "WHERE tm.tenant_id = json_extract(l.payload, '$.tenantId')) AS tenant_members_summary " +
+        "FROM admin_action_logs l " +
+        "LEFT JOIN pets p ON p.id = json_extract(l.payload, '$.petId') " +
+        "LEFT JOIN user ow ON ow.id = p.owner_id " +
+        "LEFT JOIN user act ON act.id = json_extract(l.payload, '$.userId') " +
+        "LEFT JOIN tenants tn ON tn.id = json_extract(l.payload, '$.tenantId') " +
+        "WHERE l.action = 'guardian_nfc_app_event' " +
+        "ORDER BY datetime(l.created_at) DESC LIMIT ? OFFSET ?"
     )
     .bind(pageSize, offset)
     .all<GuardianNfcAppEventRow>()
@@ -711,6 +773,10 @@ export type RecentBleRow = {
   created_at: string;
   raw_payload: string | null;
   pet_name: string | null;
+  subject_kind: string | null;
+  owner_name: string | null;
+  owner_email: string | null;
+  tenant_name: string | null;
 };
 
 export async function getRecentBleEvents(limit = 40) {
@@ -718,8 +784,12 @@ export async function getRecentBleEvents(limit = 40) {
   const safe = Math.max(1, Math.min(limit, 100));
   const { results } = await db
     .prepare(
-      "SELECT e.id, e.pet_id, e.event_type, e.created_at, e.raw_payload, p.name AS pet_name " +
-        "FROM ble_location_events e LEFT JOIN pets p ON p.id = e.pet_id " +
+      "SELECT e.id, e.pet_id, e.event_type, e.created_at, e.raw_payload, p.name AS pet_name, " +
+        "p.subject_kind AS subject_kind, u.name AS owner_name, u.email AS owner_email, tn.name AS tenant_name " +
+        "FROM ble_location_events e " +
+        "LEFT JOIN pets p ON p.id = e.pet_id " +
+        "LEFT JOIN user u ON u.id = p.owner_id " +
+        "LEFT JOIN tenants tn ON tn.id = p.tenant_id " +
         "ORDER BY datetime(e.created_at) DESC LIMIT ?"
     )
     .bind(safe)
@@ -731,6 +801,10 @@ export type LowBatteryRow = {
   pet_id: string;
   pet_name: string | null;
   last_at: string;
+  subject_kind: string | null;
+  owner_name: string | null;
+  owner_email: string | null;
+  tenant_name: string | null;
 };
 
 export async function getLowBatteryCandidates(limit = 30) {
@@ -738,12 +812,15 @@ export async function getLowBatteryCandidates(limit = 30) {
   const safe = Math.max(1, Math.min(limit, 100));
   const { results } = await db
     .prepare(
-      "SELECT x.pet_id, p.name AS pet_name, x.last_at FROM (" +
+      "SELECT x.pet_id, p.name AS pet_name, x.last_at, p.subject_kind AS subject_kind, " +
+        "u.name AS owner_name, u.email AS owner_email, tn.name AS tenant_name FROM (" +
         "SELECT pet_id, MAX(created_at) AS last_at FROM ble_location_events " +
         "WHERE created_at >= datetime('now', '-30 days') " +
         "AND (event_type = 'battery_low' OR event_type LIKE '%battery%low%') " +
         "GROUP BY pet_id" +
         ") x LEFT JOIN pets p ON p.id = x.pet_id " +
+        "LEFT JOIN user u ON u.id = p.owner_id " +
+        "LEFT JOIN tenants tn ON tn.id = p.tenant_id " +
         "ORDER BY datetime(x.last_at) DESC LIMIT ?"
     )
     .bind(safe)

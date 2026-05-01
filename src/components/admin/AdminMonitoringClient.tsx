@@ -24,6 +24,14 @@ import {
   Tag,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import {
+  acknowledgeMapTelemetryAlert,
+  clearMapTelemetryAlertAcknowledge,
+  getTagDiagnosticsForAdmin,
+  updateMapTelemetryThresholds,
+  updateTagBleMac,
+  type TagDiagnosticResult,
+} from "@/app/actions/admin-monitoring";
 import type {
   LandingAutoRouteRow,
   GuardianNfcAppEventRow,
@@ -39,14 +47,8 @@ import type {
   RecentNfcScanRow,
   UnknownAccessRow,
 } from "@/lib/admin-monitoring-data";
-import {
-  acknowledgeMapTelemetryAlert,
-  clearMapTelemetryAlertAcknowledge,
-  getTagDiagnosticsForAdmin,
-  updateMapTelemetryThresholds,
-  updateTagBleMac,
-  type TagDiagnosticResult,
-} from "@/app/actions/admin-monitoring";
+import { formatOwnerPrimaryLine, subjectKindShortLabel } from "@/lib/admin-uid-context";
+import { AdminInlineContextBlock } from "@/components/admin/ui/AdminInlineContextBlock";
 
 type Summary = {
   nfcScans24h: number;
@@ -241,8 +243,8 @@ export default function AdminMonitoringClient({
           NFC / BLE 모니터링
         </h1>
         <p className="max-w-2xl text-[14px] font-medium leading-relaxed text-slate-500 sm:text-xs lg:text-sm">
-          UID·이벤트 중심으로 기기·스캔·BLE 상태를 요약합니다. 고객 이름·이메일은 CS 조회 시에만
-          보조적으로 표시됩니다.
+          UID·pet id 옆에 연결 프로필·보호자·테넌트 요약을 붙여 두었습니다. 이벤트·스캔·BLE 흐름을 한눈에
+          보기 위함입니다.
         </p>
       </motion.div>
 
@@ -703,6 +705,8 @@ export default function AdminMonitoringClient({
               <thead>
                 <AdminTableHeadRow>
                   <AdminTableHeadCell>UID</AdminTableHeadCell>
+                  <AdminTableHeadCell>연결 프로필</AdminTableHeadCell>
+                  <AdminTableHeadCell>보호자·테넌트</AdminTableHeadCell>
                   <AdminTableHeadCell>시각</AdminTableHeadCell>
                   <AdminTableHeadCell>위치</AdminTableHeadCell>
                 </AdminTableHeadRow>
@@ -710,18 +714,97 @@ export default function AdminMonitoringClient({
               <tbody>
                 {recentNfcPage.rows.length === 0 ? (
                   <AdminTableRow>
-                    <td colSpan={3} className="p-4 text-slate-400 text-center">
+                    <td colSpan={5} className="p-4 text-slate-400 text-center">
                       데이터 없음
                     </td>
                   </AdminTableRow>
                 ) : (
-                  recentNfcPage.rows.map((r) => (
-                    <AdminTableRow key={r.id}>
-                      <td className="p-2 font-mono truncate max-w-[140px]">{r.tag_id}</td>
-                      <td className="p-2 whitespace-nowrap">{r.scanned_at}</td>
-                      <td className="p-2">{r.has_location ? "Y" : "—"}</td>
-                    </AdminTableRow>
-                  ))
+                  recentNfcPage.rows.map((r) => {
+                    const kindLbl = subjectKindShortLabel(r.subject_kind);
+                    const ownerPrimary = formatOwnerPrimaryLine(r.owner_name, r.owner_email);
+                    const tenant = (r.tenant_name ?? "").trim();
+                    return (
+                      <AdminTableRow key={r.id}>
+                        <td className="p-2 align-top max-w-[150px]">
+                          <AdminInlineContextBlock
+                            primary={r.tag_id}
+                            sublines={[
+                              r.pet_name
+                                ? kindLbl
+                                  ? `${r.pet_name} · ${kindLbl}`
+                                  : r.pet_name
+                                : "프로필 미연결",
+                              ownerPrimary || null,
+                              tenant ? `조직 ${tenant}` : null,
+                            ]}
+                          />
+                        </td>
+                        <td className="p-2 align-top min-w-[100px] max-w-[160px]">
+                          {r.pet_name ? (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-black text-slate-800 leading-snug break-words">
+                                {r.pet_name}
+                              </span>
+                              {kindLbl ? (
+                                <span className="text-[9px] font-bold text-teal-600">{kindLbl}</span>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <span className="text-amber-600 font-bold">프로필 미연결</span>
+                          )}
+                        </td>
+                        <td className="p-2 align-top min-w-[140px] max-w-[260px]">
+                          <div className="flex flex-col gap-1">
+                            <div>
+                              <span className="text-[9px] font-black uppercase tracking-wide text-slate-400">
+                                등록 보호자
+                              </span>
+                              <span className="mt-0.5 block text-slate-700 break-all leading-snug">
+                                {ownerPrimary || "—"}
+                              </span>
+                            </div>
+                            {r.tenant_id || tenant ? (
+                              <div className="border-t border-slate-100 pt-1 space-y-0.5">
+                                <span className="text-[9px] font-black uppercase tracking-wide text-slate-400">
+                                  테넌트
+                                </span>
+                                {tenant ? (
+                                  <span className="block font-bold text-slate-600 leading-snug">{tenant}</span>
+                                ) : null}
+                                {(() => {
+                                  const slug = (r.tenant_slug ?? "").trim();
+                                  const tid = (r.tenant_id ?? "").trim();
+                                  if (!slug && !tid) return null;
+                                  const line = slug && tid ? `${slug} · ${tid}` : slug || tid;
+                                  return (
+                                    <span
+                                      className="block font-mono text-[9px] text-slate-400 break-all"
+                                      title={tid || undefined}
+                                    >
+                                      {line}
+                                    </span>
+                                  );
+                                })()}
+                                {(r.tenant_members_summary ?? "").trim() ? (
+                                  <p
+                                    className="text-[9px] text-slate-500 leading-relaxed break-words"
+                                    title={(r.tenant_members_summary ?? "").trim()}
+                                  >
+                                    <span className="font-black text-slate-400">멤버 </span>
+                                    {(r.tenant_members_summary ?? "").trim()}
+                                  </p>
+                                ) : r.tenant_id ? (
+                                  <span className="text-[9px] text-slate-400">멤버 없음</span>
+                                ) : null}
+                              </div>
+                            ) : null}
+                          </div>
+                        </td>
+                        <td className="p-2 whitespace-nowrap align-top">{r.scanned_at}</td>
+                        <td className="p-2 align-top">{r.has_location ? "Y" : "—"}</td>
+                      </AdminTableRow>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -738,7 +821,11 @@ export default function AdminMonitoringClient({
           ) : null}
         </Section>
 
-        <Section title="미등록 NFC 시도" subtitle="DB에 없는 UID" icon={ShieldAlert}>
+        <Section
+          title="미등록 NFC 시도"
+          subtitle="스캔 시점 DB 미등록 UID · 이후 태그가 등록되면 현재 연결 정보를 참고로 표시"
+          icon={ShieldAlert}
+        >
           <p className="px-2 pb-1 text-[10px] font-black text-slate-400">
             총 {unknownAccessPage.total}건 · {unknownAccessPage.page}/{Math.max(1, Math.ceil(unknownAccessPage.total / unknownAccessPage.pageSize))}페이지
           </p>
@@ -759,13 +846,33 @@ export default function AdminMonitoringClient({
                     </td>
                   </AdminTableRow>
                 ) : (
-                  unknownAccessPage.rows.map((r) => (
-                    <AdminTableRow key={r.id}>
-                      <td className="p-2 font-mono truncate max-w-[160px]">{r.tag_uid}</td>
-                      <td className="p-2 whitespace-nowrap">{r.created_at}</td>
-                      <td className="p-2 font-mono truncate max-w-[120px]">{r.ip_address ?? "—"}</td>
-                    </AdminTableRow>
-                  ))
+                  unknownAccessPage.rows.map((r) => {
+                    const matched = Boolean((r.matched_tag_id ?? "").trim());
+                    const unknownSublines = matched
+                      ? [
+                          "현재 DB에 태그 있음 (스캔 당시는 미등록이었을 수 있음)",
+                          (r.pet_name ?? "").trim()
+                            ? subjectKindShortLabel(r.subject_kind)
+                              ? `${(r.pet_name ?? "").trim()} · ${subjectKindShortLabel(r.subject_kind)}`
+                              : (r.pet_name ?? "").trim()
+                            : "프로필 미연결 태그",
+                          formatOwnerPrimaryLine(r.owner_name, r.owner_email) || null,
+                          (r.tenant_name ?? "").trim() ? `조직 ${(r.tenant_name ?? "").trim()}` : null,
+                          (r.tenant_members_summary ?? "").trim()
+                            ? `멤버 ${(r.tenant_members_summary ?? "").trim()}`
+                            : null,
+                        ]
+                      : ["스캔 시점 DB 미등록 UID"];
+                    return (
+                      <AdminTableRow key={r.id}>
+                        <td className="p-2 align-top max-w-[200px]">
+                          <AdminInlineContextBlock primary={r.tag_uid} sublines={unknownSublines} />
+                        </td>
+                        <td className="p-2 whitespace-nowrap">{r.created_at}</td>
+                        <td className="p-2 font-mono truncate max-w-[120px]">{r.ip_address ?? "—"}</td>
+                      </AdminTableRow>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -839,28 +946,77 @@ export default function AdminMonitoringClient({
               <AdminTableHeadRow>
                 <AdminTableHeadCell>이벤트</AdminTableHeadCell>
                 <AdminTableHeadCell>모드</AdminTableHeadCell>
-                <AdminTableHeadCell>pet_id</AdminTableHeadCell>
-                <AdminTableHeadCell>tenant_id</AdminTableHeadCell>
+                <AdminTableHeadCell>연결 맥락</AdminTableHeadCell>
                 <AdminTableHeadCell>시각</AdminTableHeadCell>
               </AdminTableHeadRow>
             </thead>
             <tbody>
               {guardianNfcAppEventsPage.rows.length === 0 ? (
                 <AdminTableRow>
-                  <td colSpan={5} className="p-4 text-slate-400 text-center">
+                  <td colSpan={4} className="p-4 text-slate-400 text-center">
                     기록 없음
                   </td>
                 </AdminTableRow>
               ) : (
-                guardianNfcAppEventsPage.rows.map((r) => (
-                  <AdminTableRow key={r.id}>
-                    <td className="p-2 font-mono">{r.event}</td>
-                    <td className="p-2">{r.subject_kind ?? "—"}</td>
-                    <td className="p-2 font-mono truncate max-w-[140px]">{r.pet_id ?? "—"}</td>
-                    <td className="p-2 font-mono truncate max-w-[140px]">{r.tenant_id ?? "—"}</td>
-                    <td className="p-2 whitespace-nowrap">{r.created_at}</td>
-                  </AdminTableRow>
-                ))
+                guardianNfcAppEventsPage.rows.map((r) => {
+                  const petKind = subjectKindShortLabel(r.pet_subject_kind ?? r.subject_kind);
+                  const tenantSlug = (r.tenant_slug ?? "").trim();
+                  const tenantId = (r.tenant_id ?? "").trim();
+                  const tenantLine =
+                    tenantSlug && tenantId ? `${tenantSlug} · ${tenantId}` : tenantSlug || tenantId || "";
+                  const tenantDisplayName = (r.tenant_name ?? "").trim();
+                  const tenantPrimary = tenantLine || tenantId || tenantSlug || tenantDisplayName || "";
+                  return (
+                    <AdminTableRow key={r.id}>
+                      <td className="p-2 font-mono align-top">{r.event}</td>
+                      <td className="p-2 align-top">{r.subject_kind ?? "—"}</td>
+                      <td className="p-2 align-top max-w-[min(100vw,320px)] space-y-2">
+                        {r.pet_id ? (
+                          <AdminInlineContextBlock
+                            primary={r.pet_id}
+                            sublines={[
+                              r.pet_name
+                                ? petKind
+                                  ? `${r.pet_name} · ${petKind}`
+                                  : r.pet_name
+                                : null,
+                              formatOwnerPrimaryLine(r.owner_name, r.owner_email) || null,
+                            ]}
+                          />
+                        ) : (
+                          <span className="text-[9px] font-bold text-slate-400">pet_id 없음</span>
+                        )}
+                        {tenantPrimary || (r.tenant_members_summary ?? "").trim() ? (
+                          <AdminInlineContextBlock
+                            primary={tenantPrimary || "—"}
+                            sublines={[
+                              tenantDisplayName && tenantPrimary !== tenantDisplayName
+                                ? `조직 ${tenantDisplayName}`
+                                : null,
+                              (r.tenant_members_summary ?? "").trim()
+                                ? `멤버 ${(r.tenant_members_summary ?? "").trim()}`
+                                : null,
+                            ]}
+                          />
+                        ) : null}
+                        {r.user_id || formatOwnerPrimaryLine(r.actor_name, r.actor_email) ? (
+                          <AdminInlineContextBlock
+                            primary={
+                              formatOwnerPrimaryLine(r.actor_name, r.actor_email) || r.user_id || "—"
+                            }
+                            primaryMono={!formatOwnerPrimaryLine(r.actor_name, r.actor_email)}
+                            sublines={
+                              formatOwnerPrimaryLine(r.actor_name, r.actor_email) && r.user_id
+                                ? [`user_id ${r.user_id}`]
+                                : undefined
+                            }
+                          />
+                        ) : null}
+                      </td>
+                      <td className="p-2 whitespace-nowrap align-top">{r.created_at}</td>
+                    </AdminTableRow>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -883,26 +1039,40 @@ export default function AdminMonitoringClient({
             <table className="w-full text-left text-[10px] lg:text-xs">
               <thead>
                 <AdminTableHeadRow>
-                  <AdminTableHeadCell>pet_id</AdminTableHeadCell>
-                  <AdminTableHeadCell>이름(참고)</AdminTableHeadCell>
+                  <AdminTableHeadCell>프로필·연결</AdminTableHeadCell>
                   <AdminTableHeadCell>마지막 시각</AdminTableHeadCell>
                 </AdminTableHeadRow>
               </thead>
               <tbody>
                 {lowBattery.length === 0 ? (
                   <AdminTableRow>
-                    <td colSpan={3} className="p-4 text-slate-400 text-center">
+                    <td colSpan={2} className="p-4 text-slate-400 text-center">
                       해당 없음
                     </td>
                   </AdminTableRow>
                 ) : (
-                  lowBattery.map((r) => (
-                    <AdminTableRow key={r.pet_id}>
-                      <td className="p-2 font-mono truncate max-w-[160px]">{r.pet_id}</td>
-                      <td className="p-2">{r.pet_name ?? "—"}</td>
-                      <td className="p-2 whitespace-nowrap">{r.last_at}</td>
-                    </AdminTableRow>
-                  ))
+                  lowBattery.map((r) => {
+                    const lk = subjectKindShortLabel(r.subject_kind);
+                    return (
+                      <AdminTableRow key={r.pet_id}>
+                        <td className="p-2 align-top max-w-[280px]">
+                          <AdminInlineContextBlock
+                            primary={r.pet_id}
+                            sublines={[
+                              r.pet_name
+                                ? lk
+                                  ? `${r.pet_name} · ${lk}`
+                                  : r.pet_name
+                                : null,
+                              formatOwnerPrimaryLine(r.owner_name, r.owner_email) || null,
+                              (r.tenant_name ?? "").trim() ? `조직 ${(r.tenant_name ?? "").trim()}` : null,
+                            ]}
+                          />
+                        </td>
+                        <td className="p-2 whitespace-nowrap align-top">{r.last_at}</td>
+                      </AdminTableRow>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -927,13 +1097,29 @@ export default function AdminMonitoringClient({
                     </td>
                   </AdminTableRow>
                 ) : (
-                  recentBle.map((r) => (
-                    <AdminTableRow key={r.id}>
-                      <td className="p-2 font-mono">{r.event_type}</td>
-                      <td className="p-2 whitespace-nowrap">{r.created_at}</td>
-                      <td className="p-2 truncate max-w-[120px]">{r.pet_name ?? r.pet_id}</td>
-                    </AdminTableRow>
-                  ))
+                  recentBle.map((r) => {
+                    const bk = subjectKindShortLabel(r.subject_kind);
+                    return (
+                      <AdminTableRow key={r.id}>
+                        <td className="p-2 font-mono align-top">{r.event_type}</td>
+                        <td className="p-2 whitespace-nowrap align-top">{r.created_at}</td>
+                        <td className="p-2 align-top max-w-[220px]">
+                          <AdminInlineContextBlock
+                            primary={r.pet_id}
+                            sublines={[
+                              r.pet_name
+                                ? bk
+                                  ? `${r.pet_name} · ${bk}`
+                                  : r.pet_name
+                                : null,
+                              formatOwnerPrimaryLine(r.owner_name, r.owner_email) || null,
+                              (r.tenant_name ?? "").trim() ? `조직 ${(r.tenant_name ?? "").trim()}` : null,
+                            ]}
+                          />
+                        </td>
+                      </AdminTableRow>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -944,7 +1130,7 @@ export default function AdminMonitoringClient({
       <AdminCard variant="subtle" className="p-5 border border-dashed border-slate-200">
         <p className="text-[10px] text-slate-500 leading-relaxed">
           <strong className="text-slate-700">개인정보·위치</strong>: 위치는 발견자 동의 후에만
-          저장됩니다. 관리자 화면은 UID·기기 식별자 중심으로 두고, 이용약관에 위치·모니터링 범위를
+          저장됩니다. 모니터링 표는 UID·pet id 옆에 연결된 프로필·보호자·테넌트 요약을 함께 두었습니다. 이용약관에 위치·모니터링 범위를
           명시해야 합니다. 지역별 히트맵·빅데이터 연동은 별도 배포 시 확장합니다.
         </p>
       </AdminCard>

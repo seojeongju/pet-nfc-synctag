@@ -8,6 +8,8 @@ import { AdminTableRow } from "@/components/admin/ui/AdminTable";
 import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
 import type { AdminTag } from "@/types/admin-tags";
+import { AdminInlineContextBlock } from "@/components/admin/ui/AdminInlineContextBlock";
+import { formatOwnerPrimaryLine } from "@/lib/admin-uid-context";
 import { ChevronDown, Trash2 } from "lucide-react";
 
 function getStatusLabel(status: string) {
@@ -88,7 +90,17 @@ export function TagProductRow({
           className="flex w-full items-start gap-2 p-3 text-left touch-manipulation hover:bg-slate-50/80"
         >
           <div className="min-w-0 flex-1 space-y-1">
-            <p className="break-all font-mono text-[10px] font-bold leading-snug text-slate-800">{tag.id}</p>
+            <AdminInlineContextBlock
+              primary={tag.id}
+              sublines={[
+                tag.pet_name || tag.owner_email
+                  ? [
+                      tag.pet_name ?? null,
+                      formatOwnerPrimaryLine(null, tag.owner_email) || null,
+                    ].filter(Boolean).join(" · ") || null
+                  : "연결 프로필 없음",
+              ]}
+            />
             {tag.batch_id && (
               <p className="text-[9px] font-black uppercase tracking-tight text-slate-500">배치: {tag.batch_id}</p>
             )}
@@ -199,13 +211,30 @@ export function TagProductRow({
   return (
     <AdminTableRow className="group transition-all duration-300 align-top">
       <td className="py-4 px-4">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-slate-700 shrink-0 group-hover:bg-teal-500 transition-colors" />
-          <span className="font-mono text-[10px] font-bold text-slate-700 break-all">{tag.id}</span>
+        <div className="flex items-start gap-2">
+          <div className="w-2 h-2 mt-1 rounded-full bg-slate-700 shrink-0 group-hover:bg-teal-500 transition-colors" />
+          <div className="min-w-0 flex-1">
+            <AdminInlineContextBlock
+              primary={tag.id}
+              sublines={[
+                tag.pet_name || tag.owner_email
+                  ? [
+                      tag.pet_name ?? null,
+                      formatOwnerPrimaryLine(null, tag.owner_email) || null,
+                    ]
+                      .map((s) => (s ?? "").trim())
+                      .filter(Boolean)
+                      .join(" · ") || null
+                  : "연결 프로필 없음",
+              ]}
+            />
+            {tag.batch_id && (
+              <p className="text-[9px] text-slate-600 font-black mt-1 uppercase tracking-tighter">
+                배치: {tag.batch_id}
+              </p>
+            )}
+          </div>
         </div>
-        {tag.batch_id && (
-          <p className="text-[9px] text-slate-600 font-black mt-1 uppercase tracking-tighter">배치: {tag.batch_id}</p>
-        )}
       </td>
       <td className="py-4 px-2">
         <input

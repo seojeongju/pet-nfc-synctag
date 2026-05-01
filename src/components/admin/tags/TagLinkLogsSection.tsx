@@ -8,6 +8,7 @@ import { History } from "lucide-react";
 import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
 import type { TagLinkLogsPageResult } from "@/types/admin-tags";
+import { AdminInlineContextBlock } from "@/components/admin/ui/AdminInlineContextBlock";
 
 export function TagLinkLogsSection({ linkPage }: { linkPage: TagLinkLogsPageResult }) {
   const router = useRouter();
@@ -88,9 +89,15 @@ export function TagLinkLogsSection({ linkPage }: { linkPage: TagLinkLogsPageResu
                   {log.action === "link" ? "연결" : "해제"}
                 </span>
               </div>
-              <p className="mt-2 font-mono text-[14px] font-bold text-slate-800">{log.tag_id}</p>
-              <p className="mt-1 text-[15px] font-black text-slate-900">{log.pet_name || "알 수 없음"}</p>
-              <p className="mt-1 text-[13px] font-semibold text-slate-500">{log.owner_email || "-"}</p>
+              <div className="mt-2">
+                <AdminInlineContextBlock
+                  primary={log.tag_id}
+                  sublines={[
+                    log.pet_name || "프로필명 없음",
+                    log.owner_email?.trim() ? log.owner_email.trim() : "소유자 이메일 없음",
+                  ]}
+                />
+              </div>
             </div>
           ))
         ) : (
@@ -128,7 +135,15 @@ export function TagLinkLogsSection({ linkPage }: { linkPage: TagLinkLogsPageResu
                       {log.action === "link" ? "연결" : "해제"}
                     </span>
                   </td>
-                  <td className={adminUi.tableBodyCellMono}>{log.tag_id}</td>
+                  <td className={cn(adminUi.tableBodyCell, "align-top")}>
+                    <AdminInlineContextBlock
+                      primary={log.tag_id}
+                      sublines={[
+                        log.pet_name ? `${log.pet_name}` : null,
+                        log.owner_email?.trim() ? log.owner_email.trim() : null,
+                      ]}
+                    />
+                  </td>
                   <td className={adminUi.tableBodyCellStrong}>{log.pet_name || "알 수 없음"}</td>
                   <td className={cn(adminUi.tableBodyCell, "text-slate-400")}>{log.owner_email || "-"}</td>
                 </AdminTableRow>
