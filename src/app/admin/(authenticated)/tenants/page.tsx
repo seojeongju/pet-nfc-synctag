@@ -20,6 +20,7 @@ import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { adminUi } from "@/styles/admin/ui";
 import OwnerPasswordField from "@/components/admin/tenants/OwnerPasswordField";
+import AdminTenantPasswordFlash from "@/components/admin/tenants/AdminTenantPasswordFlash";
 import { cookies } from "next/headers";
 import { resolveAdminScope } from "@/lib/admin-authz";
 
@@ -163,9 +164,8 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
       }
     } catch {
       passwordFlash = null;
-    } finally {
-      cookieStore.delete("admin_tenant_pw_flash");
     }
+    // 쿠키 삭제는 Server Component에서 불가(런타임 예외). 플래시 UI 마운트 후 Server Action으로 처리한다.
   }
 
   const qs = await searchParams;
@@ -209,15 +209,10 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
         </div>
       ) : null}
       {passwordFlash ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800 break-all space-y-1">
-          <p>조직관리자 비밀번호 재생성 완료: {passwordFlash.email}</p>
-          <p>
-            임시 비밀번호: <span className="font-mono font-black">{passwordFlash.temporaryPassword}</span>
-          </p>
-          <p className="text-[12px] font-semibold text-amber-700">
-            보안상 이 비밀번호는 안전한 채널로만 전달하고, 전달 후 즉시 화면에서 이탈하세요.
-          </p>
-        </div>
+        <AdminTenantPasswordFlash
+          email={passwordFlash.email}
+          temporaryPassword={passwordFlash.temporaryPassword}
+        />
       ) : null}
 
       <section className="rounded-3xl border border-slate-100 bg-white p-5 lg:p-6 shadow-sm space-y-4">

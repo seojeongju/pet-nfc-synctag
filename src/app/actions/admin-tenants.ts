@@ -1098,6 +1098,18 @@ function isNextRedirectError(err: unknown): boolean {
   return typeof maybe.digest === "string" && maybe.digest.startsWith("NEXT_REDIRECT");
 }
 
+/** RSC에서는 쿠키 삭제가 금지되므로, 임시 비밀번호 플래시는 클라이언트에서 이 액션으로 제거한다. */
+export async function clearAdminTenantPwFlashCookie() {
+  const cookieStore = await cookies();
+  cookieStore.set("admin_tenant_pw_flash", "", {
+    path: "/admin/tenants",
+    maxAge: 0,
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+  });
+}
+
 export async function adminCreateTenantFormAction(formData: FormData) {
   const backQs = String(formData.get("return_qs") ?? "");
   try {
