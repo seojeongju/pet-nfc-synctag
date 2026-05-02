@@ -939,13 +939,14 @@ export async function adminResetTenantManagerPassword(formData: FormData): Promi
   targetEmail: string;
   temporaryPassword: string;
 }> {
-  const { actorEmail } = await requirePlatformAdmin();
-  const db = getDB();
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
   const userId = String(formData.get("user_id") ?? "").trim();
   if (!tenantId || !userId) {
     throw new Error("대상 정보가 올바르지 않습니다.");
   }
+  const actor = await requirePlatformOrTenantOrgAdmin(tenantId);
+  const actorEmail = actor.actorEmail;
+  const db = getDB();
 
   const target = await db
     .prepare(
