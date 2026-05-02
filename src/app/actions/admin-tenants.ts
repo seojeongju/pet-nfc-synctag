@@ -13,6 +13,7 @@ import { SUBJECT_KINDS, type SubjectKind } from "@/lib/subject-kind";
 import {
   requirePlatformAdminActor,
   requirePlatformOrTenantAdminActor,
+  resolveAdminScope,
 } from "@/lib/admin-authz";
 import {
   queryTenantTagConnectedUsers,
@@ -1098,16 +1099,40 @@ function isNextRedirectError(err: unknown): boolean {
   return typeof maybe.digest === "string" && maybe.digest.startsWith("NEXT_REDIRECT");
 }
 
-/** RSC에서는 쿠키 삭제가 금지되므로, 임시 비밀번호 플래시는 클라이언트에서 이 액션으로 제거한다. */
-export async function clearAdminTenantPwFlashCookie() {
+/** 클라이언트가 마운트 직후 쿠키를 지우면 RSC 재실행 시 플래시가 사라져 비밀번호가 안 보일 수 있음 → 삭제하지 않고 maxAge로 만료. */
+
+/** SSR에서 쿠키를 놓친 경우(타이밍·엣지) 클라이언트에서 한 번 더 읽기 */
+export async function peekTenantPasswordFlash(): Promise<{
+  tenantId: string;
+  email: string;
+  temporaryPassword: string;
+} | null> {
+  const scope = await resolveAdminScope("admin");
+  if (!scope.actor.isPlatformAdmin) return null;
   const cookieStore = await cookies();
-  cookieStore.set("admin_tenant_pw_flash", "", {
-    path: "/admin/tenants",
-    maxAge: 0,
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-  });
+  const flashRaw = cookieStore.get("admin_tenant_pw_flash")?.value ?? "";
+  if (!flashRaw) return null;
+  try {
+    const parsed = JSON.parse(flashRaw) as {
+      tenantId?: string;
+      email?: string;
+      temporaryPassword?: string;
+    };
+    if (
+      typeof parsed.tenantId === "string" &&
+      typeof parsed.email === "string" &&
+      typeof parsed.temporaryPassword === "string"
+    ) {
+      return {
+        tenantId: parsed.tenantId,
+        email: parsed.email,
+        temporaryPassword: parsed.temporaryPassword,
+      };
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 export async function adminCreateTenantFormAction(formData: FormData) {

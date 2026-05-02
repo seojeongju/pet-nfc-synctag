@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { adminUi } from "@/styles/admin/ui";
 import OwnerPasswordField from "@/components/admin/tenants/OwnerPasswordField";
 import AdminTenantPasswordFlash from "@/components/admin/tenants/AdminTenantPasswordFlash";
+import TenantPasswordFlashRecover from "@/components/admin/tenants/TenantPasswordFlashRecover";
 import { cookies } from "next/headers";
 import { resolveAdminScope } from "@/lib/admin-authz";
 
@@ -165,7 +166,6 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
     } catch {
       passwordFlash = null;
     }
-    // 쿠키 삭제는 Server Component에서 불가(런타임 예외). 플래시 UI 마운트 후 Server Action으로 처리한다.
   }
 
   const qs = await searchParams;
@@ -178,6 +178,10 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
   const newOrgModeForm = parseAllowedModesForForm(null);
   const passwordFlashInTenantList =
     !!passwordFlash && tenants.some((t) => t.id === passwordFlash.tenantId);
+
+  const okDecoded = qs.ok ? safeDecode(qs.ok) : "";
+  const showTenantPwRecover =
+    !passwordFlash && okDecoded.includes("임시 비밀번호를 재생성");
 
   return (
     <div className={cn(adminUi.pageContainer, adminUi.pageBottomSafe, "space-y-6 pb-12 font-outfit")}>
@@ -210,6 +214,7 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
           {qs.invite_exp ? ` (만료: ${safeDecode(qs.invite_exp)})` : ""}
         </div>
       ) : null}
+      {showTenantPwRecover ? <TenantPasswordFlashRecover /> : null}
       {passwordFlash && !passwordFlashInTenantList ? (
         <AdminTenantPasswordFlash
           variant="page"

@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { clearAdminTenantPwFlashCookie } from "@/app/actions/admin-tenants";
+import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 
 type Variant = "page" | "inline";
@@ -17,10 +16,6 @@ export default function AdminTenantPasswordFlash({
 }) {
   const [copied, setCopied] = useState(false);
   const copyLabel = useMemo(() => (copied ? "복사됨" : "복사"), [copied]);
-
-  useEffect(() => {
-    void clearAdminTenantPwFlashCookie();
-  }, []);
 
   async function handleCopy() {
     try {
