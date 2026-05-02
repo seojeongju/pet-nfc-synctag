@@ -467,38 +467,6 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
                 </button>
               </form>
 
-              <form action={adminCreateTenantInviteFormAction} className="grid grid-cols-1 lg:grid-cols-4 gap-2">
-                <input type="hidden" name="tenant_id" value={tenant.id} />
-                <input type="hidden" name="return_qs" value={backQs} />
-                <input
-                  name="email"
-                  required
-                  type="email"
-                  placeholder="미가입 사용자 이메일"
-                  className="min-h-12 touch-manipulation rounded-xl border border-slate-200 px-3 text-base font-semibold sm:h-10 sm:text-sm lg:col-span-2"
-                />
-                <select name="role" defaultValue="member" className="min-h-12 touch-manipulation rounded-xl border border-slate-200 px-3 text-base font-bold sm:h-10 sm:text-sm">
-                  <option value="member">멤버</option>
-                  <option value="admin">관리자</option>
-                  <option value="owner">소유자</option>
-                </select>
-                <button type="submit" className="min-h-12 touch-manipulation rounded-xl bg-indigo-600 px-2 text-[15px] font-black text-white hover:bg-indigo-700 sm:h-10 sm:text-sm">
-                  초대 토큰 발급
-                </button>
-              </form>
-
-              {tenant.invites.length > 0 ? (
-                <div className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-3 space-y-2">
-                  <p className="text-[11px] font-black uppercase text-indigo-600">Pending Invites</p>
-                  {tenant.invites.map((iv) => (
-                    <div key={iv.id} className="rounded-xl bg-white border border-indigo-100 px-3 py-2">
-                      <p className="text-xs font-black text-slate-700">{iv.email} · {roleLabel(iv.role)}</p>
-                      <p className="text-[11px] font-semibold text-indigo-700 break-all">token: {iv.token}</p>
-                      <p className="text-[11px] font-semibold text-slate-500">expires: {new Date(iv.expires_at).toLocaleString("ko-KR")}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
 
               <div className="overflow-x-auto rounded-2xl border border-slate-100">
                 <table className="w-full min-w-[700px]">
