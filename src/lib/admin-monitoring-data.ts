@@ -1,8 +1,72 @@
 import { getDB } from "@/lib/db";
 
+/** 플랫폼 전체 vs 조직 관리자 관할 테넌트(NFC/BLE·태그 관련 데이터 스코프) */
+export type AdminMonitoringDataScope =
+  | { kind: "platform" }
+  | { kind: "tenant"; tenantIds: string[] };
+
+export function monitoringScopeFromResolve(
+  isPlatformAdmin: boolean,
+  tenantIds: string[] | null
+): AdminMonitoringDataScope {
+  if (isPlatformAdmin) return { kind: "platform" };
+  const ids = [...new Set(tenantIds ?? [])].filter(Boolean);
+  return { kind: "tenant", tenantIds: ids };
+}
+
+function sqlTenantTagPet(scope: AdminMonitoringDataScope, tagAlias: string, petAlias: string): { sql: string; binds: string[] } {
+  if (scope.kind === "platform") return { sql: "", binds: [] };
+  const ids = scope.tenantIds;
+  if (!ids.length) return { sql: " AND 1=0 ", binds: [] };
+  const ph = ids.map(() => "?").join(", ");
+  return {
+    sql: ` AND (${tagAlias}.tenant_id IN (${ph}) OR ${petAlias}.tenant_id IN (${ph}))`,
+    binds: [...ids, ...ids],
+  };
+}
+
+function sqlTenantPet(scope: AdminMonitoringDataScope, petAlias: string): { sql: string; binds: string[] } {
+  if (scope.kind === "platform") return { sql: "", binds: [] };
+  const ids = scope.tenantIds;
+  if (!ids.length) return { sql: " AND 1=0 ", binds: [] };
+  const ph = ids.map(() => "?").join(", ");
+  return { sql: ` AND ${petAlias}.tenant_id IN (${ph})`, binds: [...ids] };
+}
+
+/** admin_action_logs.payload $.tagId → tags 테넌트 */
+function sqlPayloadTagInTenants(scope: AdminMonitoringDataScope, logAlias = "l"): { sql: string; binds: string[] } {
+  if (scope.kind === "platform") return { sql: "", binds: [] };
+  const ids = scope.tenantIds;
+  if (!ids.length) return { sql: " AND 1=0 ", binds: [] };
+  const ph = ids.map(() => "?").join(", ");
+  return {
+    sql:
+      ` AND EXISTS (SELECT 1 FROM tags tg LEFT JOIN pets pp ON pp.id = tg.pet_id WHERE tg.id = json_extract(${logAlias}.payload, '$.tagId') AND (tg.tenant_id IN (${ph}) OR pp.tenant_id IN (${ph})))`,
+    binds: [...ids, ...ids],
+  };
+}
+
+function sqlGuardianPayloadTenant(scope: AdminMonitoringDataScope): { sql: string; binds: string[] } {
+  if (scope.kind === "platform") return { sql: "", binds: [] };
+  const ids = scope.tenantIds;
+  if (!ids.length) return { sql: " AND 1=0 ", binds: [] };
+  const ph = ids.map(() => "?").join(", ");
+  return {
+    sql: ` AND json_extract(l.payload, '$.tenantId') IN (${ph})`,
+    binds: [...ids],
+  };
+}
+
 /** Admin RSC only */
-export async function getMonitoringSummary() {
+export async function getMonitoringSummary(scope: AdminMonitoringDataScope = { kind: "platform" }) {
   const db = getDB();
+
+  const scanBase =
+    "FROM scan_logs sl LEFT JOIN tags t ON sl.tag_id = t.id LEFT JOIN pets p ON t.pet_id = p.id WHERE ";
+  const scanTf = sqlTenantTagPet(scope, "t", "p");
+  const unknownTf = sqlTenantTagPet(scope, "t", "p");
+  const bleTf = sqlTenantPet(scope, "p");
+  const nativeTf = sqlPayloadTagInTenants(scope, "l");
 
   const [
     nfc24h,
@@ -28,159 +92,268 @@ export async function getMonitoringSummary() {
     guardianAlerts24h,
     guardianAlerts7d,
   ] = await Promise.all([
+    scope.kind === "platform"
+      ? db
+          .prepare("SELECT COUNT(*) AS c FROM scan_logs WHERE scanned_at >= datetime('now', '-1 day')")
+          .first<{ c: number }>()
+      : db
+          .prepare(
+            `SELECT COUNT(*) AS c ${scanBase}sl.scanned_at >= datetime('now', '-1 day')${scanTf.sql}`
+          )
+          .bind(...scanTf.binds)
+          .first<{ c: number }>(),
+    scope.kind === "platform"
+      ? db
+          .prepare("SELECT COUNT(*) AS c FROM scan_logs WHERE scanned_at >= datetime('now', '-7 days')")
+          .first<{ c: number }>()
+      : db
+          .prepare(
+            `SELECT COUNT(*) AS c ${scanBase}sl.scanned_at >= datetime('now', '-7 days')${scanTf.sql}`
+          )
+          .bind(...scanTf.binds)
+          .first<{ c: number }>(),
+    scope.kind === "platform"
+      ? db
+          .prepare(
+            "SELECT COUNT(*) AS c FROM scan_logs WHERE scanned_at >= datetime('now', '-1 day') " +
+              "AND latitude IS NOT NULL AND longitude IS NOT NULL"
+          )
+          .first<{ c: number }>()
+      : db
+          .prepare(
+            `SELECT COUNT(*) AS c ${scanBase}sl.scanned_at >= datetime('now', '-1 day') ` +
+              `AND sl.latitude IS NOT NULL AND sl.longitude IS NOT NULL${scanTf.sql}`
+          )
+          .bind(...scanTf.binds)
+          .first<{ c: number }>(),
+    scope.kind === "platform"
+      ? db
+          .prepare(
+            "SELECT COUNT(*) AS c FROM unknown_tag_accesses WHERE created_at >= datetime('now', '-7 days')"
+          )
+          .first<{ c: number }>()
+          .catch(() => ({ c: 0 }))
+      : db
+          .prepare(
+            "SELECT COUNT(*) AS c FROM unknown_tag_accesses uta " +
+              "LEFT JOIN tags t ON t.id = uta.tag_uid LEFT JOIN pets p ON p.id = t.pet_id " +
+              "WHERE uta.created_at >= datetime('now', '-7 days')" +
+              unknownTf.sql
+          )
+          .bind(...unknownTf.binds)
+          .first<{ c: number }>()
+          .catch(() => ({ c: 0 })),
+    scope.kind === "platform"
+      ? db
+          .prepare(
+            "SELECT COUNT(*) AS c FROM landing_auto_route_events WHERE created_at >= datetime('now', '-7 days')"
+          )
+          .first<{ c: number }>()
+          .catch(() => ({ c: 0 }))
+      : Promise.resolve({ c: 0 }),
+    scope.kind === "platform"
+      ? db
+          .prepare(
+            "SELECT COUNT(*) AS c FROM ble_location_events WHERE created_at >= datetime('now', '-1 day')"
+          )
+          .first<{ c: number }>()
+      : db
+          .prepare(
+            "SELECT COUNT(*) AS c FROM ble_location_events e INNER JOIN pets p ON p.id = e.pet_id " +
+              "WHERE e.created_at >= datetime('now', '-1 day')" +
+              bleTf.sql
+          )
+          .bind(...bleTf.binds)
+          .first<{ c: number }>(),
+    scope.kind === "platform"
+      ? db
+          .prepare(
+            "SELECT COUNT(*) AS c FROM ble_location_events WHERE created_at >= datetime('now', '-7 days')"
+          )
+          .first<{ c: number }>()
+      : db
+          .prepare(
+            "SELECT COUNT(*) AS c FROM ble_location_events e INNER JOIN pets p ON p.id = e.pet_id " +
+              "WHERE e.created_at >= datetime('now', '-7 days')" +
+              bleTf.sql
+          )
+          .bind(...bleTf.binds)
+          .first<{ c: number }>(),
+    scope.kind === "platform"
+      ? db
+          .prepare(
+            "SELECT COUNT(*) AS c FROM ble_location_events " +
+              "WHERE created_at >= datetime('now', '-7 days') " +
+              "AND (event_type = 'ble_lost' OR event_type LIKE '%lost%')"
+          )
+          .first<{ c: number }>()
+      : db
+          .prepare(
+            "SELECT COUNT(*) AS c FROM ble_location_events e INNER JOIN pets p ON p.id = e.pet_id " +
+              "WHERE e.created_at >= datetime('now', '-7 days') " +
+              "AND (e.event_type = 'ble_lost' OR e.event_type LIKE '%lost%')" +
+              bleTf.sql
+          )
+          .bind(...bleTf.binds)
+          .first<{ c: number }>(),
+    scope.kind === "platform"
+      ? db
+          .prepare(
+            "SELECT COUNT(DISTINCT e.pet_id) AS c FROM ble_location_events e " +
+              "WHERE e.created_at >= datetime('now', '-30 days') " +
+              "AND (e.event_type = 'battery_low' OR e.event_type LIKE '%battery%low%')"
+          )
+          .first<{ c: number }>()
+      : db
+          .prepare(
+            "SELECT COUNT(DISTINCT e.pet_id) AS c FROM ble_location_events e INNER JOIN pets p ON p.id = e.pet_id " +
+              "WHERE e.created_at >= datetime('now', '-30 days') " +
+              "AND (e.event_type = 'battery_low' OR e.event_type LIKE '%battery%low%')" +
+              bleTf.sql
+          )
+          .bind(...bleTf.binds)
+          .first<{ c: number }>(),
     db
       .prepare(
-        "SELECT COUNT(*) AS c FROM scan_logs WHERE scanned_at >= datetime('now', '-1 day')"
+        "SELECT COUNT(*) AS c FROM admin_action_logs l " +
+          "WHERE l.action = 'nfc_native_write' AND l.success = 0 AND l.created_at >= datetime('now', '-1 day')" +
+          nativeTf.sql
       )
-      .first<{ c: number }>(),
-    db
-      .prepare(
-        "SELECT COUNT(*) AS c FROM scan_logs WHERE scanned_at >= datetime('now', '-7 days')"
-      )
-      .first<{ c: number }>(),
-    db
-      .prepare(
-        "SELECT COUNT(*) AS c FROM scan_logs WHERE scanned_at >= datetime('now', '-1 day') " +
-          "AND latitude IS NOT NULL AND longitude IS NOT NULL"
-      )
-      .first<{ c: number }>(),
-    db
-      .prepare(
-        "SELECT COUNT(*) AS c FROM unknown_tag_accesses WHERE created_at >= datetime('now', '-7 days')"
-      )
+      .bind(...nativeTf.binds)
       .first<{ c: number }>()
       .catch(() => ({ c: 0 })),
     db
       .prepare(
-        "SELECT COUNT(*) AS c FROM landing_auto_route_events WHERE created_at >= datetime('now', '-7 days')"
+        "SELECT COUNT(*) AS c FROM admin_action_logs l " +
+          "WHERE l.action = 'nfc_native_write' AND l.success = 0 AND l.created_at >= datetime('now', '-7 days')" +
+          nativeTf.sql
       )
+      .bind(...nativeTf.binds)
+      .first<{ c: number }>()
+      .catch(() => ({ c: 0 })),
+    scope.kind === "platform"
+      ? db
+          .prepare(
+            "SELECT COUNT(*) AS c FROM admin_action_logs " +
+              "WHERE action = 'nfc_native_handoff' AND created_at >= datetime('now', '-7 days')"
+          )
+          .first<{ c: number }>()
+          .catch(() => ({ c: 0 }))
+      : Promise.resolve({ c: 0 }),
+    db
+      .prepare(
+        "SELECT COUNT(*) AS c FROM admin_action_logs l " +
+          "WHERE l.action = 'nfc_native_write_rejected' AND l.created_at >= datetime('now', '-1 day')" +
+          nativeTf.sql
+      )
+      .bind(...nativeTf.binds)
       .first<{ c: number }>()
       .catch(() => ({ c: 0 })),
     db
       .prepare(
-        "SELECT COUNT(*) AS c FROM ble_location_events WHERE created_at >= datetime('now', '-1 day')"
+        "SELECT COUNT(*) AS c FROM admin_action_logs l " +
+          "WHERE l.action = 'nfc_native_write_rejected' AND l.created_at >= datetime('now', '-7 days')" +
+          nativeTf.sql
       )
-      .first<{ c: number }>(),
-    db
-      .prepare(
-        "SELECT COUNT(*) AS c FROM ble_location_events WHERE created_at >= datetime('now', '-7 days')"
-      )
-      .first<{ c: number }>(),
-    db
-      .prepare(
-        "SELECT COUNT(*) AS c FROM ble_location_events " +
-          "WHERE created_at >= datetime('now', '-7 days') " +
-          "AND (event_type = 'ble_lost' OR event_type LIKE '%lost%')"
-      )
-      .first<{ c: number }>(),
-    db
-      .prepare(
-        "SELECT COUNT(DISTINCT pet_id) AS c FROM ble_location_events " +
-          "WHERE created_at >= datetime('now', '-30 days') " +
-          "AND (event_type = 'battery_low' OR event_type LIKE '%battery%low%')"
-      )
-      .first<{ c: number }>(),
-    db
-      .prepare(
-        "SELECT COUNT(*) AS c FROM admin_action_logs " +
-          "WHERE action = 'nfc_native_write' AND success = 0 AND created_at >= datetime('now', '-1 day')"
-      )
+      .bind(...nativeTf.binds)
       .first<{ c: number }>()
       .catch(() => ({ c: 0 })),
-    db
-      .prepare(
-        "SELECT COUNT(*) AS c FROM admin_action_logs " +
-          "WHERE action = 'nfc_native_write' AND success = 0 AND created_at >= datetime('now', '-7 days')"
-      )
-      .first<{ c: number }>()
-      .catch(() => ({ c: 0 })),
-    db
-      .prepare(
-        "SELECT COUNT(*) AS c FROM admin_action_logs " +
-          "WHERE action = 'nfc_native_handoff' AND created_at >= datetime('now', '-7 days')"
-      )
-      .first<{ c: number }>()
-      .catch(() => ({ c: 0 })),
-    db
-      .prepare(
-        "SELECT COUNT(*) AS c FROM admin_action_logs " +
-          "WHERE action = 'nfc_native_write_rejected' AND created_at >= datetime('now', '-1 day')"
-      )
-      .first<{ c: number }>()
-      .catch(() => ({ c: 0 })),
-    db
-      .prepare(
-        "SELECT COUNT(*) AS c FROM admin_action_logs " +
-          "WHERE action = 'nfc_native_write_rejected' AND created_at >= datetime('now', '-7 days')"
-      )
-      .first<{ c: number }>()
-      .catch(() => ({ c: 0 })),
-    db
-      .prepare(
-        "SELECT COUNT(*) AS c FROM finder_action_logs " +
-          "WHERE action = 'call_click' AND created_at >= datetime('now', '-1 day')"
-      )
-      .first<{ c: number }>()
-      .catch(() => ({ c: 0 })),
-    db
-      .prepare(
-        "SELECT COUNT(*) AS c FROM finder_action_logs " +
-          "WHERE action = 'sms_click' AND created_at >= datetime('now', '-1 day')"
-      )
-      .first<{ c: number }>()
-      .catch(() => ({ c: 0 })),
-    db
-      .prepare(
-        "SELECT COUNT(*) AS c FROM finder_action_logs " +
-          "WHERE action = 'location_share_click' AND created_at >= datetime('now', '-1 day')"
-      )
-      .first<{ c: number }>()
-      .catch(() => ({ c: 0 })),
-    db
-      .prepare(
-        "SELECT COUNT(*) AS c FROM finder_action_logs " +
-          "WHERE action = 'location_share_success' AND created_at >= datetime('now', '-1 day')"
-      )
-      .first<{ c: number }>()
-      .catch(() => ({ c: 0 })),
-    db
-      .prepare(
-        "SELECT COUNT(*) AS c FROM finder_action_logs " +
-          "WHERE action = 'location_share_click' AND created_at >= datetime('now', '-7 days')"
-      )
-      .first<{ c: number }>()
-      .catch(() => ({ c: 0 })),
-    db
-      .prepare(
-        "SELECT COUNT(*) AS c FROM finder_action_logs " +
-          "WHERE action = 'location_share_success' AND created_at >= datetime('now', '-7 days')"
-      )
-      .first<{ c: number }>()
-      .catch(() => ({ c: 0 })),
-    db
-      .prepare(
-        "SELECT COUNT(*) AS c FROM guardian_alert_state " +
-          "WHERE last_sent_at >= datetime('now', '-1 day')"
-      )
-      .first<{ c: number }>()
-      .catch(() => ({ c: 0 })),
-    db
-      .prepare(
-        "SELECT COUNT(*) AS c FROM guardian_alert_state " +
-          "WHERE last_sent_at >= datetime('now', '-7 days')"
-      )
-      .first<{ c: number }>()
-      .catch(() => ({ c: 0 })),
+    scope.kind === "platform"
+      ? db
+          .prepare(
+            "SELECT COUNT(*) AS c FROM finder_action_logs " +
+              "WHERE action = 'call_click' AND created_at >= datetime('now', '-1 day')"
+          )
+          .first<{ c: number }>()
+          .catch(() => ({ c: 0 }))
+      : Promise.resolve({ c: 0 }),
+    scope.kind === "platform"
+      ? db
+          .prepare(
+            "SELECT COUNT(*) AS c FROM finder_action_logs " +
+              "WHERE action = 'sms_click' AND created_at >= datetime('now', '-1 day')"
+          )
+          .first<{ c: number }>()
+          .catch(() => ({ c: 0 }))
+      : Promise.resolve({ c: 0 }),
+    scope.kind === "platform"
+      ? db
+          .prepare(
+            "SELECT COUNT(*) AS c FROM finder_action_logs " +
+              "WHERE action = 'location_share_click' AND created_at >= datetime('now', '-1 day')"
+          )
+          .first<{ c: number }>()
+          .catch(() => ({ c: 0 }))
+      : Promise.resolve({ c: 0 }),
+    scope.kind === "platform"
+      ? db
+          .prepare(
+            "SELECT COUNT(*) AS c FROM finder_action_logs " +
+              "WHERE action = 'location_share_success' AND created_at >= datetime('now', '-1 day')"
+          )
+          .first<{ c: number }>()
+          .catch(() => ({ c: 0 }))
+      : Promise.resolve({ c: 0 }),
+    scope.kind === "platform"
+      ? db
+          .prepare(
+            "SELECT COUNT(*) AS c FROM finder_action_logs " +
+              "WHERE action = 'location_share_click' AND created_at >= datetime('now', '-7 days')"
+          )
+          .first<{ c: number }>()
+          .catch(() => ({ c: 0 }))
+      : Promise.resolve({ c: 0 }),
+    scope.kind === "platform"
+      ? db
+          .prepare(
+            "SELECT COUNT(*) AS c FROM finder_action_logs " +
+              "WHERE action = 'location_share_success' AND created_at >= datetime('now', '-7 days')"
+          )
+          .first<{ c: number }>()
+          .catch(() => ({ c: 0 }))
+      : Promise.resolve({ c: 0 }),
+    scope.kind === "platform"
+      ? db
+          .prepare(
+            "SELECT COUNT(*) AS c FROM guardian_alert_state " +
+              "WHERE last_sent_at >= datetime('now', '-1 day')"
+          )
+          .first<{ c: number }>()
+          .catch(() => ({ c: 0 }))
+      : Promise.resolve({ c: 0 }),
+    scope.kind === "platform"
+      ? db
+          .prepare(
+            "SELECT COUNT(*) AS c FROM guardian_alert_state " +
+              "WHERE last_sent_at >= datetime('now', '-7 days')"
+          )
+          .first<{ c: number }>()
+          .catch(() => ({ c: 0 }))
+      : Promise.resolve({ c: 0 }),
   ]);
 
-  const ops = await db
-    .prepare(
-      "SELECT COUNT(*) AS total, " +
-        "SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active, " +
-        "SUM(CASE WHEN status = 'unsold' THEN 1 ELSE 0 END) AS unsold FROM tags"
-    )
-    .first<{ total: number; active: number; unsold: number }>()
-    .catch(() => ({ total: 0, active: 0, unsold: 0 }));
+  const ops =
+    scope.kind === "platform"
+      ? await db
+          .prepare(
+            "SELECT COUNT(*) AS total, " +
+              "SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active, " +
+              "SUM(CASE WHEN status = 'unsold' THEN 1 ELSE 0 END) AS unsold FROM tags"
+          )
+          .first<{ total: number; active: number; unsold: number }>()
+          .catch(() => ({ total: 0, active: 0, unsold: 0 }))
+      : scope.tenantIds.length === 0
+        ? { total: 0, active: 0, unsold: 0 }
+        : await db
+            .prepare(
+              "SELECT COUNT(*) AS total, " +
+                "SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active, " +
+                "SUM(CASE WHEN status = 'unsold' THEN 1 ELSE 0 END) AS unsold FROM tags " +
+                `WHERE tenant_id IN (${scope.tenantIds.map(() => "?").join(", ")})`
+            )
+            .bind(...scope.tenantIds)
+            .first<{ total: number; active: number; unsold: number }>()
+            .catch(() => ({ total: 0, active: 0, unsold: 0 }));
 
   return {
     nfcScans24h: nfc24h?.c ?? 0,
@@ -558,26 +731,40 @@ export async function getRecentNfcScans(limit = 40) {
   return results ?? [];
 }
 
-export async function getRecentNfcScansPage(params: {
-  page?: number;
-  pageSize?: number;
-} = {}): Promise<MonitoringPageResult<RecentNfcScanRow>> {
+export async function getRecentNfcScansPage(
+  params: {
+    page?: number;
+    pageSize?: number;
+  } = {},
+  scope: AdminMonitoringDataScope = { kind: "platform" }
+): Promise<MonitoringPageResult<RecentNfcScanRow>> {
   const db = getDB();
+  const scanTf = sqlTenantTagPet(scope, "t", "p");
   const pageSize = normalizePageSize(params.pageSize, 10, 5, 50);
   const pageRaw = normalizePage(params.page);
+  const countSql =
+    scope.kind === "platform"
+      ? "SELECT COUNT(*) AS c FROM scan_logs"
+      : "SELECT COUNT(*) AS c FROM scan_logs sl LEFT JOIN tags t ON sl.tag_id = t.id LEFT JOIN pets p ON t.pet_id = p.id WHERE 1=1" +
+        scanTf.sql;
   const totalRow = await db
-    .prepare("SELECT COUNT(*) AS c FROM scan_logs")
+    .prepare(countSql)
+    .bind(...scanTf.binds)
     .first<{ c: number }>()
     .catch(() => ({ c: 0 }));
   const total = Number(totalRow?.c ?? 0);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const page = Math.min(pageRaw, totalPages);
   const offset = (page - 1) * pageSize;
+  const listSql =
+    recentNfcScanSelect +
+    (scope.kind === "platform" ? "" : ` WHERE 1=1${scanTf.sql}`) +
+    " ORDER BY datetime(sl.scanned_at) DESC LIMIT ? OFFSET ?";
+  const listBinds =
+    scope.kind === "platform" ? [pageSize, offset] : [...scanTf.binds, pageSize, offset];
   const { results } = await db
-    .prepare(
-      recentNfcScanSelect + "ORDER BY datetime(sl.scanned_at) DESC LIMIT ? OFFSET ?"
-    )
-    .bind(pageSize, offset)
+    .prepare(listSql)
+    .bind(...listBinds)
     .all<RecentNfcScanRow>()
     .catch(() => ({ results: [] as RecentNfcScanRow[] }));
   return { rows: results ?? [], total, page, pageSize };
@@ -654,26 +841,41 @@ export async function getUnknownTagAccesses(limit = 30) {
   return results ?? [];
 }
 
-export async function getUnknownTagAccessesPage(params: {
-  page?: number;
-  pageSize?: number;
-} = {}): Promise<MonitoringPageResult<UnknownAccessRow>> {
+export async function getUnknownTagAccessesPage(
+  params: {
+    page?: number;
+    pageSize?: number;
+  } = {},
+  scope: AdminMonitoringDataScope = { kind: "platform" }
+): Promise<MonitoringPageResult<UnknownAccessRow>> {
   const db = getDB();
+  const unknownTf = sqlTenantTagPet(scope, "t", "p");
   const pageSize = normalizePageSize(params.pageSize, 10, 5, 50);
   const pageRaw = normalizePage(params.page);
+  const countSql =
+    scope.kind === "platform"
+      ? "SELECT COUNT(*) AS c FROM unknown_tag_accesses"
+      : "SELECT COUNT(*) AS c FROM unknown_tag_accesses uta " +
+        "LEFT JOIN tags t ON t.id = uta.tag_uid LEFT JOIN pets p ON p.id = t.pet_id WHERE 1=1" +
+        unknownTf.sql;
   const totalRow = await db
-    .prepare("SELECT COUNT(*) AS c FROM unknown_tag_accesses")
+    .prepare(countSql)
+    .bind(...unknownTf.binds)
     .first<{ c: number }>()
     .catch(() => ({ c: 0 }));
   const total = Number(totalRow?.c ?? 0);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const page = Math.min(pageRaw, totalPages);
   const offset = (page - 1) * pageSize;
+  const listSql =
+    unknownAccessSelect +
+    (scope.kind === "platform" ? "" : ` WHERE 1=1${unknownTf.sql}`) +
+    " ORDER BY datetime(uta.created_at) DESC LIMIT ? OFFSET ?";
+  const listBinds =
+    scope.kind === "platform" ? [pageSize, offset] : [...unknownTf.binds, pageSize, offset];
   const { results } = await db
-    .prepare(
-      unknownAccessSelect + "ORDER BY datetime(uta.created_at) DESC LIMIT ? OFFSET ?"
-    )
-    .bind(pageSize, offset)
+    .prepare(listSql)
+    .bind(...listBinds)
     .all<UnknownAccessRow>()
     .catch(() => ({ results: [] as UnknownAccessRow[] }));
   return { rows: results ?? [], total, page, pageSize };
@@ -693,13 +895,19 @@ export async function getLandingAutoRouteEvents(limit = 30) {
   return results ?? [];
 }
 
-export async function getLandingAutoRouteEventsPage(params: {
-  page?: number;
-  pageSize?: number;
-} = {}): Promise<MonitoringPageResult<LandingAutoRouteRow>> {
-  const db = getDB();
+export async function getLandingAutoRouteEventsPage(
+  params: {
+    page?: number;
+    pageSize?: number;
+  } = {},
+  scope: AdminMonitoringDataScope = { kind: "platform" }
+): Promise<MonitoringPageResult<LandingAutoRouteRow>> {
   const pageSize = normalizePageSize(params.pageSize, 10, 5, 50);
   const pageRaw = normalizePage(params.page);
+  if (scope.kind === "tenant") {
+    return { rows: [], total: 0, page: 1, pageSize };
+  }
+  const db = getDB();
   const totalRow = await db
     .prepare("SELECT COUNT(*) AS c FROM landing_auto_route_events")
     .first<{ c: number }>()
@@ -719,17 +927,22 @@ export async function getLandingAutoRouteEventsPage(params: {
   return { rows: results ?? [], total, page, pageSize };
 }
 
-export async function getGuardianNfcAppEventsPage(params: {
-  page?: number;
-  pageSize?: number;
-} = {}): Promise<MonitoringPageResult<GuardianNfcAppEventRow>> {
+export async function getGuardianNfcAppEventsPage(
+  params: {
+    page?: number;
+    pageSize?: number;
+  } = {},
+  scope: AdminMonitoringDataScope = { kind: "platform" }
+): Promise<MonitoringPageResult<GuardianNfcAppEventRow>> {
   const db = getDB();
+  const guardianTf = sqlGuardianPayloadTenant(scope);
   const pageSize = normalizePageSize(params.pageSize, 10, 5, 50);
   const pageRaw = normalizePage(params.page);
   const totalRow = await db
     .prepare(
-      "SELECT COUNT(*) AS c FROM admin_action_logs WHERE action = 'guardian_nfc_app_event'"
+      "SELECT COUNT(*) AS c FROM admin_action_logs l WHERE l.action = 'guardian_nfc_app_event'" + guardianTf.sql
     )
+    .bind(...guardianTf.binds)
     .first<{ c: number }>()
     .catch(() => ({ c: 0 }));
   const total = Number(totalRow?.c ?? 0);
@@ -757,10 +970,11 @@ export async function getGuardianNfcAppEventsPage(params: {
         "LEFT JOIN user ow ON ow.id = p.owner_id " +
         "LEFT JOIN user act ON act.id = json_extract(l.payload, '$.userId') " +
         "LEFT JOIN tenants tn ON tn.id = json_extract(l.payload, '$.tenantId') " +
-        "WHERE l.action = 'guardian_nfc_app_event' " +
-        "ORDER BY datetime(l.created_at) DESC LIMIT ? OFFSET ?"
+        "WHERE l.action = 'guardian_nfc_app_event'" +
+        guardianTf.sql +
+        " ORDER BY datetime(l.created_at) DESC LIMIT ? OFFSET ?"
     )
-    .bind(pageSize, offset)
+    .bind(...guardianTf.binds, pageSize, offset)
     .all<GuardianNfcAppEventRow>()
     .catch(() => ({ results: [] as GuardianNfcAppEventRow[] }));
   return { rows: results ?? [], total, page, pageSize };
@@ -779,20 +993,34 @@ export type RecentBleRow = {
   tenant_name: string | null;
 };
 
-export async function getRecentBleEvents(limit = 40) {
+export async function getRecentBleEvents(
+  limit = 40,
+  scope: AdminMonitoringDataScope = { kind: "platform" }
+) {
   const db = getDB();
+  const bleTf = sqlTenantPet(scope, "p");
   const safe = Math.max(1, Math.min(limit, 100));
-  const { results } = await db
-    .prepare(
-      "SELECT e.id, e.pet_id, e.event_type, e.created_at, e.raw_payload, p.name AS pet_name, " +
+  const sql =
+    scope.kind === "platform"
+      ? "SELECT e.id, e.pet_id, e.event_type, e.created_at, e.raw_payload, p.name AS pet_name, " +
         "p.subject_kind AS subject_kind, u.name AS owner_name, u.email AS owner_email, tn.name AS tenant_name " +
         "FROM ble_location_events e " +
         "LEFT JOIN pets p ON p.id = e.pet_id " +
         "LEFT JOIN user u ON u.id = p.owner_id " +
         "LEFT JOIN tenants tn ON tn.id = p.tenant_id " +
         "ORDER BY datetime(e.created_at) DESC LIMIT ?"
-    )
-    .bind(safe)
+      : "SELECT e.id, e.pet_id, e.event_type, e.created_at, e.raw_payload, p.name AS pet_name, " +
+        "p.subject_kind AS subject_kind, u.name AS owner_name, u.email AS owner_email, tn.name AS tenant_name " +
+        "FROM ble_location_events e " +
+        "INNER JOIN pets p ON p.id = e.pet_id " +
+        "LEFT JOIN user u ON u.id = p.owner_id " +
+        "LEFT JOIN tenants tn ON tn.id = p.tenant_id " +
+        "WHERE 1=1" +
+        bleTf.sql +
+        " ORDER BY datetime(e.created_at) DESC LIMIT ?";
+  const { results } = await db
+    .prepare(sql)
+    .bind(...(scope.kind === "platform" ? [safe] : [...bleTf.binds, safe]))
     .all<RecentBleRow>();
   return results ?? [];
 }
@@ -807,23 +1035,36 @@ export type LowBatteryRow = {
   tenant_name: string | null;
 };
 
-export async function getLowBatteryCandidates(limit = 30) {
+export async function getLowBatteryCandidates(
+  limit = 30,
+  scope: AdminMonitoringDataScope = { kind: "platform" }
+) {
   const db = getDB();
+  const bleTf = sqlTenantPet(scope, "p");
   const safe = Math.max(1, Math.min(limit, 100));
-  const { results } = await db
-    .prepare(
-      "SELECT x.pet_id, p.name AS pet_name, x.last_at, p.subject_kind AS subject_kind, " +
-        "u.name AS owner_name, u.email AS owner_email, tn.name AS tenant_name FROM (" +
-        "SELECT pet_id, MAX(created_at) AS last_at FROM ble_location_events " +
+  const innerSub =
+    scope.kind === "platform"
+      ? "SELECT pet_id, MAX(created_at) AS last_at FROM ble_location_events " +
         "WHERE created_at >= datetime('now', '-30 days') " +
         "AND (event_type = 'battery_low' OR event_type LIKE '%battery%low%') " +
-        "GROUP BY pet_id" +
-        ") x LEFT JOIN pets p ON p.id = x.pet_id " +
-        "LEFT JOIN user u ON u.id = p.owner_id " +
-        "LEFT JOIN tenants tn ON tn.id = p.tenant_id " +
-        "ORDER BY datetime(x.last_at) DESC LIMIT ?"
-    )
-    .bind(safe)
+        "GROUP BY pet_id"
+      : "SELECT e.pet_id, MAX(e.created_at) AS last_at FROM ble_location_events e " +
+        "INNER JOIN pets p ON p.id = e.pet_id " +
+        "WHERE e.created_at >= datetime('now', '-30 days') " +
+        "AND (e.event_type = 'battery_low' OR e.event_type LIKE '%battery%low%')" +
+        bleTf.sql +
+        " GROUP BY e.pet_id";
+  const sql =
+    "SELECT x.pet_id, p.name AS pet_name, x.last_at, p.subject_kind AS subject_kind, " +
+    "u.name AS owner_name, u.email AS owner_email, tn.name AS tenant_name FROM (" +
+    innerSub +
+    ") x LEFT JOIN pets p ON p.id = x.pet_id " +
+    "LEFT JOIN user u ON u.id = p.owner_id " +
+    "LEFT JOIN tenants tn ON tn.id = p.tenant_id " +
+    "ORDER BY datetime(x.last_at) DESC LIMIT ?";
+  const { results } = await db
+    .prepare(sql)
+    .bind(...(scope.kind === "platform" ? [safe] : [...bleTf.binds, safe]))
     .all<LowBatteryRow>();
   return results ?? [];
 }
@@ -833,19 +1074,24 @@ export type NativeRejectReasonRow = {
   count: number;
 };
 
-export async function getNativeRejectTopReasons(limit = 5): Promise<NativeRejectReasonRow[]> {
+export async function getNativeRejectTopReasons(
+  limit = 5,
+  scope: AdminMonitoringDataScope = { kind: "platform" }
+): Promise<NativeRejectReasonRow[]> {
   const db = getDB();
+  const nativeTf = sqlPayloadTagInTenants(scope, "l");
   const safe = Math.max(1, Math.min(limit, 20));
   const { results } = await db
     .prepare(
-      "SELECT COALESCE(json_extract(payload, '$.reason'), 'unknown') AS reason, COUNT(*) AS count " +
-        "FROM admin_action_logs " +
-        "WHERE action = 'nfc_native_write_rejected' AND created_at >= datetime('now', '-7 days') " +
-        "GROUP BY COALESCE(json_extract(payload, '$.reason'), 'unknown') " +
+      "SELECT COALESCE(json_extract(l.payload, '$.reason'), 'unknown') AS reason, COUNT(*) AS count " +
+        "FROM admin_action_logs l " +
+        "WHERE l.action = 'nfc_native_write_rejected' AND l.created_at >= datetime('now', '-7 days')" +
+        nativeTf.sql +
+        " GROUP BY COALESCE(json_extract(l.payload, '$.reason'), 'unknown') " +
         "ORDER BY count DESC " +
         "LIMIT ?"
     )
-    .bind(safe)
+    .bind(...nativeTf.binds, safe)
     .all<{ reason: string; count: number }>()
     .catch(() => ({ results: [] as { reason: string; count: number }[] }));
   return (results ?? []).map((r) => ({

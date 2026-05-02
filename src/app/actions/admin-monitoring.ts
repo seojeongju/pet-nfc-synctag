@@ -6,8 +6,14 @@ import { getAuth } from "@/lib/auth";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { revalidatePath } from "next/cache";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
-import { getMapTelemetryThresholds } from "@/lib/admin-monitoring-data";
+import { resolveAdminScope } from "@/lib/admin-authz";
+import { getMapTelemetryThresholds, monitoringScopeFromResolve } from "@/lib/admin-monitoring-data";
 import { normalizeTagUid } from "@/lib/tag-uid-format";
+
+async function resolveMonitoringDataScope() {
+  const s = await resolveAdminScope("admin");
+  return monitoringScopeFromResolve(s.actor.isPlatformAdmin, s.tenantIds);
+}
 
 async function assertAdmin() {
   const context = getCfRequestContext();
@@ -43,7 +49,7 @@ export type TagDiagnosticResult =
     };
 
 export async function getTagDiagnosticsForAdmin(rawUid: string): Promise<TagDiagnosticResult> {
-  await assertAdmin();
+  const scope = await resolveMonitoringDataScope();
   const tagId = normalizeTagUid(rawUid);
   if (!tagId) {
     return { ok: false, reason: "not_found" };
@@ -85,6 +91,20 @@ export async function getTagDiagnosticsForAdmin(rawUid: string): Promise<TagDiag
 
   if (!tag) {
     return { ok: false, reason: "not_found" };
+  }
+
+  if (scope.kind === "tenant") {
+    const tenantRow = await db
+      .prepare(
+        "SELECT COALESCE(t.tenant_id, p.tenant_id) AS tid FROM tags t LEFT JOIN pets p ON p.id = t.pet_id WHERE t.id = ?"
+      )
+      .bind(tag.id)
+      .first<{ tid: string | null }>()
+      .catch(() => null);
+    const tid = tenantRow?.tid ?? null;
+    if (!tid || !scope.tenantIds.includes(tid)) {
+      return { ok: false, reason: "not_found" };
+    }
   }
 
   const lastScan = await db
@@ -178,8 +198,22 @@ export async function getTagDiagnosticsForAdmin(rawUid: string): Promise<TagDiag
 }
 
 export async function updateTagBleMac(tagId: string, bleMac: string | null) {
-  await assertAdmin();
+  const scope = await resolveMonitoringDataScope();
   const id = normalizeTagUid(tagId);
+  if (!id) throw new Error("유효하지 않은 태그입니다.");
+  if (scope.kind === "tenant") {
+    const tenantRow = await getDB()
+      .prepare(
+        "SELECT COALESCE(t.tenant_id, p.tenant_id) AS tid FROM tags t LEFT JOIN pets p ON p.id = t.pet_id WHERE t.id = ?"
+      )
+      .bind(id)
+      .first<{ tid: string | null }>()
+      .catch(() => null);
+    const tid = tenantRow?.tid ?? null;
+    if (!tid || !scope.tenantIds.includes(tid)) {
+      throw new Error("권한이 없습니다.");
+    }
+  }
   const raw = bleMac?.trim() || null;
   const mac = raw ? raw.toUpperCase() : null;
   await getDB()

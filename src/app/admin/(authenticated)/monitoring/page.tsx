@@ -1,4 +1,5 @@
 ﻿import AdminMonitoringClient from "@/components/admin/AdminMonitoringClient";
+import { resolveAdminScope } from "@/lib/admin-authz";
 import {
   getMapTelemetryAlertState,
   getMapTelemetryThresholdAudits,
@@ -13,6 +14,7 @@ import {
   getGuardianNfcAppEventsPage,
   getRecentNfcScansPage,
   getUnknownTagAccessesPage,
+  monitoringScopeFromResolve,
 } from "@/lib/admin-monitoring-data";
 
 export const runtime = "edge";
@@ -29,8 +31,11 @@ export default async function AdminMonitoringPage({
   const autoRoutePage = Math.max(1, Number(sp.ap) || 1);
   const guardianAppEventPage = Math.max(1, Number(sp.gp) || 1);
 
+  const adminScope = await resolveAdminScope("admin");
+  const dataScope = monitoringScopeFromResolve(adminScope.actor.isPlatformAdmin, adminScope.tenantIds);
+
   const [summary, mapHealth, mapThresholds, mapAlertState, mapThresholdAudits, mapTrend, recentNfcPage, unknownAccessPage, autoRouteEventsPage, guardianNfcAppEventsPage, recentBle, lowBattery, nativeRejectTop] = await Promise.all([
-    getMonitoringSummary().catch(() => ({
+    getMonitoringSummary(dataScope).catch(() => ({
       nfcScans24h: 0,
       nfcScans7d: 0,
       nfcWithLocation24h: 0,
@@ -82,13 +87,13 @@ export default async function AdminMonitoringPage({
     getMapTelemetryAlertState().catch(() => ({ acknowledgedUntil: null })),
     getMapTelemetryThresholdAudits(10).catch(() => []),
     getMapTelemetryTrend(period).catch(() => []),
-    getRecentNfcScansPage({ page: nfcPage, pageSize: 10 }).catch(() => ({ rows: [], total: 0, page: 1, pageSize: 10 })),
-    getUnknownTagAccessesPage({ page: unknownPage, pageSize: 10 }).catch(() => ({ rows: [], total: 0, page: 1, pageSize: 10 })),
-    getLandingAutoRouteEventsPage({ page: autoRoutePage, pageSize: 10 }).catch(() => ({ rows: [], total: 0, page: 1, pageSize: 10 })),
-    getGuardianNfcAppEventsPage({ page: guardianAppEventPage, pageSize: 10 }).catch(() => ({ rows: [], total: 0, page: 1, pageSize: 10 })),
-    getRecentBleEvents(40).catch(() => []),
-    getLowBatteryCandidates(30).catch(() => []),
-    getNativeRejectTopReasons(5).catch(() => []),
+    getRecentNfcScansPage({ page: nfcPage, pageSize: 10 }, dataScope).catch(() => ({ rows: [], total: 0, page: 1, pageSize: 10 })),
+    getUnknownTagAccessesPage({ page: unknownPage, pageSize: 10 }, dataScope).catch(() => ({ rows: [], total: 0, page: 1, pageSize: 10 })),
+    getLandingAutoRouteEventsPage({ page: autoRoutePage, pageSize: 10 }, dataScope).catch(() => ({ rows: [], total: 0, page: 1, pageSize: 10 })),
+    getGuardianNfcAppEventsPage({ page: guardianAppEventPage, pageSize: 10 }, dataScope).catch(() => ({ rows: [], total: 0, page: 1, pageSize: 10 })),
+    getRecentBleEvents(40, dataScope).catch(() => []),
+    getLowBatteryCandidates(30, dataScope).catch(() => []),
+    getNativeRejectTopReasons(5, dataScope).catch(() => []),
   ]);
 
   return (
