@@ -176,6 +176,8 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
   const auditLogs = await getTenantAdminAuditLogs(60);
   const backQs = buildBackQuery({ q, email, status });
   const newOrgModeForm = parseAllowedModesForForm(null);
+  const passwordFlashInTenantList =
+    !!passwordFlash && tenants.some((t) => t.id === passwordFlash.tenantId);
 
   return (
     <div className={cn(adminUi.pageContainer, adminUi.pageBottomSafe, "space-y-6 pb-12 font-outfit")}>
@@ -208,8 +210,9 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
           {qs.invite_exp ? ` (만료: ${safeDecode(qs.invite_exp)})` : ""}
         </div>
       ) : null}
-      {passwordFlash ? (
+      {passwordFlash && !passwordFlashInTenantList ? (
         <AdminTenantPasswordFlash
+          variant="page"
           email={passwordFlash.email}
           temporaryPassword={passwordFlash.temporaryPassword}
         />
@@ -554,6 +557,13 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
                       ))}
                   </div>
                 )}
+                {passwordFlash && passwordFlash.tenantId === tenant.id ? (
+                  <AdminTenantPasswordFlash
+                    variant="inline"
+                    email={passwordFlash.email}
+                    temporaryPassword={passwordFlash.temporaryPassword}
+                  />
+                ) : null}
               </div>
             </article>
             );
