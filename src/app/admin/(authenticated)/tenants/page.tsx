@@ -135,10 +135,6 @@ function safeDecode(v: string | undefined): string {
   }
 }
 
-function emailsMatch(a: string, b: string): boolean {
-  return a.trim().toLowerCase() === b.trim().toLowerCase();
-}
-
 export default async function AdminTenantsPage({ searchParams }: { searchParams: SearchParams }) {
   const scope = await resolveAdminScope("admin");
   if (!scope.actor.isPlatformAdmin) {
@@ -342,6 +338,15 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
                 (qs.created_tenant === tenant.id || passwordFlash?.tenantId === tenant.id) && "ring-2 ring-teal-300/70"
               )}
             >
+              {passwordFlash && passwordFlash.tenantId === tenant.id ? (
+                <div className="mb-4">
+                  <AdminTenantPasswordFlash
+                    variant="inline"
+                    email={passwordFlash.email}
+                    temporaryPassword={passwordFlash.temporaryPassword}
+                  />
+                </div>
+              ) : null}
               <details
                 className="group w-full"
                 {...(qs.created_tenant === tenant.id || passwordFlash?.tenantId === tenant.id
@@ -561,22 +566,11 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
                       .map((m) => (
                         <div
                           key={`manager-${tenant.id}-${m.user_id}`}
-                          className="flex w-full flex-col gap-2 rounded-xl border border-violet-100 bg-white px-3 py-2 sm:flex-row sm:items-stretch sm:gap-3"
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-violet-100 bg-white px-3 py-2"
                         >
-                          <div className="min-w-0 shrink-0 sm:max-w-[min(100%,16rem)]">
+                          <div className="min-w-0">
                             <p className="text-sm font-black text-slate-800 break-all">{m.email}</p>
                             <p className="text-[11px] font-semibold text-slate-500">{roleLabel(m.role)}</p>
-                          </div>
-                          <div className="flex min-h-9 min-w-0 flex-1 items-center justify-center">
-                            {passwordFlash &&
-                            passwordFlash.tenantId === tenant.id &&
-                            emailsMatch(passwordFlash.email, m.email) ? (
-                              <AdminTenantPasswordFlash
-                                variant="row"
-                                email={passwordFlash.email}
-                                temporaryPassword={passwordFlash.temporaryPassword}
-                              />
-                            ) : null}
                           </div>
                           <form
                             action={adminResetTenantManagerPasswordFormAction}
