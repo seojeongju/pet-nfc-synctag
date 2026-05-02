@@ -13,10 +13,12 @@ export default function TenantPasswordFlashRecover() {
 
   if (!flash) return null;
   return (
-    <AdminTenantPasswordFlash
-      variant="page"
-      email={flash.email}
-      temporaryPassword={flash.temporaryPassword}
-    />
+    <div className="rounded-xl border border-amber-200/80 bg-amber-50/40 px-2 py-2">
+      <AdminTenantPasswordFlash
+        variant="row"
+        email={flash.email}
+        temporaryPassword={flash.temporaryPassword}
+      />
+    </div>
   );
 }
