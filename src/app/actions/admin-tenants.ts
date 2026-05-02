@@ -667,9 +667,38 @@ export async function adminAddTenantMember(formData: FormData) {
 
   await assertMayAssignOwnerRole(db, actor, tenantId, role);
 
-  const user = await resolveUserByEmail(email);
+  let user = await resolveUserByEmail(email);
+  let temporaryPassword: string | null = null;
+
   if (!user) {
-    throw new Error("해당 이메일의 사용자를 찾을 수 없습니다.");
+    const tempPw = generateTemporaryPassword(12);
+    temporaryPassword = tempPw;
+    const hashed = await hashPassword(tempPw);
+    const userId = nanoid();
+    const defaultName = email.split("@")[0] || "user";
+    const userRole = (role === "owner" || role === "admin") ? ORG_ADMIN_ROLE : "user";
+
+    await ensureUserSubscriptionStatusColumn(db);
+
+    await db
+      .prepare(
+        `INSERT INTO user (id, email, name, emailVerified, role, subscriptionStatus, createdAt, updatedAt)
+         VALUES (?, ?, ?, 0, ?, 'free', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+      )
+      .bind(userId, email, defaultName, userRole)
+      .run();
+
+    await db
+      .prepare(
+        `INSERT INTO account (id, userId, accountId, providerId, password, createdAt, updatedAt)
+         VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+      )
+      .bind(nanoid(), userId, userId, CREDENTIAL_PROVIDER, hashed)
+      .run();
+
+    await setPasswordChangeRequired(db, userId, true);
+
+    user = { id: userId, email, name: defaultName };
   }
 
   await assertSingleManagerTenantConstraint(db, user.id, role, tenantId);
@@ -687,8 +716,20 @@ export async function adminAddTenantMember(formData: FormData) {
     tenantId,
     email: user.email,
     role,
+    userCreated: !!temporaryPassword,
   });
+
+  const returnQs = String(formData.get("return_qs") ?? "").trim();
+  const p = new URLSearchParams(returnQs);
+
+  let successMsg = `멤버 추가 성공: ${email}`;
+  if (temporaryPassword) {
+    successMsg += ` (계정이 생성되었습니다. 임시 비밀번호: ${temporaryPassword})`;
+  }
+  p.set("ok", successMsg);
+
   revalidateTenantSurfaces(tenantId);
+  redirect(`/admin/tenants?${p.toString()}`);
 }
 
 export async function adminChangeTenantMemberRole(formData: FormData) {
