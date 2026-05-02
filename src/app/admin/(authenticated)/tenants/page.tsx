@@ -14,7 +14,7 @@ import {
 } from "@/app/actions/admin-tenants";
 import { formatAllowedSubjectKindsSummaryKo, parseAllowedModesForForm } from "@/lib/mode-visibility";
 import { SUBJECT_KINDS, subjectKindMeta } from "@/lib/subject-kind";
-import { Building2, Search, ShieldCheck, UserPlus2, UsersRound } from "lucide-react";
+import { Building2, ChevronDown, Search, ShieldCheck, UserPlus2, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -72,7 +72,7 @@ function parseAndRenderPayload(payload: string | null) {
       );
     }
     return (
-      <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
         {Object.entries(obj).map(([key, val]) => (
           <div
             key={key}
@@ -578,17 +578,30 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
         ) : (
           <div className="space-y-2 max-h-[400px] overflow-auto pr-1">
             {auditLogs.map((row) => (
-              <div key={row.id} className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-xs font-black text-slate-800 bg-slate-200/60 px-2 py-0.5 rounded-lg border border-slate-200/80">
-                    {auditActionLabelKo(row.action)}
+              <details
+                key={row.id}
+                className="group overflow-hidden rounded-2xl border border-slate-100 bg-slate-50 open:border-slate-200/90"
+              >
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-left transition-colors hover:bg-slate-100/80 [&::-webkit-details-marker]:hidden">
+                  <span className="inline-flex min-w-0 items-center gap-2">
+                    <ChevronDown
+                      aria-hidden
+                      className="h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ease-out group-open:rotate-180"
+                    />
+                    <span className="text-xs font-black text-slate-800 bg-slate-200/60 px-2 py-0.5 rounded-lg border border-slate-200/80">
+                      {auditActionLabelKo(row.action)}
+                    </span>
                   </span>
-                  <span className="text-[10px] text-slate-400 font-bold">
+                  <span className="shrink-0 text-right text-[10px] font-bold text-slate-400 max-w-[min(100%,14rem)] sm:max-w-none">
                     {row.actor_email ?? "system"} · {new Date(row.created_at).toLocaleString("ko-KR")}
                   </span>
+                </summary>
+                <div className="border-t border-slate-100/80 bg-white/50 px-4 py-3">
+                  {parseAndRenderPayload(row.payload) ?? (
+                    <p className="text-xs font-semibold text-slate-400">상세 본문이 없습니다.</p>
+                  )}
                 </div>
-                {parseAndRenderPayload(row.payload)}
-              </div>
+              </details>
             ))}
           </div>
         )}
