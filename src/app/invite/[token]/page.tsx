@@ -9,7 +9,7 @@ export const runtime = "edge";
 type SearchParams = Promise<{ err?: string; ok?: string }>;
 
 function roleLabel(role: "owner" | "admin" | "member") {
-  if (role === "owner") return "소유자";
+  if (role === "owner") return "소유자- 조직관리자";
   if (role === "admin") return "관리자";
   return "멤버";
 }
