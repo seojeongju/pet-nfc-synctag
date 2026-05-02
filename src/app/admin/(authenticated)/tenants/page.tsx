@@ -42,7 +42,7 @@ const PAYLOAD_FIELD_LABELS: Record<string, string> = {
   confirm_name: "확인용 조직명"
 };
 
-function formatPayloadValue(val: any): string {
+function formatPayloadValue(val: unknown): string {
   if (val === true) return "예";
   if (val === false) return "아니오";
   if (val === null || val === undefined) return "없음";
