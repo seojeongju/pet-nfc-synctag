@@ -135,6 +135,10 @@ function safeDecode(v: string | undefined): string {
   }
 }
 
+function emailsMatch(a: string, b: string): boolean {
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
 export default async function AdminTenantsPage({ searchParams }: { searchParams: SearchParams }) {
   const scope = await resolveAdminScope("admin");
   if (!scope.actor.isPlatformAdmin) {
@@ -334,38 +338,59 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
             <article
               key={tenant.id}
               className={cn(
-                "rounded-3xl border border-slate-100 bg-white p-5 lg:p-6 shadow-sm space-y-4",
+                "rounded-3xl border border-slate-100 bg-white p-5 lg:p-6 shadow-sm",
                 (qs.created_tenant === tenant.id || passwordFlash?.tenantId === tenant.id) && "ring-2 ring-teal-300/70"
               )}
             >
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-lg font-black text-slate-900">{tenant.name}</p>
-                  <p className="text-xs font-bold text-slate-400">slug: {tenant.slug} · members: {tenant.member_count}</p>
-                  <p className="text-xs font-bold text-slate-500 mt-1">
-                    현재 요약: {formatAllowedSubjectKindsSummaryKo(tenant.allowed_subject_kinds)}
-                  </p>
-                  <Link
-                    href={`/hub/org/${encodeURIComponent(tenant.id)}/manage`}
-                    className="inline-block mt-1 text-[11px] font-black text-teal-600 hover:underline"
-                  >
-                    허브에서 멤버·초대·감사 로그
-                  </Link>
-                </div>
-                <form action={adminUpdateTenantStatusFormAction} className="flex items-center gap-2">
-                  <input type="hidden" name="tenant_id" value={tenant.id} />
-                  <input type="hidden" name="return_qs" value={backQs} />
-                  <select name="status" defaultValue={tenant.status} className="min-h-11 touch-manipulation rounded-xl border border-slate-200 px-3 text-sm font-bold sm:h-9 sm:text-xs">
-                    <option value="active">active</option>
-                    <option value="suspended">suspended</option>
-                  </select>
-                  <button type="submit" className="min-h-11 touch-manipulation rounded-xl bg-slate-900 px-4 text-[12px] font-black text-white sm:h-9 sm:px-3 sm:text-[11px]">
-                    상태 저장
-                  </button>
-                </form>
-              </div>
+              <details
+                className="group w-full"
+                {...(qs.created_tenant === tenant.id || passwordFlash?.tenantId === tenant.id
+                  ? { defaultOpen: true }
+                  : {})}
+              >
+                <summary className="flex cursor-pointer list-none items-start justify-between gap-3 rounded-xl py-1 outline-none transition-colors hover:bg-slate-50/90 [&::-webkit-details-marker]:hidden">
+                  <span className="flex min-w-0 items-start gap-2">
+                    <ChevronDown
+                      aria-hidden
+                      className="mt-0.5 h-5 w-5 shrink-0 text-slate-400 transition-transform duration-200 ease-out group-open:rotate-180"
+                    />
+                    <span className="min-w-0">
+                      <span className="block text-lg font-black leading-snug text-slate-900">{tenant.name}</span>
+                      <span className="mt-0.5 block text-xs font-bold text-slate-400">
+                        slug: {tenant.slug} · members: {tenant.member_count}
+                      </span>
+                      <span className="mt-1 block text-xs font-bold leading-relaxed text-slate-500 line-clamp-2">
+                        현재 요약: {formatAllowedSubjectKindsSummaryKo(tenant.allowed_subject_kinds)}
+                      </span>
+                    </span>
+                  </span>
+                  <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-slate-600">
+                    {tenant.status}
+                  </span>
+                </summary>
 
-              <form action={adminUpdateTenantAllowedModesFormAction} className="rounded-2xl border border-amber-100 bg-amber-50/50 p-4 space-y-3">
+                <div className="mt-4 space-y-4 border-t border-slate-100 pt-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <Link
+                      href={`/hub/org/${encodeURIComponent(tenant.id)}/manage`}
+                      className="inline-flex text-[11px] font-black text-teal-600 hover:underline"
+                    >
+                      허브에서 멤버·초대·감사 로그
+                    </Link>
+                    <form action={adminUpdateTenantStatusFormAction} className="flex items-center gap-2">
+                      <input type="hidden" name="tenant_id" value={tenant.id} />
+                      <input type="hidden" name="return_qs" value={backQs} />
+                      <select name="status" defaultValue={tenant.status} className="min-h-11 touch-manipulation rounded-xl border border-slate-200 px-3 text-sm font-bold sm:h-9 sm:text-xs">
+                        <option value="active">active</option>
+                        <option value="suspended">suspended</option>
+                      </select>
+                      <button type="submit" className="min-h-11 touch-manipulation rounded-xl bg-slate-900 px-4 text-[12px] font-black text-white sm:h-9 sm:px-3 sm:text-[11px]">
+                        상태 저장
+                      </button>
+                    </form>
+                  </div>
+
+                  <form action={adminUpdateTenantAllowedModesFormAction} className="rounded-2xl border border-amber-100 bg-amber-50/50 p-4 space-y-3">
                 <input type="hidden" name="tenant_id" value={tenant.id} />
                 <input type="hidden" name="return_qs" value={backQs} />
                 <p className="text-[11px] font-black uppercase text-amber-800">
@@ -536,13 +561,27 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
                       .map((m) => (
                         <div
                           key={`manager-${tenant.id}-${m.user_id}`}
-                          className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-violet-100 bg-white px-3 py-2"
+                          className="flex w-full flex-col gap-2 rounded-xl border border-violet-100 bg-white px-3 py-2 sm:flex-row sm:items-stretch sm:gap-3"
                         >
-                          <div className="min-w-0">
+                          <div className="min-w-0 shrink-0 sm:max-w-[min(100%,16rem)]">
                             <p className="text-sm font-black text-slate-800 break-all">{m.email}</p>
                             <p className="text-[11px] font-semibold text-slate-500">{roleLabel(m.role)}</p>
                           </div>
-                          <form action={adminResetTenantManagerPasswordFormAction}>
+                          <div className="flex min-h-9 min-w-0 flex-1 items-center justify-center">
+                            {passwordFlash &&
+                            passwordFlash.tenantId === tenant.id &&
+                            emailsMatch(passwordFlash.email, m.email) ? (
+                              <AdminTenantPasswordFlash
+                                variant="row"
+                                email={passwordFlash.email}
+                                temporaryPassword={passwordFlash.temporaryPassword}
+                              />
+                            ) : null}
+                          </div>
+                          <form
+                            action={adminResetTenantManagerPasswordFormAction}
+                            className="flex shrink-0 justify-end sm:items-center"
+                          >
                             <input type="hidden" name="tenant_id" value={tenant.id} />
                             <input type="hidden" name="user_id" value={m.user_id} />
                             <input type="hidden" name="return_qs" value={backQs} />
@@ -557,14 +596,9 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
                       ))}
                   </div>
                 )}
-                {passwordFlash && passwordFlash.tenantId === tenant.id ? (
-                  <AdminTenantPasswordFlash
-                    variant="inline"
-                    email={passwordFlash.email}
-                    temporaryPassword={passwordFlash.temporaryPassword}
-                  />
-                ) : null}
               </div>
+                </div>
+              </details>
             </article>
             );
           })

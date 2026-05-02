@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { clearAdminTenantPwFlashCookie } from "@/app/actions/admin-tenants";
 import { cn } from "@/lib/utils";
 
-type Variant = "page" | "inline";
+type Variant = "page" | "inline" | "row";
 
 export default function AdminTenantPasswordFlash({
   email,
@@ -30,6 +30,32 @@ export default function AdminTenantPasswordFlash({
     } catch {
       setCopied(false);
     }
+  }
+
+  if (variant === "row") {
+    return (
+      <div
+        className="flex min-h-10 min-w-0 flex-1 flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-xl border border-amber-200 bg-amber-50/95 px-3 py-2 text-amber-900 shadow-sm sm:min-w-[12rem]"
+        data-variant="row"
+        role="status"
+        aria-live="polite"
+        aria-label={`${email} 임시 비밀번호 발급됨`}
+      >
+        <span className="shrink-0 text-[10px] font-black uppercase tracking-wide text-amber-800/90">
+          임시 비밀번호
+        </span>
+        <span className="min-w-0 break-all text-center font-mono text-sm font-black tracking-tight text-amber-950">
+          {temporaryPassword}
+        </span>
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="shrink-0 rounded-lg border border-amber-300 bg-white px-2.5 py-1 text-[11px] font-black text-amber-900 hover:bg-amber-100"
+        >
+          {copyLabel}
+        </button>
+      </div>
+    );
   }
 
   return (
