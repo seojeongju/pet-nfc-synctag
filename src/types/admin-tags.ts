@@ -1,6 +1,9 @@
 /** 인벤토리 목록 필터: 재고 상태 */
 export type TagsInventoryStatusFilter = "all" | "active" | "unsold" | "inactive";
 
+/** pet_id 연결 여부 */
+export type TagsInventoryLinkFilter = "all" | "linked" | "unlinked";
+
 export type TagsInventoryPageParams = {
   q?: string;
   status?: TagsInventoryStatusFilter;
@@ -10,6 +13,17 @@ export type TagsInventoryPageParams = {
   tenantId?: string;
   page?: number;
   pageSize?: number;
+  /**
+   * 할당 모드(tags.assigned_subject_kind). 빈 값 = 전체.
+   * `"__unset__"` = 모드 컬럼이 비어 있거나 NULL인 태그만.
+   */
+  kind?: string;
+  /** 연결 상태: 전체 / 펫(대상) 연결됨 / 미연결 */
+  link?: TagsInventoryLinkFilter;
+  /** 등록일(태그 created_at) 시작 YYYY-MM-DD */
+  regFrom?: string;
+  /** 등록일 종료 YYYY-MM-DD */
+  regTo?: string;
 };
 
 /** 관리자 태그 재고 화면용 데이터 형태 (태그 조인 결과) */

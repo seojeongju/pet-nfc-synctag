@@ -9,10 +9,12 @@ import { AdminPagination } from "@/components/admin/ui/AdminPagination";
 import { Button } from "@/components/ui/button";
 import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
+import { SUBJECT_KINDS, subjectKindMeta } from "@/lib/subject-kind";
 import type {
   AdminTag,
   TagBatchesPageResult,
   TagBatchSummaryRow,
+  TagsInventoryLinkFilter,
   TagsInventoryStatusFilter,
 } from "@/types/admin-tags";
 import { TagProductRow } from "./TagProductRow";
@@ -21,6 +23,10 @@ export type TagInventoryQueryState = {
   q: string;
   status: TagsInventoryStatusFilter;
   batch: string;
+  kind: string;
+  link: TagsInventoryLinkFilter;
+  regFrom: string;
+  regTo: string;
   tenantId?: string | null;
   page: number;
   pageSize: number;
@@ -38,6 +44,10 @@ export function buildInventorySearchHref(
   if (m.q.trim()) p.set("q", m.q.trim());
   if (m.status !== "all") p.set("status", m.status);
   if (m.batch.trim()) p.set("batch", m.batch.trim());
+  if (m.kind.trim()) p.set("kind", m.kind.trim());
+  if (m.link !== "all") p.set("link", m.link);
+  if (m.regFrom.trim()) p.set("reg_from", m.regFrom.trim());
+  if (m.regTo.trim()) p.set("reg_to", m.regTo.trim());
   if (m.tenantId) p.set("tenant", m.tenantId);
   if (m.page > 1) p.set("page", String(m.page));
   if (m.pageSize !== 20) p.set("pageSize", String(m.pageSize));
@@ -55,6 +65,10 @@ type TagInventorySectionProps = {
   initialQ: string;
   initialStatus: TagsInventoryStatusFilter;
   initialBatch: string;
+  initialKind: string;
+  initialLink: TagsInventoryLinkFilter;
+  initialRegFrom: string;
+  initialRegTo: string;
   tenantId?: string | null;
   batchOptions: string[];
   /** 배치 ID별 집계(페이징) */
@@ -69,6 +83,10 @@ export function TagInventorySection({
   initialQ,
   initialStatus,
   initialBatch,
+  initialKind,
+  initialLink,
+  initialRegFrom,
+  initialRegTo,
   tenantId = null,
   batchOptions,
   batchPage,
@@ -90,6 +108,10 @@ export function TagInventorySection({
     q: initialQ,
     status: initialStatus,
     batch: initialBatch,
+    kind: initialKind,
+    link: initialLink,
+    regFrom: initialRegFrom,
+    regTo: initialRegTo,
     tenantId,
     page,
     pageSize,
@@ -142,7 +164,7 @@ export function TagInventorySection({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12 lg:gap-3">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-12 lg:gap-3">
           <label className="space-y-1 lg:col-span-4">
             <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">검색</span>
             <input
@@ -157,8 +179,8 @@ export function TagInventorySection({
               )}
             />
           </label>
-          <label className="space-y-1 lg:col-span-3">
-            <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">상태</span>
+          <label className="space-y-1 lg:col-span-2">
+            <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">재고 상태</span>
             <select
               name="status"
               defaultValue={initialStatus}
@@ -170,7 +192,7 @@ export function TagInventorySection({
               <option value="inactive">비활성</option>
             </select>
           </label>
-          <label className="space-y-1 lg:col-span-4">
+          <label className="space-y-1 lg:col-span-3">
             <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">배치 ID</span>
             <select
               name="batch"
@@ -189,6 +211,52 @@ export function TagInventorySection({
                 </option>
               ))}
             </select>
+          </label>
+          <label className="space-y-1 lg:col-span-3">
+            <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">할당 모드</span>
+            <select
+              name="kind"
+              defaultValue={initialKind}
+              className={cn(adminUi.input, "min-h-[44px] w-full rounded-xl text-sm font-bold sm:min-h-10 sm:text-xs")}
+            >
+              <option value="">전체</option>
+              <option value="__unset__">모드 미지정</option>
+              {SUBJECT_KINDS.map((k) => (
+                <option key={k} value={k}>
+                  {subjectKindMeta[k].label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1 lg:col-span-4">
+            <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">연결</span>
+            <select
+              name="link"
+              defaultValue={initialLink}
+              className={cn(adminUi.input, "min-h-[44px] w-full rounded-xl text-sm font-bold sm:min-h-10 sm:text-xs")}
+            >
+              <option value="all">전체</option>
+              <option value="linked">펫/대상 연결됨</option>
+              <option value="unlinked">미연결</option>
+            </select>
+          </label>
+          <label className="space-y-1 lg:col-span-4">
+            <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">등록일 시작</span>
+            <input
+              type="date"
+              name="reg_from"
+              defaultValue={initialRegFrom}
+              className={cn(adminUi.input, "min-h-[44px] w-full rounded-xl text-sm font-bold sm:min-h-10 sm:text-xs")}
+            />
+          </label>
+          <label className="space-y-1 lg:col-span-4">
+            <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">등록일 종료</span>
+            <input
+              type="date"
+              name="reg_to"
+              defaultValue={initialRegTo}
+              className={cn(adminUi.input, "min-h-[44px] w-full rounded-xl text-sm font-bold sm:min-h-10 sm:text-xs")}
+            />
           </label>
         </div>
       </form>
@@ -264,6 +332,10 @@ export function TagInventorySection({
           <input type="hidden" name="q" value={initialQ} />
           <input type="hidden" name="status" value={initialStatus} />
           <input type="hidden" name="batch" value={initialBatch} />
+          <input type="hidden" name="kind" value={initialKind} />
+          <input type="hidden" name="link" value={initialLink} />
+          <input type="hidden" name="reg_from" value={initialRegFrom} />
+          <input type="hidden" name="reg_to" value={initialRegTo} />
           <input type="hidden" name="page" value={String(page)} />
           <input type="hidden" name="pageSize" value={String(pageSize)} />
           <input type="hidden" name="bpage" value="1" />

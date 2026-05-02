@@ -18,6 +18,7 @@ import type {
     TagBatchSummaryRow,
     TagLinkLogRow,
     TagLinkLogsPageResult,
+    TagsInventoryLinkFilter,
     TagsInventoryPageParams,
     TagsInventoryPageResult,
     TagsInventoryStatusFilter,
@@ -256,6 +257,16 @@ function parseInventoryStatus(raw: string | undefined): TagsInventoryStatusFilte
     return "all";
 }
 
+function parseInventoryLink(raw: string | undefined): TagsInventoryLinkFilter {
+    if (raw === "linked" || raw === "unlinked") return raw;
+    return "all";
+}
+
+function parseIsoDateDay(raw: string | undefined): string | null {
+    const t = (raw ?? "").trim();
+    return /^\d{4}-\d{2}-\d{2}$/.test(t) ? t : null;
+}
+
 async function resolveTagScopeTenantId(tenantIdRaw?: string | null): Promise<string | null> {
     const scope = await resolveAdminScope("admin");
     const tenantId = (tenantIdRaw ?? "").trim() || null;
@@ -284,6 +295,15 @@ export async function getTagsInventoryPage(
     const qRaw = (params.q ?? "").trim().slice(0, 120);
     const status = parseInventoryStatus(params.status);
     const batchTrim = (params.batch ?? "").trim().slice(0, 200);
+    const linkFilter = parseInventoryLink(params.link);
+    const kindRaw = (params.kind ?? "").trim();
+    let regFrom = parseIsoDateDay(params.regFrom);
+    let regTo = parseIsoDateDay(params.regTo);
+    if (regFrom && regTo && regFrom > regTo) {
+        const tmp = regFrom;
+        regFrom = regTo;
+        regTo = tmp;
+    }
 
     let page = Number(params.page) || 1;
     if (!Number.isFinite(page) || page < 1) page = 1;
@@ -312,6 +332,27 @@ export async function getTagsInventoryPage(
     if (scopeTenantId) {
         conditions.push(`COALESCE(t.tenant_id, p.tenant_id) = ?`);
         binds.push(scopeTenantId);
+    }
+    if (linkFilter === "linked") {
+        conditions.push(`t.pet_id IS NOT NULL`);
+    } else if (linkFilter === "unlinked") {
+        conditions.push(`t.pet_id IS NULL`);
+    }
+    if (kindRaw === "__unset__") {
+        conditions.push(
+            `(t.assigned_subject_kind IS NULL OR trim(COALESCE(t.assigned_subject_kind, '')) = '')`
+        );
+    } else if (kindRaw.length > 0 && (SUBJECT_KINDS as readonly string[]).includes(kindRaw)) {
+        conditions.push(`t.assigned_subject_kind = ?`);
+        binds.push(kindRaw);
+    }
+    if (regFrom) {
+        conditions.push(`date(t.created_at) >= date(?)`);
+        binds.push(regFrom);
+    }
+    if (regTo) {
+        conditions.push(`date(t.created_at) <= date(?)`);
+        binds.push(regTo);
     }
 
     const whereSql = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
