@@ -266,11 +266,10 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                 <div className="relative">
                   <input
                     name="slug"
-                    required
                     defaultValue={product?.slug ?? ""}
-                    pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
                     className={cn("w-full pl-3 pr-10", adminUi.input, "h-11")}
                     placeholder="pet-nfc-starter"
+                    title="영문 소문자, 숫자, 하이픈만 사용"
                   />
                   <ExternalLink className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
                 </div>
@@ -280,7 +279,6 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                 <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500">상품명</label>
                 <input
                   name="name"
-                  required
                   defaultValue={product?.name ?? ""}
                   className={cn("w-full", adminUi.input, "h-11")}
                   placeholder="예: 반려동물 안심 태그"
@@ -292,7 +290,6 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
               <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500">간략 설명 (목록 표시용)</label>
               <textarea
                 name="description"
-                required
                 rows={3}
                 defaultValue={product?.description ?? ""}
                 className={cn("w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/20 transition-all")}
@@ -308,7 +305,6 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                     name="price_krw"
                     type="number"
                     min={0}
-                    required
                     defaultValue={product?.price_krw ?? 0}
                     className={cn("w-full pr-10", adminUi.input, "h-11 font-mono")}
                   />
@@ -322,7 +318,6 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                     name="stock_quantity"
                     type="number"
                     min={0}
-                    required
                     defaultValue={product?.stock_quantity ?? 999}
                     className={cn("w-full", adminUi.input, "h-11 font-mono")}
                   />
@@ -334,7 +329,6 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                 <input
                   name="sort_order"
                   type="number"
-                  required
                   defaultValue={product?.sort_order ?? 0}
                   className={cn("w-full", adminUi.input, "h-11 font-mono")}
                 />
