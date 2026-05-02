@@ -240,7 +240,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
         <TabButton id="content" label="상세 페이지 구성" icon={FileText} />
       </div>
 
-      <form action={saveShopProduct} className="space-y-8 pb-20">
+      <form action={saveShopProduct} className="space-y-8 pb-20" noValidate>
         {isEdit ? <input type="hidden" name="id" value={product!.id} /> : null}
         <input type="hidden" name="content_html" value={contentHtml} />
         <input type="hidden" name="image_url" value={imageUrl} />
@@ -304,7 +304,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                   <input
                     name="price_krw"
                     type="number"
-                    min={0}
+                    inputMode="numeric"
                     defaultValue={product?.price_krw ?? 0}
                     className={cn("w-full pr-10", adminUi.input, "h-11 font-mono")}
                   />
@@ -317,7 +317,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                   <input
                     name="stock_quantity"
                     type="number"
-                    min={0}
+                    inputMode="numeric"
                     defaultValue={product?.stock_quantity ?? 999}
                     className={cn("w-full", adminUi.input, "h-11 font-mono")}
                   />
