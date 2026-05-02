@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { CheckCircle2, Clock3, LogIn, Mail, ShieldAlert, UserCheck } from "lucide-react";
 import { acceptTenantInviteByToken, getInviteViewByToken } from "@/app/actions/tenant-invite";
 import { getLandingSessionState } from "@/lib/landing-session";
+import { safeDecodeURIComponent } from "@/lib/utils";
 
 export const runtime = "edge";
 
@@ -54,12 +55,12 @@ export default async function InviteAcceptPage({
 
         {qs.err ? (
           <div className="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-black text-rose-700">
-            {decodeURIComponent(qs.err)}
+            {safeDecodeURIComponent(qs.err)}
           </div>
         ) : null}
         {qs.ok ? (
           <div className="rounded-2xl border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-black text-teal-700">
-            {decodeURIComponent(qs.ok)}
+            {safeDecodeURIComponent(qs.ok)}
           </div>
         ) : null}
 

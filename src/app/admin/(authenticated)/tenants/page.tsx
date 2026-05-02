@@ -17,7 +17,7 @@ import { SUBJECT_KINDS, subjectKindMeta } from "@/lib/subject-kind";
 import { Building2, ChevronDown, Search, ShieldCheck, UserPlus2, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { cn } from "@/lib/utils";
+import { cn, safeDecodeURIComponent } from "@/lib/utils";
 import { adminUi } from "@/styles/admin/ui";
 import OwnerPasswordField from "@/components/admin/tenants/OwnerPasswordField";
 import AdminTenantPasswordFlash from "@/components/admin/tenants/AdminTenantPasswordFlash";
@@ -127,15 +127,6 @@ function buildBackQuery(qs: {
   return p.toString();
 }
 
-function safeDecode(v: string | undefined): string {
-  if (!v) return "";
-  try {
-    return decodeURIComponent(v);
-  } catch {
-    return v;
-  }
-}
-
 function emailsMatch(a: string, b: string): boolean {
   return a.trim().toLowerCase() === b.trim().toLowerCase();
 }
@@ -183,7 +174,7 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
   const passwordFlashInTenantList =
     !!passwordFlash && tenants.some((t) => t.id === passwordFlash.tenantId);
 
-  const okDecoded = qs.ok ? safeDecode(qs.ok) : "";
+  const okDecoded = qs.ok ? safeDecodeURIComponent(qs.ok) : "";
   const showTenantPwRecover =
     !passwordFlash && okDecoded.includes("임시 비밀번호를 재생성");
 
@@ -204,18 +195,18 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
 
       {qs.err ? (
         <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-600">
-          {safeDecode(qs.err)}
+          {safeDecodeURIComponent(qs.err)}
         </div>
       ) : null}
       {qs.ok ? (
         <div className="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm font-bold text-teal-700">
-          {safeDecode(qs.ok)}
+          {safeDecodeURIComponent(qs.ok)}
         </div>
       ) : null}
       {qs.invite_token ? (
         <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-bold text-indigo-700 break-all">
-          초대 토큰 발급 완료: <span className="font-black">{safeDecode(qs.invite_token)}</span>
-          {qs.invite_exp ? ` (만료: ${safeDecode(qs.invite_exp)})` : ""}
+          초대 토큰 발급 완료: <span className="font-black">{safeDecodeURIComponent(qs.invite_token)}</span>
+          {qs.invite_exp ? ` (만료: ${safeDecodeURIComponent(qs.invite_exp)})` : ""}
         </div>
       ) : null}
       {showTenantPwRecover ? <TenantPasswordFlashRecover /> : null}

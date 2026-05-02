@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useRef } from "react";
 import type { LucideIcon } from "lucide-react";
-import { saveShopProduct, uploadShopAsset } from "@/app/actions/admin-shop";
+import { deleteShopProduct, saveShopProduct, uploadShopAsset } from "@/app/actions/admin-shop";
 import type { AdminShopProductRow } from "@/app/actions/admin-shop";
 import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
 import { adminUi } from "@/styles/admin/ui";
@@ -632,6 +632,29 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
             }
           />
         </div>
+
+        {isEdit && product?.id ? (
+          <div className="mt-10 rounded-3xl border border-rose-100 bg-rose-50/40 px-5 py-4">
+            <p className="text-[11px] font-black uppercase tracking-wider text-rose-700">위험 영역</p>
+            <p className="mt-1 text-xs font-semibold text-rose-900/80">
+              주문 이력이 없을 때만 삭제할 수 있습니다.
+            </p>
+            <form action={deleteShopProduct} className="mt-3">
+              <input type="hidden" name="product_id" value={product.id} />
+              <button
+                type="submit"
+                className="rounded-xl border border-rose-200 bg-white px-4 py-2 text-[11px] font-black text-rose-700 hover:bg-rose-100"
+                onClick={(e) => {
+                  if (!confirm("이 상품을 삭제할까요? 이 작업은 되돌릴 수 없습니다.")) {
+                    e.preventDefault();
+                  }
+                }}
+              >
+                상품 삭제
+              </button>
+            </form>
+          </div>
+        ) : null}
 
         {/* 저장/취소 하단 고정 바 (플로팅 스타일) */}
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-3xl px-4 z-50">

@@ -16,6 +16,7 @@ import { Building2, ChevronLeft, FileDown, ScrollText, ShieldCheck, UserPlus2, U
 import Link from "next/link";
 import { SUBJECT_KINDS, subjectKindMeta } from "@/lib/subject-kind";
 import { parseAllowedModesForForm } from "@/lib/mode-visibility";
+import { safeDecodeURIComponent } from "@/lib/utils";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 
@@ -130,12 +131,12 @@ export default async function TenantOrgManagePage({
 
       {qs.err ? (
         <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-600">
-          {decodeURIComponent(qs.err)}
+          {safeDecodeURIComponent(qs.err)}
         </div>
       ) : null}
       {qs.ok ? (
         <div className="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm font-bold text-teal-700">
-          {decodeURIComponent(qs.ok)}
+          {safeDecodeURIComponent(qs.ok)}
         </div>
       ) : null}
       {qs.invite_token ? (
@@ -144,7 +145,7 @@ export default async function TenantOrgManagePage({
             초대 링크는 발급 시점부터 <span className="text-indigo-900">7일간</span> 유효합니다. 받는 분께 아래 주소를 전달하세요.
           </p>
           {(() => {
-            const tok = decodeURIComponent(qs.invite_token);
+            const tok = safeDecodeURIComponent(qs.invite_token);
             const href = `/invite/${encodeURIComponent(tok)}`;
             const absolute = publicOrigin ? `${publicOrigin}${href}` : href;
             return (
@@ -156,8 +157,8 @@ export default async function TenantOrgManagePage({
             );
           })()}
           <p className="text-xs font-semibold text-indigo-600">
-            토큰: <span className="font-mono font-black">{decodeURIComponent(qs.invite_token)}</span>
-            {qs.invite_exp ? ` · 만료(UTC 기준): ${decodeURIComponent(qs.invite_exp)}` : ""}
+            토큰: <span className="font-mono font-black">{safeDecodeURIComponent(qs.invite_token)}</span>
+            {qs.invite_exp ? ` · 만료(UTC 기준): ${safeDecodeURIComponent(qs.invite_exp)}` : ""}
           </p>
         </div>
       ) : null}

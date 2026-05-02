@@ -1,10 +1,8 @@
 "use server";
 
-import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { nanoid } from "nanoid";
-import { getAuth } from "@/lib/auth";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { getDB } from "@/lib/db";
 import { SUBJECT_KINDS, type SubjectKind } from "@/lib/subject-kind";
@@ -41,23 +39,9 @@ function redirectIfInvalidResaleWindow(
   }
 }
 
-function buildTenantUserScopeSql(
-  userIdColumnExpr: string,
-  tenantIds: string[] | null
-): { clause: string; binds: string[] } {
-  if (!tenantIds || tenantIds.length === 0) {
-    return { clause: "", binds: [] };
-  }
-  const placeholders = tenantIds.map(() => "?").join(", ");
-  return {
-    clause: ` AND EXISTS (
-      SELECT 1
-      FROM tenant_members tm_scope
-      WHERE tm_scope.user_id = ${userIdColumnExpr}
-        AND tm_scope.tenant_id IN (${placeholders})
-    )`,
-    binds: tenantIds,
-  };
+/** 조직 관리자(tenantIds ≠ null): 본인이 등록한 상품만 */
+function isOrgAdminProductScope(tenantIds: string[] | null): boolean {
+  return tenantIds !== null;
 }
 
 export type AdminShopProductRow = {
@@ -80,6 +64,8 @@ export type AdminShopProductRow = {
   is_gold_linked: number;
   created_at: string;
   updated_at: string;
+  /** NULL이면 레거시·시드 상품(플랫폼 관리자만 편집) */
+  created_by_user_id: string | null;
 };
 
 /** D1 마이그레이션 단계에 따라 shop_products 컬럼이 다를 수 있어, SELECT는 실제 존재 컬럼만 사용합니다. */
@@ -103,6 +89,7 @@ const ADMIN_SHOP_PRODUCT_SELECT_KEYS: (keyof AdminShopProductRow)[] = [
   "is_gold_linked",
   "created_at",
   "updated_at",
+  "created_by_user_id",
 ];
 
 async function getShopProductsColumnSet(): Promise<Set<string>> {
@@ -159,11 +146,13 @@ function normalizeAdminShopProductRow(
     is_gold_linked: existing.has("is_gold_linked") ? (num("is_gold_linked", 0) ? 1 : 0) : 0,
     created_at: str("created_at", ""),
     updated_at: str("updated_at", ""),
+    created_by_user_id: existing.has("created_by_user_id") ? optStr("created_by_user_id") : null,
   };
 }
 
 export async function listAdminShopProducts(): Promise<AdminShopProductRow[]> {
   await assertAdminRole();
+  const scope = await getAdminDataScope();
   const existing = await getShopProductsColumnSet();
   const cols = ADMIN_SHOP_PRODUCT_SELECT_KEYS.filter((c) => existing.has(c));
   if (!cols.includes("id")) {
@@ -172,6 +161,17 @@ export async function listAdminShopProducts(): Promise<AdminShopProductRow[]> {
   const orderSql = existing.has("sort_order")
     ? "ORDER BY sort_order ASC, name ASC"
     : "ORDER BY name ASC";
+  if (isOrgAdminProductScope(scope.tenantIds)) {
+    if (!existing.has("created_by_user_id")) {
+      return [];
+    }
+    const sql = `SELECT ${cols.join(", ")} FROM shop_products WHERE created_by_user_id = ? ${orderSql}`;
+    const res = await getDB()
+      .prepare(sql)
+      .bind(scope.actorId)
+      .all<Record<string, unknown>>();
+    return (res.results ?? []).map((row) => normalizeAdminShopProductRow(row, existing));
+  }
   const sql = `SELECT ${cols.join(", ")} FROM shop_products ${orderSql}`;
   const res = await getDB().prepare(sql).all<Record<string, unknown>>();
   return (res.results ?? []).map((row) => normalizeAdminShopProductRow(row, existing));
@@ -179,6 +179,7 @@ export async function listAdminShopProducts(): Promise<AdminShopProductRow[]> {
 
 export async function getAdminShopProduct(id: string): Promise<AdminShopProductRow | null> {
   await assertAdminRole();
+  const scope = await getAdminDataScope();
   const existing = await getShopProductsColumnSet();
   const cols = ADMIN_SHOP_PRODUCT_SELECT_KEYS.filter((c) => existing.has(c));
   if (!cols.includes("id")) {
@@ -190,7 +191,16 @@ export async function getAdminShopProduct(id: string): Promise<AdminShopProductR
     .bind(id)
     .first<Record<string, unknown>>();
   if (!row) return null;
-  return normalizeAdminShopProductRow(row, existing);
+  const normalized = normalizeAdminShopProductRow(row, existing);
+  if (isOrgAdminProductScope(scope.tenantIds)) {
+    if (!existing.has("created_by_user_id")) {
+      return null;
+    }
+    if (normalized.created_by_user_id !== scope.actorId) {
+      return null;
+    }
+  }
+  return normalized;
 }
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -272,7 +282,7 @@ function parseKindsFromForm(formData: FormData): SubjectKind[] {
 }
 
 export async function saveShopProduct(formData: FormData): Promise<void> {
-  await assertAdminRole();
+  const scope = await getAdminDataScope();
 
   const idExisting = String(formData.get("id") ?? "").trim();
   const slugRaw = String(formData.get("slug") ?? "").trim().toLowerCase();
@@ -375,6 +385,22 @@ export async function saveShopProduct(formData: FormData): Promise<void> {
   });
 
   if (idExisting) {
+    if (isOrgAdminProductScope(scope.tenantIds)) {
+      if (!shopCols.has("created_by_user_id")) {
+        redirect(
+          `/admin/shop/products/${encodeURIComponent(idExisting)}?e=${encodeURIComponent("DB에 상품 등록자 컬럼이 없습니다. 마이그레이션 0030을 적용하세요.")}`
+        );
+      }
+      const prior = await db
+        .prepare(`SELECT created_by_user_id FROM shop_products WHERE id = ?`)
+        .bind(idExisting)
+        .first<{ created_by_user_id: string | null }>();
+      if (!prior || prior.created_by_user_id !== scope.actorId) {
+        redirect(
+          `/admin/shop/products/${encodeURIComponent(idExisting)}?e=${encodeURIComponent("이 상품을 수정할 권한이 없습니다.")}`
+        );
+      }
+    }
     const dup = await db
       .prepare(`SELECT id FROM shop_products WHERE slug = ? AND id != ?`)
       .bind(slugRaw, idExisting)
@@ -382,7 +408,7 @@ export async function saveShopProduct(formData: FormData): Promise<void> {
     if (dup) {
       redirect(`/admin/shop/products/${encodeURIComponent(idExisting)}?e=${encodeURIComponent("이미 사용 중인 슬러그입니다.")}`);
     }
-    const setSql = writeCols.map((c) => `${c} = ?`).join(", ");
+    const setSql = colsForSave.map((c) => `${c} = ?`).join(", ");
     const tsSql = shopCols.has("updated_at") ? ", updated_at = CURRENT_TIMESTAMP" : "";
     await db
       .prepare(`UPDATE shop_products SET ${setSql}${tsSql} WHERE id = ?`)
@@ -399,17 +425,70 @@ export async function saveShopProduct(formData: FormData): Promise<void> {
     redirect(`/admin/shop/products/new?e=${encodeURIComponent("이미 사용 중인 슬러그입니다.")}`);
   }
 
+  if (isOrgAdminProductScope(scope.tenantIds) && !shopCols.has("created_by_user_id")) {
+    redirect(
+      `/admin/shop/products/new?e=${encodeURIComponent("DB에 상품 등록자 컬럼이 없습니다. 마이그레이션 0030을 적용하세요.")}`
+    );
+  }
+
   const newId = nanoid();
   const insertCols = ["id", ...writeCols];
+  const insertBinds: unknown[] = [newId, ...writeBinds];
+  if (shopCols.has("created_by_user_id")) {
+    insertCols.push("created_by_user_id");
+    insertBinds.push(scope.actorId);
+  }
   const placeholders = insertCols.map(() => "?").join(", ");
   const insertSql = shopCols.has("updated_at")
     ? `INSERT INTO shop_products (${insertCols.join(", ")}, updated_at) VALUES (${placeholders}, CURRENT_TIMESTAMP)`
     : `INSERT INTO shop_products (${insertCols.join(", ")}) VALUES (${placeholders})`;
-  await db.prepare(insertSql).bind(newId, ...writeBinds).run();
+  await db.prepare(insertSql).bind(...insertBinds).run();
   revalidatePath("/admin/shop");
   revalidatePath("/admin/shop/products");
   revalidatePath("/shop");
   redirect(`/admin/shop/products?ok=1`);
+}
+
+export async function deleteShopProduct(formData: FormData): Promise<void> {
+  const scope = await getAdminDataScope();
+  const productId = String(formData.get("product_id") ?? "").trim();
+  if (!productId) {
+    redirect("/admin/shop/products?e=" + encodeURIComponent("상품 ID가 없습니다."));
+  }
+  const db = getDB();
+  const shopCols = await getShopProductsColumnSet();
+  if (!shopCols.has("created_by_user_id")) {
+    redirect(
+      "/admin/shop/products?e=" + encodeURIComponent("삭제하려면 마이그레이션 0030을 적용하세요.")
+    );
+  }
+  const row = await db
+    .prepare(`SELECT id, created_by_user_id FROM shop_products WHERE id = ?`)
+    .bind(productId)
+    .first<{ id: string; created_by_user_id: string | null }>();
+  if (!row) {
+    redirect("/admin/shop/products?e=" + encodeURIComponent("상품을 찾을 수 없습니다."));
+  }
+  if (isOrgAdminProductScope(scope.tenantIds)) {
+    if (row.created_by_user_id !== scope.actorId) {
+      redirect("/admin/shop/products?e=" + encodeURIComponent("이 상품을 삭제할 권한이 없습니다."));
+    }
+  }
+  const orderCount = await db
+    .prepare(`SELECT COUNT(*) AS c FROM shop_orders WHERE product_id = ?`)
+    .bind(productId)
+    .first<{ c: number }>();
+  if (Number(orderCount?.c ?? 0) > 0) {
+    redirect(
+      `/admin/shop/products/${encodeURIComponent(productId)}?e=` +
+        encodeURIComponent("주문 이력이 있는 상품은 삭제할 수 없습니다.")
+    );
+  }
+  await db.prepare(`DELETE FROM shop_products WHERE id = ?`).bind(productId).run();
+  revalidatePath("/admin/shop");
+  revalidatePath("/admin/shop/products");
+  revalidatePath("/shop");
+  redirect("/admin/shop/products?ok=1");
 }
 
 /**
@@ -487,6 +566,12 @@ export async function listAdminShopOrders(options: {
 }): Promise<AdminShopOrderRow[]> {
   const scope = await getAdminDataScope();
   const db = getDB();
+  if (isOrgAdminProductScope(scope.tenantIds)) {
+    const pc = await getShopProductsColumnSet();
+    if (!pc.has("created_by_user_id")) {
+      return [];
+    }
+  }
   const limit = Math.min(200, Math.max(1, Math.trunc(options.limit ?? 100)));
   const status = options.status ?? "all";
   const q = (options.query ?? "").trim();
@@ -504,10 +589,9 @@ export async function listAdminShopOrders(options: {
     const like = `%${q}%`;
     binds.push(like, like, like, like);
   }
-  const tenantScope = buildTenantUserScopeSql("o.user_id", scope.tenantIds);
-  if (tenantScope.clause) {
-    where.push(`1=1 ${tenantScope.clause}`);
-    binds.push(...tenantScope.binds);
+  if (isOrgAdminProductScope(scope.tenantIds)) {
+    where.push(`p.created_by_user_id = ?`);
+    binds.push(scope.actorId);
   }
   const orderCols = new Set(
     (
@@ -588,21 +672,21 @@ export async function updateShopOrderStatus(formData: FormData): Promise<void> {
     redirect("/admin/shop/orders?e=" + encodeURIComponent("잘못된 요청입니다."));
   }
   const db = getDB();
-  if (scope.tenantIds && scope.tenantIds.length > 0) {
+  if (isOrgAdminProductScope(scope.tenantIds)) {
+    const productCols = await getShopProductsColumnSet();
+    if (!productCols.has("created_by_user_id")) {
+      redirect("/admin/shop/orders?e=" + encodeURIComponent("주문 권한 검증을 위해 마이그레이션 0030이 필요합니다."));
+    }
     const scoped = await db
       .prepare(
         `SELECT o.id
          FROM shop_orders o
+         INNER JOIN shop_products p ON p.id = o.product_id
          WHERE o.id = ?
-           AND EXISTS (
-             SELECT 1
-             FROM tenant_members tm
-             WHERE tm.user_id = o.user_id
-               AND tm.tenant_id IN (${scope.tenantIds.map(() => "?").join(", ")})
-           )
+           AND p.created_by_user_id = ?
          LIMIT 1`
       )
-      .bind(orderId, ...scope.tenantIds)
+      .bind(orderId, scope.actorId)
       .first<{ id: string }>();
     if (!scoped?.id) {
       redirect("/admin/shop/orders?e=" + encodeURIComponent("해당 주문을 변경할 권한이 없습니다."));
@@ -650,6 +734,12 @@ export async function listAdminGoldResaleBuyers(options: {
   const scope = await getAdminDataScope();
   await assertGoldResaleTablesReady();
   const db = getDB();
+  if (isOrgAdminProductScope(scope.tenantIds)) {
+    const pc = await getShopProductsColumnSet();
+    if (!pc.has("created_by_user_id")) {
+      return [];
+    }
+  }
   const limit = Math.min(500, Math.max(1, Math.trunc(options.limit ?? 200)));
   const q = (options.query ?? "").trim();
   const whereParts = ["o.subject_kind = 'gold'", "o.status = 'paid'"];
@@ -659,18 +749,13 @@ export async function listAdminGoldResaleBuyers(options: {
     const like = `%${q}%`;
     binds.push(like, like, like);
   }
-  if (scope.tenantIds && scope.tenantIds.length > 0) {
-    whereParts.push(
-      `EXISTS (
-        SELECT 1
-        FROM tenant_members tm_scope
-        WHERE tm_scope.user_id = o.user_id
-          AND tm_scope.tenant_id IN (${scope.tenantIds.map(() => "?").join(", ")})
-      )`
-    );
-    binds.push(...scope.tenantIds);
+  if (isOrgAdminProductScope(scope.tenantIds)) {
+    whereParts.push(`p.created_by_user_id = ?`);
+    binds.push(scope.actorId);
   }
   const whereSql = `WHERE ${whereParts.join(" AND ")}`;
+
+  const orgScoped = isOrgAdminProductScope(scope.tenantIds);
 
   const sql = `
     SELECT
@@ -683,9 +768,11 @@ export async function listAdminGoldResaleBuyers(options: {
       (
         SELECT o2.id
         FROM shop_orders o2
+        INNER JOIN shop_products p2 ON p2.id = o2.product_id
         WHERE o2.user_id = o.user_id
           AND o2.subject_kind = 'gold'
           AND o2.status = 'paid'
+          ${orgScoped ? `AND p2.created_by_user_id = ?` : ""}
         ORDER BY o2.created_at DESC
         LIMIT 1
       ) AS last_order_id,
@@ -693,9 +780,11 @@ export async function listAdminGoldResaleBuyers(options: {
         SELECT rp.enabled
         FROM gold_order_resale_policies rp
         INNER JOIN shop_orders o3 ON o3.id = rp.order_id
+        INNER JOIN shop_products p3 ON p3.id = o3.product_id
         WHERE o3.user_id = o.user_id
           AND o3.subject_kind = 'gold'
           AND o3.status = 'paid'
+          ${orgScoped ? `AND p3.created_by_user_id = ?` : ""}
         ORDER BY o3.created_at DESC
         LIMIT 1
       ) AS last_policy_enabled,
@@ -703,9 +792,11 @@ export async function listAdminGoldResaleBuyers(options: {
         SELECT rp.resale_offer_price_krw
         FROM gold_order_resale_policies rp
         INNER JOIN shop_orders o3 ON o3.id = rp.order_id
+        INNER JOIN shop_products p3 ON p3.id = o3.product_id
         WHERE o3.user_id = o.user_id
           AND o3.subject_kind = 'gold'
           AND o3.status = 'paid'
+          ${orgScoped ? `AND p3.created_by_user_id = ?` : ""}
         ORDER BY o3.created_at DESC
         LIMIT 1
       ) AS last_resale_offer_price_krw,
@@ -713,9 +804,11 @@ export async function listAdminGoldResaleBuyers(options: {
         SELECT rp.resale_visible_from
         FROM gold_order_resale_policies rp
         INNER JOIN shop_orders o3 ON o3.id = rp.order_id
+        INNER JOIN shop_products p3 ON p3.id = o3.product_id
         WHERE o3.user_id = o.user_id
           AND o3.subject_kind = 'gold'
           AND o3.status = 'paid'
+          ${orgScoped ? `AND p3.created_by_user_id = ?` : ""}
         ORDER BY o3.created_at DESC
         LIMIT 1
       ) AS last_resale_visible_from,
@@ -723,18 +816,26 @@ export async function listAdminGoldResaleBuyers(options: {
         SELECT rp.resale_visible_until
         FROM gold_order_resale_policies rp
         INNER JOIN shop_orders o3 ON o3.id = rp.order_id
+        INNER JOIN shop_products p3 ON p3.id = o3.product_id
         WHERE o3.user_id = o.user_id
           AND o3.subject_kind = 'gold'
           AND o3.status = 'paid'
+          ${orgScoped ? `AND p3.created_by_user_id = ?` : ""}
         ORDER BY o3.created_at DESC
         LIMIT 1
       ) AS last_resale_visible_until
     FROM shop_orders o
+    INNER JOIN shop_products p ON p.id = o.product_id
     INNER JOIN user u ON u.id = o.user_id
     ${whereSql}
     GROUP BY o.user_id, u.email, u.name
     ORDER BY last_order_at DESC
     LIMIT ?`;
+  if (orgScoped) {
+    for (let i = 0; i < 5; i++) {
+      binds.push(scope.actorId);
+    }
+  }
   binds.push(limit);
   const res = await db.prepare(sql).bind(...binds).all<AdminGoldResaleBuyerRow>();
   return (res.results ?? []).map((row) => ({
@@ -788,15 +889,22 @@ export async function applyGoldResalePolicyToBuyers(formData: FormData): Promise
 
   const db = getDB();
   const placeholders = buyerIds.map(() => "?").join(", ");
-  const tenantScopeSql =
-    dataScope.tenantIds && dataScope.tenantIds.length > 0
-      ? ` AND EXISTS (
-          SELECT 1
-          FROM tenant_members tm_scope
-          WHERE tm_scope.user_id = shop_orders.user_id
-            AND tm_scope.tenant_id IN (${dataScope.tenantIds.map(() => "?").join(", ")})
-        )`
-      : "";
+  const orgScopedApply = isOrgAdminProductScope(dataScope.tenantIds);
+  if (orgScopedApply) {
+    const pc = await getShopProductsColumnSet();
+    if (!pc.has("created_by_user_id")) {
+      redirect(
+        "/admin/shop/resale?e=" + encodeURIComponent("마이그레이션 0030(상품 등록자 컬럼)이 필요합니다.")
+      );
+    }
+  }
+  const productOwnerScopeSql = orgScopedApply
+    ? ` AND EXISTS (
+        SELECT 1 FROM shop_products p_scope
+        WHERE p_scope.id = shop_orders.product_id
+          AND p_scope.created_by_user_id = ?
+      )`
+    : "";
   const orderRows = await db
     .prepare(
       `SELECT id, user_id, amount_krw
@@ -804,9 +912,9 @@ export async function applyGoldResalePolicyToBuyers(formData: FormData): Promise
        WHERE subject_kind = 'gold'
          AND status = 'paid'
          AND user_id IN (${placeholders})
-         ${tenantScopeSql}`
+         ${productOwnerScopeSql}`
     )
-    .bind(...buyerIds, ...(dataScope.tenantIds ?? []))
+    .bind(...buyerIds, ...(orgScopedApply ? [dataScope.actorId] : []))
     .all<{ id: string; user_id: string; amount_krw: number }>();
   const orders = orderRows.results ?? [];
   if (orders.length === 0) {
@@ -881,14 +989,8 @@ export async function applyGoldResalePolicyToBuyers(formData: FormData): Promise
 }
 
 export async function saveGoldOrderResalePolicy(formData: FormData): Promise<void> {
-  await assertAdminRole();
-  const context = getCfRequestContext();
-  const auth = getAuth(context.env);
-  const session = await auth.api.getSession({ headers: await headers() });
-  const actorId = session?.user?.id;
-  if (!actorId) {
-    redirect("/admin/shop/orders?e=" + encodeURIComponent("로그인이 필요합니다."));
-  }
+  const dataScope = await getAdminDataScope();
+  const actorId = dataScope.actorId;
 
   const db = getDB();
   const hasPolicyTable = Boolean(
@@ -932,11 +1034,35 @@ export async function saveGoldOrderResalePolicy(formData: FormData): Promise<voi
   }
 
   const order = await db
-    .prepare(`SELECT id, user_id, subject_kind, amount_krw FROM shop_orders WHERE id = ?`)
+    .prepare(
+      `SELECT o.id, o.user_id, o.subject_kind, o.amount_krw, p.created_by_user_id AS product_owner_id
+       FROM shop_orders o
+       INNER JOIN shop_products p ON p.id = o.product_id
+       WHERE o.id = ?`
+    )
     .bind(orderId)
-    .first<{ id: string; user_id: string; subject_kind: string; amount_krw: number }>();
+    .first<{
+      id: string;
+      user_id: string;
+      subject_kind: string;
+      amount_krw: number;
+      product_owner_id: string | null;
+    }>();
   if (!order) {
     redirect("/admin/shop/orders?e=" + encodeURIComponent("주문을 찾을 수 없습니다."));
+  }
+  if (isOrgAdminProductScope(dataScope.tenantIds)) {
+    const pc = await getShopProductsColumnSet();
+    if (!pc.has("created_by_user_id")) {
+      redirect(
+        "/admin/shop/orders?e=" + encodeURIComponent("마이그레이션 0030(상품 등록자 컬럼)이 필요합니다.")
+      );
+    }
+    if (order.product_owner_id !== dataScope.actorId) {
+      redirect(
+        "/admin/shop/orders?e=" + encodeURIComponent("해당 주문의 되팔기를 설정할 권한이 없습니다.")
+      );
+    }
   }
   if (order.subject_kind !== "gold") {
     redirect("/admin/shop/orders?e=" + encodeURIComponent("골드 주문만 되팔기 설정이 가능합니다."));
