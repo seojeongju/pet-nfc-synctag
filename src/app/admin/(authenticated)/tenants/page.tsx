@@ -576,7 +576,11 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
                             <p className="text-sm font-black text-slate-800 break-all">{m.email}</p>
                             <p className="text-[11px] font-semibold text-slate-500">{roleLabel(m.role)}</p>
                           </div>
-                          <form action={adminResetTenantManagerPasswordFormAction}>
+                          <form action={async (formData) => {
+                            "use server";
+                            const { adminResetTenantManagerPasswordFormAction } = await import("@/app/actions/admin-tenants");
+                            await adminResetTenantManagerPasswordFormAction(formData);
+                          }}>
                             <input type="hidden" name="tenant_id" value={tenant.id} />
                             <input type="hidden" name="user_id" value={m.user_id} />
                             <input type="hidden" name="return_qs" value={backQs} />
