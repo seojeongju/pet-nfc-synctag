@@ -25,6 +25,77 @@ import { resolveAdminScope } from "@/lib/admin-authz";
 
 export const runtime = "edge";
 
+import { auditActionLabelKo } from "@/lib/tenant-audit-format";
+
+const PAYLOAD_FIELD_LABELS: Record<string, string> = {
+  tenantId: "조직 ID",
+  name: "조직명",
+  slug: "고유 슬러그",
+  ownerEmail: "소유자 이메일",
+  ownerUserCreated: "계정 생성 여부",
+  ownerCredentialCreated: "비밀번호 생성 여부",
+  allowed_subject_kinds: "허용 모드",
+  email: "이메일",
+  role: "역할",
+  userId: "사용자 ID",
+  status: "상태",
+  confirm_name: "확인용 조직명"
+};
+
+function formatPayloadValue(val: any): string {
+  if (val === true) return "예";
+  if (val === false) return "아니오";
+  if (val === null || val === undefined) return "없음";
+  if (typeof val === "string") {
+    try {
+      const parsed = JSON.parse(val);
+      if (Array.isArray(parsed)) {
+        return parsed.map((item) => String(item)).join(", ");
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return String(val);
+}
+
+function parseAndRenderPayload(payload: string | null) {
+  if (!payload) return null;
+  try {
+    const obj = JSON.parse(payload);
+    if (typeof obj !== "object" || obj === null) {
+      return (
+        <pre className="mt-1 text-[10px] font-semibold text-slate-500 whitespace-pre-wrap break-all">
+          {payload}
+        </pre>
+      );
+    }
+    return (
+      <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+        {Object.entries(obj).map(([key, val]) => (
+          <div
+            key={key}
+            className="flex flex-wrap items-center justify-between gap-1.5 rounded-xl border border-slate-100 bg-white px-3 py-1.5 text-[11px] font-bold"
+          >
+            <span className="text-slate-400 font-black">
+              {PAYLOAD_FIELD_LABELS[key] || key}
+            </span>
+            <span className="text-slate-700 font-black truncate max-w-[200px]">
+              {formatPayloadValue(val)}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  } catch {
+    return (
+      <pre className="mt-1 text-[10px] font-semibold text-slate-500 whitespace-pre-wrap break-all">
+        {payload}
+      </pre>
+    );
+  }
+}
+
 type SearchParams = Promise<{
   err?: string;
   ok?: string;
@@ -532,16 +603,18 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
         {auditLogs.length === 0 ? (
           <p className="text-sm font-semibold text-slate-400">아직 기록이 없습니다.</p>
         ) : (
-          <div className="space-y-2 max-h-[380px] overflow-auto pr-1">
+          <div className="space-y-2 max-h-[400px] overflow-auto pr-1">
             {auditLogs.map((row) => (
-              <div key={row.id} className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2">
-                <p className="text-[11px] font-black text-slate-800">{row.action}</p>
-                <p className="text-[11px] text-slate-500 font-semibold">
-                  {row.actor_email ?? "system"} · {new Date(row.created_at).toLocaleString("ko-KR")}
-                </p>
-                {row.payload ? (
-                  <pre className="mt-1 text-[10px] font-semibold text-slate-500 whitespace-pre-wrap break-all">{row.payload}</pre>
-                ) : null}
+              <div key={row.id} className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-black text-slate-800 bg-slate-200/60 px-2 py-0.5 rounded-lg border border-slate-200/80">
+                    {auditActionLabelKo(row.action)}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-bold">
+                    {row.actor_email ?? "system"} · {new Date(row.created_at).toLocaleString("ko-KR")}
+                  </span>
+                </div>
+                {parseAndRenderPayload(row.payload)}
               </div>
             ))}
           </div>

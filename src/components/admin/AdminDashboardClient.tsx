@@ -117,9 +117,11 @@ export default function AdminDashboardClient({
   petsBySubjectKind,
   dataAsOf,
 }: AdminDashboardClientProps) {
+  const [mounted, setMounted] = useState(false);
   const [thresholds, setThresholds] = useState<ThresholdState>(DEFAULT_THRESHOLDS);
 
   useEffect(() => {
+    setMounted(true);
     setThresholds(loadThresholdsFromStorage());
   }, []);
 
@@ -142,6 +144,7 @@ export default function AdminDashboardClient({
   const failedThreshold = thresholds.failed;
 
   const dataAsOfLabel = useMemo(() => {
+    if (!mounted) return "";
     try {
       return new Date(dataAsOf).toLocaleString("ko-KR", {
         dateStyle: "medium",
@@ -150,7 +153,7 @@ export default function AdminDashboardClient({
     } catch {
       return dataAsOf;
     }
-  }, [dataAsOf]);
+  }, [dataAsOf, mounted]);
 
   const totalPetsCount = useMemo(
     () => SUBJECT_KINDS.reduce((a, k) => a + petsBySubjectKind[k], 0),
