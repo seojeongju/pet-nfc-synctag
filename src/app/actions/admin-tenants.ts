@@ -1215,6 +1215,7 @@ export async function adminRemoveTenantMemberFormAction(formData: FormData) {
 
 export async function adminResetTenantManagerPasswordFormAction(formData: FormData) {
   const backQs = String(formData.get("return_qs") ?? "");
+  let redirectUrl: string | null = null;
   try {
     const result = await adminResetTenantManagerPassword(formData);
     const cookieStore = await cookies();
@@ -1234,10 +1235,14 @@ export async function adminResetTenantManagerPasswordFormAction(formData: FormDa
         maxAge: 60 * 5,
       }
     );
-    redirect(internalWithMessage(backQs, "ok", encodeURIComponent(`조직관리자 임시 비밀번호를 재생성했습니다: ${result.targetEmail}`)));
+    redirectUrl = internalWithMessage(backQs, "ok", encodeURIComponent(`조직관리자 임시 비밀번호를 재생성했습니다: ${result.targetEmail}`));
   } catch (e) {
+    console.error("비밀번호 초기화 폼 액션 에러:", e);
     if (isNextRedirectError(e)) throw e;
     const msg = e instanceof Error ? e.message : "조직관리자 비밀번호 재생성 실패";
-    redirect(internalWithMessage(backQs, "err", encodeURIComponent(msg)));
+    redirectUrl = internalWithMessage(backQs, "err", encodeURIComponent(msg));
+  }
+  if (redirectUrl) {
+    redirect(redirectUrl);
   }
 }
