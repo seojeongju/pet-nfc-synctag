@@ -21,6 +21,17 @@ export type NavLeaf = { href: string; label: string; icon: LucideIcon; color: st
 
 export type NavSection = { id: string; title: string; items: NavLeaf[] };
 
+/** 조직(테넌트) 관리자 콘솔 접속 시 숨기는 항목 — 해당 라우트는 서버에서 플랫폼 관리자만 허용 */
+const PLATFORM_ADMIN_ONLY_HREFS = new Set<string>(["/admin/tenants", "/admin/privacy"]);
+
+export function getAdminNavSections(isPlatformAdmin: boolean): NavSection[] {
+  if (isPlatformAdmin) return ADMIN_NAV_SECTIONS;
+  return ADMIN_NAV_SECTIONS.map((section) => ({
+    ...section,
+    items: section.items.filter((item) => !PLATFORM_ADMIN_ONLY_HREFS.has(item.href)),
+  }));
+}
+
 export const ADMIN_NAV_SECTIONS: NavSection[] = [
   {
     id: "ops",
@@ -62,10 +73,27 @@ export function normalizeAdminPath(pathname: string) {
   return p;
 }
 
-export function isAdminNavActive(pathname: string, href: string) {
+/** 현재 경로가 메뉴 href와 일치하는지(운영 대시보드 `/admin`은 정확히 일치할 때만) */
+export function navHrefMatchesPath(pathname: string, href: string): boolean {
   const p = normalizeAdminPath(pathname);
   const h = normalizeAdminPath(href);
   if (h === "/admin") return p === "/admin";
-  if (h === "/admin/nfc-tags") return p === "/admin/nfc-tags";
   return p === h || p.startsWith(`${h}/`);
+}
+
+/**
+ * 여러 메뉴가 동시에 경로와 맞을 때(예: /admin/shop 과 /admin/shop/orders) 가장 구체적인 항목만 활성.
+ * 그렇지 않으면 부모·자식이 동시에 강조되어 호버와 구분이 안 됨.
+ */
+export function isAdminNavActive(
+  pathname: string,
+  href: string,
+  allNavHrefs: readonly string[]
+): boolean {
+  const matching = allNavHrefs.filter((candidate) => navHrefMatchesPath(pathname, candidate));
+  if (matching.length === 0) return false;
+  const best = matching.reduce((a, b) =>
+    normalizeAdminPath(a).length >= normalizeAdminPath(b).length ? a : b
+  );
+  return normalizeAdminPath(href) === normalizeAdminPath(best);
 }

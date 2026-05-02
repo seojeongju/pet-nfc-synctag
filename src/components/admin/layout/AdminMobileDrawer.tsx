@@ -6,14 +6,15 @@ import { usePathname } from "next/navigation";
 import { Home, LogOut, Package, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { adminUi } from "@/styles/admin/ui";
-import { ADMIN_NAV_SECTIONS, isAdminNavActive } from "@/components/admin/layout/admin-nav-config";
+import { getAdminNavSections, isAdminNavActive } from "@/components/admin/layout/admin-nav-config";
 
 type Props = {
   open: boolean;
   onClose: () => void;
+  isPlatformAdmin: boolean;
 };
 
-export function AdminMobileDrawer({ open, onClose }: Props) {
+export function AdminMobileDrawer({ open, onClose, isPlatformAdmin }: Props) {
   const pathname = usePathname() || "";
 
   useEffect(() => {
@@ -26,6 +27,9 @@ export function AdminMobileDrawer({ open, onClose }: Props) {
   }, [open]);
 
   if (!open) return null;
+
+  const navSections = getAdminNavSections(isPlatformAdmin);
+  const allNavHrefs = navSections.flatMap((s) => s.items.map((i) => i.href));
 
   return (
     <div className="fixed inset-0 z-[100] lg:hidden" role="dialog" aria-modal="true" aria-label="관리자 메뉴">
@@ -62,13 +66,13 @@ export function AdminMobileDrawer({ open, onClose }: Props) {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4">
-          {ADMIN_NAV_SECTIONS.map((section) => (
+          {navSections.map((section) => (
             <div key={section.id} className="mb-6 last:mb-2">
               <p className="px-2 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">{section.title}</p>
               <div className="flex flex-col gap-1.5">
                 {section.items.map((item) => {
                   const NavIcon = item.icon;
-                  const active = isAdminNavActive(pathname, item.href);
+                  const active = isAdminNavActive(pathname, item.href, allNavHrefs);
                   return (
                     <Link
                       key={item.href}
@@ -76,10 +80,10 @@ export function AdminMobileDrawer({ open, onClose }: Props) {
                       prefetch={false}
                       onClick={onClose}
                       className={cn(
-                        "flex items-center gap-3 rounded-2xl border px-3 py-3 transition-all min-h-11",
+                        "flex items-center gap-3 rounded-2xl border px-3 py-3 transition-colors duration-150 min-h-11",
                         active
-                          ? "border-teal-200/80 bg-teal-50 shadow-sm"
-                          : "border-slate-100 bg-white shadow-sm hover:border-teal-100/80 hover:bg-teal-50/50"
+                          ? "border-teal-200/80 bg-teal-50 shadow-sm hover:bg-teal-50"
+                          : "border-slate-100 bg-white shadow-sm hover:border-teal-200/90 hover:bg-teal-50/70 hover:shadow-sm"
                       )}
                       aria-current={active ? "page" : undefined}
                     >

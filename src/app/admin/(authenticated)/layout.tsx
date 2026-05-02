@@ -56,7 +56,7 @@ export default async function AdminAuthenticatedLayout({
         <AdminSidebarNav isPlatformAdmin={isPlatformAdminRole(roleRow?.role)} />
 
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col lg:z-10">
-          <AdminHeaderBar user={user} />
+          <AdminHeaderBar user={user} isPlatformAdmin={isPlatformAdminRole(roleRow?.role)} />
 
           <main className="flex-1 overflow-y-auto custom-scrollbar relative">
             <div className="min-h-full px-0">{children}</div>

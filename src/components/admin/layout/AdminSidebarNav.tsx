@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { adminUi } from "@/styles/admin/ui";
-import { ADMIN_NAV_SECTIONS, isAdminNavActive } from "@/components/admin/layout/admin-nav-config";
+import { getAdminNavSections, isAdminNavActive } from "@/components/admin/layout/admin-nav-config";
 
 export { AdminHeaderUser, type SessionUser } from "@/components/admin/layout/AdminHeaderUser";
 
@@ -18,12 +18,8 @@ export type { NavSection } from "@/components/admin/layout/admin-nav-config";
 
 export function AdminSidebarNav({ isPlatformAdmin }: { isPlatformAdmin: boolean }) {
   const pathname = usePathname() || "";
-  const navSections = isPlatformAdmin
-    ? ADMIN_NAV_SECTIONS
-    : ADMIN_NAV_SECTIONS.map((section) => ({
-        ...section,
-        items: section.items.filter((item) => item.href !== "/admin/tenants"),
-      }));
+  const navSections = getAdminNavSections(isPlatformAdmin);
+  const allNavHrefs = navSections.flatMap((s) => s.items.map((i) => i.href));
 
   return (
     <aside className="hidden lg:flex w-full shrink-0 flex-col border-b border-slate-100 bg-white/90 shadow-lg shadow-slate-100/50 backdrop-blur-md lg:z-auto lg:w-auto lg:sticky lg:top-0 lg:h-screen lg:max-h-screen lg:min-h-0 lg:overflow-hidden lg:border-b-0 lg:border-r">
@@ -48,7 +44,7 @@ export function AdminSidebarNav({ isPlatformAdmin }: { isPlatformAdmin: boolean 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 lg:grid-cols-1 lg:gap-1.5">
               {section.items.map((item) => {
                 const NavIcon = item.icon;
-                const active = isAdminNavActive(pathname, item.href);
+                const active = isAdminNavActive(pathname, item.href, allNavHrefs);
                 return (
                   <Link
                     key={item.href}
@@ -56,10 +52,10 @@ export function AdminSidebarNav({ isPlatformAdmin }: { isPlatformAdmin: boolean 
                     prefetch={false}
                     aria-current={active ? "page" : undefined}
                     className={cn(
-                      "flex items-center justify-between px-3 lg:px-4 py-3 lg:py-3 rounded-2xl border transition-all group min-h-11",
+                      "flex items-center justify-between px-3 lg:px-4 py-3 lg:py-3 rounded-2xl border transition-colors duration-150 group min-h-11",
                       active
-                        ? "border-teal-200/80 bg-teal-50 shadow-sm"
-                        : "border-slate-100 bg-white shadow-sm hover:border-teal-100/80 hover:bg-teal-50/50"
+                        ? "border-teal-200/80 bg-teal-50 shadow-sm hover:bg-teal-50"
+                        : "border-slate-100 bg-white shadow-sm hover:border-teal-200/90 hover:bg-teal-50/70 hover:shadow-sm"
                     )}
                   >
                     <div className="flex items-center gap-3 lg:gap-3 relative z-10 min-w-0">

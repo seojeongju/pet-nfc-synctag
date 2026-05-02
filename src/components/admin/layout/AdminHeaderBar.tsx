@@ -9,7 +9,13 @@ import { AdminHeaderUser, type SessionUser } from "@/components/admin/layout/Adm
 import { AdminMobileDrawer } from "@/components/admin/layout/AdminMobileDrawer";
 import { AdminDashboardHelp } from "@/components/admin/layout/AdminDashboardHelp";
 
-export function AdminHeaderBar({ user }: { user?: SessionUser }) {
+export function AdminHeaderBar({
+  user,
+  isPlatformAdmin,
+}: {
+  user?: SessionUser;
+  isPlatformAdmin: boolean;
+}) {
   const pathname = usePathname() || "";
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -19,7 +25,11 @@ export function AdminHeaderBar({ user }: { user?: SessionUser }) {
 
   return (
     <>
-      <AdminMobileDrawer open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+      <AdminMobileDrawer
+        open={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+        isPlatformAdmin={isPlatformAdmin}
+      />
       <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b border-slate-100 bg-white/80 px-3 backdrop-blur-md sm:px-4 lg:h-20 lg:px-10">
         <button
           type="button"

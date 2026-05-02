@@ -5,6 +5,11 @@ import { AdminPagination } from "@/components/admin/ui/AdminPagination";
 import { AdminTableHeadCell, AdminTableHeadRow, AdminTableRow } from "@/components/admin/ui/AdminTable";
 import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
+import { getAuth } from "@/lib/auth";
+import { getCfRequestContext } from "@/lib/cf-request-context";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { isPlatformAdminRole } from "@/lib/platform-admin";
 
 export const runtime = "edge";
 
@@ -31,6 +36,21 @@ function statusLabel(row: {
 }
 
 export default async function AdminPrivacyPage({ searchParams }: { searchParams: SearchParams }) {
+  const context = getCfRequestContext();
+  const auth = getAuth(context.env);
+  const session = await auth.api.getSession({ headers: await headers() });
+  const uid = session?.user?.id;
+  if (!uid) {
+    redirect("/admin/login");
+  }
+  const roleRow = await context.env.DB
+    .prepare("SELECT role FROM user WHERE id = ?")
+    .bind(uid)
+    .first<{ role?: string | null }>();
+  if (!isPlatformAdminRole(roleRow?.role)) {
+    redirect("/admin");
+  }
+
   const sp = await searchParams;
   const q = (sp.q ?? "").trim();
   const status =
