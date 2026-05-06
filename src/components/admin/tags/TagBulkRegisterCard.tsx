@@ -30,6 +30,37 @@ import {
   type NfcUidScanSession,
 } from "@/lib/web-nfc-read-uid";
 
+/** NDEFWriter 타입 (Web NFC 쓰기용) */
+type NDEFWriterCtor = new () => {
+  write(message: { records: Array<{ recordType: string; data: string }> }): Promise<void>;
+};
+
+function getNdefWriterClass(): NDEFWriterCtor | null {
+  if (typeof window === "undefined") return null;
+  return (window as unknown as { NDEFWriter?: NDEFWriterCtor }).NDEFWriter ?? null;
+}
+
+/** UID로 기록할 URL 생성 */
+function buildTagUrl(uid: string): string {
+  const base =
+    (process.env.NEXT_PUBLIC_APP_URL || (typeof window !== "undefined" ? window.location.origin : ""))
+      .replace(/\/$/, "");
+  return `${base}/t/${encodeURIComponent(uid)}`;
+}
+
+/** NFC 칩에 URL NDEF 기록 시도 (실패해도 UID 등록은 계속) */
+async function tryWriteUrlToChip(uid: string): Promise<{ ok: boolean; error?: string }> {
+  const Writer = getNdefWriterClass();
+  if (!Writer) return { ok: false, error: "NDEFWriter 미지원 브라우저" };
+  try {
+    const writer = new Writer();
+    await writer.write({ records: [{ recordType: "url", data: buildTagUrl(uid) }] });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 const kindIcon: Record<SubjectKind, typeof PawPrint> = {
   pet: PawPrint,
   elder: UserRound,
@@ -235,8 +266,7 @@ export function TagBulkRegisterCard() {
               setNfcHint(null);
               setMessage(null);
               setNfcBusy(true);
-              void readNfcTagUidOnce().then((r) => {
-                setNfcBusy(false);
+              void readNfcTagUidOnce().then(async (r) => {
                 if (r.ok) {
                   const k = activeKindRef.current;
                   setUidsByKind((prev) => {
@@ -244,12 +274,19 @@ export function TagBulkRegisterCard() {
                     const next = cur ? `${cur}\n${r.uid}` : r.uid;
                     return { ...prev, [k]: next };
                   });
-                  setNfcHint(`[${kindShortLabel[k]}] UID를 추가했습니다: ${r.uid}`);
+                  // UID 읽기 직후 URL을 칩에 자동 기록
+                  const writeResult = await tryWriteUrlToChip(r.uid);
+                  if (writeResult.ok) {
+                    setNfcHint(`[${kindShortLabel[k]}] UID 추가 + URL 자동 기록 완료: ${r.uid}`);
+                  } else {
+                    setNfcHint(`[${kindShortLabel[k]}] UID 추가됨: ${r.uid}\n⚠️ URL 자동 기록 실패(${writeResult.error}) — 수동으로 URL 기록 페이지에서 처리하세요.`);
+                  }
                   void recordNfcWebReadAudit({ success: true, source: "bulk_register", tagId: r.uid });
                 } else {
                   setNfcHint(r.error);
                   void recordNfcWebReadAudit({ success: false, source: "bulk_register", clientError: r.error });
                 }
+                setNfcBusy(false);
               });
             }}
             className="min-h-12 rounded-2xl border-slate-200 text-[14px] font-black touch-manipulation sm:h-11 sm:text-xs"
@@ -282,7 +319,7 @@ export function TagBulkRegisterCard() {
                 setMessage(null);
                 setNfcBusy(true);
                 void startNfcUidScanSession({
-                  onUid: (uid) => {
+                  onUid: async (uid) => {
                     const k = activeKindRef.current;
                     setUidsByKind((prev) => {
                       const tokens = prev[k]
@@ -294,7 +331,13 @@ export function TagBulkRegisterCard() {
                       const next = cur ? `${cur}\n${uid}` : uid;
                       return { ...prev, [k]: next };
                     });
-                    setNfcHint(`[${kindShortLabel[k]}] 연속 스캔 감지: ${uid}`);
+                    // 연속 스캔 시에도 URL 자동 기록
+                    const writeResult = await tryWriteUrlToChip(uid);
+                    if (writeResult.ok) {
+                      setNfcHint(`[${kindShortLabel[k]}] 연속 스캔 + URL 자동 기록: ${uid}`);
+                    } else {
+                      setNfcHint(`[${kindShortLabel[k]}] 연속 스캔 감지: ${uid}\n⚠️ URL 기록 실패(${writeResult.error})`);
+                    }
                     void recordNfcWebReadAudit({ success: true, source: "bulk_register", tagId: uid });
                   },
                   onError: (error) => {
