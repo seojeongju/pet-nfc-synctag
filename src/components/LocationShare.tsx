@@ -22,6 +22,8 @@ export function LocationShare({
   onStatusChange?: (status: "idle" | "loading" | "success" | "error") => void;
 }) {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  /** 지오/전송 실패 시 버튼에 표시 (Button 기본 whitespace-nowrap 때문에 짧은 문구만 쓰던 문제 보완) */
+  const [errorHint, setErrorHint] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [consentChecked, setConsentChecked] = useState(false);
   const searchParams = useSearchParams();
@@ -52,6 +54,7 @@ export function LocationShare({
   const handleButtonClick = () => {
     if (!enabled || !activeTag) return;
     setConsentChecked(false);
+    setErrorHint(null);
     setShowModal(true);
   };
 
@@ -70,6 +73,7 @@ export function LocationShare({
 
     if (!navigator.geolocation) {
       setStatus("error");
+      setErrorHint("이 브라우저에서는 위치를 사용할 수 없어요.");
       onStatusChange?.("error");
       void logFinderAction({
         action: "location_share_error",
@@ -82,6 +86,7 @@ export function LocationShare({
     }
 
     setStatus("loading");
+    setErrorHint(null);
     onStatusChange?.("loading");
 
     navigator.geolocation.getCurrentPosition(
@@ -91,6 +96,7 @@ export function LocationShare({
           const res = await updateScanLocation(activeTag as string, latitude, longitude);
           if (!res.success) {
             setStatus("error");
+            setErrorHint("가족에게 전달하지 못했어요. 잠시 후 다시 시도해 주세요.");
             onStatusChange?.("error");
             void logFinderAction({
               action: "location_share_error",
@@ -117,6 +123,7 @@ export function LocationShare({
         } catch (e) {
           console.error(e);
           setStatus("error");
+          setErrorHint("전송 중 문제가 있었어요. 다시 시도해 주세요.");
           onStatusChange?.("error");
           void logFinderAction({
             action: "location_share_error",
@@ -130,6 +137,16 @@ export function LocationShare({
       (error) => {
         console.error(error);
         setStatus("error");
+        const code = error?.code;
+        const hint =
+          code === 1 // PERMISSION_DENIED
+            ? "브라우저·앱 설정에서 위치 권한을 허용해 주세요."
+            : code === 2 // POSITION_UNAVAILABLE
+              ? "기기에서 위치(GPS)를 켜 주시고, 잠시 후 다시 눌러 주세요."
+              : code === 3 // TIMEOUT
+                ? "위치 확인이 지연됐어요. 통신이 나은 곳에서 다시 눌러 주세요."
+                : "위치를 가져올 수 없어요. 설정을 확인한 뒤 다시 시도해 주세요.";
+        setErrorHint(hint);
         onStatusChange?.("error");
         void logFinderAction({
           action: "location_share_error",
@@ -138,6 +155,11 @@ export function LocationShare({
           detail: error?.code ? `geo_error_${error.code}` : "geo_error",
           userAgent: ua,
         });
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 25_000,
+        maximumAge: 0,
       }
     );
   };
@@ -157,7 +179,7 @@ export function LocationShare({
             >
               <Button
                 disabled
-                className="flex h-20 w-full min-w-0 rounded-[28px] border-b-4 border-teal-700 bg-teal-500 px-4 text-lg font-black text-white opacity-100 shadow-xl shadow-teal-500/20"
+                className="flex h-auto min-h-[5rem] w-full min-w-0 whitespace-normal rounded-[28px] border-b-4 border-teal-700 bg-teal-500 px-4 py-3 text-lg font-black text-white opacity-100 shadow-xl shadow-teal-500/20"
               >
                 <span className="flex w-full min-w-0 items-center justify-center gap-3">
                   <motion.span
@@ -168,7 +190,9 @@ export function LocationShare({
                   >
                     <CheckCircle2 className="h-7 w-7" />
                   </motion.span>
-                  <span className="text-center leading-tight">가족에게 보냈어요</span>
+                  <span className="text-center leading-snug break-keep [word-break:keep-all]">
+                    가족에게 보냈어요
+                  </span>
                 </span>
               </Button>
             </motion.div>
@@ -185,28 +209,31 @@ export function LocationShare({
                 disabled={!canSend || status === "loading"}
                 variant="outline"
                 className={cn(
-                  "group relative flex h-20 w-full min-w-0 overflow-hidden rounded-[28px] border-2 px-4 text-lg font-black transition-all active:scale-95",
+                  "group relative flex h-auto min-h-[5rem] w-full min-w-0 whitespace-normal rounded-[28px] border-2 px-3 py-3 text-base font-black transition-all active:scale-95 sm:px-4 sm:text-lg",
                   !canSend
                     ? "border-slate-200 bg-slate-50 text-slate-400"
                     : status === "error"
-                      ? "border-rose-100 bg-rose-50/50 text-rose-500"
+                      ? "border-rose-100 bg-rose-50/50 text-rose-600"
                       : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-white"
                 )}
               >
-                <div className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full transition-transform duration-1000 group-hover:translate-x-full" />
-                <span className="relative z-[1] flex w-full min-w-0 items-center justify-center gap-3">
+                <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[26px]">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full transition-transform duration-1000 group-hover:translate-x-full" />
+                </div>
+                <span className="relative z-[1] flex w-full min-w-0 items-center justify-center gap-2 sm:gap-3">
                   {status === "loading" ? (
                     <Loader2 className="h-7 w-7 shrink-0 animate-spin" />
                   ) : status === "error" ? (
-                    <AlertCircle className="h-7 w-7 shrink-0" />
+                    <AlertCircle className="h-7 w-7 shrink-0 text-rose-500" />
                   ) : (
                     <MapPin className="h-7 w-7 shrink-0 transition-transform group-hover:scale-110" />
                   )}
-                  <span className="min-w-0 text-center leading-tight">
+                  <span className="min-w-0 flex-1 text-center leading-snug break-keep [word-break:keep-all]">
                     {status === "loading"
                       ? "보내는 중…"
                       : status === "error"
-                        ? "위치를 켜 주시고 다시 눌러 주세요"
+                        ? errorHint ??
+                          "위치를 가져올 수 없어요. 설정을 확인한 뒤 다시 시도해 주세요."
                         : canSend
                           ? "지금 위치 보내기"
                           : "지금은 쓸 수 없어요"}
