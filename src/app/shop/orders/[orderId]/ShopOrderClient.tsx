@@ -30,25 +30,8 @@ const statusLabel: Record<string, string> = {
   cancelled: "취소됨",
 };
 
-const resaleRangeFmt = new Intl.DateTimeFormat("ko-KR", {
-  timeZone: "Asia/Seoul",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
-function resalePeriodLabel(from?: string | null, until?: string | null): string | null {
-  if (!from && !until) return null;
-  const start = from ? resaleRangeFmt.format(new Date(from)) : "시작 제한 없음";
-  const end = until ? resaleRangeFmt.format(new Date(until)) : "종료일 없음(유지)";
-  return `${start} ~ ${end}`;
-}
-
 export function ShopOrderClient({ order, session }: ShopOrderClientProps) {
   const router = useRouter();
-  const resalePeriodLine = resalePeriodLabel(order.resaleVisibleFrom, order.resaleVisibleUntil);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -196,20 +179,7 @@ export function ShopOrderClient({ order, session }: ShopOrderClientProps) {
               <p className="mt-2 text-[15px] font-black text-teal-700">
                 구매가 {formatKrw(order.purchasePriceKrw)}
               </p>
-              {order.resaleOfferVisible ? (
-                <>
-                  <p className="mt-1 text-[13px] font-black text-amber-700">
-                    되팔기 판매가 {formatKrw(order.resaleOfferPriceKrw ?? 0)}
-                  </p>
-                  {resalePeriodLine ? (
-                    <p className="mt-0.5 text-[10px] font-semibold text-slate-500">{resalePeriodLine}</p>
-                  ) : null}
-                </>
-              ) : (
-                <p className="mt-1 text-[11px] font-bold text-slate-400">
-                  되팔기 판매가는 관리자 지정 기간·조건에 따라 노출됩니다.
-                </p>
-              )}
+
             </div>
           </div>
         </div>

@@ -187,27 +187,6 @@ export default async function AdminShopOrdersPage({
           aria-label="스토어 관련 바로가기"
         >
           <Link
-            href="/admin/shop/resale"
-            className={cn(
-              "group relative flex min-h-[52px] flex-1 items-center justify-center gap-3 overflow-hidden rounded-[22px] border border-amber-200/90 bg-gradient-to-br from-amber-50 via-white to-orange-50/90 px-5 py-3.5 shadow-sm ring-1 ring-amber-100/80 transition",
-              "hover:border-amber-300 hover:shadow-md hover:ring-amber-200/60",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2"
-            )}
-          >
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 shadow-inner ring-1 ring-amber-200/60">
-              <HandCoins className="h-5 w-5" aria-hidden />
-            </span>
-            <span className="min-w-0 flex-1 text-left">
-              <span className="block text-[10px] font-black uppercase tracking-wider text-amber-700/80">Gold · Resale</span>
-              <span className="block text-[13px] font-black leading-tight text-amber-950">소비자 되팔기 관리</span>
-            </span>
-            <ArrowRight
-              className="h-5 w-5 shrink-0 text-amber-600/90 transition group-hover:translate-x-0.5 group-hover:text-amber-800"
-              aria-hidden
-            />
-          </Link>
-
-          <Link
             href="/admin/shop"
             className={cn(
               "group relative flex min-h-[52px] flex-1 items-center justify-center gap-3 overflow-hidden rounded-[22px] border border-slate-200 bg-white px-5 py-3.5 shadow-sm ring-1 ring-slate-100 transition",
