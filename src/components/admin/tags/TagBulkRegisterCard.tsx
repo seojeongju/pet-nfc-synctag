@@ -29,16 +29,7 @@ import {
   startNfcUidScanSession,
   type NfcUidScanSession,
 } from "@/lib/web-nfc-read-uid";
-
-/** NDEFWriter 타입 (Web NFC 쓰기용) */
-type NDEFWriterCtor = new () => {
-  write(message: { records: Array<{ recordType: string; data: string }> }): Promise<void>;
-};
-
-function getNdefWriterClass(): NDEFWriterCtor | null {
-  if (typeof window === "undefined") return null;
-  return (window as unknown as { NDEFWriter?: NDEFWriterCtor }).NDEFWriter ?? null;
-}
+import { writeNfcUrlRecord } from "@/lib/web-nfc-write-url";
 
 /** UID로 기록할 URL 생성 */
 function buildTagUrl(uid: string): string {
@@ -50,15 +41,9 @@ function buildTagUrl(uid: string): string {
 
 /** NFC 칩에 URL NDEF 기록 시도 (실패해도 UID 등록은 계속) */
 async function tryWriteUrlToChip(uid: string): Promise<{ ok: boolean; error?: string }> {
-  const Writer = getNdefWriterClass();
-  if (!Writer) return { ok: false, error: "NDEFWriter 미지원 브라우저" };
-  try {
-    const writer = new Writer();
-    await writer.write({ records: [{ recordType: "url", data: buildTagUrl(uid) }] });
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : String(e) };
-  }
+  const result = await writeNfcUrlRecord(buildTagUrl(uid));
+  if (result.ok) return { ok: true };
+  return { ok: false, error: result.error };
 }
 
 const kindIcon: Record<SubjectKind, typeof PawPrint> = {

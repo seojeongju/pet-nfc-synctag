@@ -33,7 +33,7 @@ function helpContentForPath(p: string): { title: string; body: ReactNode } {
             <strong>환경:</strong> Android Chrome·HTTPS·화면 탭(제스처)이 필요합니다. iOS Safari는 Web NFC를 지원하지 않습니다.
           </p>
           <p>
-            <strong>NDEFWriter:</strong> 이 API가 없으면 이 브라우저에서는 기록할 수 없습니다. Android Chrome(HTTPS)에서 열거나, 문서에 안내된 외부 NFC 기록 도구로 동일 URL 형식을 기록하세요.
+            <strong>Web NFC 쓰기(NDEFReader.write):</strong> 이 메서드가 없으면 이 브라우저에서는 기록할 수 없습니다. Android Chrome(HTTPS)에서 열거나, 문서에 안내된 외부 NFC 기록 도구로 동일 URL 형식을 기록하세요.
           </p>
           <p>
             <strong>전용 앱(선택):</strong> 배포 시 환경 변수 <code className="rounded bg-slate-100 px-1 font-mono text-[11px]">NEXT_PUBLIC_NFC_NATIVE_HANDOFF_ENABLED=true</code>를 켜면 &quot;전용 앱에서 쓰기 열기&quot; 버튼이 나타납니다. 기본 운영 경로는 Web NFC입니다.

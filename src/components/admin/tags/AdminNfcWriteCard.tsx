@@ -27,16 +27,7 @@ import {
 import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
 import { isWebNfcReadSupported, readNfcTagUidOnce } from "@/lib/web-nfc-read-uid";
-
-type NDEFWriterCtor = new () => {
-  write(message: { records: Array<{ recordType: string; data: string }> }): Promise<void>;
-};
-
-function getNdefWriterClass(): NDEFWriterCtor | null {
-  if (typeof window === "undefined") return null;
-  const w = window as unknown as { NDEFWriter?: NDEFWriterCtor };
-  return w.NDEFWriter ?? null;
-}
+import { isWebNfcWriteSupported, writeNfcUrlRecord } from "@/lib/web-nfc-write-url";
 
 const SHOW_NFC_NATIVE_HANDOFF = process.env.NEXT_PUBLIC_NFC_NATIVE_HANDOFF_ENABLED === "true";
 const NFC_NATIVE_APP_STORE_URL = (process.env.NEXT_PUBLIC_NFC_NATIVE_APP_STORE_URL || "").trim();
@@ -107,7 +98,7 @@ export function AdminNfcWriteCard() {
   const appHandoffUsable = SHOW_NFC_NATIVE_HANDOFF;
 
   useEffect(() => {
-    setNfcWriteSupported(!!getNdefWriterClass());
+    setNfcWriteSupported(isWebNfcWriteSupported());
     setNfcReadSupported(isWebNfcReadSupported());
   }, []);
 
@@ -153,11 +144,10 @@ export function AdminNfcWriteCard() {
 
   const onWrite = useCallback(async () => {
     setHint({ type: "idle" });
-    const Writer = getNdefWriterClass();
-    if (!Writer) {
+    if (!isWebNfcWriteSupported()) {
       setHint({
         type: "error",
-        text: "이 브라우저는 Web NFC 쓰기(NDEFWriter)를 지원하지 않습니다. Android Chrome(HTTPS)에서 열거나 아래 ‘앱에서 쓰기’를 사용하세요.",
+        text: "이 브라우저는 Web NFC 쓰기(NDEFReader.write)를 지원하지 않습니다. Android Chrome(HTTPS)에서 열거나 아래 ‘앱에서 쓰기’를 사용하세요.",
       });
       return;
     }
@@ -174,10 +164,8 @@ export function AdminNfcWriteCard() {
         return;
       }
       try {
-        const writer = new Writer();
-        await writer.write({
-          records: [{ recordType: "url", data: prep.url }],
-        });
+        const w = await writeNfcUrlRecord(prep.url);
+        if (!w.ok) throw new Error(w.error);
         await recordNfcWebWriteAudit({
           tagId: prep.tagId,
           url: prep.url,
@@ -258,7 +246,7 @@ export function AdminNfcWriteCard() {
         >
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
           <div className="space-y-1">
-            <p className="font-black">Web NFC 쓰기(NDEFWriter)를 쓸 수 없습니다</p>
+            <p className="font-black">Web NFC 쓰기(NDEFReader.write)를 쓸 수 없습니다</p>
             <p>
               {appHandoffUsable
                 ? "아래「앱에서 쓰기」를 쓰거나, Android + Chrome(HTTPS)으로 이 페이지를 연 뒤 다시 시도하세요."
