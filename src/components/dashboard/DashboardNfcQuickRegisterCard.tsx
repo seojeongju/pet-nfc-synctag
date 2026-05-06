@@ -23,6 +23,7 @@ import { parseSubjectKind, type SubjectKind } from "@/lib/subject-kind";
 import { isWebNfcReadSupported, readNfcTagUidOnce } from "@/lib/web-nfc-read-uid";
 import { normalizeTagUid } from "@/lib/tag-uid-format";
 import { normalizeAppBaseUrl } from "@/lib/nfc-app-origin-guard";
+import { isWebNfcWriteSupported, writeNfcUrlRecord } from "@/lib/web-nfc-write-url";
 
 const STALE_ACTION_RELOAD_KEY = "dashboard-nfc-stale-action-reload-once";
 const NFC_NATIVE_APP_STORE_URL = (process.env.NEXT_PUBLIC_NFC_NATIVE_APP_STORE_URL || "").trim();
@@ -73,6 +74,7 @@ export function DashboardNfcQuickRegisterCard({
   const [tagId, setTagId] = useState("");
   const [tagMessage, setTagMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [isNfcScanning, setIsNfcScanning] = useState(false);
+  const [isNfcWriting, setIsNfcWriting] = useState(false);
   const [isNativeWriteOpening, setIsNativeWriteOpening] = useState(false);
   const [nfcSectionHighlight, setNfcSectionHighlight] = useState(false);
   /** 「태그에 프로필 연결」안내(단계 설명) 접기 — 폼 입력은 항상 노출 */
@@ -87,6 +89,7 @@ export function DashboardNfcQuickRegisterCard({
   const tenantQs = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : "";
   const kindQs = tenantQs;
   const webNfcSupported = isWebNfcReadSupported();
+  const webNfcWriteSupported = isWebNfcWriteSupported();
 
   const petDetailNfcHref = selectedSubjectId
     ? `/dashboard/${subjectKind}/pets/${selectedSubjectId}${tenantQs ? `${tenantQs}&` : "?"}nfc=1#nfc`
@@ -245,6 +248,36 @@ export function DashboardNfcQuickRegisterCard({
         onTagLinkSessionSuccess?.();
         setTagId(normalizeTagUid(uid));
         router.refresh();
+
+        // 1. Android Chrome 등 Web NFC 쓰기를 지원하면 직접 기록 시도
+        if (webNfcWriteSupported) {
+          setIsNfcWriting(true);
+          try {
+            const handoff = await prepareGuardianNfcNativeHandoff({
+              petId: selectedSubjectId,
+              tagIdRaw: uid,
+            });
+            if (handoff.ok) {
+              const writeRes = await writeNfcUrlRecord(handoff.url);
+              if (writeRes.ok) {
+                setTagMessage({
+                  type: "success",
+                  text: "태그가 성공적으로 연결 및 기록되었습니다!",
+                });
+                setIsNfcWriting(false);
+                return;
+              }
+              // 실패 시(사용자 취소 등) 앱 실행으로 폴백 안내
+              console.warn("Web NFC write failed, falling back to app launch:", writeRes.error);
+            }
+          } catch (e) {
+            console.error("Direct write error", e);
+          } finally {
+            setIsNfcWriting(false);
+          }
+        }
+
+        // 2. iOS이거나 Web NFC 미지원/실패 시 앱 실행/설치 안내로 폴백
         void runPetIdConnectAppLaunch({ petId: selectedSubjectId, tagIdRaw: uid });
       } catch (e: unknown) {
         if (isStaleServerActionError(e)) {
@@ -406,12 +439,24 @@ export function DashboardNfcQuickRegisterCard({
                       <li>연결할 대상(프로필)을 고릅니다.</li>
                       <li>태그를 휴대폰에 대서 NFC로 읽거나, 태그/패키지에 적힌 UID를 직접 넣어 번호를 맞춥니다.</li>
                       <li>
-                        <span className="font-black text-slate-800">「연결하고 앱에서 저장」</span>을 누르면 서버에 태그가 연결되고, 이어서 앱이
-                        열립니다. (앱이 없으면 설치 안내로 먼저 갑니다.)
+                        <span className="font-black text-slate-800">
+                          {webNfcWriteSupported ? "「연결하고 바로 저장」" : "「연결하고 앱에서 저장」"}
+                        </span>
+                        을 누르면 서버에 태그가 연결됩니다.
                       </li>
                       <li>
-                        앱의 <span className="font-black text-slate-800">보호자연동(Link-U 전용 모드)</span> 화면(UID·URL은 자동)에서 태그에 대고{" "}
-                        <span className="font-black text-slate-800">저장</span>으로 마칩니다.
+                        {webNfcWriteSupported ? (
+                          <>
+                            안드로이드 크롬 환경이므로 <span className="font-black text-slate-800">태그를 뒷면에 대면 바로 저장</span>됩니다.
+                            (기록 실패 시에는 앱 설치/실행으로 이어집니다.)
+                          </>
+                        ) : (
+                          <>
+                            이어서 앱이 열립니다. (앱이 없으면 설치 안내로 먼저 갑니다.) 앱의{" "}
+                            <span className="font-black text-slate-800">보호자연동(Link-U 전용 모드)</span> 화면에서 태그에 대고{" "}
+                            <span className="font-black text-slate-800">저장</span>으로 마칩니다.
+                          </>
+                        )}
                       </li>
                     </ol>
                     <p className="text-[10px] font-bold text-slate-400">
@@ -472,16 +517,30 @@ export function DashboardNfcQuickRegisterCard({
                 tenantSuspended ||
                 isPending ||
                 isNfcScanning ||
+                isNfcWriting ||
                 isNativeWriteOpening ||
                 !selectedSubjectId ||
                 !tagId.trim()
               }
-              className="h-12 w-full rounded-2xl bg-indigo-600 font-black text-white hover:bg-indigo-500"
+              className={cn(
+                "h-12 w-full rounded-2xl font-black text-white transition-all",
+                webNfcWriteSupported ? "bg-teal-600 hover:bg-teal-500" : "bg-indigo-600 hover:bg-indigo-500"
+              )}
             >
-              {isPending ? "서버에 연결하는 중…" : isNativeWriteOpening ? "앱을 여는 중…" : "연결하고 앱에서 저장"}
+              {isPending
+                ? "서버에 연결하는 중…"
+                : isNfcWriting
+                ? "태그에 기록 중 (뒷면에 대주세요)…"
+                : isNativeWriteOpening
+                ? "앱을 여는 중…"
+                : webNfcWriteSupported
+                ? "연결하고 바로 저장"
+                : "연결하고 앱에서 저장"}
             </Button>
             <p className="text-center text-[10px] font-bold text-slate-500 leading-relaxed">
-              앱이 이미 있으면 보호자연동(Link-U 전용 모드)으로 바로 이어지고, 없을 때는 설치를 거친 뒤에도 위와 같은 화면만 밟으면 됩니다.
+              {webNfcWriteSupported
+                ? "안드로이드 크롬에서는 앱 설치 없이 바로 태그를 맞출 수 있습니다. (기록이 안 되면 앱으로 연결)"
+                : "앱이 이미 있으면 보호자연동(Link-U 전용 모드)으로 바로 이어지고, 없을 때는 설치 후 저장을 마치면 됩니다."}
             </p>
             {selectedSubjectId ? (
               <div ref={tagActionsRef} className="relative flex justify-center pt-1">
