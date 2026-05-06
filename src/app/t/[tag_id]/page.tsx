@@ -19,22 +19,26 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
 
   type TagRow = {
     id: string;
-    pet_id: string;
+    pet_id: string | null;
     is_active: boolean | number | null;
     assigned_subject_kind: string | null;
-    pet_subject_kind: string;
+    pet_subject_kind: string | null;
     pet_tenant_id: string | null;
   };
 
+  /**
+   * LEFT JOIN 사용: pet_id가 NULL인 신규 판매 태그(미연결)도 조회 가능.
+   * 기존 INNER JOIN이면 pet_id 없는 태그는 항상 null 반환 → UnknownTagView로 잘못 분기됨.
+   */
   let tag: TagRow | null = null;
   try {
     tag = await db
       .prepare(
         `SELECT t.id, t.pet_id, t.is_active, t.assigned_subject_kind,
-                COALESCE(p.subject_kind, 'pet') AS pet_subject_kind,
+                p.subject_kind AS pet_subject_kind,
                 p.tenant_id AS pet_tenant_id
          FROM tags t
-         INNER JOIN pets p ON p.id = t.pet_id
+         LEFT JOIN pets p ON p.id = t.pet_id
          WHERE t.id = ?`
       )
       .bind(normalizedTagId)
@@ -42,38 +46,29 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
   } catch {
     tag = null;
   }
+
   if (!tag) {
     try {
       tag = await db
         .prepare(
           `SELECT t.id, t.pet_id, t.is_active, t.assigned_subject_kind,
-                  COALESCE(p.subject_kind, 'pet') AS pet_subject_kind,
+                  p.subject_kind AS pet_subject_kind,
                   p.tenant_id AS pet_tenant_id
            FROM tags t
-           INNER JOIN pets p ON p.id = t.pet_id
+           LEFT JOIN pets p ON p.id = t.pet_id
            WHERE UPPER(REPLACE(REPLACE(REPLACE(t.id, ':', ''), '-', ''), '_', '')) = ?`
         )
         .bind(compactTagId)
         .first<TagRow>();
     } catch {
-      try {
-        tag = await db
-          .prepare(
-            `SELECT t.id, t.pet_id, t.is_active, NULL AS assigned_subject_kind,
-                    COALESCE(p.subject_kind, 'pet') AS pet_subject_kind,
-                    p.tenant_id AS pet_tenant_id
-             FROM tags t
-             INNER JOIN pets p ON p.id = t.pet_id
-             WHERE UPPER(REPLACE(REPLACE(REPLACE(t.id, ':', ''), '-', ''), '_', '')) = ?`
-          )
-          .bind(compactTagId)
-          .first<TagRow>();
-      } catch {
-        tag = null;
-      }
+      tag = null;
     }
   }
 
+  /**
+   * UID가 DB에 아예 없는 경우 = 미등록 태그 (위조·타사 태그 등)
+   * → UnknownTagView 표시 + 접근 로그 기록
+   */
   if (!tag) {
     const headerList = await headers();
     const ip = headerList.get("x-real-ip") || headerList.get("cf-connecting-ip") || "unknown";
@@ -88,9 +83,15 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
     return <UnknownTagView tagId={normalizedTagId} />;
   }
 
+  /**
+   * UID가 DB에 있지만 아직 보호자가 연결하지 않은 태그 = 신규 판매 태그
+   * → 앱 메인페이지로 리다이렉트 (tag UID 전달: 로그인 후 연결 유도)
+   */
   if (!tag.pet_id) {
-    return <UnknownTagView tagId={tag.id} />;
+    const qs = new URLSearchParams({ tag: tag.id, action: "activate" });
+    redirect(`/?${qs.toString()}`);
   }
+
   /** 0 / false만 비활성. null·undefined(구 스키마)는 활성으로 간주 */
   const explicitlyInactive = tag.is_active === 0 || tag.is_active === false;
   if (explicitlyInactive) {
@@ -111,8 +112,8 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
       console.error("[tag-resolve] scan_logs insert failed (non-fatal):", e);
     });
 
-  // 발견자·리다이렉트: 연결된 관리 대상(프로필)의 subject_kind가 본질. 태그 출고용 assigned_subject_kind는 덮어쓰지 않음(구 제품=펫+실제=메모리 충돌 방지)
-  const effectiveKind = parseSubjectKind(tag.pet_subject_kind);
+  // 발견자·리다이렉트: 연결된 관리 대상(프로필)의 subject_kind가 본질.
+  const effectiveKind = parseSubjectKind(tag.pet_subject_kind ?? "pet");
   const tenantForLinks =
     typeof tag.pet_tenant_id === "string" && tag.pet_tenant_id.trim() ? tag.pet_tenant_id.trim() : null;
 
@@ -150,4 +151,3 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
   if (tenantForLinks) profileQs.set("tenant", tenantForLinks);
   redirect(`/profile/${tag.pet_id}?${profileQs.toString()}`);
 }
-
