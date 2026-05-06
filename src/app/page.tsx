@@ -7,9 +7,10 @@ export const runtime = "edge";
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ uid?: string; ble?: string; mac?: string; device?: string }>;
+  searchParams: Promise<{ uid?: string; ble?: string; mac?: string; device?: string; tag?: string; action?: string }>;
 }) {
-  await searchParams;
+  const sp = await searchParams;
+  const activateTagId = sp.action === "activate" && sp.tag ? sp.tag : null;
   const { session, isAdmin } = await getLandingSessionState();
 
   const orgManageHref = await getOrgManageHrefForUser(session?.user?.id).catch(() => null);
@@ -24,6 +25,7 @@ export default async function Home({
       adminEntryLink={adminEntryLink}
       adminButtonLabel={adminButtonLabel}
       orgManageHref={orgManageHref}
+      activateTagId={activateTagId}
     />
   );
 }

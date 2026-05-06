@@ -21,6 +21,8 @@ import {
   ShieldCheck,
   Sparkles,
   UserRound,
+  Tag,
+  X,
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -42,6 +44,8 @@ interface MultiModeHomeClientProps {
   adminEntryLink: string;
   adminButtonLabel: string;
   orgManageHref?: string | null;
+  /** /t/[uid]에서 미연결 태그 스캔 시 전달되는 UID (활성화 안내 배너용) */
+  activateTagId?: string | null;
 }
 
 export default function MultiModeHomeClient({
@@ -50,14 +54,17 @@ export default function MultiModeHomeClient({
   adminEntryLink,
   adminButtonLabel,
   orgManageHref = null,
+  activateTagId = null,
 }: MultiModeHomeClientProps) {
   const router = useRouter();
   const [selectedKind, setSelectedKind] = useState<SubjectKind | null>(null);
   const [isRouting, setIsRouting] = useState(false);
   const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
   /** 단계 카드는 1×3 고정, 설명은 행 아래 전체 너비 패널에만 표시 */
   const [openGuardianStepId, setOpenGuardianStepId] = useState<string | null>(null);
   const [openFinderStepId, setOpenFinderStepId] = useState<string | null>(null);
+  const showActivateBanner = Boolean(activateTagId) && !bannerDismissed;
   const heroTitle = "당신의 일상을 지키는 가장 스마트한 선택,\nLink-U";
   const heroBody =
     "반려동물·어르신·아이·수하물·주얼리까지.\n링크유는 스캔 이후의 안내와 연결 흐름을 쉽고 다정하게 이어줍니다.";
@@ -146,7 +153,10 @@ export default function MultiModeHomeClient({
     setSelectedKind(kind);
     setIsRouting(true);
     window.setTimeout(() => {
-      router.push(`/${kind}?from=home`);
+      // 활성화 태그가 있으면 모드 선택 후 해당 태그 파라미터를 함께 전달
+      const qs = new URLSearchParams({ from: "home" });
+      if (activateTagId) qs.set("tag", activateTagId);
+      router.push(`/${kind}?${qs.toString()}`);
     }, 260);
   };
 
@@ -164,6 +174,46 @@ export default function MultiModeHomeClient({
       <div className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-rose-300/30 blur-3xl" />
       <div className="pointer-events-none absolute top-[35%] -left-20 h-64 w-64 rounded-full bg-amber-200/35 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-16 right-[15%] h-64 w-64 rounded-full bg-teal-200/30 blur-3xl" />
+
+      {/* 신규 태그 활성화 안내 배너 */}
+      <AnimatePresence>
+        {showActivateBanner && (
+          <motion.div
+            key="activate-banner"
+            initial={{ opacity: 0, y: -16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -16 }}
+            transition={{ type: "spring", damping: 24, stiffness: 300 }}
+            className="relative z-50 mx-auto w-full max-w-screen-sm px-4 pt-3 min-[430px]:px-5"
+          >
+            <div className="flex items-start gap-3 rounded-[22px] border border-teal-200 bg-gradient-to-r from-teal-50 to-cyan-50 px-4 py-4 shadow-lg shadow-teal-500/10">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-teal-500 text-white shadow-md shadow-teal-500/30">
+                <Tag className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <p className="text-[13px] font-black text-teal-900 leading-tight">
+                  새 링크유 태그가 감지됐어요! 🎉
+                </p>
+                <p className="text-[11px] font-semibold text-teal-700 leading-snug">
+                  아래에서 모드를 선택한 뒤 대상을 등록하고 태그를 연결해 주세요.
+                </p>
+                <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-black text-teal-600 ring-1 ring-teal-200">
+                  <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />
+                  TAG: {activateTagId!.slice(0, 16)}{activateTagId!.length > 16 ? "…" : ""}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setBannerDismissed(true)}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/70 text-teal-500 hover:bg-white hover:text-teal-700 transition-colors"
+                aria-label="닫기"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <main className="relative z-10 mx-auto flex w-full max-w-screen-sm flex-col gap-5 px-4 pb-9 pt-7 min-[390px]:gap-6 min-[390px]:pb-10 min-[390px]:pt-8 min-[430px]:px-5">
         <motion.section
