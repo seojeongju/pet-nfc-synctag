@@ -14,6 +14,7 @@ import { assertTenantActive } from "@/lib/tenant-status";
 import { canUseModeFeature } from "@/lib/mode-visibility";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
 import type { D1Database } from "@cloudflare/workers-types";
+import { enrichWithKakaoAddressLabels } from "@/lib/kakao-geocode";
 
 interface PetData {
     name: string;
@@ -564,7 +565,7 @@ export async function getLatestLocations(subjectKind: SubjectKind, tenantId?: st
     `).bind(...petIds).all<LatestLocationRow>();
 
     // 4. 결과 병합 및 최신 선택
-    return pets.results.map(pet => {
+    const results = pets.results.map(pet => {
         const scan = latestScans.results?.find(s => s.pet_id === pet.id);
         const ble = latestBle.results?.find(b => b.pet_id === pet.id);
         
@@ -585,5 +586,26 @@ export async function getLatestLocations(subjectKind: SubjectKind, tenantId?: st
             } : null
         };
     });
+
+    // 5. 역지오코딩으로 주소 정보 추가
+    // enrichWithKakaoAddressLabels는 { latitude, longitude } 형태를 기대하므로 변환 후 호출
+    const locationsWithCoords = results
+        .filter(r => r.location)
+        .map(r => ({
+            id: r.id,
+            latitude: r.location!.lat,
+            longitude: r.location!.lng
+        }));
+    
+    const enriched = await enrichWithKakaoAddressLabels(locationsWithCoords);
+    const addressMap = new Map(enriched.map(e => [e.id, e.addressLabel]));
+
+    return results.map(r => ({
+        ...r,
+        location: r.location ? {
+            ...r.location,
+            addressLabel: addressMap.get(r.id) ?? null
+        } : null
+    }));
 }
 

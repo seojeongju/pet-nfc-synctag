@@ -28,6 +28,7 @@ interface LocationData {
   lng: number;
   timestamp: string;
   type: string;
+  addressLabel?: string | null;
 }
 
 interface SubjectWithLocation {
@@ -283,9 +284,12 @@ export default function LiveLocationMap({
       const content = `
         <div style="padding:15px; min-width:180px; font-family: 'Outfit', -apple-system, sans-serif;">
             <div style="font-weight:900; font-size:14px; color:#0f172a; margin-bottom:4px;">${subject.name}</div>
-            <div style="font-size:11px; color:#64748b; font-weight:700;">${subject.location.type} · ${new Date(subject.location.timestamp).toLocaleString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</div>
-            ${subject.is_lost ? '<div style="margin-top:8px; font-size:10px; color:#ffffff; font-weight:900; background:#f43f5e; padding:3px 8px; border-radius:8px; display:inline-block; box-shadow: 0 4px 12px rgba(244, 63, 94, 0.3);">실종 신고 중</div>' : ''}
-            ${subject.is_lost ? '<div style="margin-top:6px; font-size:10px; color:#be123c; font-weight:900;">긴급 관찰 대상</div>' : ''}
+            <div style="font-size:11px; color:#64748b; font-weight:700;">
+                ${subject.location.addressLabel ? `<div style="color:#0f172a; margin-bottom:4px; font-size:12px; font-weight:900;">${subject.location.addressLabel}</div>` : ""}
+                ${subject.location.type} · ${new Date(subject.location.timestamp).toLocaleString("ko-KR", { hour: "2-digit", minute: "2-digit" })}
+            </div>
+            ${subject.is_lost ? '<div style="margin-top:8px; font-size:10px; color:#ffffff; font-weight:900; background:#f43f5e; padding:3px 8px; border-radius:8px; display:inline-block; box-shadow: 0 4px 12px rgba(244, 63, 94, 0.3);">실종 신고 중</div>' : ""}
+            ${subject.is_lost ? '<div style="margin-top:6px; font-size:10px; color:#be123c; font-weight:900;">긴급 관찰 대상</div>' : ""}
         </div>
       `;
 
