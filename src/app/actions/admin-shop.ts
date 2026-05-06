@@ -6,7 +6,8 @@ import { nanoid } from "nanoid";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { getDB } from "@/lib/db";
 import { SUBJECT_KINDS, type SubjectKind } from "@/lib/subject-kind";
-import { getGoldSettings, updateGoldSettings, fetchAndSaveGoldPrice } from "@/lib/gold-price";
+
+
 import { resolveAdminScope } from "@/lib/admin-authz";
 
 async function assertAdminRole(): Promise<void> {
@@ -522,6 +523,9 @@ export type AdminShopOrderRow = {
   shipping_zip: string | null;
   shipping_address: string | null;
   shipping_memo: string | null;
+  created_at: string;
+};
+
 export async function listAdminShopOrders(options: {
   limit?: number;
   status?: "all" | "pending" | "paid" | "failed" | "cancelled";

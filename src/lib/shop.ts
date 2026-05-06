@@ -452,6 +452,14 @@ export async function getShopOrderByIdForUser(
       .first<{ ok: number }>()
       .catch(() => null)
   );
+  const shippingJoin = hasShippingDetailTable
+    ? "LEFT JOIN shop_order_shipping_details sd ON sd.order_id = o.id AND sd.user_id = o.user_id"
+    : "";
+
+  const row = await db
+    .prepare(
+      `SELECT o.id, o.subject_kind, o.amount_krw, o.status, ${pickOrder("options_selected_json")},
+              ${pickOrder("recipient_name")}, ${pickOrder("recipient_phone")}, ${pickOrder("shipping_zip")}, ${pickOrder("shipping_address")}, ${pickOrder("shipping_address_detail")}, ${pickOrder("shipping_memo")},
               ${hasShippingDetailTable ? "sd.recipient_name AS sd_recipient_name, sd.recipient_phone AS sd_recipient_phone, sd.shipping_zip AS sd_shipping_zip, sd.shipping_address AS sd_shipping_address, sd.shipping_address_detail AS sd_shipping_address_detail, sd.shipping_memo AS sd_shipping_memo" : "NULL AS sd_recipient_name, NULL AS sd_recipient_phone, NULL AS sd_shipping_zip, NULL AS sd_shipping_address, NULL AS sd_shipping_address_detail, NULL AS sd_shipping_memo"},
               o.created_at, o.updated_at,
               p.id AS p_id, p.name AS p_name, p.slug AS p_slug
