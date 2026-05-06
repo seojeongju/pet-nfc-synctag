@@ -248,37 +248,6 @@ export function DashboardNfcQuickRegisterCard({
         onTagLinkSessionSuccess?.();
         setTagId(normalizeTagUid(uid));
         router.refresh();
-
-        // 1. Android Chrome 등 Web NFC 쓰기를 지원하면 직접 기록 시도
-        if (webNfcWriteSupported) {
-          setIsNfcWriting(true);
-          try {
-            const handoff = await prepareGuardianNfcNativeHandoff({
-              petId: selectedSubjectId,
-              tagIdRaw: uid,
-            });
-            if (handoff.ok) {
-              const writeRes = await writeNfcUrlRecord(handoff.url);
-              if (writeRes.ok) {
-                setTagMessage({
-                  type: "success",
-                  text: "태그가 성공적으로 연결 및 기록되었습니다!",
-                });
-                setIsNfcWriting(false);
-                return;
-              }
-              // 실패 시(사용자 취소 등) 앱 실행으로 폴백 안내
-              console.warn("Web NFC write failed, falling back to app launch:", writeRes.error);
-            }
-          } catch (e) {
-            console.error("Direct write error", e);
-          } finally {
-            setIsNfcWriting(false);
-          }
-        }
-
-        // 2. iOS이거나 Web NFC 미지원/실패 시 앱 실행/설치 안내로 폴백
-        void runPetIdConnectAppLaunch({ petId: selectedSubjectId, tagIdRaw: uid });
       } catch (e: unknown) {
         if (isStaleServerActionError(e)) {
           const reloaded = reloadOnceForStaleAction();
@@ -292,7 +261,40 @@ export function DashboardNfcQuickRegisterCard({
         }
         const err = e instanceof Error ? e.message : "NFC 태그 등록에 실패했습니다.";
         setTagMessage({ type: "error", text: err });
+        return; // 에러 시 이후 로직 중단
       }
+
+      // 서버 연결 성공 후, Web NFC 쓰기 지원 여부에 따라 후속 작업 진행
+      if (webNfcWriteSupported) {
+        setIsNfcWriting(true);
+        try {
+          // handoff 정보 준비 (서버 액션 호출)
+          const handoff = await prepareGuardianNfcNativeHandoff({
+            petId: selectedSubjectId,
+            tagIdRaw: uid,
+          });
+          if (handoff.ok) {
+            // 실제 태그 쓰기 (사용자 접촉 대기 - 긴 작업)
+            const writeRes = await writeNfcUrlRecord(handoff.url);
+            if (writeRes.ok) {
+              setTagMessage({
+                type: "success",
+                text: "태그가 성공적으로 연결 및 기록되었습니다!",
+              });
+              setIsNfcWriting(false);
+              return;
+            }
+            console.warn("Web NFC write failed, falling back to app launch:", writeRes.error);
+          }
+        } catch (e) {
+          console.error("Direct write error", e);
+        } finally {
+          setIsNfcWriting(false);
+        }
+      }
+
+      // Web NFC 미지원/실패 시 앱 실행/설치 안내로 폴백
+      void runPetIdConnectAppLaunch({ petId: selectedSubjectId, tagIdRaw: uid });
     });
   };
 
@@ -527,10 +529,10 @@ export function DashboardNfcQuickRegisterCard({
                 webNfcWriteSupported ? "bg-teal-600 hover:bg-teal-500" : "bg-indigo-600 hover:bg-indigo-500"
               )}
             >
-              {isPending
-                ? "서버에 연결하는 중…"
-                : isNfcWriting
+              {isNfcWriting
                 ? "태그에 기록 중 (뒷면에 대주세요)…"
+                : isPending
+                ? "서버에 연결하는 중…"
                 : isNativeWriteOpening
                 ? "앱을 여는 중…"
                 : webNfcWriteSupported
