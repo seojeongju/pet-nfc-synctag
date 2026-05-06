@@ -101,6 +101,12 @@ export default function PetProfileClient({
 
   const { scrollY } = useScroll();
 
+  /** 하단 내비: 조상 overflow·flex·motion 등으로 fixed가 어긋나는 케이스(특히 Android WebView) 방지 */
+  const [floatNavHostReady, setFloatNavHostReady] = useState(false);
+  useLayoutEffect(() => {
+    setFloatNavHostReady(true);
+  }, []);
+
   // Parallax effects for the hero image
   const imageY = useTransform(scrollY, [0, 400], [0, 100]);
   const imageScale = useTransform(scrollY, [0, 400], [1, 1.2]);
