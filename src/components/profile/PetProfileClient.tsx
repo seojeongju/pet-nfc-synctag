@@ -472,35 +472,51 @@ export default function PetProfileClient({
                          </span>
                       </Button>
                     </a>
+                    {/* 위치 보내기: 문자알리기 바로 아래 배치 */}
+                    <div id="finder-location-share">
+                      <LocationShare
+                        tagId={tagId}
+                        petId={pet.id}
+                        enabled={
+                          treatAsPublicVisitor &&
+                          (!needsFinderGate || (finderGateDone && finderLocationConsent === true))
+                        }
+                        disabledHint={
+                          needsFinderGate && finderGateDone && finderLocationConsent === false
+                            ? "위치 전달에는 동의하지 않으셨어요. 전화·문자만으로도 가족에게 큰 도움이 됩니다."
+                            : needsFinderGate && !finderGateDone
+                              ? "먼저 위쪽 안내에 응답해 주세요."
+                              : undefined
+                        }
+                        onStatusChange={setLocationShareStatus}
+                      />
+                    </div>
                  </div>
                  ) : (
-                    <Button disabled className="w-full h-16 rounded-[28px] text-slate-400 font-bold">
-                      등록된 연락처가 없습니다
-                    </Button>
+                    <div className="grid grid-cols-1 gap-3">
+                      <Button disabled className="w-full h-16 rounded-[28px] text-slate-400 font-bold">
+                        등록된 연락처가 없습니다
+                      </Button>
+                      <div id="finder-location-share">
+                        <LocationShare
+                          tagId={tagId}
+                          petId={pet.id}
+                          enabled={
+                            treatAsPublicVisitor &&
+                            (!needsFinderGate || (finderGateDone && finderLocationConsent === true))
+                          }
+                          disabledHint={
+                            needsFinderGate && finderGateDone && finderLocationConsent === false
+                              ? "위치 전달에는 동의하지 않으셨어요. 전화·문자만으로도 가족에게 큰 도움이 됩니다."
+                              : needsFinderGate && !finderGateDone
+                                ? "먼저 위쪽 안내에 응답해 주세요."
+                                : undefined
+                          }
+                          onStatusChange={setLocationShareStatus}
+                        />
+                      </div>
+                    </div>
                  )}
-                 {treatAsPublicVisitor && !tagId && (
-                   <p className="text-[11px] text-slate-500 text-center font-medium -mt-1 leading-snug">
-                     위치는 인식표로 이 화면에 바로 들어오셨을 때만 가족에게 전달될 수 있어요. 링크로만 열었을 땐 전화·문자로 알려 주세요.
-                   </p>
-                 )}
-                 <div id="finder-location-share">
-                   <LocationShare
-                     tagId={tagId}
-                    petId={pet.id}
-                     enabled={
-                       treatAsPublicVisitor &&
-                       (!needsFinderGate || (finderGateDone && finderLocationConsent === true))
-                     }
-                     disabledHint={
-                       needsFinderGate && finderGateDone && finderLocationConsent === false
-                         ? "위치 전달에는 동의하지 않으셨어요. 전화·문자만으로도 가족에게 큰 도움이 됩니다."
-                         : needsFinderGate && !finderGateDone
-                           ? "먼저 위쪽 안내에 응답해 주세요."
-                           : undefined
-                     }
-                     onStatusChange={setLocationShareStatus}
-                   />
-                 </div>
               </div>
             </CardContent>
           </Card>
