@@ -265,3 +265,15 @@ CREATE TABLE IF NOT EXISTS storage_addon_checkout_intents (
 
 CREATE INDEX IF NOT EXISTS idx_storage_checkout_intents_user ON storage_addon_checkout_intents(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_storage_checkout_intents_status ON storage_addon_checkout_intents(status, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS guardian_push_subscriptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    endpoint TEXT NOT NULL UNIQUE,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_guardian_push_subscriptions_user_id ON guardian_push_subscriptions(user_id);

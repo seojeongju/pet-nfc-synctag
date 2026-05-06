@@ -41,6 +41,8 @@ jobs:
         env:
           # Cloudflare Pages UI만 설정 시 CI 빌드에 키가 없어 dapi.kakao.com/sdk.js 가 401 을 반환할 수 있음.
           NEXT_PUBLIC_KAKAO_MAP_JS_KEY: ${{ secrets.NEXT_PUBLIC_KAKAO_MAP_JS_KEY || vars.NEXT_PUBLIC_KAKAO_MAP_JS_KEY }}
+          # 보호자 Web Push(VAPID 공개키). 미설정 시 빌드에 포함되지 않음 → 알림 구독 카드 숨김.
+          NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ vars.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '' }}
           # 앱(딥링크) 쓰기·원점 검사. CI/Vars 미설정이면 "false" (권한 UI 비활성, 동작과 일치)
           NEXT_PUBLIC_NFC_NATIVE_HANDOFF_ENABLED: ${{ vars.NEXT_PUBLIC_NFC_NATIVE_HANDOFF_ENABLED || 'false' }}
           NEXT_PUBLIC_NFC_NATIVE_APP_STORE_URL: ${{ vars.NEXT_PUBLIC_NFC_NATIVE_APP_STORE_URL || '' }}
@@ -50,6 +52,7 @@ jobs:
       - name: Adapt for Cloudflare (next-on-pages)
         env:
           NEXT_PUBLIC_KAKAO_MAP_JS_KEY: ${{ secrets.NEXT_PUBLIC_KAKAO_MAP_JS_KEY || vars.NEXT_PUBLIC_KAKAO_MAP_JS_KEY }}
+          NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ vars.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '' }}
           NEXT_PUBLIC_NFC_NATIVE_HANDOFF_ENABLED: ${{ vars.NEXT_PUBLIC_NFC_NATIVE_HANDOFF_ENABLED || 'false' }}
           NEXT_PUBLIC_NFC_NATIVE_APP_STORE_URL: ${{ vars.NEXT_PUBLIC_NFC_NATIVE_APP_STORE_URL || '' }}
           NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL || '' }}

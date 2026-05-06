@@ -2,6 +2,7 @@
 
 ## 목적
 - 발견자 행동(`call_click`, `sms_click`, `location_share_*`) 발생 시 보호자 대응 시간을 줄이기 위해 실시간 알림을 보냅니다.
+- **웹훅**과 별도로, 보호자가 대시보드에서 등록한 **Web Push**(탭을 닫아도 기기 알림)도 같은 이벤트·쿨다운 정책으로 발송됩니다. 설정은 `docs/GUARDIAN_WEB_PUSH.md` 참고.
 
 ## 환경변수
 - `GUARDIAN_ALERT_WEBHOOK_URL`

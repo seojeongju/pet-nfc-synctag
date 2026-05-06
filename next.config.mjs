@@ -9,6 +9,8 @@ const withPWA = withPWAInit({
   // 새 배포 서버 액션 ID가 어긋나 "Server Action was not found"가 날 수 있음 → 네트워크만 사용.
   extendDefaultRuntimeCaching: true,
   workboxOptions: {
+    /** 발견자 Web Push 알림 클릭·표시 (public/sw-push-listener.js) */
+    importScripts: ["/sw-push-listener.js"],
     runtimeCaching: ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"].map((method) => ({
       urlPattern: ({ url }) => url.pathname.startsWith("/admin"),
       handler: "NetworkOnly",

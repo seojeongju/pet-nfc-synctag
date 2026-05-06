@@ -1,6 +1,7 @@
 import { type SubjectKind } from "@/lib/subject-kind";
 import type { ModeAnnouncementRow } from "@/types/mode-announcement";
 import type { TenantPlanUsageSummary } from "@/lib/tenant-quota";
+import { GuardianPushSubscribeCard } from "@/components/dashboard/GuardianPushSubscribeCard";
 import PetDashboard from "./modes/PetDashboard";
 import ElderDashboard from "./modes/ElderDashboard";
 import ChildDashboard from "./modes/ChildDashboard";
@@ -42,6 +43,7 @@ export default function DashboardClient({
   linkedTagCount = 0,
   petScanLogCount = 0
 }: DashboardClientProps) {
+  const dashboard = (() => {
   switch (subjectKind) {
     case "pet":
       return (
@@ -115,6 +117,27 @@ export default function DashboardClient({
         />
       );
     default:
-      return null;
+      return (
+        <PetDashboard
+          session={session}
+          pets={pets}
+          isAdmin={isAdmin}
+          modeAnnouncements={modeAnnouncements}
+          tenantId={tenantId}
+          tenantUsage={tenantUsage}
+          tenantSuspended={tenantSuspended}
+          modeFeatureEnabled={modeFeatureEnabled}
+          linkedTagCount={linkedTagCount}
+          petScanLogCount={petScanLogCount}
+        />
+      );
   }
+  })();
+
+  return (
+    <>
+      <GuardianPushSubscribeCard />
+      {dashboard}
+    </>
+  );
 }

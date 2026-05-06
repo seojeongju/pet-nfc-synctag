@@ -1,6 +1,10 @@
 "use server";
 import { getDB } from "@/lib/db";
 import { reverseGeocodeToKoreanAddress } from "@/lib/kakao-geocode";
+import {
+  sendGuardianWebPushForFinderAction,
+  type GuardianPushFinderAction,
+} from "@/lib/guardian-push-send";
 
 export async function updateScanLocation(tagId: string, lat: number, lng: number) {
   const db = getDB();
@@ -62,9 +66,6 @@ async function maybeSendGuardianRealtimeAlert(
     longitude?: number | null;
   }
 ) {
-  const webhook = process.env.GUARDIAN_ALERT_WEBHOOK_URL?.trim();
-  if (!webhook) return;
-
   // 위치 공유 오류는 운영 분석 지표로만 사용하고 실시간 알림은 보내지 않음
   if (input.action === "location_share_error") return;
 
@@ -102,9 +103,13 @@ async function maybeSendGuardianRealtimeAlert(
   if (recent?.id) return;
 
   const pet = await db
-    .prepare("SELECT name, emergency_contact FROM pets WHERE id = ? LIMIT 1")
+    .prepare("SELECT name, emergency_contact, owner_id FROM pets WHERE id = ? LIMIT 1")
     .bind(resolvedPetId)
-    .first<{ name: string | null; emergency_contact: string | null }>()
+    .first<{
+      name: string | null;
+      emergency_contact: string | null;
+      owner_id: string | null;
+    }>()
     .catch(() => null);
 
   let addressLabel: string | null = null;
@@ -147,19 +152,37 @@ async function maybeSendGuardianRealtimeAlert(
     `detail=${input.detail ?? "n/a"}\n` +
     `profile=${profileUrl || "n/a"}`;
 
-  await fetch(webhook, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      text,
-      address: addressLabel,
+  const webhook = process.env.GUARDIAN_ALERT_WEBHOOK_URL?.trim();
+  if (webhook) {
+    await fetch(webhook, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text,
+        address: addressLabel,
+        latitude: lat != null && Number.isFinite(lat) ? lat : null,
+        longitude: lng != null && Number.isFinite(lng) ? lng : null,
+        kakaoMapUrl: mapUrl || null,
+      }),
+    }).catch(() => {
+      // 알림 전송 실패는 사용자 흐름을 막지 않음
+    });
+  }
+
+  const ownerId = pet?.owner_id?.trim();
+  if (ownerId) {
+    const openPath = `/profile/${encodeURIComponent(resolvedPetId)}?from=scan`;
+    await sendGuardianWebPushForFinderAction(db, {
+      ownerUserId: ownerId,
+      petId: resolvedPetId,
+      petName: (pet?.name ?? resolvedPetId).trim() || resolvedPetId,
+      action: input.action as GuardianPushFinderAction,
+      addressLabel,
       latitude: lat != null && Number.isFinite(lat) ? lat : null,
       longitude: lng != null && Number.isFinite(lng) ? lng : null,
-      kakaoMapUrl: mapUrl || null,
-    }),
-  }).catch(() => {
-    // 알림 전송 실패는 사용자 흐름을 막지 않음
-  });
+      openPath,
+    }).catch(() => {});
+  }
 
   await db
     .prepare("INSERT INTO guardian_alert_state (pet_id, action) VALUES (?, ?)")
