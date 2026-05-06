@@ -131,9 +131,17 @@ export function TagBulkRegisterCard() {
   /** NFC 읽기가 비동기라, 완료 시점의 활성 모드 기준으로 UID를 반영합니다 */
   const activeKindRef = useRef<SubjectKind>(activeKind);
   activeKindRef.current = activeKind;
+  /** iOS / Safari 환경 감지 (NFC 읽기·쓰기 모두 미지원) */
+  const [isIosSafari, setIsIosSafari] = useState(false);
 
   useEffect(() => {
     setNfcReadSupported(isWebNfcReadSupported());
+    // iOS 기기 또는 iPad OS(모바일 Safari) 감지
+    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+    const isIos = /iPad|iPhone|iPod/.test(ua) ||
+      (typeof navigator !== "undefined" && navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const isSafariOnly = /^((?!chrome|chromium|crios|fxios|opios|brave).)*safari/i.test(ua);
+    setIsIosSafari(isIos || isSafariOnly);
   }, []);
 
   useEffect(() => {
@@ -362,7 +370,21 @@ export function TagBulkRegisterCard() {
             </Button>
           </div>
         </div>
-        {nfcReadSupported === false && (
+        {/* iOS/Safari 환경: NFC 읽기·쓰기 완전 미지원 안내 */}
+        {isIosSafari && (
+          <div className="flex items-start gap-2.5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
+            <span className="mt-0.5 text-base leading-none">🚫</span>
+            <div className="space-y-0.5">
+              <p className="text-[13px] font-black text-rose-800 sm:text-xs">
+                iOS / Safari는 NFC 스캔 기능을 사용할 수 없습니다.
+              </p>
+              <p className="text-[11px] font-semibold text-rose-600 leading-snug sm:text-[10px]">
+                UID는 직접 입력하거나, Android Chrome에서 이 페이지를 열어 NFC 스캔을 사용하세요.
+              </p>
+            </div>
+          </div>
+        )}
+        {!isIosSafari && nfcReadSupported === false && (
           <p className="text-[13px] font-black text-amber-800 sm:text-[10px]">
             NDEFReader 미지원 — UID는 직접 입력하거나 Chrome에서 열기 (도움말)
           </p>
