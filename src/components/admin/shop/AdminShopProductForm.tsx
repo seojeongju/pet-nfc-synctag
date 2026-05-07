@@ -164,7 +164,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
     </div>
   </section>
 
-  ${videoUrl ? \`<section class="space-y-4">
+  ${videoUrl ? `<section class="space-y-4">
     <div class="flex items-center gap-2 px-2">
        <span class="h-1 w-8 bg-rose-500 rounded-full"></span>
        <h3 class="text-xl font-black text-slate-900">작동 영상</h3>
@@ -172,9 +172,9 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
     <div class="aspect-video overflow-hidden rounded-[40px] bg-black shadow-xl ring-1 ring-slate-200">
       <video src="${videoUrl}" controls class="h-full w-full"></video>
     </div>
-  </section>\` : ""}
+  </section>` : ""}
 
-  ${additionalImages.length > 0 ? \`<section class="space-y-4">
+  ${additionalImages.length > 0 ? `<section class="space-y-4">
     <div class="flex items-center gap-2 px-2">
        <span class="h-1 w-8 bg-indigo-500 rounded-full"></span>
        <h3 class="text-xl font-black text-slate-900">상세 갤러리</h3>
@@ -186,7 +186,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
         </div>
       `).join("")}
     </div>
-  </section>\` : ""}
+  </section>` : ""}
 
   <section class="rounded-3xl border-2 border-dashed border-slate-100 p-6 bg-slate-50/50">
     <h4 class="text-sm font-black text-slate-900 mb-3 flex items-center gap-2">
