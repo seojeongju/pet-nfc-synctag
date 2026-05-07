@@ -12,7 +12,6 @@ import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-
 import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
 import {
-  Settings,
   Image as ImageIcon,
   FileText,
   Upload,
@@ -20,13 +19,13 @@ import {
   Plus,
   X,
   Sparkles,
-  ArrowRight,
   ExternalLink,
   Package,
   Save,
   Trash2,
   LayoutGrid,
-  DollarSign
+  DollarSign,
+  type LucideIcon
 } from "lucide-react";
 import type { ShopProductOptionGroup, ShopProductOptionValue } from "@/types/shop";
 import {
@@ -35,7 +34,6 @@ import {
 } from "@/lib/shop";
 import {
   resizeProductImageForUpload,
-  SHOP_UPLOAD_IMAGE_MAX_EDGE_PX,
 } from "@/lib/resize-shop-image";
 import { ProductContentEditorPanel } from "@/components/admin/shop/ProductContentEditorPanel";
 import { nanoid } from "nanoid";
@@ -205,7 +203,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
 
   const checkedModes = kindsChecked(product);
 
-  const SectionHeader = ({ icon: Icon, title, description }: { icon: any, title: string, description: string }) => (
+  const SectionHeader = ({ icon: Icon, title, description }: { icon: LucideIcon, title: string, description: string }) => (
     <div className="flex items-center gap-4 mb-6">
       <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-50 text-teal-600 shadow-sm ring-1 ring-teal-100">
         <Icon className="h-6 w-6" />
