@@ -588,7 +588,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
         </div>
       </div>
 
-      <style jsx global>{\`
+      <style jsx global>{`
         .shop-detail-preview img {
           max-width: 100%;
           height: auto;
@@ -604,7 +604,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
           margin-bottom: 1rem;
           font-weight: 800;
         }
-      \`}</style>
+      `}</style>
     </form>
   );
 }
