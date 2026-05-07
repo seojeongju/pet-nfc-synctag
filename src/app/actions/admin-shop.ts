@@ -265,7 +265,10 @@ function buildShopProductWriteBinds(
 function parseKindsFromForm(formData: FormData): SubjectKind[] {
   const out: SubjectKind[] = [];
   for (const k of SUBJECT_KINDS) {
-    if (formData.get(`kind_${k}`) === "on") out.push(k);
+    const val = formData.get(`kind_${k}`);
+    if (val === "on" || val === "true" || val === "1") {
+      out.push(k);
+    }
   }
   return out;
 }
