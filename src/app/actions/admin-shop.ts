@@ -405,7 +405,11 @@ export async function saveShopProduct(formData: FormData): Promise<void> {
       .run();
     revalidatePath("/admin/shop");
     revalidatePath("/admin/shop/products");
+    if (idExisting) {
+      revalidatePath(`/admin/shop/products/${idExisting}`);
+    }
     revalidatePath("/shop");
+    revalidatePath("/shop/[slug]", "page");
     redirect(`/admin/shop/products?ok=1`);
   }
 

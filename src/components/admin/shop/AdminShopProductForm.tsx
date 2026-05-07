@@ -39,21 +39,27 @@ import { ProductContentEditorPanel } from "@/components/admin/shop/ProductConten
 import { nanoid } from "nanoid";
 
 function kindsChecked(row: AdminShopProductRow | null): Set<SubjectKind> {
-  const s = new Set<SubjectKind>();
-  if (!row?.target_modes) return s;
+function kindsChecked(product: AdminShopProductRow | null): Set<SubjectKind> {
+  if (!product?.target_modes) return new Set();
   try {
-    const v = JSON.parse(String(row.target_modes)) as unknown;
-    if (!Array.isArray(v)) return s;
-    for (const x of v) {
-      if (typeof x === "string" && (SUBJECT_KINDS as readonly string[]).includes(x)) {
-        s.add(x as SubjectKind);
-      }
-    }
+    const arr = JSON.parse(product.target_modes);
+    return new Set(Array.isArray(arr) ? arr : []);
   } catch {
-    /* ignore */
+    return new Set();
   }
-  return s;
 }
+
+const SectionHeader = ({ icon: Icon, title, description }: { icon: LucideIcon, title: string, description: string }) => (
+  <div className="flex items-center gap-4 mb-6">
+    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-50 text-teal-600 shadow-sm ring-1 ring-teal-100">
+      <Icon className="h-6 w-6" />
+    </div>
+    <div>
+      <h2 className="text-[18px] font-black text-slate-900 leading-tight">{title}</h2>
+      <p className="text-[12px] font-bold text-slate-400 mt-0.5">{description}</p>
+    </div>
+  </div>
+);
 
 export function AdminShopProductForm({ product }: { product: AdminShopProductRow | null }) {
   const isEdit = Boolean(product);
@@ -202,18 +208,6 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
   };
 
   const checkedModes = kindsChecked(product);
-
-  const SectionHeader = ({ icon: Icon, title, description }: { icon: LucideIcon, title: string, description: string }) => (
-    <div className="flex items-center gap-4 mb-6">
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-50 text-teal-600 shadow-sm ring-1 ring-teal-100">
-        <Icon className="h-6 w-6" />
-      </div>
-      <div>
-        <h2 className="text-[18px] font-black text-slate-900 leading-tight">{title}</h2>
-        <p className="text-[12px] font-bold text-slate-400 mt-0.5">{description}</p>
-      </div>
-    </div>
-  );
 
   return (
     <form action={saveShopProduct} className="relative pb-32" noValidate>
