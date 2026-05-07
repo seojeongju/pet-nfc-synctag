@@ -274,190 +274,176 @@ function parseKindsFromForm(formData: FormData): SubjectKind[] {
 }
 
 export async function saveShopProduct(formData: FormData): Promise<void> {
-  console.log("--- SAVE SHOP PRODUCT START ---");
-  const scope = await getAdminDataScope();
-
   const idExisting = String(formData.get("id") ?? "").trim();
-  const slugRaw = String(formData.get("slug") ?? "").trim().toLowerCase();
-  const name = String(formData.get("name") ?? "").trim();
-  const description = String(formData.get("description") ?? "").trim();
-  const priceRaw = Number(formData.get("price_krw"));
-  const stockRaw = Number(formData.get("stock_quantity") ?? 999);
-  const sortRaw = Number(formData.get("sort_order"));
-  const active = formData.get("active") === "on" ? 1 : 0;
-  const imageUrlRaw = String(formData.get("image_url") ?? "").trim();
-  const videoUrlRaw = String(formData.get("video_url") ?? "").trim();
-  const contentHtml = String(formData.get("content_html") ?? "").trim();
-  const additionalImagesRaw = String(formData.get("additional_images") ?? "").trim();
-  const optionsJsonRaw = String(formData.get("options_json") ?? "").trim();
-  const weightGramsRaw = formData.get("weight_grams");
-  const laborFeeRaw = formData.get("labor_fee_krw");
-  const isGoldLinked = formData.get("is_gold_linked") === "on" ? 1 : 0;
+  try {
+    console.log("--- SAVE SHOP PRODUCT ATTEMPT ---");
+    const scope = await getAdminDataScope();
 
-  const modes = parseKindsFromForm(formData);
-  const target_modes = JSON.stringify(modes);
+    const slugRaw = String(formData.get("slug") ?? "").trim().toLowerCase();
+    const name = String(formData.get("name") ?? "").trim();
+    const description = String(formData.get("description") ?? "").trim();
+    const priceRaw = Number(formData.get("price_krw"));
+    const stockRaw = Number(formData.get("stock_quantity") ?? 999);
+    const sortRaw = Number(formData.get("sort_order"));
+    const active = formData.get("active") === "on" ? 1 : 0;
+    const imageUrlRaw = String(formData.get("image_url") ?? "").trim();
+    const videoUrlRaw = String(formData.get("video_url") ?? "").trim();
+    const contentHtml = String(formData.get("content_html") ?? "").trim();
+    const additionalImagesRaw = String(formData.get("additional_images") ?? "").trim();
+    const optionsJsonRaw = String(formData.get("options_json") ?? "").trim();
+    const weightGramsRaw = formData.get("weight_grams");
+    const laborFeeRaw = formData.get("labor_fee_krw");
+    const isGoldLinked = formData.get("is_gold_linked") === "on" ? 1 : 0;
 
-  console.log("Data:", {
-    id: idExisting,
-    slug: slugRaw,
-    name,
-    modes,
-    price: priceRaw,
-    active
-  });
+    const modes = parseKindsFromForm(formData);
+    const target_modes = JSON.stringify(modes);
 
-  if (!slugRaw || !SLUG_RE.test(slugRaw)) {
-    console.warn("Validation failed: invalid slug", slugRaw);
-    redirect(`/admin/shop/products${idExisting ? `/${encodeURIComponent(idExisting)}` : "/new"}?e=${encodeURIComponent("슬러그는 영문 소문자·숫자·하이픈만 사용합니다.")}`);
-  }
-  if (!name) {
-    console.warn("Validation failed: missing name");
-    redirect(`/admin/shop/products${idExisting ? `/${encodeURIComponent(idExisting)}` : "/new"}?e=${encodeURIComponent("상품명을 입력하세요.")}`);
-  }
-  if (!Number.isFinite(priceRaw) || priceRaw < 0) {
-    console.warn("Validation failed: invalid price", priceRaw);
-    redirect(`/admin/shop/products${idExisting ? `/${encodeURIComponent(idExisting)}` : "/new"}?e=${encodeURIComponent("가격이 올바르지 않습니다.")}`);
-  }
-  if (!Number.isFinite(sortRaw)) {
-    console.warn("Validation failed: invalid sort_order", sortRaw);
-    redirect(`/admin/shop/products${idExisting ? `/${encodeURIComponent(idExisting)}` : "/new"}?e=${encodeURIComponent("정렬 순서가 올바르지 않습니다.")}`);
-  }
-  if (modes.length === 0) {
-    console.warn("Validation failed: no modes selected");
-    redirect(`/admin/shop/products${idExisting ? `/${encodeURIComponent(idExisting)}` : "/new"}?e=${encodeURIComponent("노출 모드를 최소 1개 이상 선택하세요.")}`);
-  }
+    console.log(`Payload: name=${name}, slug=${slugRaw}, htmlLength=${contentHtml.length}`);
 
-  const price_krw = Math.floor(priceRaw);
-  const stock_quantity = Math.floor(stockRaw);
-  const sort_order = Math.floor(sortRaw);
-  const image_url = imageUrlRaw.length > 0 ? imageUrlRaw.slice(0, 2048) : null;
-  const video_url = videoUrlRaw.length > 0 ? videoUrlRaw.slice(0, 2048) : null;
-  const additional_images = additionalImagesRaw.length > 0 ? additionalImagesRaw : null;
-  const content_html = contentHtml.length > 0 ? contentHtml : null;
-  const options_json = optionsJsonRaw.length > 0 ? optionsJsonRaw : null;
-  const weight_grams = weightGramsRaw
-    ? (() => {
-        const n = parseFloat(String(weightGramsRaw));
-        return Number.isFinite(n) ? n : null;
-      })()
-    : null;
-  const labor_fee_krw = laborFeeRaw
-    ? (() => {
-        const n = parseInt(String(laborFeeRaw), 10);
-        return Number.isFinite(n) ? n : null;
-      })()
-    : null;
-
-  const db = getDB();
-  const shopCols = await getShopProductsColumnSet();
-  if (!shopCols.has("id")) {
-    redirect(
-      `/admin/shop/products${idExisting ? `/${encodeURIComponent(idExisting)}` : "/new"}?e=${encodeURIComponent("shop_products 테이블이 없습니다. D1 마이그레이션을 확인하세요.")}`
-    );
-  }
-  const writeCols = filterShopProductWriteColumns(shopCols);
-  if (writeCols.length === 0) {
-    redirect(
-      `/admin/shop/products${idExisting ? `/${encodeURIComponent(idExisting)}` : "/new"}?e=${encodeURIComponent("shop_products 스키마에 저장 가능한 컬럼이 없습니다.")}`
-    );
-  }
-  /** 상품 폼에서 골드 연동 필드를 제거한 경우: 수정 시 DB 기존 값 유지 (금 시세 메뉴 등과 중복 방지) */
-  const formIncludesGoldFields =
-    formData.has("weight_grams") ||
-    formData.has("labor_fee_krw") ||
-    formData.has("is_gold_linked");
-  const colsForSave =
-    idExisting && !formIncludesGoldFields
-      ? writeCols.filter(
-          (c) => c !== "weight_grams" && c !== "labor_fee_krw" && c !== "is_gold_linked"
-        )
-      : writeCols;
-  const writeBinds = buildShopProductWriteBinds(colsForSave, {
-    slugRaw,
-    name,
-    description,
-    price_krw,
-    active,
-    target_modes,
-    image_url,
-    video_url,
-    content_html,
-    additional_images,
-    options_json,
-    stock_quantity,
-    sort_order,
-    weight_grams,
-    labor_fee_krw,
-    isGoldLinked,
-  });
-
-  if (idExisting) {
-    if (isOrgAdminProductScope(scope.tenantIds)) {
-      if (!shopCols.has("created_by_user_id")) {
-        redirect(
-          `/admin/shop/products/${encodeURIComponent(idExisting)}?e=${encodeURIComponent("DB에 상품 등록자 컬럼이 없습니다. 마이그레이션 0030을 적용하세요.")}`
-        );
-      }
-      const prior = await db
-        .prepare(`SELECT created_by_user_id FROM shop_products WHERE id = ?`)
-        .bind(idExisting)
-        .first<{ created_by_user_id: string | null }>();
-      if (!prior || prior.created_by_user_id !== scope.actorId) {
-        redirect(
-          `/admin/shop/products/${encodeURIComponent(idExisting)}?e=${encodeURIComponent("이 상품을 수정할 권한이 없습니다.")}`
-        );
-      }
+    if (!slugRaw || !SLUG_RE.test(slugRaw)) {
+      redirect(`/admin/shop/products${idExisting ? `/${encodeURIComponent(idExisting)}` : "/new"}?e=${encodeURIComponent("슬러그는 영문 소문자·숫자·하이픈만 사용합니다.")}`);
     }
-    const dup = await db
-      .prepare(`SELECT id FROM shop_products WHERE slug = ? AND id != ?`)
-      .bind(slugRaw, idExisting)
-      .first<{ id: string }>();
-    if (dup) {
-      redirect(`/admin/shop/products/${encodeURIComponent(idExisting)}?e=${encodeURIComponent("이미 사용 중인 슬러그입니다.")}`);
+    if (!name) {
+      redirect(`/admin/shop/products${idExisting ? `/${encodeURIComponent(idExisting)}` : "/new"}?e=${encodeURIComponent("상품명을 입력하세요.")}`);
     }
-    const setSql = colsForSave.map((c) => `${c} = ?`).join(", ");
-    const tsSql = shopCols.has("updated_at") ? ", updated_at = CURRENT_TIMESTAMP" : "";
-    await db
-      .prepare(`UPDATE shop_products SET ${setSql}${tsSql} WHERE id = ?`)
-      .bind(...writeBinds, idExisting)
-      .run();
-    revalidatePath("/admin/shop");
-    revalidatePath("/admin/shop/products");
+    if (!Number.isFinite(priceRaw) || priceRaw < 0) {
+      redirect(`/admin/shop/products${idExisting ? `/${encodeURIComponent(idExisting)}` : "/new"}?e=${encodeURIComponent("가격이 올바르지 않습니다.")}`);
+    }
+    if (!Number.isFinite(sortRaw)) {
+      redirect(`/admin/shop/products${idExisting ? `/${encodeURIComponent(idExisting)}` : "/new"}?e=${encodeURIComponent("정렬 순서가 올바르지 않습니다.")}`);
+    }
+    if (modes.length === 0) {
+      redirect(`/admin/shop/products${idExisting ? `/${encodeURIComponent(idExisting)}` : "/new"}?e=${encodeURIComponent("노출 모드를 최소 1개 이상 선택하세요.")}`);
+    }
+
+    const price_krw = Math.floor(priceRaw);
+    const stock_quantity = Math.floor(stockRaw);
+    const sort_order = Math.floor(sortRaw);
+    const image_url = imageUrlRaw.length > 0 ? imageUrlRaw.slice(0, 2048) : null;
+    const video_url = videoUrlRaw.length > 0 ? videoUrlRaw.slice(0, 2048) : null;
+    const additional_images = additionalImagesRaw.length > 0 ? additionalImagesRaw : null;
+    const content_html = contentHtml.length > 0 ? contentHtml : null;
+    const options_json = optionsJsonRaw.length > 0 ? optionsJsonRaw : null;
+    const weight_grams = weightGramsRaw
+      ? (() => {
+          const n = parseFloat(String(weightGramsRaw));
+          return Number.isFinite(n) ? n : null;
+        })()
+      : null;
+    const labor_fee_krw = laborFeeRaw
+      ? (() => {
+          const n = parseInt(String(laborFeeRaw), 10);
+          return Number.isFinite(n) ? n : null;
+        })()
+      : null;
+
+    const db = getDB();
+    const shopCols = await getShopProductsColumnSet();
+    if (!shopCols.has("id")) {
+      throw new Error("shop_products 테이블 스키마 정보가 없습니다.");
+    }
+    const writeCols = filterShopProductWriteColumns(shopCols);
+    if (writeCols.length === 0) {
+      throw new Error("저장 가능한 컬럼이 정의되지 않았습니다.");
+    }
+    const formIncludesGoldFields =
+      formData.has("weight_grams") ||
+      formData.has("labor_fee_krw") ||
+      formData.has("is_gold_linked");
+    const colsForSave =
+      idExisting && !formIncludesGoldFields
+        ? writeCols.filter(
+            (c) => c !== "weight_grams" && c !== "labor_fee_krw" && c !== "is_gold_linked"
+          )
+        : writeCols;
+    const writeBinds = buildShopProductWriteBinds(colsForSave, {
+      slugRaw,
+      name,
+      description,
+      price_krw,
+      active,
+      target_modes,
+      image_url,
+      video_url,
+      content_html,
+      additional_images,
+      options_json,
+      stock_quantity,
+      sort_order,
+      weight_grams,
+      labor_fee_krw,
+      isGoldLinked,
+    });
+
     if (idExisting) {
+      if (isOrgAdminProductScope(scope.tenantIds)) {
+        if (!shopCols.has("created_by_user_id")) {
+          throw new Error("DB에 상품 등록자 컬럼이 없습니다. 마이그레이션 0030을 확인하세요.");
+        }
+        const prior = await db
+          .prepare(`SELECT created_by_user_id FROM shop_products WHERE id = ?`)
+          .bind(idExisting)
+          .first<{ created_by_user_id: string | null }>();
+        if (!prior || prior.created_by_user_id !== scope.actorId) {
+          throw new Error("이 상품을 수정할 권한이 없습니다.");
+        }
+      }
+      const dup = await db
+        .prepare(`SELECT id FROM shop_products WHERE slug = ? AND id != ?`)
+        .bind(slugRaw, idExisting)
+        .first<{ id: string }>();
+      if (dup) {
+        throw new Error("이미 사용 중인 슬러그입니다.");
+      }
+      const setSql = colsForSave.map((c) => `${c} = ?`).join(", ");
+      const tsSql = shopCols.has("updated_at") ? ", updated_at = CURRENT_TIMESTAMP" : "";
+      await db
+        .prepare(`UPDATE shop_products SET ${setSql}${tsSql} WHERE id = ?`)
+        .bind(...writeBinds, idExisting)
+        .run();
+      
+      revalidatePath("/admin/shop");
+      revalidatePath("/admin/shop/products");
       revalidatePath(`/admin/shop/products/${idExisting}`);
+      revalidatePath("/shop");
+      revalidatePath("/shop/[slug]", "page");
+      redirect(`/admin/shop/products?ok=1`);
+    } else {
+      const dupNew = await db.prepare(`SELECT id FROM shop_products WHERE slug = ?`).bind(slugRaw).first<{ id: string }>();
+      if (dupNew) {
+        throw new Error("이미 사용 중인 슬러그입니다.");
+      }
+
+      if (isOrgAdminProductScope(scope.tenantIds) && !shopCols.has("created_by_user_id")) {
+        throw new Error("DB에 상품 등록자 컬럼이 없습니다.");
+      }
+
+      const newId = nanoid();
+      const insertCols = ["id", ...writeCols];
+      const insertBinds: unknown[] = [newId, ...writeBinds];
+      if (shopCols.has("created_by_user_id")) {
+        insertCols.push("created_by_user_id");
+        insertBinds.push(scope.actorId);
+      }
+      const placeholders = insertCols.map(() => "?").join(", ");
+      const insertSql = shopCols.has("updated_at")
+        ? `INSERT INTO shop_products (${insertCols.join(", ")}, updated_at) VALUES (${placeholders}, CURRENT_TIMESTAMP)`
+        : `INSERT INTO shop_products (${insertCols.join(", ")}) VALUES (${placeholders})`;
+      await db.prepare(insertSql).bind(...insertBinds).run();
+      
+      revalidatePath("/admin/shop");
+      revalidatePath("/admin/shop/products");
+      revalidatePath("/shop");
+      redirect(`/admin/shop/products?ok=1`);
     }
-    revalidatePath("/shop");
-    revalidatePath("/shop/[slug]", "page");
-    redirect(`/admin/shop/products?ok=1`);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) {
+      throw error;
+    }
+    console.error("CRITICAL SAVE ERROR:", error);
+    const msg = error instanceof Error ? error.message : "알 수 없는 저장 오류가 발생했습니다.";
+    redirect(`/admin/shop/products${idExisting ? `/${encodeURIComponent(idExisting)}` : "/new"}?e=${encodeURIComponent(msg)}`);
   }
-
-  const dupNew = await db.prepare(`SELECT id FROM shop_products WHERE slug = ?`).bind(slugRaw).first<{ id: string }>();
-  if (dupNew) {
-    redirect(`/admin/shop/products/new?e=${encodeURIComponent("이미 사용 중인 슬러그입니다.")}`);
-  }
-
-  if (isOrgAdminProductScope(scope.tenantIds) && !shopCols.has("created_by_user_id")) {
-    redirect(
-      `/admin/shop/products/new?e=${encodeURIComponent("DB에 상품 등록자 컬럼이 없습니다. 마이그레이션 0030을 적용하세요.")}`
-    );
-  }
-
-  const newId = nanoid();
-  const insertCols = ["id", ...writeCols];
-  const insertBinds: unknown[] = [newId, ...writeBinds];
-  if (shopCols.has("created_by_user_id")) {
-    insertCols.push("created_by_user_id");
-    insertBinds.push(scope.actorId);
-  }
-  const placeholders = insertCols.map(() => "?").join(", ");
-  const insertSql = shopCols.has("updated_at")
-    ? `INSERT INTO shop_products (${insertCols.join(", ")}, updated_at) VALUES (${placeholders}, CURRENT_TIMESTAMP)`
-    : `INSERT INTO shop_products (${insertCols.join(", ")}) VALUES (${placeholders})`;
-  await db.prepare(insertSql).bind(...insertBinds).run();
-  revalidatePath("/admin/shop");
-  revalidatePath("/admin/shop/products");
-  revalidatePath("/shop");
-  redirect(`/admin/shop/products?ok=1`);
 }
 
 export async function deleteShopProduct(formData: FormData): Promise<void> {
