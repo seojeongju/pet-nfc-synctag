@@ -279,18 +279,23 @@ export async function saveShopProduct(formData: FormData): Promise<void> {
     console.log("--- SAVE SHOP PRODUCT ATTEMPT ---");
     const scope = await getAdminDataScope();
 
-    const slugRaw = String(formData.get("slug") ?? "").trim().toLowerCase();
-    const name = String(formData.get("name") ?? "").trim();
-    const description = String(formData.get("description") ?? "").trim();
+    const getS = (k: string) => {
+      const v = formData.get(k);
+      return typeof v === "string" ? v.trim() : "";
+    };
+
+    const slugRaw = getS("slug").toLowerCase();
+    const name = getS("name");
+    const description = getS("description");
     const priceRaw = Number(formData.get("price_krw"));
     const stockRaw = Number(formData.get("stock_quantity") ?? 999);
     const sortRaw = Number(formData.get("sort_order"));
     const active = formData.get("active") === "on" ? 1 : 0;
-    const imageUrlRaw = String(formData.get("image_url") ?? "").trim();
-    const videoUrlRaw = String(formData.get("video_url") ?? "").trim();
-    const contentHtml = String(formData.get("content_html") ?? "").trim();
-    const additionalImagesRaw = String(formData.get("additional_images") ?? "").trim();
-    const optionsJsonRaw = String(formData.get("options_json") ?? "").trim();
+    const imageUrlRaw = getS("image_url");
+    const videoUrlRaw = getS("video_url");
+    const contentHtml = getS("content_html");
+    const additionalImagesRaw = getS("additional_images");
+    const optionsJsonRaw = getS("options_json");
     const weightGramsRaw = formData.get("weight_grams");
     const laborFeeRaw = formData.get("labor_fee_krw");
     const isGoldLinked = formData.get("is_gold_linked") === "on" ? 1 : 0;
@@ -298,7 +303,8 @@ export async function saveShopProduct(formData: FormData): Promise<void> {
     const modes = parseKindsFromForm(formData);
     const target_modes = JSON.stringify(modes);
 
-    console.log(`Payload: name=${name}, slug=${slugRaw}, htmlLength=${contentHtml.length}`);
+    console.log(`[saveShopProduct] Payload: name=${name}, slug=${slugRaw}, htmlLength=${contentHtml.length}`);
+    console.log(`[saveShopProduct] Media Raw: image=${imageUrlRaw}, video=${videoUrlRaw}, additionalImages=${additionalImagesRaw}`);
 
     if (!slugRaw || !SLUG_RE.test(slugRaw)) {
       redirect(`/admin/shop/products${idExisting ? `/${encodeURIComponent(idExisting)}` : "/new"}?e=${encodeURIComponent("슬러그는 영문 소문자·숫자·하이픈만 사용합니다.")}`);
@@ -359,7 +365,7 @@ export async function saveShopProduct(formData: FormData): Promise<void> {
           )
         : writeCols;
 
-    console.log(`Saving product: id=${idExisting || "NEW"}, cols=${colsForSave.join(",")}`);
+    console.log(`[saveShopProduct] Final Cols: id=${idExisting || "NEW"}, cols=${colsForSave.join(",")}`);
 
     const writeBinds = buildShopProductWriteBinds(colsForSave, {
       slugRaw,
