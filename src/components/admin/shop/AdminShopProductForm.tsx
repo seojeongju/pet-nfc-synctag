@@ -100,30 +100,42 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
   ];
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, target: "main" | "video" | "additional") => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
     setIsUploading(true);
     try {
-      let uploadFile: File = file;
-      if (target !== "video" && file.type.startsWith("image/")) {
-        uploadFile = await resizeProductImageForUpload(file);
+      const uploadUrls: string[] = [];
+
+      for (const file of Array.from(files)) {
+        let uploadFile: File = file;
+        
+        // 이미지인 경우 리사이징 처리 (비디오 제외)
+        if (target !== "video" && file.type.startsWith("image/")) {
+          uploadFile = await resizeProductImageForUpload(file);
+        }
+
+        const formData = new FormData();
+        formData.append("file", uploadFile);
+        
+        const { url } = await uploadShopAsset(formData);
+        uploadUrls.push(url);
       }
-      const formData = new FormData();
-      formData.append("file", uploadFile);
-      const { url } = await uploadShopAsset(formData);
 
       if (target === "main") {
-        setImageUrl(url);
+        setImageUrl(uploadUrls[0]);
       } else if (target === "video") {
-        setVideoUrl(url);
+        setVideoUrl(uploadUrls[0]);
       } else {
-        setAdditionalImages(prev => [...prev, url]);
+        setAdditionalImages(prev => [...prev, ...uploadUrls]);
       }
     } catch (err) {
+      console.error("Upload error:", err);
       alert(err instanceof Error ? err.message : "업로드 중 오류가 발생했습니다.");
     } finally {
       setIsUploading(false);
+      // 같은 파일을 다시 선택해도 onChange가 발생하도록 초기화
+      e.target.value = "";
     }
   };
 
