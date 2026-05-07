@@ -271,6 +271,7 @@ function parseKindsFromForm(formData: FormData): SubjectKind[] {
 }
 
 export async function saveShopProduct(formData: FormData): Promise<void> {
+  console.log("--- SAVE SHOP PRODUCT START ---");
   const scope = await getAdminDataScope();
 
   const idExisting = String(formData.get("id") ?? "").trim();
@@ -293,19 +294,33 @@ export async function saveShopProduct(formData: FormData): Promise<void> {
   const modes = parseKindsFromForm(formData);
   const target_modes = JSON.stringify(modes);
 
+  console.log("Data:", {
+    id: idExisting,
+    slug: slugRaw,
+    name,
+    modes,
+    price: priceRaw,
+    active
+  });
+
   if (!slugRaw || !SLUG_RE.test(slugRaw)) {
+    console.warn("Validation failed: invalid slug", slugRaw);
     redirect(`/admin/shop/products${idExisting ? `/${encodeURIComponent(idExisting)}` : "/new"}?e=${encodeURIComponent("슬러그는 영문 소문자·숫자·하이픈만 사용합니다.")}`);
   }
   if (!name) {
+    console.warn("Validation failed: missing name");
     redirect(`/admin/shop/products${idExisting ? `/${encodeURIComponent(idExisting)}` : "/new"}?e=${encodeURIComponent("상품명을 입력하세요.")}`);
   }
   if (!Number.isFinite(priceRaw) || priceRaw < 0) {
+    console.warn("Validation failed: invalid price", priceRaw);
     redirect(`/admin/shop/products${idExisting ? `/${encodeURIComponent(idExisting)}` : "/new"}?e=${encodeURIComponent("가격이 올바르지 않습니다.")}`);
   }
   if (!Number.isFinite(sortRaw)) {
+    console.warn("Validation failed: invalid sort_order", sortRaw);
     redirect(`/admin/shop/products${idExisting ? `/${encodeURIComponent(idExisting)}` : "/new"}?e=${encodeURIComponent("정렬 순서가 올바르지 않습니다.")}`);
   }
   if (modes.length === 0) {
+    console.warn("Validation failed: no modes selected");
     redirect(`/admin/shop/products${idExisting ? `/${encodeURIComponent(idExisting)}` : "/new"}?e=${encodeURIComponent("노출 모드를 최소 1개 이상 선택하세요.")}`);
   }
 
