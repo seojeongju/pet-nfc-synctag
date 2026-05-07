@@ -38,7 +38,6 @@ import {
 import { ProductContentEditorPanel } from "@/components/admin/shop/ProductContentEditorPanel";
 import { nanoid } from "nanoid";
 
-function kindsChecked(row: AdminShopProductRow | null): Set<SubjectKind> {
 function kindsChecked(product: AdminShopProductRow | null): Set<SubjectKind> {
   if (!product?.target_modes) return new Set();
   try {
