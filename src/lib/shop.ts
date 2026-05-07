@@ -140,7 +140,7 @@ export function parseShopProductOptionsJson(raw: string | null | undefined): Sho
     for (let idx = 0; idx < v.length; idx++) {
       const item = v[idx];
       const o = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
-      const id = typeof o.id === "string" && o.id.trim() ? o.id : nanoid();
+      const id = typeof o.id === "string" && o.id.trim() ? o.id : `group-${idx}`;
       const name =
         typeof o.name === "string" && o.name.trim() ? o.name.trim() : `옵션 ${idx + 1}`;
       let values: ShopProductOptionValue[] = [];

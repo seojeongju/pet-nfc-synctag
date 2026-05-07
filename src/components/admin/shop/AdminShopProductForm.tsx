@@ -586,23 +586,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
         </div>
       </div>
 
-      <style jsx global>{`
-        .shop-detail-preview img {
-          max-width: 100%;
-          height: auto;
-          border-radius: 20px;
-          margin: 1.5rem 0;
-        }
-        .shop-detail-preview p {
-          margin-bottom: 1rem;
-          line-height: 1.6;
-        }
-        .shop-detail-preview h2, .shop-detail-preview h3 {
-          margin-top: 2rem;
-          margin-bottom: 1rem;
-          font-weight: 800;
-        }
-      `}</style>
+      {/* Styles for preview are handled via Tailwind arbitrary variants in ProductContentEditorPanel wrapper */}
     </form>
   );
 }

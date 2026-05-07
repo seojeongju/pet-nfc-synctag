@@ -279,9 +279,18 @@ export function ProductContentEditorPanel({
             <div className="flex-1 overflow-y-auto p-4 scrollbar-hide sm:p-6">
               <div className="mx-auto min-h-full w-full max-w-[430px] overflow-hidden rounded-[40px] border border-slate-100 bg-white shadow-2xl">
                 {contentHtml ? (
-                  <div className="prose-sm shop-detail-preview text-slate-800" style={{ maxWidth: "100%" }}>
+                  <div 
+                    className={cn(
+                      "prose-sm shop-detail-preview text-slate-800",
+                      "[&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-[20px] [&_img]:my-6",
+                      "[&_p]:mb-4 [&_p]:leading-relaxed",
+                      "[&_h2]:mt-8 [&_h2]:mb-4 [&_h2]:font-extrabold [&_h2]:text-xl",
+                      "[&_h3]:mt-6 [&_h3]:mb-3 [&_h3]:font-bold [&_h3]:text-lg"
+                    )}
+                    style={{ maxWidth: "100%" }}
+                  >
                     <div
-                      className="break-words p-0 [&_img]:max-w-full"
+                      className="break-words p-0"
                       dangerouslySetInnerHTML={{ __html: contentHtml }}
                     />
                   </div>
