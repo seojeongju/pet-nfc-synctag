@@ -346,16 +346,21 @@ export async function saveShopProduct(formData: FormData): Promise<void> {
     if (writeCols.length === 0) {
       throw new Error("저장 가능한 컬럼이 정의되지 않았습니다.");
     }
+
     const formIncludesGoldFields =
       formData.has("weight_grams") ||
       formData.has("labor_fee_krw") ||
       formData.has("is_gold_linked");
+
     const colsForSave =
       idExisting && !formIncludesGoldFields
         ? writeCols.filter(
             (c) => c !== "weight_grams" && c !== "labor_fee_krw" && c !== "is_gold_linked"
           )
         : writeCols;
+
+    console.log(`Saving product: id=${idExisting || "NEW"}, cols=${colsForSave.join(",")}`);
+
     const writeBinds = buildShopProductWriteBinds(colsForSave, {
       slugRaw,
       name,
@@ -376,6 +381,7 @@ export async function saveShopProduct(formData: FormData): Promise<void> {
     });
 
     if (idExisting) {
+      // 1. 권한 체크
       if (isOrgAdminProductScope(scope.tenantIds)) {
         if (!shopCols.has("created_by_user_id")) {
           throw new Error("DB에 상품 등록자 컬럼이 없습니다. 마이그레이션 0030을 확인하세요.");
@@ -388,6 +394,8 @@ export async function saveShopProduct(formData: FormData): Promise<void> {
           throw new Error("이 상품을 수정할 권한이 없습니다.");
         }
       }
+
+      // 2. 슬러그 중복 체크
       const dup = await db
         .prepare(`SELECT id FROM shop_products WHERE slug = ? AND id != ?`)
         .bind(slugRaw, idExisting)
@@ -395,20 +403,36 @@ export async function saveShopProduct(formData: FormData): Promise<void> {
       if (dup) {
         throw new Error("이미 사용 중인 슬러그입니다.");
       }
+
+      // 3. 업데이트 수행
+      if (colsForSave.length === 0) {
+        throw new Error("업데이트할 컬럼이 없습니다.");
+      }
       const setSql = colsForSave.map((c) => `${c} = ?`).join(", ");
       const tsSql = shopCols.has("updated_at") ? ", updated_at = CURRENT_TIMESTAMP" : "";
+      
+      console.log(`Executing UPDATE on ${idExisting}`);
       await db
         .prepare(`UPDATE shop_products SET ${setSql}${tsSql} WHERE id = ?`)
         .bind(...writeBinds, idExisting)
         .run();
       
-      revalidatePath("/admin/shop");
-      revalidatePath("/admin/shop/products");
-      revalidatePath(`/admin/shop/products/${idExisting}`);
-      revalidatePath("/shop");
-      revalidatePath("/shop/[slug]", "page");
+      console.log("Update successful, revalidating...");
+      try {
+        revalidatePath("/admin/shop");
+        revalidatePath("/admin/shop/products");
+        revalidatePath(`/admin/shop/products/${idExisting}`);
+        revalidatePath("/shop");
+        // 동적 경로 재검증은 신중히 (에러 방지)
+        if (slugRaw) revalidatePath(`/shop/${slugRaw}`);
+      } catch (revalError) {
+        console.warn("Revalidation partially failed:", revalError);
+      }
+      
+      console.log("Redirecting to product list...");
       redirect(`/admin/shop/products?ok=1`);
     } else {
+      // 신규 등록
       const dupNew = await db.prepare(`SELECT id FROM shop_products WHERE slug = ?`).bind(slugRaw).first<{ id: string }>();
       if (dupNew) {
         throw new Error("이미 사용 중인 슬러그입니다.");
@@ -419,30 +443,43 @@ export async function saveShopProduct(formData: FormData): Promise<void> {
       }
 
       const newId = nanoid();
-      const insertCols = ["id", ...writeCols];
+      const insertCols = ["id", ...colsForSave];
+      // Note: buildShopProductWriteBinds should use colsForSave if it's new
       const insertBinds: unknown[] = [newId, ...writeBinds];
+      
       if (shopCols.has("created_by_user_id")) {
         insertCols.push("created_by_user_id");
         insertBinds.push(scope.actorId);
       }
+      
       const placeholders = insertCols.map(() => "?").join(", ");
       const insertSql = shopCols.has("updated_at")
         ? `INSERT INTO shop_products (${insertCols.join(", ")}, updated_at) VALUES (${placeholders}, CURRENT_TIMESTAMP)`
         : `INSERT INTO shop_products (${insertCols.join(", ")}) VALUES (${placeholders})`;
+      
+      console.log(`Executing INSERT: ${newId}`);
       await db.prepare(insertSql).bind(...insertBinds).run();
       
-      revalidatePath("/admin/shop");
-      revalidatePath("/admin/shop/products");
-      revalidatePath("/shop");
+      console.log("Insert successful, revalidating...");
+      try {
+        revalidatePath("/admin/shop");
+        revalidatePath("/admin/shop/products");
+        revalidatePath("/shop");
+      } catch (revalError) {
+        console.warn("Revalidation partially failed:", revalError);
+      }
+      
       redirect(`/admin/shop/products?ok=1`);
     }
   } catch (error) {
-    if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) {
+    if (error instanceof Error && (error.message.includes("NEXT_REDIRECT") || error.message.includes("NEXT_NOT_FOUND"))) {
       throw error;
     }
     console.error("CRITICAL SAVE ERROR:", error);
     const msg = error instanceof Error ? error.message : "알 수 없는 저장 오류가 발생했습니다.";
-    redirect(`/admin/shop/products${idExisting ? `/${encodeURIComponent(idExisting)}` : "/new"}?e=${encodeURIComponent(msg)}`);
+    // 에러 발생 시 원래 페이지로 리다이렉트
+    const returnUrl = `/admin/shop/products${idExisting ? `/${encodeURIComponent(idExisting)}` : "/new"}?e=${encodeURIComponent(msg)}`;
+    redirect(returnUrl);
   }
 }
 

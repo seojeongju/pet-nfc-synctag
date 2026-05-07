@@ -19,16 +19,9 @@ const withPWA = withPWAInit({
     runtimeCaching: [
       {
         // 관리자 및 API 경로는 무조건 네트워크만 사용 (캐시 절대 금지)
+        // 서버 액션(POST)이 Background Sync에 의해 지연되거나 재시도되는 것을 방지하기 위해 backgroundSync 제거
         urlPattern: ({ url }) => url.pathname.startsWith("/admin") || url.pathname.startsWith("/api"),
         handler: "NetworkOnly",
-        options: {
-          backgroundSync: {
-            name: "admin-sync-queue",
-            options: {
-              maxRetentionTime: 24 * 60,
-            },
-          },
-        },
       },
     ],
   },
