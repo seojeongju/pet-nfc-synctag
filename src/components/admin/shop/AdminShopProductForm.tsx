@@ -199,7 +199,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
       <li>단순 변심으로 인한 반품은 개봉 전까지만 가능합니다.</li>
     </ul>
   </section>
-</div>\`;
+</div>`;
     setContentHtml(template);
   };
 
