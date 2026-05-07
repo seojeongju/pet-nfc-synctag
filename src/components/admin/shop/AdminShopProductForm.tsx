@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import { 
   deleteShopProduct, 
@@ -18,18 +18,14 @@ import {
   Video,
   Plus,
   X,
-  Sparkles,
-  ExternalLink,
   Package,
   Save,
   Trash2,
-  LayoutGrid,
   DollarSign,
   ChevronRight,
   Info,
   Layers,
   Monitor,
-  Smartphone,
   CheckCircle2,
   type LucideIcon
 } from "lucide-react";
@@ -42,7 +38,6 @@ import {
   resizeProductImageForUpload,
 } from "@/lib/resize-shop-image";
 import { ProductContentEditorPanel } from "@/components/admin/shop/ProductContentEditorPanel";
-import { nanoid } from "nanoid";
 
 function kindsChecked(product: AdminShopProductRow | null): Set<SubjectKind> {
   if (!product?.target_modes) return new Set();
@@ -125,8 +120,8 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
       } else {
         setAdditionalImages(prev => [...prev, url]);
       }
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "업로드 중 오류가 발생했습니다.");
     } finally {
       setIsUploading(false);
     }
@@ -399,7 +394,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                   <div className="grid grid-cols-4 gap-3">
                     {additionalImages.map((img, idx) => (
                       <div key={idx} className="group relative aspect-square rounded-2xl bg-slate-50 border border-slate-100 overflow-hidden shadow-sm">
-                        <img src={img} className="h-full w-full object-cover" />
+                        <img src={img} alt={`Additional ${idx + 1}`} className="h-full w-full object-cover" />
                         <button 
                           type="button" 
                           onClick={() => removeAdditionalImage(idx)} 
