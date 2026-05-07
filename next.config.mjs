@@ -11,11 +11,26 @@ const withPWA = withPWAInit({
   workboxOptions: {
     /** 발견자 Web Push 알림 클릭·표시 (public/sw-push-listener.js) */
     importScripts: ["/sw-push-listener.js"],
-    runtimeCaching: ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"].map((method) => ({
-      urlPattern: ({ url }) => url.pathname.startsWith("/admin"),
-      handler: "NetworkOnly",
-      method,
-    })),
+    // 서비스 워커가 제어하지 않을 경로 목록
+    exclude: [
+      /^\/admin(\/.*)?$/,
+      /^\/api(\/.*)?$/,
+    ],
+    runtimeCaching: [
+      {
+        // 관리자 및 API 경로는 무조건 네트워크만 사용 (캐시 절대 금지)
+        urlPattern: ({ url }) => url.pathname.startsWith("/admin") || url.pathname.startsWith("/api"),
+        handler: "NetworkOnly",
+        options: {
+          backgroundSync: {
+            name: "admin-sync-queue",
+            options: {
+              maxRetentionTime: 24 * 60,
+            },
+          },
+        },
+      },
+    ],
   },
 });
 
