@@ -172,14 +172,25 @@ export default async function AdminShopProductsPage({
                         <Pencil className="h-3.5 w-3.5" />
                         상세 편집
                       </Link>
-                      <Link
-                        href={`/shop/${p.slug}`}
-                        target="_blank"
-                        className="flex h-11 w-11 items-center justify-center rounded-[16px] border border-slate-100 text-slate-400 hover:border-teal-200 hover:text-teal-600 hover:bg-teal-50 transition-all"
-                        title="스토어 페이지 보기"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </Link>
+                      {(() => {
+                        let firstKind = "pet";
+                        try {
+                          const modes = JSON.parse(p.target_modes || "[]");
+                          if (Array.isArray(modes) && modes.length > 0) firstKind = modes[0];
+                        } catch {}
+                        
+                        return (
+                          <Link
+                            href={`/shop/${p.slug}?kind=${firstKind}`}
+                            target="_blank"
+                            className="flex-1 flex items-center justify-center gap-2 h-11 rounded-[16px] border border-slate-100 bg-white text-[13px] font-black text-slate-400 transition-all hover:border-teal-200 hover:text-teal-600 hover:bg-teal-50"
+                            title="스토어 페이지 보기"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            페이지 보기
+                          </Link>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
