@@ -6,6 +6,7 @@ import { nanoid } from "nanoid";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { getDB } from "@/lib/db";
 import { SUBJECT_KINDS, type SubjectKind } from "@/lib/subject-kind";
+import { sanitizeShopContentHtml } from "@/lib/shop-content-html";
 
 
 import { resolveAdminScope } from "@/lib/admin-authz";
@@ -341,7 +342,8 @@ export async function saveShopProduct(
     const image_url = imageUrlRaw.length > 0 ? imageUrlRaw.slice(0, 2048) : null;
     const video_url = videoUrlRaw.length > 0 ? videoUrlRaw.slice(0, 2048) : null;
     const additional_images = additionalImagesRaw.length > 0 ? additionalImagesRaw : null;
-    const content_html = contentHtml.length > 0 ? contentHtml : null;
+    const sanitizedContentHtml = sanitizeShopContentHtml(contentHtml);
+    const content_html = sanitizedContentHtml.length > 0 ? sanitizedContentHtml : null;
     const options_json = optionsJsonRaw.length > 0 ? optionsJsonRaw : null;
     const weight_grams = weightGramsRaw
       ? (() => {

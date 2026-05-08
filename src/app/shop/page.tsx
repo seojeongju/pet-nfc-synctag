@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
 import { getUserConsentStatus } from "@/lib/privacy-consent";
 import { SUBJECT_KINDS, type SubjectKind } from "@/lib/subject-kind";
-import { listShopProductsForKind } from "@/lib/shop";
+import { listAllActiveShopProducts } from "@/lib/shop";
 import {
   getShopGoldPriceTabPayload,
   userHasPaidGoldOrder,

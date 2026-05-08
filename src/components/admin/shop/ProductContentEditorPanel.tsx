@@ -27,8 +27,13 @@ import {
   Smartphone,
   Maximize2,
 } from "lucide-react";
+import { sanitizeShopContentHtml } from "@/lib/shop-content-html";
 
 const STORAGE_KEY = "admin-shop-product-content-mode";
+type AdminShopUploadApiResult = {
+  url?: string;
+  error?: string;
+};
 
 type EditMode = "visual" | "html";
 
@@ -55,6 +60,7 @@ export function ProductContentEditorPanel({
 }) {
   const [editMode, setEditMode] = useState<EditMode>("visual");
   const [isUploading, setIsUploading] = useState(false);
+  const safePreviewHtml = sanitizeShopContentHtml(contentHtml);
   const visualRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const visualFocusRef = useRef(false);
@@ -103,11 +109,15 @@ export function ProductContentEditorPanel({
       });
 
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error((errorData as any).error || "업로드에 실패했습니다.");
+        const errorData = (await res.json().catch(() => ({}))) as AdminShopUploadApiResult;
+        throw new Error(errorData.error || "업로드에 실패했습니다.");
       }
 
-      const { url } = await res.json();
+      const uploadData = (await res.json().catch(() => ({}))) as AdminShopUploadApiResult;
+      if (!uploadData.url) {
+        throw new Error("업로드 URL이 비어 있습니다.");
+      }
+      const { url } = uploadData;
       
       runCmd("insertImage", url);
       // 포커스 유지 및 추가 정리
@@ -319,10 +329,10 @@ export function ProductContentEditorPanel({
                 </div>
                 
                 <div className="max-h-[640px] min-h-[500px] overflow-y-auto px-5 py-6 scrollbar-hide">
-                  {contentHtml ? (
+                  {safePreviewHtml ? (
                     <div 
                       className="prose prose-sm prose-slate max-w-none [&_img]:max-w-full [&_img]:rounded-2xl"
-                      dangerouslySetInnerHTML={{ __html: contentHtml }}
+                      dangerouslySetInnerHTML={{ __html: safePreviewHtml }}
                     />
                   ) : (
                     <div className="flex flex-col items-center justify-center py-20 text-center">

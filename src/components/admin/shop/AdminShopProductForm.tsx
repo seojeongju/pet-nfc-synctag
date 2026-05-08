@@ -39,6 +39,16 @@ import {
 } from "@/lib/resize-shop-image";
 import { ProductContentEditorPanel } from "@/components/admin/shop/ProductContentEditorPanel";
 
+type AdminShopSaveApiResult = {
+  success?: boolean;
+  error?: string;
+};
+
+type AdminShopUploadApiResult = {
+  url?: string;
+  error?: string;
+};
+
 function kindsChecked(product: AdminShopProductRow | null): Set<SubjectKind> {
   if (!product?.target_modes) return new Set();
   try {
@@ -126,7 +136,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
         body: formData,
       });
 
-      const result = await res.json();
+      const result = (await res.json().catch(() => ({}))) as AdminShopSaveApiResult;
 
       if (!res.ok || !result.success) {
         throw new Error(result.error || "저장에 실패했습니다.");
@@ -184,11 +194,15 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
         });
 
         if (!res.ok) {
-          const errorData = await res.json().catch(() => ({}));
-          throw new Error((errorData as any).error || "업로드에 실패했습니다.");
+          const errorData = (await res.json().catch(() => ({}))) as AdminShopUploadApiResult;
+          throw new Error(errorData.error || "업로드에 실패했습니다.");
         }
 
-        const { url } = await res.json();
+        const uploadData = (await res.json().catch(() => ({}))) as AdminShopUploadApiResult;
+        if (!uploadData.url) {
+          throw new Error("업로드 URL이 비어 있습니다.");
+        }
+        const { url } = uploadData;
         // 미리보기 시 브라우저 캐시 방지를 위해 타임스탬프 추가
         const cacheBustUrl = `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`;
         uploadUrls.push(cacheBustUrl);

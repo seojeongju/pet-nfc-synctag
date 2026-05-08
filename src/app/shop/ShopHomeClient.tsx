@@ -84,17 +84,15 @@ export default function ShopHomeClient({
     router.push(`/shop?kind=${encodeURIComponent(k)}`);
   };
 
-  const filteredProducts = initialKind === "all" || !initialKind 
-    ? products 
-    : products.filter(p => {
-        // 상품의 target_modes에 현재 선택된 kind가 포함되어 있는지 확인
-        try {
-          return p.subjectKind === initialKind; // lib/shop.ts에서 rowToPublic 시 modes[0]을 넣어줌
-          // 실제로는 p에 targetModes 데이터가 없으므로 lib/shop.ts를 수정하여 targetModes를 포함시키거나
-          // p.subjectKind가 initialKind인 것만 보여줌. 
-          // 하지만 p.subjectKind는 modes[0]이므로 다중 카테고리 상품 처리가 안됨.
-        } catch { return false; }
-      });
+  // 현재 서버에서 initialKind는 항상 유효 SubjectKind로 전달됩니다.
+  const isAllKind = false;
+  const filteredProducts = products.filter((p) => {
+    try {
+      return p.subjectKind === initialKind;
+    } catch {
+      return false;
+    }
+  });
 
   // 다중 카테고리 대응을 위해 ShopProductPublic 인터페이스에 targetModes가 있다고 가정하고 필터링하거나
   // 간단하게 p.subjectKind (첫번째 모드) 기준으로 필터링 (현재 로직)
@@ -148,11 +146,11 @@ export default function ShopHomeClient({
               <button
                 type="button"
                 role="tab"
-                aria-selected={initialKind === "all" || !initialKind}
+                aria-selected={isAllKind}
                 onClick={() => selectKind("all")}
                 className={cn(
                   "shrink-0 inline-flex items-center gap-2 rounded-2xl border px-3.5 py-2.5 text-left transition min-h-[48px]",
-                  (initialKind === "all" || !initialKind)
+                  isAllKind
                     ? "border-teal-400 bg-gradient-to-br from-teal-50 to-cyan-50/80 shadow-sm ring-2 ring-teal-200/60"
                     : "border-slate-200 bg-slate-50/80 hover:border-teal-200 hover:bg-white"
                 )}
@@ -160,7 +158,7 @@ export default function ShopHomeClient({
                 <span
                   className={cn(
                     "flex h-9 w-9 items-center justify-center rounded-xl",
-                    (initialKind === "all" || !initialKind) ? "bg-teal-100 text-teal-700" : "bg-white text-slate-500"
+                    isAllKind ? "bg-teal-100 text-teal-700" : "bg-white text-slate-500"
                   )}
                 >
                   <Package className="h-5 w-5" />
@@ -256,7 +254,7 @@ export default function ShopHomeClient({
               <h2 className="text-[13px] font-black text-slate-800">
                 {storeTab === "gold-price"
                   ? "오늘의 금시세"
-                  : (initialKind === "all" || !initialKind) ? "전체 상품" : `${subjectKindMeta[initialKind].label} 상품`}
+                  : isAllKind ? "전체 상품" : `${subjectKindMeta[initialKind].label} 상품`}
               </h2>
               {storeTab === "products" ? (
                 <span className="text-[11px] font-bold text-slate-400">{filteredProducts.length}개</span>

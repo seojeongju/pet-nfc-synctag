@@ -19,6 +19,7 @@ import type { ShopProductPublic } from "@/types/shop";
 import { FlowTopNav } from "@/components/layout/FlowTopNav";
 import type { FlowTopNavSession } from "@/components/layout/FlowTopNav";
 import { formatKrw } from "@/lib/shop";
+import { sanitizeShopContentHtml } from "@/lib/shop-content-html";
 
 type ShopProductDetailClientProps = {
   session: FlowTopNavSession;
@@ -113,6 +114,10 @@ export default function ShopProductDetailClient({
   const totalPrice = calculateTotalPrice();
   const isSoldOut = product.stockQuantity <= 0;
   const isLowStock = product.stockQuantity > 0 && product.stockQuantity < 10;
+  const safeContentHtml = useMemo(
+    () => sanitizeShopContentHtml(product.contentHtml ?? ""),
+    [product.contentHtml]
+  );
 
   const nextMedia = () => setCurrentMediaIndex((prev) => (prev + 1) % mediaList.length);
   const prevMedia = () => setCurrentMediaIndex((prev) => (prev - 1 + mediaList.length) % mediaList.length);
@@ -285,7 +290,7 @@ export default function ShopProductDetailClient({
           </div>
 
           {/* 상세 설명 컨텐츠 (HTML) */}
-          {product.contentHtml && (
+          {safeContentHtml && (
             <div className="pt-4">
               <div className="flex items-center gap-4 mb-6">
                 <h2 className="text-[16px] font-black text-slate-900 shrink-0">상품 상세 정보</h2>
@@ -297,7 +302,7 @@ export default function ShopProductDetailClient({
                   "rounded-[32px] border border-slate-50 bg-white p-4 min-[430px]:p-6 shadow-sm",
                   isSoldOut && "grayscale opacity-80"
                 )}
-                dangerouslySetInnerHTML={{ __html: product.contentHtml }} 
+                dangerouslySetInnerHTML={{ __html: safeContentHtml }} 
               />
             </div>
           )}
