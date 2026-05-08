@@ -22,7 +22,7 @@ import {
   Package,
   Save,
   Trash2,
-  DollarSign,
+  Coins,
   ChevronRight,
   Info,
   Layers,
@@ -124,7 +124,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
   const navItems = [
     { id: "basic", label: "기본정보", icon: Package },
     { id: "media", label: "이미지/동영상", icon: ImageIcon },
-    { id: "price", label: "판매정보", icon: DollarSign },
+    { id: "price", label: "판매정보", icon: Coins },
     { id: "option", label: "옵션설정", icon: Layers },
     { id: "detail", label: "상세설명", icon: FileText },
     { id: "display", label: "노출/판매설정", icon: Monitor },
@@ -432,7 +432,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
 
           {/* 3. 판매 정보 */}
           <section id="section-price" className={cn(adminUi.sectionCard, "p-6 md:p-10 scroll-mt-24")}>
-            <SectionHeader icon={DollarSign} title="판매 정보" description="가격 정책 및 재고 수량을 설정합니다." badge="Price" />
+            <SectionHeader icon={Coins} title="판매 정보" description="가격 정책 및 재고 수량을 설정합니다." badge="Price" />
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="space-y-2">
                 <label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">판매 가격 (원)</label>
@@ -444,7 +444,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                       const v = e.target.value.replace(/[^0-9]/g, "");
                       setPrice(Number(v) || 0);
                     }}
-                    className={cn("w-full h-14 pl-5 pr-16 rounded-2xl text-[15px] font-bold text-right", adminUi.input)}
+                    className={cn(adminUi.input, "w-full h-14 pl-5 pr-16 rounded-2xl text-[15px] font-bold text-right")}
                   />
                   <input type="hidden" name="price_krw" value={price} />
                   <span className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">원</span>
@@ -459,7 +459,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                     const v = e.target.value.replace(/[^0-9]/g, "");
                     setStock(Number(v) || 0);
                   }}
-                  className={cn("w-full h-14 pl-5 pr-16 rounded-2xl text-[15px] font-bold text-right", adminUi.input)}
+                  className={cn(adminUi.input, "w-full h-14 pl-5 pr-16 rounded-2xl text-[15px] font-bold text-right")}
                 />
                 <input type="hidden" name="stock_quantity" value={stock} />
               </div>
@@ -472,7 +472,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                     const v = e.target.value.replace(/[^0-9]/g, "");
                     setSortOrder(Number(v) || 0);
                   }}
-                  className={cn("w-full h-14 pl-5 pr-16 rounded-2xl text-[15px] font-bold text-right", adminUi.input)}
+                  className={cn(adminUi.input, "w-full h-14 pl-5 pr-16 rounded-2xl text-[15px] font-bold text-right")}
                 />
                 <input type="hidden" name="sort_order" value={sortOrder} />
               </div>
