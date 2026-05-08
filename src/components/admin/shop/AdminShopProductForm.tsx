@@ -5,10 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
   deleteShopProduct, 
-  saveShopProduct, 
   uploadShopAsset 
 } from "@/app/actions/admin-shop";
-import type { AdminShopProductRow } from "@/app/actions/admin-shop";
+import type { AdminShopProductRow, SaveShopProductResult } from "@/app/actions/admin-shop";
 import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
 import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
@@ -118,7 +117,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
         body: formData,
       });
 
-      const data = await res.json();
+      const data = (await res.json()) as SaveShopProductResult;
 
       if (data.success) {
         const ts = Date.now();
