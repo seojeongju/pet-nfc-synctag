@@ -252,6 +252,38 @@ export async function listShopProductsForKind(
   return out;
 }
 
+/**
+ * 모든 활성 상품을 반환합니다.
+ */
+export async function listAllActiveShopProducts(
+  db: D1Database
+): Promise<ShopProductPublic[]> {
+  const currentGoldPrice = await getCurrentGoldPrice(db);
+  const existing = await getShopProductsColumnSet(db);
+  const cols = LIST_SHOP_PRODUCT_COLS.filter((c) => existing.has(c));
+  if (!cols.includes("id")) {
+    return [];
+  }
+  const orderSql = existing.has("sort_order")
+    ? "ORDER BY sort_order ASC, name ASC"
+    : "ORDER BY name ASC";
+  const res = await db
+    .prepare(
+      `SELECT ${cols.join(", ")} FROM shop_products WHERE active = 1 ${orderSql}`
+    )
+    .all<Record<string, unknown>>();
+
+  const rows = (res.results ?? []).map((r) => normalizeProductRow(r, existing));
+  const out: ShopProductPublic[] = [];
+  for (const row of rows) {
+    // 특정 kind가 없으므로 첫 번째 target_mode를 기본값으로 사용
+    const modes = parseTargetModesJson(row.target_modes);
+    const kind = modes[0] ?? "pet";
+    out.push(rowToPublic(row, kind, currentGoldPrice));
+  }
+  return out;
+}
+
 export async function getShopProductBySlugForKind(
   db: D1Database,
   slug: string,
@@ -272,9 +304,6 @@ export async function getShopProductBySlugForKind(
     return null;
   }
   const row = normalizeProductRow(raw, existing);
-  if (!productTargetsKind(row.target_modes, kind)) {
-    return null;
-  }
   return rowToPublic(row, kind, currentGoldPrice);
 }
 

@@ -77,7 +77,7 @@ export default async function ShopPage({
     storeTab = "gold-price";
   }
 
-  const products = await listShopProductsForKind(db, initialKind);
+  const products = await listAllActiveShopProducts(db);
   const goldPricePayload =
     initialKind === "gold" && hasGoldPurchase && storeTab === "gold-price"
       ? await getShopGoldPriceTabPayload(db, session.user.id)
