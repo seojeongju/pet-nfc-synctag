@@ -488,6 +488,8 @@ export async function saveShopProduct(
       
       return { success: true, message: "새 상품이 등록되었습니다." };
     }
+  } catch (error) {
+    console.error("CRITICAL SAVE ERROR:", error);
     return { 
       success: false, 
       error: error instanceof Error ? error.message : "알 수 없는 저장 오류가 발생했습니다." 
