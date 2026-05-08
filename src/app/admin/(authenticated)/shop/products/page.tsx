@@ -11,7 +11,7 @@ import {
   Zap,
   ShoppingBag,
   ChevronRight,
-  DollarSign
+  Layers
 } from "lucide-react";
 
 export const runtime = "edge";
@@ -143,12 +143,11 @@ export default async function AdminShopProductsPage({
 
                     <div className="flex items-center justify-between">
                        <div className="space-y-0.5">
-                         <div className="flex items-center gap-1 text-teal-600">
-                           <DollarSign className="h-3.5 w-3.5" />
-                           <span className="text-[18px] font-black tracking-tight">
-                             {p.price_krw.toLocaleString()}원
-                           </span>
-                         </div>
+                          <div className="flex items-center gap-1 text-teal-600">
+                            <span className="text-[18px] font-black tracking-tight">
+                              {p.price_krw.toLocaleString()}원
+                            </span>
+                          </div>
                          <p className="text-[10px] font-bold text-slate-400">재고: {p.stock_quantity.toLocaleString()}개</p>
                        </div>
                     </div>

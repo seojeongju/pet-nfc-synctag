@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useActionState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
   deleteShopProduct, 
-  uploadShopAsset 
+  uploadShopAsset,
+  saveShopProduct
 } from "@/app/actions/admin-shop";
 import type { AdminShopProductRow, SaveShopProductResult } from "@/app/actions/admin-shop";
 import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
@@ -27,7 +28,8 @@ import {
   Layers,
   Monitor,
   CheckCircle2,
-  type LucideIcon
+  type LucideIcon,
+  ExternalLink
 } from "lucide-react";
 import type { ShopProductOptionGroup, ShopProductOptionValue } from "@/types/shop";
 import {
@@ -90,53 +92,27 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
   const [showPreview, setShowPreview] = useState(true);
   const [activeTab, setActiveTab] = useState("basic");
 
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveResult, setSaveResult] = useState<{ success?: boolean; error?: string } | null>(null);
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (isSaving || isUploading) return;
-
-    setIsSaving(true);
-    setSaveResult(null);
-
-    try {
-      const formData = new FormData(e.currentTarget);
+  const [state, formAction] = useActionState<SaveShopProductResult | null, FormData>(
+    (prevState, formData) => {
+      // 저장 시에는 캐시 버스팅용 타임스탬프(?t=...) 제거하여 순수 URL만 저장
+      const cleanImageUrl = imageUrl.split('?')[0];
+      const cleanVideoUrl = videoUrl.split('?')[0];
+      const cleanAdditionalImages = additionalImages.map(url => url.split('?')[0]);
       
-      // 복잡한 상태값들 추가
-      formData.append("_clientState", JSON.stringify({
+      return saveShopProduct({
         contentHtml,
-        imageUrl,
-        videoUrl,
-        additionalImages,
-        options,
-      }));
-
-      const res = await fetch("/api/admin/shop/save", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = (await res.json()) as SaveShopProductResult;
-
-      if (data.success) {
-        const ts = Date.now();
-        router.push(`/admin/shop/products?ok=1&_t=${ts}`);
-      } else {
-        setSaveResult({ success: false, error: data.error || "저장 중 오류가 발생했습니다." });
-      }
-    } catch (err) {
-      console.error("Submit error:", err);
-      setSaveResult({ success: false, error: "서버와 통신할 수 없습니다. 네트워크 연결을 확인해 주세요." });
-    } finally {
-      setIsSaving(false);
-    }
-  };
+        imageUrl: cleanImageUrl,
+        videoUrl: cleanVideoUrl,
+        additionalImages: cleanAdditionalImages,
+        options
+      }, prevState, formData);
+    },
+    null
+  );
 
   const imgInputRef = useRef<HTMLInputElement>(null);
   const vidInputRef = useRef<HTMLInputElement>(null);
   const addImgInputRef = useRef<HTMLInputElement>(null);
-
 
   const navItems = [
     { id: "basic", label: "기본정보", icon: Package },
@@ -157,17 +133,14 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
 
       for (const file of Array.from(files)) {
         let uploadFile: File = file;
-        
-        // 이미지인 경우 리사이징 처리 (비디오 제외)
         if (target !== "video" && file.type.startsWith("image/")) {
           uploadFile = await resizeProductImageForUpload(file);
         }
 
         const formData = new FormData();
         formData.append("file", uploadFile);
-        
         const { url } = await uploadShopAsset(formData);
-        // 캐시 방지를 위해 타임스탬프 추가 (선택사항이나 미리보기 보장용)
+        // 미리보기 시 브라우저 캐시 방지를 위해 타임스탬프 추가
         const cacheBustUrl = `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`;
         uploadUrls.push(cacheBustUrl);
       }
@@ -184,7 +157,6 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
       alert(err instanceof Error ? err.message : "업로드 중 오류가 발생했습니다.");
     } finally {
       setIsUploading(false);
-      // 같은 파일을 다시 선택해도 onChange가 발생하도록 초기화
       e.target.value = "";
     }
   };
@@ -229,14 +201,19 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
   };
 
   const applyTemplate = () => {
+    const form = document.querySelector('form') as HTMLFormElement;
+    const currentName = (form?.querySelector('input[name="name"]') as HTMLInputElement)?.value || product?.name || "상품명";
+    const currentPrice = (form?.querySelector('input[name="price_krw"]') as HTMLInputElement)?.value || product?.price_krw || "0";
+    const currentDesc = (form?.querySelector('textarea[name="description"]') as HTMLTextAreaElement)?.value || product?.description || "";
+
     const template = `<div class="space-y-12 pb-20 font-outfit">
   <section class="space-y-6">
     <div class="aspect-square overflow-hidden rounded-[40px] bg-slate-100 shadow-2xl">
       <img src="${imageUrl || "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&q=80&w=1000"}" class="h-full w-full object-cover" />
     </div>
     <div class="space-y-2 px-2 text-center">
-      <h2 class="text-3xl font-black text-slate-900">${product?.name || "상품명"}</h2>
-      <p class="text-xl font-bold text-teal-600">${product?.price_krw?.toLocaleString() || "0"}원</p>
+      <h2 class="text-3xl font-black text-slate-900">${currentName}</h2>
+      <p class="text-xl font-bold text-teal-600">${Number(currentPrice).toLocaleString()}원</p>
     </div>
   </section>
 
@@ -246,44 +223,8 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
        <h3 class="text-xl font-black text-slate-900">상품 상세 설명</h3>
     </div>
     <div class="text-sm font-medium leading-relaxed text-slate-600">
-      ${product?.description?.replace(/\n/g, "<br/>") || "상품에 대한 자세한 설명을 입력해 주세요."}
+      ${currentDesc.replace(/\n/g, "<br/>") || "상품에 대한 자세한 설명을 입력해 주세요."}
     </div>
-  </section>
-
-  ${videoUrl ? `<section class="space-y-4">
-    <div class="flex items-center gap-2 px-2">
-       <span class="h-1 w-8 bg-rose-500 rounded-full"></span>
-       <h3 class="text-xl font-black text-slate-900">작동 영상</h3>
-    </div>
-    <div class="aspect-video overflow-hidden rounded-[40px] bg-black shadow-xl ring-1 ring-slate-200">
-      <video src="${videoUrl}" controls class="h-full w-full"></video>
-    </div>
-  </section>` : ""}
-
-  ${additionalImages.length > 0 ? `<section class="space-y-4">
-    <div class="flex items-center gap-2 px-2">
-       <span class="h-1 w-8 bg-indigo-500 rounded-full"></span>
-       <h3 class="text-xl font-black text-slate-900">상세 갤러리</h3>
-    </div>
-    <div class="grid grid-cols-2 gap-4">
-      ${additionalImages.map(img => `
-        <div class="aspect-square overflow-hidden rounded-3xl bg-slate-100 shadow-md transition-transform hover:scale-[1.02]">
-          <img src="${img}" class="h-full w-full object-cover" />
-        </div>
-      `).join("")}
-    </div>
-  </section>` : ""}
-
-  <section class="rounded-3xl border-2 border-dashed border-slate-100 p-6 bg-slate-50/50">
-    <h4 class="text-sm font-black text-slate-900 mb-3 flex items-center gap-2">
-      <span class="flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-[10px] text-white">!</span>
-      구매 전 확인해 주세요
-    </h4>
-    <ul class="list-disc list-inside text-[11px] font-bold text-slate-500 space-y-1.5 ml-1">
-      <li>NFC 태그는 방수 처리가 되어 있으나 과도한 충격에는 주의가 필요합니다.</li>
-      <li>대시보드 등록 후 즉시 사용 가능합니다.</li>
-      <li>단순 변심으로 인한 반품은 개봉 전까지만 가능합니다.</li>
-    </ul>
   </section>
 </div>`;
     setContentHtml(template);
@@ -292,35 +233,16 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
   const checkedModes = kindsChecked(product);
 
   return (
-    <form onSubmit={handleSubmit} className="relative min-h-screen bg-[#f8fafc] pb-32" noValidate>
-      {/* 폼 에러 메시지 (Toast 대체용) */}
-      {(saveResult?.error) && (
+    <form action={formAction} className="relative min-h-screen bg-[#f8fafc] pb-32" noValidate>
+      {state?.error && (
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4 animate-in fade-in slide-in-from-top-4 duration-300">
           <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 shadow-xl flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 shrink-0">
-              <X className="h-5 w-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-black text-rose-900">저장 실패</p>
-              <p className="text-xs font-bold text-rose-600 truncate">{saveResult.error}</p>
-            </div>
+            <X className="h-5 w-5 text-rose-600" />
+            <p className="text-sm font-black text-rose-900">{state.error}</p>
           </div>
         </div>
       )}
 
-      {/* 저장 중 로딩 오버레이 */}
-      {isSaving && (
-        <div className="fixed inset-0 z-[100] bg-slate-900/10 backdrop-blur-[2px] flex items-center justify-center">
-          <div className="bg-white rounded-[32px] p-8 shadow-2xl border border-slate-100 flex flex-col items-center gap-4 animate-in zoom-in duration-300">
-            <div className="relative h-12 w-12">
-              <div className="absolute inset-0 rounded-full border-4 border-slate-100"></div>
-              <div className="absolute inset-0 rounded-full border-4 border-teal-500 border-t-transparent animate-spin"></div>
-            </div>
-            <p className="text-sm font-black text-slate-900">상품 정보를 저장하고 있습니다...</p>
-          </div>
-        </div>
-      )}
-      {/* Hidden inputs for state synchronization */}
       {isEdit && <input type="hidden" name="id" value={product!.id} />}
       <input type="hidden" name="content_html" value={contentHtml} />
       <input type="hidden" name="image_url" value={imageUrl} />
@@ -329,27 +251,20 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
       <input type="hidden" name="options_json" value={JSON.stringify(options)} />
 
       <div className="max-w-[1200px] mx-auto px-4 py-8 flex gap-8 items-start">
-        
-        {/* Left: Sticky Navigation (Naver Center Style) */}
         <aside className="hidden lg:block w-64 sticky top-24 shrink-0">
-          <div className="bg-white rounded-[32px] p-4 shadow-sm border border-slate-100 overflow-hidden">
-            <div className="px-4 py-3 mb-2 border-b border-slate-50">
-               <h4 className="text-[12px] font-black text-slate-900 uppercase tracking-tighter">Product Builder</h4>
-            </div>
+          <div className="bg-white rounded-[32px] p-4 shadow-sm border border-slate-100">
             <nav className="space-y-1">
               {navItems.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    setActiveTab(item.id);
-                    document.getElementById(`section-${item.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-                  }}
+                <button 
+                  key={item.id} 
+                  type="button" 
+                  onClick={() => { 
+                    setActiveTab(item.id); 
+                    document.getElementById(`section-${item.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" }); 
+                  }} 
                   className={cn(
-                    "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-[13px] font-bold transition-all",
-                    activeTab === item.id 
-                      ? "bg-slate-900 text-white shadow-lg" 
-                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                    "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-[13px] font-bold transition-all", 
+                    activeTab === item.id ? "bg-slate-900 text-white shadow-lg" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
                   )}
                 >
                   <item.icon className="h-4 w-4" />
@@ -357,23 +272,28 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                 </button>
               ))}
             </nav>
-            <div className="mt-6 p-4 bg-teal-50 rounded-2xl">
-              <div className="flex items-center gap-2 mb-2">
-                <CheckCircle2 className="h-4 w-4 text-teal-600" />
-                <span className="text-[11px] font-black text-teal-900">가이드</span>
+            {isEdit && (
+              <div className="mt-6 p-4 bg-teal-50 rounded-2xl">
+                <div className="flex items-center gap-2 mb-2">
+                  <Monitor className="h-4 w-4 text-teal-600" />
+                  <span className="text-[11px] font-black text-teal-900">미리보기</span>
+                </div>
+                <Link
+                  href={`/shop/${product?.slug}?kind=${SUBJECT_KINDS[0]}`}
+                  target="_blank"
+                  className="flex items-center justify-between group"
+                >
+                  <span className="text-[10px] font-bold text-teal-700 underline underline-offset-2">상품 페이지 확인</span>
+                  <ExternalLink className="h-3 w-3 text-teal-600 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                </Link>
               </div>
-              <p className="text-[10px] font-bold text-teal-700 leading-relaxed">
-                모든 항목은 자동으로 검증됩니다. 저장을 누르면 스토어에 즉시 반영됩니다.
-              </p>
-            </div>
+            )}
           </div>
         </aside>
 
-        {/* Main Content Area */}
         <div className="flex-1 space-y-8 min-w-0">
-          
           {/* 1. 상품 기본 정보 */}
-          <section id="section-basic" className={cn(adminUi.sectionCard, "p-6 md:p-10")}>
+          <section id="section-basic" className={cn(adminUi.sectionCard, "p-6 md:p-10 scroll-mt-24")}>
             <SectionHeader icon={Package} title="기본 정보" description="스토어에 노출될 상품의 기본 정체성을 정의합니다." badge="Essential" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-2">
@@ -416,12 +336,10 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
             </div>
           </section>
 
-          {/* 2. 이미지 및 동영상 (Media Center) */}
-          <section id="section-media" className={cn(adminUi.sectionCard, "p-6 md:p-10")}>
+          {/* 2. 이미지 및 동영상 */}
+          <section id="section-media" className={cn(adminUi.sectionCard, "p-6 md:p-10 scroll-mt-24")}>
             <SectionHeader icon={ImageIcon} title="이미지 및 동영상" description="대표 이미지와 상세 갤러리를 관리합니다. 고화질 권장." />
-            
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
-              {/* Main Image Selection */}
               <div className="space-y-4">
                 <h4 className="text-[13px] font-black text-slate-900 flex items-center gap-2">
                   대표 이미지 <span className="text-rose-500 text-xs">*</span>
@@ -448,8 +366,6 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                   <input type="file" ref={imgInputRef} onChange={(e) => handleFileUpload(e, "main")} accept="image/*" className="hidden" />
                 </div>
               </div>
-
-              {/* Video & Additional Images */}
               <div className="space-y-8">
                 <div className="space-y-4">
                   <h4 className="text-[13px] font-black text-slate-900">상품 작동 영상</h4>
@@ -477,7 +393,6 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                     )}
                   </div>
                 </div>
-
                 <div className="space-y-4">
                   <h4 className="text-[13px] font-black text-slate-900">추가 이미지 ({additionalImages.length})</h4>
                   <div className="grid grid-cols-4 gap-3">
@@ -489,7 +404,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                           onClick={() => removeAdditionalImage(idx)} 
                           className="absolute top-1 right-1 h-5 w-5 rounded-full bg-white/90 text-slate-900 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center shadow-md hover:bg-rose-500 hover:text-white"
                         >
-                          <X className="h-3 w-3" />
+                          <X className="h-3.5 w-3.5" />
                         </button>
                       </div>
                     ))}
@@ -509,12 +424,11 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
           </section>
 
           {/* 3. 판매 정보 */}
-          <section id="section-price" className={cn(adminUi.sectionCard, "p-6 md:p-10")}>
+          <section id="section-price" className={cn(adminUi.sectionCard, "p-6 md:p-10 scroll-mt-24")}>
             <SectionHeader icon={DollarSign} title="판매 정보" description="가격 정책 및 재고 수량을 설정합니다." badge="Price" />
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="space-y-2">
                 <label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">판매 가격 (원)</label>
-                <input type="hidden" name="price_krw" value={price} />
                 <div className="relative">
                   <input
                     type="text"
@@ -523,14 +437,14 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                       const v = e.target.value.replace(/[^0-9]/g, "");
                       setPrice(Number(v) || 0);
                     }}
-                    className={cn("w-full h-14 pl-12 pr-5 rounded-2xl text-[15px] font-bold", adminUi.input)}
+                    className={cn("w-full h-14 pl-5 pr-12 rounded-2xl text-[15px] font-bold text-right", adminUi.input)}
                   />
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₩</span>
+                  <input type="hidden" name="price_krw" value={price} />
+                  <span className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">원</span>
                 </div>
               </div>
               <div className="space-y-2">
                 <label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">재고 수량</label>
-                <input type="hidden" name="stock_quantity" value={stock} />
                 <input
                   type="text"
                   value={stock.toLocaleString()}
@@ -538,12 +452,12 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                     const v = e.target.value.replace(/[^0-9]/g, "");
                     setStock(Number(v) || 0);
                   }}
-                  className={cn("w-full h-14 px-5 rounded-2xl text-[15px] font-bold", adminUi.input)}
+                  className={cn("w-full h-14 px-5 rounded-2xl text-[15px] font-bold text-right", adminUi.input)}
                 />
+                <input type="hidden" name="stock_quantity" value={stock} />
               </div>
               <div className="space-y-2">
                 <label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">정렬 순서</label>
-                <input type="hidden" name="sort_order" value={sortOrder} />
                 <input
                   type="text"
                   value={sortOrder.toLocaleString()}
@@ -551,65 +465,17 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                     const v = e.target.value.replace(/[^0-9]/g, "");
                     setSortOrder(Number(v) || 0);
                   }}
-                  className={cn("w-full h-14 px-5 rounded-2xl text-[15px] font-bold", adminUi.input)}
+                  className={cn("w-full h-14 px-5 rounded-2xl text-[15px] font-bold text-right", adminUi.input)}
                 />
-              </div>
-              
-              <div className="md:col-span-3 h-px bg-slate-100 my-2" />
-              
-              {/* Gold Link Options */}
-              <div className="space-y-3">
-                <label className="flex items-center gap-3 cursor-pointer group w-fit">
-                  <div className="relative">
-                    <input 
-                      type="checkbox" 
-                      name="is_gold_linked" 
-                      defaultChecked={product?.is_gold_linked === 1} 
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-amber-500 transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />
-                  </div>
-                  <span className="text-[13px] font-black text-slate-900 group-hover:text-amber-600 transition-colors">금 시세 자동 연동</span>
-                </label>
-                <p className="text-[11px] font-bold text-slate-400 ml-14 leading-relaxed">활성화 시 실시간 금 가격과 중량을 곱하여 가격이 자동 계산됩니다.</p>
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">중량 (g)</label>
-                <input
-                  type="number"
-                  name="weight_grams"
-                  step="0.01"
-                  defaultValue={product?.weight_grams ?? ""}
-                  className={cn("w-full h-14 px-5 rounded-2xl text-[15px] font-bold", adminUi.input)}
-                  placeholder="예: 3.75"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">공임/기타 (원)</label>
-                <input
-                  type="number"
-                  name="labor_fee_krw"
-                  defaultValue={product?.labor_fee_krw ?? ""}
-                  className={cn("w-full h-14 px-5 rounded-2xl text-[15px] font-bold", adminUi.input)}
-                  placeholder="예: 50000"
-                />
+                <input type="hidden" name="sort_order" value={sortOrder} />
               </div>
             </div>
           </section>
 
           {/* 4. 옵션 설정 */}
-          <section id="section-option" className={cn(adminUi.sectionCard, "p-6 md:p-10")}>
-            <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg">
-                  <Layers className="h-6 w-6" />
-                </div>
-                <div>
-                  <h2 className="text-[20px] font-black text-slate-900 tracking-tight">옵션 구성</h2>
-                  <p className="text-[12px] font-bold text-slate-400 mt-0.5">선택사항별 가격 변동을 관리합니다.</p>
-                </div>
-              </div>
+          <section id="section-option" className={cn(adminUi.sectionCard, "p-6 md:p-10 scroll-mt-24")}>
+            <SectionHeader icon={Layers} title="옵션 구성" description="선택사항별 가격 변동을 관리합니다." />
+            <div className="flex justify-end mb-6">
               <button 
                 type="button" 
                 onClick={addOptionGroup}
@@ -619,47 +485,35 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                 그룹 추가
               </button>
             </div>
-
             <div className="space-y-8">
               {options.length === 0 ? (
                 <div className="py-20 text-center bg-slate-50 rounded-[32px] border-2 border-dashed border-slate-100">
                    <p className="text-sm font-black text-slate-400">설정된 옵션이 없습니다.</p>
-                   <p className="text-[11px] font-bold text-slate-300 mt-1">상단의 &apos;그룹 추가&apos; 버튼을 눌러보세요.</p>
                 </div>
               ) : (
                 options.map((group, gIdx) => (
-                  <div key={group.id} className="relative bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden group/card transition-all hover:border-teal-200">
+                  <div key={group.id} className="relative bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
                     <div className="bg-slate-50/50 px-6 py-4 flex items-center justify-between border-b border-slate-100">
-                      <div className="flex-1 flex items-center gap-4">
-                        <span className="text-[10px] font-black text-teal-600 bg-teal-50 px-2 py-0.5 rounded-md">Option {gIdx + 1}</span>
-                        <input
-                          value={group.name}
-                          onChange={(e) => updateGroupName(gIdx, e.target.value)}
-                          className="bg-transparent border-none focus:ring-0 text-[15px] font-black text-slate-900 w-full"
-                          placeholder="그룹명 (예: 색상, 사이즈)"
-                        />
-                      </div>
-                      <button 
-                        type="button" 
-                        onClick={() => removeOptionGroup(gIdx)}
-                        className="text-slate-300 hover:text-rose-500 transition-colors p-2"
-                      >
+                      <input
+                        value={group.name}
+                        onChange={(e) => updateGroupName(gIdx, e.target.value)}
+                        className="bg-transparent border-none focus:ring-0 text-[15px] font-black text-slate-900 w-full"
+                        placeholder="그룹명 (예: 색상, 사이즈)"
+                      />
+                      <button type="button" onClick={() => removeOptionGroup(gIdx)} className="text-slate-300 hover:text-rose-500 p-2">
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                     <div className="p-6 space-y-4">
                       {group.values.map((v, vIdx) => (
-                        <div key={vIdx} className="flex gap-4 items-center bg-slate-50/30 p-3 rounded-2xl group/val hover:bg-slate-50 transition-colors">
-                          <div className="flex-1">
-                            <input
-                              value={v.label}
-                              onChange={(e) => updateOptionValue(gIdx, vIdx, "label", e.target.value)}
-                              className="w-full bg-transparent border-none focus:ring-0 text-[13px] font-bold text-slate-700"
-                              placeholder="항목명 (예: 블랙, XL)"
-                            />
-                          </div>
+                        <div key={vIdx} className="flex gap-4 items-center bg-slate-50/30 p-3 rounded-2xl group/val">
+                          <input
+                            value={v.label}
+                            onChange={(e) => updateOptionValue(gIdx, vIdx, "label", e.target.value)}
+                            className="flex-1 bg-transparent border-none focus:ring-0 text-[13px] font-bold text-slate-700"
+                            placeholder="항목명"
+                          />
                           <div className="flex items-center gap-2 w-32">
-                            <span className="text-[10px] font-black text-slate-400">+/-</span>
                             <input
                               type="number"
                               value={v.priceDeltaKrw}
@@ -668,11 +522,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                             />
                             <span className="text-[11px] font-bold text-slate-400">원</span>
                           </div>
-                          <button 
-                            type="button" 
-                            onClick={() => removeOptionValue(gIdx, vIdx)}
-                            className="opacity-0 group-hover/val:opacity-100 text-slate-300 hover:text-rose-500 transition-all p-1"
-                          >
+                          <button type="button" onClick={() => removeOptionValue(gIdx, vIdx)} className="text-slate-300 hover:text-rose-500 p-1">
                             <X className="h-3.5 w-3.5" />
                           </button>
                         </div>
@@ -680,10 +530,9 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                       <button 
                         type="button" 
                         onClick={() => addOptionValue(gIdx)}
-                        className="w-full py-3 rounded-2xl border-2 border-dashed border-slate-100 text-[11px] font-black text-slate-400 hover:border-teal-200 hover:text-teal-600 hover:bg-teal-50/30 transition-all flex items-center justify-center gap-2"
+                        className="w-full py-3 rounded-2xl border-2 border-dashed border-slate-100 text-[11px] font-black text-slate-400 hover:border-teal-200 hover:text-teal-600 transition-all flex items-center justify-center gap-2"
                       >
-                        <Plus className="h-4 w-4" />
-                        항목 추가
+                        <Plus className="h-4 w-4" /> 항목 추가
                       </button>
                     </div>
                   </div>
@@ -692,7 +541,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
             </div>
           </section>
 
-          {/* 5. 상세 설명 (Smart Editor Panel) */}
+          {/* 5. 상세 설명 */}
           <section id="section-detail" className="scroll-mt-24">
             <ProductContentEditorPanel
               contentHtml={contentHtml}
@@ -704,96 +553,63 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
           </section>
 
           {/* 6. 노출 및 판매 설정 */}
-          <section id="section-display" className={cn(adminUi.sectionCard, "p-6 md:p-10")}>
+          <section id="section-display" className={cn(adminUi.sectionCard, "p-6 md:p-10 scroll-mt-24")}>
             <SectionHeader icon={Monitor} title="노출 및 판매 설정" description="상품이 노출될 채널과 상태를 제어합니다." />
             <div className="space-y-10">
               <div className="space-y-4">
-                <h4 className="text-[13px] font-black text-slate-900 flex items-center gap-2">
-                  노출 채널 설정 <span className="text-slate-400 font-normal text-[10px]">(복수 선택 가능)</span>
-                </h4>
+                <h4 className="text-[13px] font-black text-slate-900">노출 채널 설정</h4>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                   {SUBJECT_KINDS.map((k) => (
                     <label
                       key={k}
-                      className="group relative flex items-center gap-3 rounded-[24px] border-2 border-slate-100 bg-white px-5 py-4 text-[13px] font-black text-slate-600 cursor-pointer has-[:checked]:border-teal-500 has-[:checked]:shadow-lg has-[:checked]:shadow-teal-500/10 has-[:checked]:text-slate-900 transition-all hover:border-slate-300"
+                      className="relative flex items-center gap-3 rounded-[24px] border-2 border-slate-100 bg-white px-5 py-4 text-[13px] font-black text-slate-600 cursor-pointer has-[:checked]:border-teal-500 transition-all"
                     >
-                      <div className="relative">
-                        <input 
-                          type="checkbox" 
-                          name={`kind_${k}`} 
-                          defaultChecked={checkedModes.has(k)} 
-                          className="sr-only peer" 
-                        />
-                        <div className="w-5 h-5 rounded-full border-2 border-slate-200 peer-checked:border-teal-500 peer-checked:bg-teal-500 transition-all flex items-center justify-center">
-                          <CheckCircle2 className="h-3 w-3 text-white scale-0 peer-checked:scale-100 transition-transform" />
-                        </div>
+                      <input type="checkbox" name={`kind_${k}`} defaultChecked={checkedModes.has(k)} className="sr-only peer" />
+                      <div className="w-5 h-5 rounded-full border-2 border-slate-200 peer-checked:bg-teal-500 peer-checked:border-teal-500 transition-all flex items-center justify-center">
+                        <CheckCircle2 className="h-3 w-3 text-white scale-0 peer-checked:scale-100" />
                       </div>
                       {subjectKindMeta[k].label}
                     </label>
                   ))}
                 </div>
               </div>
-
-              <div className="p-8 rounded-[40px] bg-slate-900 text-white shadow-2xl relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-12 opacity-10 group-hover:scale-110 transition-transform">
-                   <Monitor className="h-40 w-40" />
+              <div className="p-8 rounded-[40px] bg-slate-900 text-white flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="space-y-1">
+                  <h4 className="text-lg font-black">즉시 판매 활성화</h4>
+                  <p className="text-sm font-bold text-slate-400">설정 시 사용자의 스토어 화면에 즉시 상품이 노출됩니다.</p>
                 </div>
-                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                  <div className="space-y-2">
-                    <h4 className="text-lg font-black tracking-tight">즉시 판매 활성화</h4>
-                    <p className="text-sm font-bold text-slate-400 leading-relaxed">설정 시 사용자의 스토어 화면에 즉시 상품이 노출되며 구매가 가능해집니다.</p>
+                <label className="flex items-center gap-4 cursor-pointer">
+                  <span className="text-[12px] font-black text-slate-400">비활성</span>
+                  <div className="relative">
+                    <input type="checkbox" name="active" defaultChecked={product == null || product.active === 1} className="sr-only peer" />
+                    <div className="w-16 h-8 bg-slate-700 rounded-full peer peer-checked:bg-teal-500 transition-all after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:after:translate-x-8" />
                   </div>
-                  <label className="flex items-center gap-4 cursor-pointer">
-                    <span className="text-[12px] font-black text-slate-400">비활성</span>
-                    <div className="relative">
-                      <input 
-                        type="checkbox" 
-                        name="active" 
-                        defaultChecked={product == null || product.active === 1} 
-                        className="sr-only peer"
-                      />
-                      <div className="w-16 h-8 bg-slate-700 rounded-full peer peer-checked:bg-teal-500 transition-all after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:after:translate-x-8" />
-                    </div>
-                    <span className="text-[12px] font-black text-teal-400">판매 중</span>
-                  </label>
-                </div>
+                  <span className="text-[12px] font-black text-teal-400">판매 중</span>
+                </label>
               </div>
             </div>
           </section>
         </div>
       </div>
 
-      {/* Naver Center Style Floating Action Bar */}
+      {/* Floating Action Bar */}
       <div className="fixed bottom-8 left-0 right-0 z-50 pointer-events-none">
         <div className="max-w-[1200px] mx-auto px-4 w-full pointer-events-auto">
-          <div className="bg-white/80 backdrop-blur-2xl rounded-[32px] p-4 shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-white/50 flex items-center justify-between">
+          <div className="bg-white/90 backdrop-blur-2xl rounded-[32px] p-4 shadow-2xl border border-white/50 flex items-center justify-between">
             <div className="hidden sm:flex items-center gap-3 px-6 border-r border-slate-100">
-              <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center">
-                <Info className="h-5 w-5 text-slate-400" />
-              </div>
+              <Info className="h-5 w-5 text-slate-400" />
               <div>
-                <p className="text-[11px] font-black text-slate-900 leading-tight">실시간 검증 완료</p>
-                <p className="text-[9px] font-bold text-slate-400 mt-0.5">필수 항목 {isEdit ? "편집" : "등록"} 준비됨</p>
+                <p className="text-[11px] font-black text-slate-900">실시간 저장 준비</p>
+                <p className="text-[9px] font-bold text-slate-400">필수 항목 입력 확인됨</p>
               </div>
             </div>
-
             <div className="flex items-center gap-3 pr-2">
-              <Link 
-                href="/admin/shop/products" 
-                className="h-12 sm:h-14 px-4 sm:px-8 rounded-2xl text-[12px] sm:text-[13px] font-black text-slate-400 hover:text-slate-900 transition-colors flex items-center"
-              >
-                목록으로
-              </Link>
+              <Link href="/admin/shop/products" className="h-12 sm:h-14 px-6 rounded-2xl text-[13px] font-black text-slate-400 hover:text-slate-900 flex items-center">목록으로</Link>
               {isEdit && (
                 <button
                   formAction={deleteShopProduct}
-                  onClick={(e) => {
-                    if (!confirm("정말 이 상품을 삭제하시겠습니까? 주문 내역이 있으면 삭제되지 않습니다.")) {
-                      e.preventDefault();
-                    }
-                  }}
-                  className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl bg-white border border-rose-100 text-rose-500 hover:bg-rose-50 transition-all flex items-center justify-center shadow-sm"
-                  title="상품 삭제"
+                  onClick={(e) => !confirm("정말 삭제하시겠습니까?") && e.preventDefault()}
+                  className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl border border-rose-100 text-rose-500 hover:bg-rose-50 flex items-center justify-center"
                 >
                   <Trash2 className="h-5 w-5" />
                   <input type="hidden" name="product_id" value={product!.id} />
@@ -801,25 +617,11 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
               )}
               <button
                 type="submit"
-                disabled={isSaving || isUploading}
-                className={cn(
-                  "h-12 sm:h-14 flex-1 sm:flex-none sm:min-w-[200px] rounded-2xl text-white px-4 sm:px-12 text-[13px] sm:text-[14px] font-black shadow-xl transition-all flex items-center justify-center gap-3 disabled:opacity-50",
-                  isSaving || isUploading 
-                    ? "bg-slate-400 shadow-none cursor-not-allowed" 
-                    : "bg-slate-900 hover:bg-teal-600 shadow-slate-900/10 active:scale-95"
-                )}
+                disabled={isUploading}
+                className="h-12 sm:h-14 min-w-[160px] rounded-2xl bg-slate-900 text-white px-8 text-[14px] font-black shadow-xl hover:bg-teal-600 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
               >
-                {isSaving ? (
-                  <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <Save className="h-5 w-5" />
-                )}
-                <span className="hidden sm:inline">
-                  {isSaving ? "저장 중..." : (isEdit ? "변경사항 저장하기" : "스토어 상품 등록")}
-                </span>
-                <span className="sm:hidden">
-                  {isSaving ? "저장 중" : "저장"}
-                </span>
+                <Save className="h-5 w-5" />
+                {isEdit ? "변경사항 저장" : "상품 등록"}
               </button>
             </div>
           </div>
