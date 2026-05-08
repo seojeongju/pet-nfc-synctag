@@ -442,7 +442,8 @@ export async function saveShopProduct(
       }
       
       console.log("Redirecting to product list...");
-      redirect(`/admin/shop/products?ok=1`);
+      const ts = Date.now();
+      redirect(`/admin/shop/products?ok=1&_t=${ts}`);
     } else {
       // 신규 등록
       const dupNew = await db.prepare(`SELECT id FROM shop_products WHERE slug = ?`).bind(slugRaw).first<{ id: string }>();
@@ -481,7 +482,8 @@ export async function saveShopProduct(
         console.warn("Revalidation partially failed:", revalError);
       }
       
-      redirect(`/admin/shop/products?ok=1`);
+      const ts = Date.now();
+      redirect(`/admin/shop/products?ok=1&_t=${ts}`);
     }
   } catch (error) {
     if (error instanceof Error && (error.message.includes("NEXT_REDIRECT") || error.message.includes("NEXT_NOT_FOUND"))) {

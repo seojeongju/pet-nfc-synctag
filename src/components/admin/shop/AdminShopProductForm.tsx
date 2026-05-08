@@ -83,6 +83,9 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
   );
 
   const [isUploading, setIsUploading] = useState(false);
+  const [price, setPrice] = useState(product?.price_krw ?? 0);
+  const [stock, setStock] = useState(product?.stock_quantity ?? 999);
+  const [sortOrder, setSortOrder] = useState(product?.sort_order ?? 0);
   const [showPreview, setShowPreview] = useState(true);
   const [activeTab, setActiveTab] = useState("basic");
   
@@ -445,11 +448,15 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="space-y-2">
                 <label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">판매 가격 (원)</label>
+                <input type="hidden" name="price_krw" value={price} />
                 <div className="relative">
                   <input
-                    type="number"
-                    name="price_krw"
-                    defaultValue={product?.price_krw ?? ""}
+                    type="text"
+                    value={price.toLocaleString()}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/[^0-9]/g, "");
+                      setPrice(Number(v) || 0);
+                    }}
                     className={cn("w-full h-14 pl-10 pr-5 rounded-2xl text-[15px] font-bold", adminUi.input)}
                   />
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₩</span>
@@ -457,19 +464,27 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
               </div>
               <div className="space-y-2">
                 <label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">재고 수량</label>
+                <input type="hidden" name="stock_quantity" value={stock} />
                 <input
-                  type="number"
-                  name="stock_quantity"
-                  defaultValue={product?.stock_quantity ?? 999}
+                  type="text"
+                  value={stock.toLocaleString()}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/[^0-9]/g, "");
+                    setStock(Number(v) || 0);
+                  }}
                   className={cn("w-full h-14 px-5 rounded-2xl text-[15px] font-bold", adminUi.input)}
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">정렬 순서</label>
+                <input type="hidden" name="sort_order" value={sortOrder} />
                 <input
-                  type="number"
-                  name="sort_order"
-                  defaultValue={product?.sort_order ?? 0}
+                  type="text"
+                  value={sortOrder.toLocaleString()}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/[^0-9]/g, "");
+                    setSortOrder(Number(v) || 0);
+                  }}
                   className={cn("w-full h-14 px-5 rounded-2xl text-[15px] font-bold", adminUi.input)}
                 />
               </div>
