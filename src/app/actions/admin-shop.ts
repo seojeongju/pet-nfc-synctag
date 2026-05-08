@@ -9,6 +9,7 @@ import { SUBJECT_KINDS, type SubjectKind } from "@/lib/subject-kind";
 
 
 import { resolveAdminScope } from "@/lib/admin-authz";
+import { ShopProductOptionGroup } from "@/types/shop";
 
 async function assertAdminRole(): Promise<void> {
   await resolveAdminScope("admin");
@@ -17,15 +18,6 @@ async function assertAdminRole(): Promise<void> {
 async function getAdminDataScope(): Promise<{ actorId: string; tenantIds: string[] | null }> {
   const { actor, tenantIds } = await resolveAdminScope("admin");
   return { actorId: actor.userId, tenantIds };
-}
-
-/** datetime-local 등 빈 값이면 null */
-function parseOptionalDatetimeToIso(raw: unknown): string | null {
-  const s = String(raw ?? "").trim();
-  if (!s) return null;
-  const dt = new Date(s);
-  if (!Number.isFinite(dt.getTime())) return null;
-  return dt.toISOString();
 }
 
 /** 조직 관리자(tenantIds ≠ null): 본인이 등록한 상품만 */
@@ -278,7 +270,7 @@ export type SaveShopProductClientState = {
   imageUrl: string;
   videoUrl: string;
   additionalImages: string[];
-  options: any[];
+  options: ShopProductOptionGroup[];
 };
 
 export async function saveShopProduct(

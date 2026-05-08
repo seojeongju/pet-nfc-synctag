@@ -1,13 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
 import {
-  FileText,
   Image as ImageIcon,
   Video,
-  Type,
   PlusCircle,
   Quote,
   Minus,
@@ -26,12 +23,9 @@ import {
   List,
   ListOrdered,
   Eraser,
-  ChevronDown,
   Monitor,
   Smartphone,
   Maximize2,
-  MoreHorizontal,
-  Upload,
 } from "lucide-react";
 import { uploadShopAsset } from "@/app/actions/admin-shop";
 
