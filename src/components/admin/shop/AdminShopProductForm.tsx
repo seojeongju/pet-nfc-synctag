@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useActionState, useEffect } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
@@ -91,29 +91,53 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
   const [showPreview, setShowPreview] = useState(true);
   const [activeTab, setActiveTab] = useState("basic");
 
-  // 폼 액션 상태 관리
-  const [state, formAction, isPending] = useActionState(
-    saveShopProduct.bind(null, {
-      contentHtml,
-      imageUrl,
-      videoUrl,
-      additionalImages,
-      options,
-    }),
-    null
-  );
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveResult, setSaveResult] = useState<{ success?: boolean; error?: string } | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (isSaving || isUploading) return;
+
+    setIsSaving(true);
+    setSaveResult(null);
+
+    try {
+      const formData = new FormData(e.currentTarget);
+      
+      // 복잡한 상태값들 추가
+      formData.append("_clientState", JSON.stringify({
+        contentHtml,
+        imageUrl,
+        videoUrl,
+        additionalImages,
+        options,
+      }));
+
+      const res = await fetch("/api/admin/shop/save", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        const ts = Date.now();
+        router.push(`/admin/shop/products?ok=1&_t=${ts}`);
+      } else {
+        setSaveResult({ success: false, error: data.error || "저장 중 오류가 발생했습니다." });
+      }
+    } catch (err) {
+      console.error("Submit error:", err);
+      setSaveResult({ success: false, error: "서버와 통신할 수 없습니다. 네트워크 연결을 확인해 주세요." });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const imgInputRef = useRef<HTMLInputElement>(null);
   const vidInputRef = useRef<HTMLInputElement>(null);
   const addImgInputRef = useRef<HTMLInputElement>(null);
 
-  // 저장 성공 시 리다이렉트
-  useEffect(() => {
-    if (state?.success) {
-      const ts = Date.now();
-      router.push(`/admin/shop/products?ok=1&_t=${ts}`);
-    }
-  }, [state, router]);
 
   const navItems = [
     { id: "basic", label: "기본정보", icon: Package },
@@ -267,9 +291,9 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
   const checkedModes = kindsChecked(product);
 
   return (
-    <form action={formAction} className="relative min-h-screen bg-[#f8fafc] pb-32" noValidate>
+    <form onSubmit={handleSubmit} className="relative min-h-screen bg-[#f8fafc] pb-32" noValidate>
       {/* 폼 에러 메시지 (Toast 대체용) */}
-      {(state?.error) && (
+      {(saveResult?.error) && (
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4 animate-in fade-in slide-in-from-top-4 duration-300">
           <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 shadow-xl flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 shrink-0">
@@ -277,14 +301,14 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-black text-rose-900">저장 실패</p>
-              <p className="text-xs font-bold text-rose-600 truncate">{state.error}</p>
+              <p className="text-xs font-bold text-rose-600 truncate">{saveResult.error}</p>
             </div>
           </div>
         </div>
       )}
 
       {/* 저장 중 로딩 오버레이 */}
-      {isPending && (
+      {isSaving && (
         <div className="fixed inset-0 z-[100] bg-slate-900/10 backdrop-blur-[2px] flex items-center justify-center">
           <div className="bg-white rounded-[32px] p-8 shadow-2xl border border-slate-100 flex flex-col items-center gap-4 animate-in zoom-in duration-300">
             <div className="relative h-12 w-12">
@@ -776,20 +800,20 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
               )}
               <button
                 type="submit"
-                disabled={isPending || isUploading}
+                disabled={isSaving || isUploading}
                 className={cn(
                   "h-14 min-w-[200px] rounded-2xl text-white px-12 text-[14px] font-black shadow-xl transition-all flex items-center justify-center gap-3 disabled:opacity-50",
-                  isPending || isUploading 
+                  isSaving || isUploading 
                     ? "bg-slate-400 shadow-none cursor-not-allowed" 
                     : "bg-slate-900 hover:bg-teal-600 shadow-slate-900/10 active:scale-95"
                 )}
               >
-                {isPending ? (
+                {isSaving ? (
                   <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <Save className="h-5 w-5" />
                 )}
-                {isPending ? "저장 중..." : (isEdit ? "변경사항 저장하기" : "스토어 상품 등록")}
+                {isSaving ? "저장 중..." : (isEdit ? "변경사항 저장하기" : "스토어 상품 등록")}
               </button>
             </div>
           </div>
