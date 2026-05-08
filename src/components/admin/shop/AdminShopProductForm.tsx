@@ -167,7 +167,9 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
         formData.append("file", uploadFile);
         
         const { url } = await uploadShopAsset(formData);
-        uploadUrls.push(url);
+        // 캐시 방지를 위해 타임스탬프 추가 (선택사항이나 미리보기 보장용)
+        const cacheBustUrl = `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`;
+        uploadUrls.push(cacheBustUrl);
       }
 
       if (target === "main") {
@@ -371,7 +373,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
         <div className="flex-1 space-y-8 min-w-0">
           
           {/* 1. 상품 기본 정보 */}
-          <section id="section-basic" className={cn(adminUi.sectionCard, "p-8 md:p-10")}>
+          <section id="section-basic" className={cn(adminUi.sectionCard, "p-6 md:p-10")}>
             <SectionHeader icon={Package} title="기본 정보" description="스토어에 노출될 상품의 기본 정체성을 정의합니다." badge="Essential" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-2">
@@ -415,7 +417,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
           </section>
 
           {/* 2. 이미지 및 동영상 (Media Center) */}
-          <section id="section-media" className={cn(adminUi.sectionCard, "p-8 md:p-10")}>
+          <section id="section-media" className={cn(adminUi.sectionCard, "p-6 md:p-10")}>
             <SectionHeader icon={ImageIcon} title="이미지 및 동영상" description="대표 이미지와 상세 갤러리를 관리합니다. 고화질 권장." />
             
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
@@ -430,7 +432,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                 >
                   {imageUrl ? (
                     <>
-                      <img src={imageUrl} alt="Main" className="h-full w-full object-cover transition duration-500 group-hover:scale-110" />
+                      <img key={imageUrl} src={imageUrl} alt="Main" className="h-full w-full object-cover transition duration-500 group-hover:scale-110" />
                       <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
                         <div className="bg-white/20 backdrop-blur-md px-4 py-2 rounded-full border border-white/30 text-white text-[12px] font-black">이미지 변경</div>
                       </div>
@@ -456,7 +458,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                     className="group relative aspect-video w-full rounded-3xl bg-slate-900 border border-slate-800 overflow-hidden cursor-pointer hover:border-rose-400 transition-all shadow-inner"
                   >
                     {videoUrl ? (
-                      <video src={videoUrl} className="h-full w-full object-cover" />
+                      <video key={videoUrl} src={videoUrl} className="h-full w-full object-cover" />
                     ) : (
                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
                         <Video className="h-8 w-8 text-slate-600 group-hover:text-rose-500 transition-colors" />
@@ -480,7 +482,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                   <h4 className="text-[13px] font-black text-slate-900">추가 이미지 ({additionalImages.length})</h4>
                   <div className="grid grid-cols-4 gap-3">
                     {additionalImages.map((img, idx) => (
-                      <div key={idx} className="group relative aspect-square rounded-2xl bg-slate-50 border border-slate-100 overflow-hidden shadow-sm">
+                      <div key={`${img}-${idx}`} className="group relative aspect-square rounded-2xl bg-slate-50 border border-slate-100 overflow-hidden shadow-sm">
                         <img src={img} alt={`Additional ${idx + 1}`} className="h-full w-full object-cover" />
                         <button 
                           type="button" 
@@ -507,7 +509,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
           </section>
 
           {/* 3. 판매 정보 */}
-          <section id="section-price" className={cn(adminUi.sectionCard, "p-8 md:p-10")}>
+          <section id="section-price" className={cn(adminUi.sectionCard, "p-6 md:p-10")}>
             <SectionHeader icon={DollarSign} title="판매 정보" description="가격 정책 및 재고 수량을 설정합니다." badge="Price" />
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="space-y-2">
@@ -521,7 +523,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                       const v = e.target.value.replace(/[^0-9]/g, "");
                       setPrice(Number(v) || 0);
                     }}
-                    className={cn("w-full h-14 pl-10 pr-5 rounded-2xl text-[15px] font-bold", adminUi.input)}
+                    className={cn("w-full h-14 pl-12 pr-5 rounded-2xl text-[15px] font-bold", adminUi.input)}
                   />
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₩</span>
                 </div>
@@ -597,7 +599,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
           </section>
 
           {/* 4. 옵션 설정 */}
-          <section id="section-option" className={cn(adminUi.sectionCard, "p-8 md:p-10")}>
+          <section id="section-option" className={cn(adminUi.sectionCard, "p-6 md:p-10")}>
             <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg">
@@ -702,7 +704,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
           </section>
 
           {/* 6. 노출 및 판매 설정 */}
-          <section id="section-display" className={cn(adminUi.sectionCard, "p-8 md:p-10")}>
+          <section id="section-display" className={cn(adminUi.sectionCard, "p-6 md:p-10")}>
             <SectionHeader icon={Monitor} title="노출 및 판매 설정" description="상품이 노출될 채널과 상태를 제어합니다." />
             <div className="space-y-10">
               <div className="space-y-4">
@@ -765,7 +767,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
       <div className="fixed bottom-8 left-0 right-0 z-50 pointer-events-none">
         <div className="max-w-[1200px] mx-auto px-4 w-full pointer-events-auto">
           <div className="bg-white/80 backdrop-blur-2xl rounded-[32px] p-4 shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-white/50 flex items-center justify-between">
-            <div className="flex items-center gap-3 px-6 border-r border-slate-100">
+            <div className="hidden sm:flex items-center gap-3 px-6 border-r border-slate-100">
               <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center">
                 <Info className="h-5 w-5 text-slate-400" />
               </div>
@@ -778,7 +780,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
             <div className="flex items-center gap-3 pr-2">
               <Link 
                 href="/admin/shop/products" 
-                className="h-14 px-8 rounded-2xl text-[13px] font-black text-slate-400 hover:text-slate-900 transition-colors flex items-center"
+                className="h-12 sm:h-14 px-4 sm:px-8 rounded-2xl text-[12px] sm:text-[13px] font-black text-slate-400 hover:text-slate-900 transition-colors flex items-center"
               >
                 목록으로
               </Link>
@@ -790,7 +792,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                       e.preventDefault();
                     }
                   }}
-                  className="h-14 w-14 rounded-2xl bg-white border border-rose-100 text-rose-500 hover:bg-rose-50 transition-all flex items-center justify-center shadow-sm"
+                  className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl bg-white border border-rose-100 text-rose-500 hover:bg-rose-50 transition-all flex items-center justify-center shadow-sm"
                   title="상품 삭제"
                 >
                   <Trash2 className="h-5 w-5" />
@@ -801,7 +803,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                 type="submit"
                 disabled={isSaving || isUploading}
                 className={cn(
-                  "h-14 min-w-[200px] rounded-2xl text-white px-12 text-[14px] font-black shadow-xl transition-all flex items-center justify-center gap-3 disabled:opacity-50",
+                  "h-12 sm:h-14 flex-1 sm:flex-none sm:min-w-[200px] rounded-2xl text-white px-4 sm:px-12 text-[13px] sm:text-[14px] font-black shadow-xl transition-all flex items-center justify-center gap-3 disabled:opacity-50",
                   isSaving || isUploading 
                     ? "bg-slate-400 shadow-none cursor-not-allowed" 
                     : "bg-slate-900 hover:bg-teal-600 shadow-slate-900/10 active:scale-95"
@@ -812,7 +814,12 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                 ) : (
                   <Save className="h-5 w-5" />
                 )}
-                {isSaving ? "저장 중..." : (isEdit ? "변경사항 저장하기" : "스토어 상품 등록")}
+                <span className="hidden sm:inline">
+                  {isSaving ? "저장 중..." : (isEdit ? "변경사항 저장하기" : "스토어 상품 등록")}
+                </span>
+                <span className="sm:hidden">
+                  {isSaving ? "저장 중" : "저장"}
+                </span>
               </button>
             </div>
           </div>
