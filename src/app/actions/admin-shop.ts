@@ -281,6 +281,7 @@ export type SaveShopProductResult = {
 
 export async function saveShopProduct(
   clientState: SaveShopProductClientState | null,
+  prevState: SaveShopProductResult | null,
   formData: FormData
 ): Promise<SaveShopProductResult> {
   const idExisting = String(formData.get("id") ?? "").trim();

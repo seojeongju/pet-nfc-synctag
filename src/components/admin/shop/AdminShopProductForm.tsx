@@ -103,6 +103,10 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
     null
   );
 
+  const imgInputRef = useRef<HTMLInputElement>(null);
+  const vidInputRef = useRef<HTMLInputElement>(null);
+  const addImgInputRef = useRef<HTMLInputElement>(null);
+
   // 저장 성공 시 리다이렉트
   useEffect(() => {
     if (state?.success) {
@@ -261,14 +265,6 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
   };
 
   const checkedModes = kindsChecked(product);
-  
-  const saveActionWithState = saveShopProduct.bind(null, {
-    contentHtml,
-    imageUrl,
-    videoUrl,
-    additionalImages,
-    options,
-  });
 
   return (
     <form action={formAction} className="relative min-h-screen bg-[#f8fafc] pb-32" noValidate>
