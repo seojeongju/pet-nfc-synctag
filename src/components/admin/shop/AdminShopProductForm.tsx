@@ -626,7 +626,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                 type="submit"
                 disabled={isPending || isUploading}
                 className={cn(
-                  "h-12 sm:h-14 min-w-[160px] rounded-2xl bg-slate-900 text-white px-8 text-[14px] font-black shadow-xl hover:bg-teal-600 transition-all flex items-center justify-center gap-3 disabled:opacity-50",
+                  "h-12 sm:h-14 min-w-[140px] sm:min-w-[160px] rounded-2xl bg-slate-900 text-white px-5 sm:px-8 text-[13px] sm:text-[14px] font-black shadow-xl hover:bg-teal-600 transition-all flex items-center justify-center gap-2 sm:gap-3 disabled:opacity-50 whitespace-nowrap shrink-0",
                   (isPending || isUploading) && "bg-slate-400"
                 )}
               >
