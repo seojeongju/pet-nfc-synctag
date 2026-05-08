@@ -27,7 +27,6 @@ import {
   Smartphone,
   Maximize2,
 } from "lucide-react";
-import { uploadShopAsset } from "@/app/actions/admin-shop";
 
 const STORAGE_KEY = "admin-shop-product-content-mode";
 
@@ -97,7 +96,18 @@ export function ProductContentEditorPanel({
       setIsUploading(true);
       const formData = new FormData();
       formData.append("file", file);
-      const { url } = await uploadShopAsset(formData);
+      
+      const res = await fetch("/api/admin/shop/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error((errorData as any).error || "업로드에 실패했습니다.");
+      }
+
+      const { url } = await res.json();
       
       runCmd("insertImage", url);
       // 포커스 유지 및 추가 정리
@@ -107,7 +117,7 @@ export function ProductContentEditorPanel({
       }
     } catch (err) {
       console.error("Inline image upload failed:", err);
-      alert("이미지 삽입에 실패했습니다.");
+      alert(err instanceof Error ? err.message : "이미지 삽입에 실패했습니다.");
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";

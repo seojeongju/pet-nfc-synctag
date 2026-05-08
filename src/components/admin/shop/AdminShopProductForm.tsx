@@ -1,12 +1,10 @@
 "use client";
 
-import { useState, useRef, useActionState, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
-  deleteShopProduct, 
-  uploadShopAsset,
-  saveShopProduct
+  deleteShopProduct 
 } from "@/app/actions/admin-shop";
 import type { AdminShopProductRow, SaveShopProductResult } from "@/app/actions/admin-shop";
 import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
@@ -92,30 +90,63 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
   const [showPreview, setShowPreview] = useState(true);
   const [activeTab, setActiveTab] = useState("basic");
 
-  const [state, formAction, isPending] = useActionState<SaveShopProductResult | null, FormData>(
-    (prevState, formData) => {
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (isSaving || isUploading) return;
+
+    setIsSaving(true);
+    setSaveError(null);
+
+    try {
+      const formData = new FormData(e.currentTarget);
+      
       // 저장 시에는 캐시 버스팅용 타임스탬프(?t=...) 제거하여 순수 URL만 저장
       const cleanImageUrl = imageUrl.split('?')[0];
       const cleanVideoUrl = videoUrl.split('?')[0];
       const cleanAdditionalImages = additionalImages.map(url => url.split('?')[0]);
-      
-      return saveShopProduct({
+
+      // 클라이언트 상태 병합
+      const clientState = {
         contentHtml,
         imageUrl: cleanImageUrl,
         videoUrl: cleanVideoUrl,
         additionalImages: cleanAdditionalImages,
-        options
-      }, prevState, formData);
-    },
-    null
-  );
+        options,
+        id: product?.id,
+        slug: product?.slug
+      };
+      
+      formData.append("_clientState", JSON.stringify(clientState));
 
-  // 저장 성공 시 리다이렉트 처리
-  useEffect(() => {
-    if (state?.success) {
-      router.push("/admin/shop/products?ok=1");
+      const res = await fetch("/api/admin/shop/save", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || "저장에 실패했습니다.");
+      }
+
+      // 저장 성공 시 리다이렉트
+      window.location.href = "/admin/shop/products?ok=1";
+    } catch (err) {
+      console.error("SAVE ERROR:", err);
+      setSaveError(err instanceof Error ? err.message : "저장 중 오류가 발생했습니다.");
+      setIsSaving(false);
     }
-  }, [state, router]);
+  };
+
+  useEffect(() => {
+    // URL에 에러 메시지가 있으면 표시
+    const params = new URLSearchParams(window.location.search);
+    const e = params.get("e");
+    if (e) setSaveError(decodeURIComponent(e));
+  }, []);
 
   const imgInputRef = useRef<HTMLInputElement>(null);
   const vidInputRef = useRef<HTMLInputElement>(null);
@@ -146,7 +177,18 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
 
         const formData = new FormData();
         formData.append("file", uploadFile);
-        const { url } = await uploadShopAsset(formData);
+        
+        const res = await fetch("/api/admin/shop/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error((errorData as any).error || "업로드에 실패했습니다.");
+        }
+
+        const { url } = await res.json();
         // 미리보기 시 브라우저 캐시 방지를 위해 타임스탬프 추가
         const cacheBustUrl = `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`;
         uploadUrls.push(cacheBustUrl);
@@ -240,12 +282,12 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
   const checkedModes = kindsChecked(product);
 
   return (
-    <form action={formAction} className="relative min-h-screen bg-[#f8fafc] pb-32" noValidate>
-      {state?.error && (
+    <form onSubmit={handleSubmit} className="relative min-h-screen bg-[#f8fafc] pb-32" noValidate>
+      {saveError && (
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4 animate-in fade-in slide-in-from-top-4 duration-300">
           <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 shadow-xl flex items-center gap-3">
             <X className="h-5 w-5 text-rose-600" />
-            <p className="text-sm font-black text-rose-900">{state.error}</p>
+            <p className="text-sm font-black text-rose-900">{saveError}</p>
           </div>
         </div>
       )}
@@ -624,18 +666,18 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
               )}
               <button
                 type="submit"
-                disabled={isPending || isUploading}
+                disabled={isSaving || isUploading}
                 className={cn(
                   "h-12 sm:h-14 min-w-[140px] sm:min-w-[160px] rounded-2xl bg-slate-900 text-white px-5 sm:px-8 text-[13px] sm:text-[14px] font-black shadow-xl hover:bg-teal-600 transition-all flex items-center justify-center gap-2 sm:gap-3 disabled:opacity-50 whitespace-nowrap shrink-0",
-                  (isPending || isUploading) && "bg-slate-400"
+                  (isSaving || isUploading) && "bg-slate-400"
                 )}
               >
-                {isPending ? (
+                {isSaving ? (
                   <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <Save className="h-5 w-5" />
                 )}
-                {isEdit ? (isPending ? "저장 중..." : "변경사항 저장") : (isPending ? "등록 중..." : "상품 등록")}
+                {isEdit ? (isSaving ? "저장 중..." : "변경사항 저장") : (isSaving ? "등록 중..." : "상품 등록")}
               </button>
             </div>
           </div>
