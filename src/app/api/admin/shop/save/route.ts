@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { saveShopProduct } from "@/app/actions/admin-shop";
 
+export const runtime = "edge";
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
