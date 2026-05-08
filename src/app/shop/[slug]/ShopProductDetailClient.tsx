@@ -181,11 +181,25 @@ export default function ShopProductDetailClient({
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={currentMediaIndex}
-                    initial={{ opacity: 0, x: 20 }}
+                    drag="x"
+                    dragConstraints={{ left: 0, right: 0 }}
+                    dragElastic={0.5}
+                    onDragEnd={(e, { offset, velocity }) => {
+                      const swipe = offset.x;
+                      if (swipe < -50) {
+                        nextMedia();
+                      } else if (swipe > 50) {
+                        prevMedia();
+                      }
+                    }}
+                    initial={{ opacity: 0, x: 50 }}
                     animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.3, ease: "easeOut" }}
-                    className="h-full w-full"
+                    exit={{ opacity: 0, x: -50 }}
+                    transition={{ 
+                      x: { type: "spring", stiffness: 300, damping: 30 },
+                      opacity: { duration: 0.2 }
+                    }}
+                    className="h-full w-full touch-pan-y cursor-grab active:cursor-grabbing"
                   >
                     {renderMedia(mediaList[currentMediaIndex])}
                   </motion.div>
