@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useActionState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { 
   deleteShopProduct, 
   saveShopProduct, 
@@ -82,16 +83,33 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
     shopProductOptionsForAdmin(product?.options_json)
   );
 
+  const router = useRouter();
   const [isUploading, setIsUploading] = useState(false);
   const [price, setPrice] = useState(product?.price_krw ?? 0);
   const [stock, setStock] = useState(product?.stock_quantity ?? 999);
   const [sortOrder, setSortOrder] = useState(product?.sort_order ?? 0);
   const [showPreview, setShowPreview] = useState(true);
   const [activeTab, setActiveTab] = useState("basic");
-  
-  const imgInputRef = useRef<HTMLInputElement>(null);
-  const vidInputRef = useRef<HTMLInputElement>(null);
-  const addImgInputRef = useRef<HTMLInputElement>(null);
+
+  // 폼 액션 상태 관리
+  const [state, formAction, isPending] = useActionState(
+    saveShopProduct.bind(null, {
+      contentHtml,
+      imageUrl,
+      videoUrl,
+      additionalImages,
+      options,
+    }),
+    null
+  );
+
+  // 저장 성공 시 리다이렉트
+  useEffect(() => {
+    if (state?.success) {
+      const ts = Date.now();
+      router.push(`/admin/shop/products?ok=1&_t=${ts}`);
+    }
+  }, [state, router]);
 
   const navItems = [
     { id: "basic", label: "기본정보", icon: Package },
@@ -253,7 +271,34 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
   });
 
   return (
-    <form action={saveActionWithState} className="relative min-h-screen bg-[#f8fafc] pb-32" noValidate>
+    <form action={formAction} className="relative min-h-screen bg-[#f8fafc] pb-32" noValidate>
+      {/* 폼 에러 메시지 (Toast 대체용) */}
+      {(state?.error) && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 shadow-xl flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 shrink-0">
+              <X className="h-5 w-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-black text-rose-900">저장 실패</p>
+              <p className="text-xs font-bold text-rose-600 truncate">{state.error}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 저장 중 로딩 오버레이 */}
+      {isPending && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/10 backdrop-blur-[2px] flex items-center justify-center">
+          <div className="bg-white rounded-[32px] p-8 shadow-2xl border border-slate-100 flex flex-col items-center gap-4 animate-in zoom-in duration-300">
+            <div className="relative h-12 w-12">
+              <div className="absolute inset-0 rounded-full border-4 border-slate-100"></div>
+              <div className="absolute inset-0 rounded-full border-4 border-teal-500 border-t-transparent animate-spin"></div>
+            </div>
+            <p className="text-sm font-black text-slate-900">상품 정보를 저장하고 있습니다...</p>
+          </div>
+        </div>
+      )}
       {/* Hidden inputs for state synchronization */}
       {isEdit && <input type="hidden" name="id" value={product!.id} />}
       <input type="hidden" name="content_html" value={contentHtml} />
@@ -735,11 +780,20 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
               )}
               <button
                 type="submit"
-                disabled={isUploading}
-                className="h-14 min-w-[200px] rounded-2xl bg-slate-900 hover:bg-teal-600 text-white px-12 text-[14px] font-black shadow-xl shadow-slate-900/10 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                disabled={isPending || isUploading}
+                className={cn(
+                  "h-14 min-w-[200px] rounded-2xl text-white px-12 text-[14px] font-black shadow-xl transition-all flex items-center justify-center gap-3 disabled:opacity-50",
+                  isPending || isUploading 
+                    ? "bg-slate-400 shadow-none cursor-not-allowed" 
+                    : "bg-slate-900 hover:bg-teal-600 shadow-slate-900/10 active:scale-95"
+                )}
               >
-                <Save className="h-5 w-5" />
-                {isEdit ? "변경사항 저장하기" : "스토어 상품 등록"}
+                {isPending ? (
+                  <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <Save className="h-5 w-5" />
+                )}
+                {isPending ? "저장 중..." : (isEdit ? "변경사항 저장하기" : "스토어 상품 등록")}
               </button>
             </div>
           </div>

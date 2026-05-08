@@ -273,10 +273,16 @@ export type SaveShopProductClientState = {
   options: ShopProductOptionGroup[];
 };
 
+export type SaveShopProductResult = {
+  success: boolean;
+  message?: string;
+  error?: string;
+};
+
 export async function saveShopProduct(
   clientState: SaveShopProductClientState | null,
   formData: FormData
-): Promise<void> {
+): Promise<SaveShopProductResult> {
   const idExisting = String(formData.get("id") ?? "").trim();
   try {
     console.log("--- SAVE SHOP PRODUCT ATTEMPT ---");
@@ -441,9 +447,7 @@ export async function saveShopProduct(
         console.warn("Revalidation partially failed:", revalError);
       }
       
-      console.log("Redirecting to product list...");
-      const ts = Date.now();
-      redirect(`/admin/shop/products?ok=1&_t=${ts}`);
+      return { success: true, message: "상품이 성공적으로 저장되었습니다." };
     } else {
       // 신규 등록
       const dupNew = await db.prepare(`SELECT id FROM shop_products WHERE slug = ?`).bind(slugRaw).first<{ id: string }>();
@@ -482,18 +486,12 @@ export async function saveShopProduct(
         console.warn("Revalidation partially failed:", revalError);
       }
       
-      const ts = Date.now();
-      redirect(`/admin/shop/products?ok=1&_t=${ts}`);
+      return { success: true, message: "새 상품이 등록되었습니다." };
     }
-  } catch (error) {
-    if (error instanceof Error && (error.message.includes("NEXT_REDIRECT") || error.message.includes("NEXT_NOT_FOUND"))) {
-      throw error;
-    }
-    console.error("CRITICAL SAVE ERROR:", error);
-    const msg = error instanceof Error ? error.message : "알 수 없는 저장 오류가 발생했습니다.";
-    // 에러 발생 시 원래 페이지로 리다이렉트
-    const returnUrl = `/admin/shop/products${idExisting ? `/${encodeURIComponent(idExisting)}` : "/new"}?e=${encodeURIComponent(msg)}`;
-    redirect(returnUrl);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : "알 수 없는 저장 오류가 발생했습니다." 
+    };
   }
 }
 
