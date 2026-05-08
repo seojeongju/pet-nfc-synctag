@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useActionState } from "react";
+import { useState, useRef, useActionState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
@@ -92,7 +92,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
   const [showPreview, setShowPreview] = useState(true);
   const [activeTab, setActiveTab] = useState("basic");
 
-  const [state, formAction] = useActionState<SaveShopProductResult | null, FormData>(
+  const [state, formAction, isPending] = useActionState<SaveShopProductResult | null, FormData>(
     (prevState, formData) => {
       // 저장 시에는 캐시 버스팅용 타임스탬프(?t=...) 제거하여 순수 URL만 저장
       const cleanImageUrl = imageUrl.split('?')[0];
@@ -109,6 +109,13 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
     },
     null
   );
+
+  // 저장 성공 시 리다이렉트 처리
+  useEffect(() => {
+    if (state?.success) {
+      router.push("/admin/shop/products?ok=1");
+    }
+  }, [state, router]);
 
   const imgInputRef = useRef<HTMLInputElement>(null);
   const vidInputRef = useRef<HTMLInputElement>(null);
@@ -437,7 +444,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                       const v = e.target.value.replace(/[^0-9]/g, "");
                       setPrice(Number(v) || 0);
                     }}
-                    className={cn("w-full h-14 pl-5 pr-12 rounded-2xl text-[15px] font-bold text-right", adminUi.input)}
+                    className={cn("w-full h-14 pl-5 pr-16 rounded-2xl text-[15px] font-bold text-right", adminUi.input)}
                   />
                   <input type="hidden" name="price_krw" value={price} />
                   <span className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">원</span>
@@ -452,7 +459,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                     const v = e.target.value.replace(/[^0-9]/g, "");
                     setStock(Number(v) || 0);
                   }}
-                  className={cn("w-full h-14 px-5 rounded-2xl text-[15px] font-bold text-right", adminUi.input)}
+                  className={cn("w-full h-14 pl-5 pr-16 rounded-2xl text-[15px] font-bold text-right", adminUi.input)}
                 />
                 <input type="hidden" name="stock_quantity" value={stock} />
               </div>
@@ -465,7 +472,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                     const v = e.target.value.replace(/[^0-9]/g, "");
                     setSortOrder(Number(v) || 0);
                   }}
-                  className={cn("w-full h-14 px-5 rounded-2xl text-[15px] font-bold text-right", adminUi.input)}
+                  className={cn("w-full h-14 pl-5 pr-16 rounded-2xl text-[15px] font-bold text-right", adminUi.input)}
                 />
                 <input type="hidden" name="sort_order" value={sortOrder} />
               </div>
@@ -617,11 +624,18 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
               )}
               <button
                 type="submit"
-                disabled={isUploading}
-                className="h-12 sm:h-14 min-w-[160px] rounded-2xl bg-slate-900 text-white px-8 text-[14px] font-black shadow-xl hover:bg-teal-600 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                disabled={isPending || isUploading}
+                className={cn(
+                  "h-12 sm:h-14 min-w-[160px] rounded-2xl bg-slate-900 text-white px-8 text-[14px] font-black shadow-xl hover:bg-teal-600 transition-all flex items-center justify-center gap-3 disabled:opacity-50",
+                  (isPending || isUploading) && "bg-slate-400"
+                )}
               >
-                <Save className="h-5 w-5" />
-                {isEdit ? "변경사항 저장" : "상품 등록"}
+                {isPending ? (
+                  <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <Save className="h-5 w-5" />
+                )}
+                {isEdit ? (isPending ? "저장 중..." : "변경사항 저장") : (isPending ? "등록 중..." : "상품 등록")}
               </button>
             </div>
           </div>
