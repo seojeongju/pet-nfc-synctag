@@ -1,15 +1,17 @@
+import Link from "next/link";
+import { listAdminShopProducts } from "@/app/actions/admin-shop";
+import { subjectKindMeta, SUBJECT_KINDS, type SubjectKind } from "@/lib/subject-kind";
+import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
 import { 
   Plus, 
   Pencil, 
   ExternalLink, 
   Package, 
-  Eye, 
   Zap,
   ShoppingBag,
   ChevronRight,
-  DollarSign,
-  Layers
+  DollarSign
 } from "lucide-react";
 
 export const runtime = "edge";
