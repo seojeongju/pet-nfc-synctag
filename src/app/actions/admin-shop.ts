@@ -273,8 +273,18 @@ function parseKindsFromForm(formData: FormData): SubjectKind[] {
   return out;
 }
 
-export async function saveShopProduct(formData: FormData): Promise<void> {
-  const idExisting = String(formData.get("id") ?? "").trim();
+export type SaveShopProductClientState = {
+  contentHtml: string;
+  imageUrl: string;
+  videoUrl: string;
+  additionalImages: string[];
+  options: any[];
+};
+
+export async function saveShopProduct(
+  clientState: SaveShopProductClientState | null,
+  formData: FormData
+): Promise<void> {
   try {
     console.log("--- SAVE SHOP PRODUCT ATTEMPT ---");
     const scope = await getAdminDataScope();
@@ -284,6 +294,7 @@ export async function saveShopProduct(formData: FormData): Promise<void> {
       return typeof v === "string" ? v.trim() : "";
     };
 
+    const idExisting = getS("id");
     const slugRaw = getS("slug").toLowerCase();
     const name = getS("name");
     const description = getS("description");
@@ -291,11 +302,14 @@ export async function saveShopProduct(formData: FormData): Promise<void> {
     const stockRaw = Number(formData.get("stock_quantity") ?? 999);
     const sortRaw = Number(formData.get("sort_order"));
     const active = formData.get("active") === "on" ? 1 : 0;
-    const imageUrlRaw = getS("image_url");
-    const videoUrlRaw = getS("video_url");
-    const contentHtml = getS("content_html");
-    const additionalImagesRaw = getS("additional_images");
-    const optionsJsonRaw = getS("options_json");
+
+    // clientState가 있으면 그것을 우선 사용, 없으면 formData에서 추출 (하위 호환성)
+    const imageUrlRaw = clientState?.imageUrl ?? getS("image_url");
+    const videoUrlRaw = clientState?.videoUrl ?? getS("video_url");
+    const contentHtml = clientState?.contentHtml ?? getS("content_html");
+    const additionalImagesRaw = clientState ? JSON.stringify(clientState.additionalImages) : getS("additional_images");
+    const optionsJsonRaw = clientState ? JSON.stringify(clientState.options) : getS("options_json");
+    
     const weightGramsRaw = formData.get("weight_grams");
     const laborFeeRaw = formData.get("labor_fee_krw");
     const isGoldLinked = formData.get("is_gold_linked") === "on" ? 1 : 0;

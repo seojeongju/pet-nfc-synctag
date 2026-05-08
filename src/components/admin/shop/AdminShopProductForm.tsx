@@ -240,9 +240,17 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
   };
 
   const checkedModes = kindsChecked(product);
+  
+  const saveActionWithState = saveShopProduct.bind(null, {
+    contentHtml,
+    imageUrl,
+    videoUrl,
+    additionalImages,
+    options,
+  });
 
   return (
-    <form action={saveShopProduct} className="relative min-h-screen bg-[#f8fafc] pb-32" noValidate>
+    <form action={saveActionWithState} className="relative min-h-screen bg-[#f8fafc] pb-32" noValidate>
       {/* Hidden inputs for state synchronization */}
       {isEdit && <input type="hidden" name="id" value={product!.id} />}
       <input type="hidden" name="content_html" value={contentHtml} />
