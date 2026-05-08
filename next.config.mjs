@@ -25,6 +25,13 @@ const withPWA = withPWAInit({
         handler: "NetworkOnly",
       },
       {
+        // 상품 상세/목록은 수정 직후 최신 데이터가 즉시 반영되어야 하므로 캐시 우회
+        urlPattern: ({ url }) => {
+          return url.pathname.startsWith("/shop");
+        },
+        handler: "NetworkOnly",
+      },
+      {
         urlPattern: /\/_next\/data\/.*$/,
         handler: "NetworkOnly",
       },
