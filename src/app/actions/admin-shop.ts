@@ -277,6 +277,7 @@ export async function saveShopProduct(
   clientState: SaveShopProductClientState | null,
   formData: FormData
 ): Promise<void> {
+  const idExisting = String(formData.get("id") ?? "").trim();
   try {
     console.log("--- SAVE SHOP PRODUCT ATTEMPT ---");
     const scope = await getAdminDataScope();
@@ -286,7 +287,6 @@ export async function saveShopProduct(
       return typeof v === "string" ? v.trim() : "";
     };
 
-    const idExisting = getS("id");
     const slugRaw = getS("slug").toLowerCase();
     const name = getS("name");
     const description = getS("description");
