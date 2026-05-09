@@ -321,19 +321,19 @@ export async function saveShopProduct(
     console.log(`[saveShopProduct] Media Raw: image=${imageUrlRaw}, video=${videoUrlRaw}, additionalImages=${additionalImagesRaw}`);
 
     if (!slugRaw || !SLUG_RE.test(slugRaw)) {
-      redirect(`/admin/shop/products${idExisting ? `/${encodeURIComponent(idExisting)}` : "/new"}?e=${encodeURIComponent("슬러그는 영문 소문자·숫자·하이픈만 사용합니다.")}`);
+      return { success: false, error: "슬러그는 영문 소문자·숫자·하이픈만 사용합니다." };
     }
     if (!name) {
-      redirect(`/admin/shop/products${idExisting ? `/${encodeURIComponent(idExisting)}` : "/new"}?e=${encodeURIComponent("상품명을 입력하세요.")}`);
+      return { success: false, error: "상품명을 입력하세요." };
     }
     if (!Number.isFinite(priceRaw) || priceRaw < 0) {
-      redirect(`/admin/shop/products${idExisting ? `/${encodeURIComponent(idExisting)}` : "/new"}?e=${encodeURIComponent("가격이 올바르지 않습니다.")}`);
+      return { success: false, error: "가격이 올바르지 않습니다." };
     }
     if (!Number.isFinite(sortRaw)) {
-      redirect(`/admin/shop/products${idExisting ? `/${encodeURIComponent(idExisting)}` : "/new"}?e=${encodeURIComponent("정렬 순서가 올바르지 않습니다.")}`);
+      return { success: false, error: "정렬 순서가 올바르지 않습니다." };
     }
     if (modes.length === 0) {
-      redirect(`/admin/shop/products${idExisting ? `/${encodeURIComponent(idExisting)}` : "/new"}?e=${encodeURIComponent("노출 모드를 최소 1개 이상 선택하세요.")}`);
+      return { success: false, error: "노출 모드를 최소 1개 이상 선택하세요." };
     }
 
     const price_krw = Math.floor(priceRaw);

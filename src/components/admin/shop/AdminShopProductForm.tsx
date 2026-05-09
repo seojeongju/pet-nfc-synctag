@@ -2,11 +2,10 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { 
   deleteShopProduct 
 } from "@/app/actions/admin-shop";
-import type { AdminShopProductRow, SaveShopProductResult } from "@/app/actions/admin-shop";
+import type { AdminShopProductRow } from "@/app/actions/admin-shop";
 import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
 import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
@@ -92,7 +91,6 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
     shopProductOptionsForAdmin(product?.options_json)
   );
 
-  const router = useRouter();
   const [isUploading, setIsUploading] = useState(false);
   const [price, setPrice] = useState(product?.price_krw ?? 0);
   const [stock, setStock] = useState(product?.stock_quantity ?? 999);
@@ -627,7 +625,12 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                       key={k}
                       className="relative flex items-center gap-3 rounded-[24px] border-2 border-slate-100 bg-white px-5 py-4 text-[13px] font-black text-slate-600 cursor-pointer has-[:checked]:border-teal-500 transition-all"
                     >
-                      <input type="checkbox" name={`kind_${k}`} defaultChecked={checkedModes.has(k)} className="sr-only peer" />
+                      <input
+                        type="checkbox"
+                        name={`kind_${k}`}
+                        defaultChecked={isEdit ? checkedModes.has(k) : k === SUBJECT_KINDS[0]}
+                        className="sr-only peer"
+                      />
                       <div className="w-5 h-5 rounded-full border-2 border-slate-200 peer-checked:bg-teal-500 peer-checked:border-teal-500 transition-all flex items-center justify-center">
                         <CheckCircle2 className="h-3 w-3 text-white scale-0 peer-checked:scale-100" />
                       </div>
