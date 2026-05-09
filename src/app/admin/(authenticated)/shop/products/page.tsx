@@ -8,11 +8,11 @@ import {
   Pencil,
   ExternalLink,
   Package,
-  Zap,
   ShoppingBag,
   ChevronRight,
 } from "lucide-react";
 import { AdminShopProductListDeleteButton } from "@/components/admin/shop/AdminShopProductListDeleteButton";
+import { AdminShopProductsFlash } from "@/components/admin/shop/AdminShopProductsFlash";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -66,25 +66,7 @@ export default async function AdminShopProductsPage({
           </Link>
         </header>
 
-        {ok && (
-          <div className="mb-8 flex items-center gap-3 rounded-2xl border border-teal-100 bg-teal-50/50 p-4 animate-in fade-in slide-in-from-top-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-500 text-white">
-              <Zap className="h-4 w-4 fill-current" />
-            </div>
-            <p className="text-[13px] font-black text-teal-900">
-              요청이 반영되었습니다. (저장 또는 삭제)
-            </p>
-          </div>
-        )}
-
-        {err && (
-          <div className="mb-8 flex items-center gap-3 rounded-2xl border border-rose-100 bg-rose-50 p-4" role="alert">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-rose-500 text-white">
-              <Plus className="h-4 w-4 rotate-45" />
-            </div>
-            <p className="text-[13px] font-black text-rose-900">{err}</p>
-          </div>
-        )}
+        <AdminShopProductsFlash ok={ok} err={err} />
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {products.length === 0 ? (

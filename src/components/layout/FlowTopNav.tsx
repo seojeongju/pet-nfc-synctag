@@ -62,13 +62,18 @@ export function FlowTopNavContent({
   return (
     <div
       className={cn(
-        "flex min-h-12 flex-wrap items-center justify-between gap-x-2.5 gap-y-2 py-2.5 text-xs font-bold text-slate-600",
+        "flex min-h-12 flex-wrap items-center justify-between gap-x-2.5 gap-y-2 py-2.5 text-xs font-bold text-slate-600 max-[429px]:items-start",
         isDashboard && "gap-y-1.5 py-2",
         maxWClass(variant),
         className
       )}
     >
-      <div className={cn("flex min-w-0 flex-1 items-center gap-2 sm:gap-3", isDashboard && "basis-full")}>
+      <div
+        className={cn(
+          "flex min-w-0 flex-1 items-center gap-2 sm:gap-3 max-[429px]:w-full max-[429px]:flex-none",
+          isDashboard && "basis-full"
+        )}
+      >
         {useHardNav ? (
           <a
             href={modeSelectHref}
@@ -103,7 +108,8 @@ export function FlowTopNavContent({
       <nav
         className={cn(
           "flex flex-wrap items-center justify-end gap-x-2 gap-y-1 sm:gap-x-3",
-          isDashboard && "w-full justify-between"
+          isDashboard && "w-full justify-between",
+          "max-[429px]:w-full max-[429px]:justify-start"
         )}
         aria-label="전역 이동"
       >
