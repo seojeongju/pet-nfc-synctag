@@ -133,25 +133,30 @@ export default function ShopProductDetailClient({
         return (
           <iframe
             src={`https://www.youtube.com/embed/${videoId}?autoplay=0&mute=0`}
-            className="w-full aspect-square sm:aspect-video"
+            className="h-full w-full min-h-[160px] border-0 sm:min-h-[200px]"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
           />
         );
       }
       return (
-        <video 
-          src={media.url} 
-          controls 
-          className="w-full aspect-square sm:aspect-video bg-black"
+        <video
+          src={media.url}
+          controls
+          className="h-full w-full max-h-full object-contain bg-black"
         />
       );
     }
     return (
-      <img 
-        src={media.url} 
-        alt={product.name} 
-        className={cn("w-full object-contain object-center bg-white aspect-square sm:aspect-video", isSoldOut && "grayscale opacity-50")} 
+      <img
+        src={media.url}
+        alt={product.name}
+        className={cn(
+          "h-full w-full max-h-full object-contain object-center",
+          isSoldOut && "grayscale opacity-50"
+        )}
+        loading="eager"
+        decoding="async"
       />
     );
   };
@@ -182,7 +187,15 @@ export default function ShopProductDetailClient({
           {/* 메인 미디어 캐러셀 */}
           {mediaList.length > 0 && (
             <div className="group relative overflow-hidden rounded-[32px] border border-slate-100 bg-white shadow-[0_20px_50px_rgba(0,0,0,0.04)]">
-              <div className="relative overflow-hidden aspect-square sm:aspect-video">
+              {/* 모바일: 뷰포트 높이 상한으로 메인 미디어 영역을 줄여 제목·가격 가독성 확보 */}
+              <div
+                className={cn(
+                  "relative flex w-full items-center justify-center overflow-hidden",
+                  "bg-gradient-to-b from-slate-50/90 to-white",
+                  "h-[min(48dvh,400px)] min-h-[180px]",
+                  "sm:h-auto sm:min-h-[220px] sm:max-h-[min(72dvh,560px)] sm:aspect-video"
+                )}
+              >
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={currentMediaIndex}
@@ -200,11 +213,11 @@ export default function ShopProductDetailClient({
                     initial={{ opacity: 0, x: 50 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -50 }}
-                    transition={{ 
+                    transition={{
                       x: { type: "spring", stiffness: 300, damping: 30 },
-                      opacity: { duration: 0.2 }
+                      opacity: { duration: 0.2 },
                     }}
-                    className="h-full w-full touch-pan-y cursor-grab active:cursor-grabbing"
+                    className="flex h-full w-full touch-pan-y cursor-grab items-center justify-center active:cursor-grabbing"
                   >
                     {renderMedia(mediaList[currentMediaIndex])}
                   </motion.div>
