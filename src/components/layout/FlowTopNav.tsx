@@ -222,6 +222,8 @@ export function FlowTopNav(props: FlowTopNavProps) {
     <header
       className={cn(
         "sticky top-0 z-50 border-b border-slate-200/90 bg-white/90 backdrop-blur-md",
+        // 모바일 웹앱/노치 환경에서 상단 안전영역을 확보해 헤더 겹침을 방지한다.
+        "pt-[env(safe-area-inset-top,0px)]",
         props.variant === "gate" && "shadow-sm",
         props.className
       )}

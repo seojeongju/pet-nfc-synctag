@@ -15,9 +15,10 @@ import ShopHomeClient from "./ShopHomeClient";
 
 export const runtime = "edge";
 
-function parseKindQuery(v: string | undefined): SubjectKind | null {
+function parseKindQuery(v: string | undefined): SubjectKind | "all" | null {
   if (v == null || !String(v).trim()) return null;
   const t = String(v).trim();
+  if (t === "all") return "all";
   if ((SUBJECT_KINDS as readonly string[]).includes(t)) {
     return t as SubjectKind;
   }
@@ -61,25 +62,30 @@ export default async function ShopPage({
 
   const fallbackKind = allowedKinds[0] ?? "pet";
   const requested = parseKindQuery(sp.kind);
-  const initialKind =
-    requested && allowedKinds.includes(requested) ? requested : fallbackKind;
+  const initialKind: SubjectKind | "all" =
+    requested === "all"
+      ? "all"
+      : requested && allowedKinds.includes(requested)
+        ? requested
+        : fallbackKind;
+  const activeKindForModeFeatures = initialKind === "all" ? fallbackKind : initialKind;
 
   const requestedTab = parseStoreTab(sp.tab);
-  if (requestedTab === "gold-price" && initialKind !== "gold") {
-    redirect(`/shop?kind=${encodeURIComponent(initialKind)}`);
+  if (requestedTab === "gold-price" && activeKindForModeFeatures !== "gold") {
+    redirect(`/shop?kind=${encodeURIComponent(activeKindForModeFeatures)}`);
   }
-  if (requestedTab === "gold-price" && initialKind === "gold" && !hasGoldPurchase) {
+  if (requestedTab === "gold-price" && activeKindForModeFeatures === "gold" && !hasGoldPurchase) {
     redirect(`/shop?kind=gold`);
   }
 
   let storeTab: "products" | "gold-price" = "products";
-  if (initialKind === "gold" && hasGoldPurchase && requestedTab === "gold-price") {
+  if (activeKindForModeFeatures === "gold" && hasGoldPurchase && requestedTab === "gold-price") {
     storeTab = "gold-price";
   }
 
   const products = await listAllActiveShopProducts(db);
   const goldPricePayload =
-    initialKind === "gold" && hasGoldPurchase && storeTab === "gold-price"
+    activeKindForModeFeatures === "gold" && hasGoldPurchase && storeTab === "gold-price"
       ? await getShopGoldPriceTabPayload(db, session.user.id)
       : null;
   const orgManageHref = await getOrgManageHrefForUser(session.user.id).catch(() => null);
@@ -91,6 +97,7 @@ export default async function ShopPage({
       orgManageHref={orgManageHref}
       allowedKinds={allowedKinds}
       initialKind={initialKind}
+      fallbackKind={fallbackKind}
       products={products}
       hasGoldPurchase={hasGoldPurchase}
       storeTab={storeTab}

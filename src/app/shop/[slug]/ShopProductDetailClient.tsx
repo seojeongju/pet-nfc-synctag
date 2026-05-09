@@ -196,7 +196,7 @@ export default function ShopProductDetailClient({
                   "sm:h-auto sm:min-h-[220px] sm:max-h-[min(72dvh,560px)] sm:aspect-video"
                 )}
               >
-                <AnimatePresence mode="wait">
+                <AnimatePresence initial={false} mode="sync">
                   <motion.div
                     key={currentMediaIndex}
                     drag="x"
@@ -210,14 +210,13 @@ export default function ShopProductDetailClient({
                         prevMedia();
                       }
                     }}
-                    initial={{ opacity: 0, x: 50 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -50 }}
+                    initial={{ x: 36 }}
+                    animate={{ x: 0 }}
+                    exit={{ x: -36 }}
                     transition={{
-                      x: { type: "spring", stiffness: 300, damping: 30 },
-                      opacity: { duration: 0.2 },
+                      x: { type: "spring", stiffness: 360, damping: 36, mass: 0.8 },
                     }}
-                    className="flex h-full w-full touch-pan-y cursor-grab items-center justify-center active:cursor-grabbing"
+                    className="absolute inset-0 flex h-full w-full touch-pan-y cursor-grab items-center justify-center active:cursor-grabbing will-change-transform"
                   >
                     {renderMedia(mediaList[currentMediaIndex])}
                   </motion.div>
@@ -296,6 +295,35 @@ export default function ShopProductDetailClient({
                 </p>
               )}
             </div>
+
+            {/* 상단 빠른 구매 버튼 */}
+            <button
+              type="button"
+              onClick={handleOrder}
+              disabled={loading || isSoldOut}
+              className={cn(
+                "mt-5 relative w-full h-14 rounded-2xl px-5 text-[15px] font-black text-white shadow-lg transition-all overflow-hidden",
+                isSoldOut
+                  ? "bg-slate-300 cursor-not-allowed"
+                  : "bg-teal-600 hover:bg-teal-500 hover:shadow-teal-500/20 active:scale-[0.98] active:shadow-inner",
+                "disabled:opacity-60 disabled:pointer-events-none",
+                "flex items-center justify-center gap-2.5"
+              )}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  주문 예약 중...
+                </>
+              ) : isSoldOut ? (
+                "품절된 상품입니다"
+              ) : (
+                <>
+                  <Package className="h-4.5 w-4.5" />
+                  지금 주문하기
+                </>
+              )}
+            </button>
 
             <p className="mt-5 text-[15px] font-medium text-slate-500 leading-relaxed whitespace-pre-line break-keep [word-break:keep-all]">
               {product.description}

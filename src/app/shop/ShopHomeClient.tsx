@@ -40,7 +40,8 @@ type ShopHomeClientProps = {
   isAdmin: boolean;
   orgManageHref: string | null;
   allowedKinds: SubjectKind[];
-  initialKind: SubjectKind;
+  initialKind: SubjectKind | "all";
+  fallbackKind: SubjectKind;
   products: ShopProductPublic[];
   hasGoldPurchase: boolean;
   storeTab: "products" | "gold-price";
@@ -66,6 +67,7 @@ export default function ShopHomeClient({
   orgManageHref,
   allowedKinds,
   initialKind,
+  fallbackKind,
   products,
   hasGoldPurchase,
   storeTab,
@@ -78,16 +80,16 @@ export default function ShopHomeClient({
 
   const selectKind = (k: SubjectKind | "all") => {
     if (k === "all") {
-      router.push(`/shop`);
+      router.push(`/shop?kind=all`);
       return;
     }
     router.push(`/shop?kind=${encodeURIComponent(k)}`);
   };
 
-  // 현재 서버에서 initialKind는 항상 유효 SubjectKind로 전달됩니다.
-  const isAllKind = false;
+  const isAllKind = initialKind === "all";
   const filteredProducts = products.filter((p) => {
     try {
+      if (isAllKind) return true;
       return p.subjectKind === initialKind;
     } catch {
       return false;
@@ -99,11 +101,11 @@ export default function ShopHomeClient({
   // 사실 DB에서 rowToPublic 할 때 kind를 넘겨주는데, listAllActiveShopProducts에서는 modes[0]을 줌.
   // 제대로 하려면 ShopProductPublic에 targetModes: SubjectKind[] 를 추가해야 함.
 
-  const showGoldStoreTabs = initialKind === "gold" && hasGoldPurchase;
+  const showGoldStoreTabs = !isAllKind && initialKind === "gold" && hasGoldPurchase;
 
   const goStoreTab = (t: "products" | "gold-price") => {
     if (t === "products") {
-      router.push(`/shop?kind=${encodeURIComponent(initialKind)}`);
+      router.push(`/shop?kind=${encodeURIComponent(isAllKind ? fallbackKind : initialKind)}`);
       return;
     }
     router.push(`/shop?kind=gold&tab=gold-price`);
@@ -116,7 +118,7 @@ export default function ShopHomeClient({
         session={session}
         isAdmin={isAdmin}
         orgManageHref={orgManageHref}
-        dashboardHref={`/dashboard/${encodeURIComponent(initialKind)}`}
+        dashboardHref={`/dashboard/${encodeURIComponent(isAllKind ? fallbackKind : initialKind)}`}
       />
       <div className="px-4 min-[430px]:px-5 py-6 min-[430px]:py-8 pb-24">
         <div className="w-full max-w-none lg:max-w-screen-sm mx-auto space-y-6 min-[430px]:space-y-8">
@@ -362,7 +364,7 @@ export default function ShopHomeClient({
                 {filteredProducts.map((p) => (
                   <Link
                     key={p.id}
-                    href={`/shop/${encodeURIComponent(p.slug)}?kind=${encodeURIComponent(initialKind)}`}
+                    href={`/shop/${encodeURIComponent(p.slug)}?kind=${encodeURIComponent(isAllKind ? p.subjectKind : initialKind)}`}
                     className={cn(
                       "group flex flex-col overflow-hidden rounded-[32px] border border-slate-100 bg-white shadow-[0_8px_20px_rgba(15,23,42,0.04)]",
                       "transition-all duration-300 hover:border-teal-200 hover:shadow-[0_20px_40px_rgba(15,23,42,0.08)] hover:-translate-y-1 active:scale-[0.98]"
