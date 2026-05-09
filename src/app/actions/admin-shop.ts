@@ -561,9 +561,9 @@ export async function deleteShopProduct(formData: FormData): Promise<void> {
     );
   }
   const row = await db
-    .prepare(`SELECT id, created_by_user_id FROM shop_products WHERE id = ?`)
+    .prepare(`SELECT id, created_by_user_id, slug FROM shop_products WHERE id = ?`)
     .bind(productId)
-    .first<{ id: string; created_by_user_id: string | null }>();
+    .first<{ id: string; created_by_user_id: string | null; slug: string }>();
   if (!row) {
     redirect("/admin/shop/products?e=" + encodeURIComponent("상품을 찾을 수 없습니다."));
   }
@@ -578,14 +578,22 @@ export async function deleteShopProduct(formData: FormData): Promise<void> {
     .first<{ c: number }>();
   if (Number(orderCount?.c ?? 0) > 0) {
     redirect(
-      `/admin/shop/products/${encodeURIComponent(productId)}?e=` +
+      "/admin/shop/products?e=" +
         encodeURIComponent("주문 이력이 있는 상품은 삭제할 수 없습니다.")
     );
   }
+  const slug = row.slug?.trim() ?? "";
   await db.prepare(`DELETE FROM shop_products WHERE id = ?`).bind(productId).run();
   revalidatePath("/admin/shop");
   revalidatePath("/admin/shop/products");
   revalidatePath("/shop");
+  if (slug) {
+    try {
+      revalidatePath(`/shop/${slug}`);
+    } catch {
+      /* ignore */
+    }
+  }
   redirect("/admin/shop/products?ok=1");
 }
 

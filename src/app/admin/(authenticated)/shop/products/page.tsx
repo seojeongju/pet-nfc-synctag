@@ -3,16 +3,16 @@ import { listAdminShopProducts } from "@/app/actions/admin-shop";
 import { subjectKindMeta, SUBJECT_KINDS, type SubjectKind } from "@/lib/subject-kind";
 import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
-import { 
-  Plus, 
-  Pencil, 
-  ExternalLink, 
-  Package, 
+import {
+  Plus,
+  Pencil,
+  ExternalLink,
+  Package,
   Zap,
   ShoppingBag,
   ChevronRight,
-  Layers
 } from "lucide-react";
+import { AdminShopProductListDeleteButton } from "@/components/admin/shop/AdminShopProductListDeleteButton";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -71,7 +71,9 @@ export default async function AdminShopProductsPage({
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-500 text-white">
               <Zap className="h-4 w-4 fill-current" />
             </div>
-            <p className="text-[13px] font-black text-teal-900">상품 정보가 성공적으로 업데이트되었습니다.</p>
+            <p className="text-[13px] font-black text-teal-900">
+              요청이 반영되었습니다. (저장 또는 삭제)
+            </p>
           </div>
         )}
 
@@ -191,6 +193,9 @@ export default async function AdminShopProductsPage({
                           </Link>
                         );
                       })()}
+                    </div>
+                    <div className="pt-1">
+                      <AdminShopProductListDeleteButton productId={p.id} productName={p.name} />
                     </div>
                   </div>
                 </div>

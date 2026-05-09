@@ -291,7 +291,13 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
   const checkedModes = kindsChecked(product);
 
   return (
-    <form onSubmit={handleSubmit} className="relative min-h-screen bg-[#f8fafc] pb-32" noValidate>
+    <>
+      {isEdit && (
+        <form id="admin-shop-product-delete" action={deleteShopProduct} hidden>
+          <input type="hidden" name="product_id" value={product!.id} />
+        </form>
+      )}
+      <form onSubmit={handleSubmit} className="relative min-h-screen bg-[#f8fafc] pb-32" noValidate>
       {saveError && (
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4 animate-in fade-in slide-in-from-top-4 duration-300">
           <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 shadow-xl flex items-center gap-3">
@@ -660,12 +666,18 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
               <Link href="/admin/shop/products" className="h-12 sm:h-14 px-6 rounded-2xl text-[13px] font-black text-slate-400 hover:text-slate-900 flex items-center">목록으로</Link>
               {isEdit && (
                 <button
-                  formAction={deleteShopProduct}
-                  onClick={(e) => !confirm("정말 삭제하시겠습니까?") && e.preventDefault()}
-                  className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl border border-rose-100 text-rose-500 hover:bg-rose-50 flex items-center justify-center"
+                  type="submit"
+                  form="admin-shop-product-delete"
+                  onClick={(e) =>
+                    !confirm(
+                      `「${product!.name}」을(를) 삭제할까요?\n주문 이력이 있으면 삭제되지 않습니다.`
+                    ) && e.preventDefault()
+                  }
+                  className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl border border-rose-100 text-rose-500 hover:bg-rose-50 flex items-center justify-center shrink-0"
+                  title="상품 삭제"
+                  aria-label="상품 삭제"
                 >
                   <Trash2 className="h-5 w-5" />
-                  <input type="hidden" name="product_id" value={product!.id} />
                 </button>
               )}
               <button
@@ -688,5 +700,6 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
         </div>
       </div>
     </form>
+    </>
   );
 }
