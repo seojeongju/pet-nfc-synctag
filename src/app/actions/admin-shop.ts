@@ -7,6 +7,7 @@ import { getCfRequestContext } from "@/lib/cf-request-context";
 import { getDB } from "@/lib/db";
 import { SUBJECT_KINDS, type SubjectKind } from "@/lib/subject-kind";
 import { sanitizeShopContentHtml } from "@/lib/shop-content-html";
+import { normalizeShopProductSlug } from "@/lib/shop-slug";
 
 
 import { resolveAdminScope } from "@/lib/admin-authz";
@@ -295,7 +296,7 @@ export async function saveShopProduct(
       return typeof v === "string" ? v.trim() : "";
     };
 
-    const slugRaw = getS("slug").toLowerCase();
+    const slugRaw = normalizeShopProductSlug(getS("slug"));
     const name = getS("name");
     const description = getS("description");
     const priceRaw = Number(formData.get("price_krw"));
@@ -321,7 +322,11 @@ export async function saveShopProduct(
     console.log(`[saveShopProduct] Media Raw: image=${imageUrlRaw}, video=${videoUrlRaw}, additionalImages=${additionalImagesRaw}`);
 
     if (!slugRaw || !SLUG_RE.test(slugRaw)) {
-      return { success: false, error: "슬러그는 영문 소문자·숫자·하이픈만 사용합니다." };
+      return {
+        success: false,
+        error:
+          "URL 슬러그는 영문 소문자, 숫자, 하이픈(-)만 사용할 수 있습니다. 한글·공백은 자동으로 제거되며, 비워지면 영문으로 입력해 주세요. 예: pet-nfc-tag",
+      };
     }
     if (!name) {
       return { success: false, error: "상품명을 입력하세요." };

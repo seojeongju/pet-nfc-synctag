@@ -37,6 +37,7 @@ import {
   resizeProductImageForUpload,
 } from "@/lib/resize-shop-image";
 import { ProductContentEditorPanel } from "@/components/admin/shop/ProductContentEditorPanel";
+import { normalizeShopProductSlug } from "@/lib/shop-slug";
 
 type AdminShopSaveApiResult = {
   success?: boolean;
@@ -100,6 +101,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [slugField, setSlugField] = useState(product?.slug ?? "");
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -109,7 +111,11 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
     setSaveError(null);
 
     try {
+      const slugNormalized = normalizeShopProductSlug(slugField);
+      setSlugField(slugNormalized);
+
       const formData = new FormData(e.currentTarget);
+      formData.set("slug", slugNormalized);
       
       // 저장 시에는 캐시 버스팅용 타임스탬프(?t=...) 제거하여 순수 URL만 저장
       const cleanImageUrl = imageUrl.split('?')[0];
@@ -375,14 +381,20 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                 <div className="relative">
                   <input
                     name="slug"
-                    defaultValue={product?.slug ?? ""}
+                    value={slugField}
+                    onChange={(e) => setSlugField(e.target.value)}
+                    onBlur={() => setSlugField((s) => normalizeShopProductSlug(s))}
                     className={cn("w-full h-14 pl-5 pr-12 rounded-2xl text-[15px] font-mono font-bold", adminUi.input)}
                     placeholder="pet-nfc-tag"
+                    autoComplete="off"
                   />
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300">
                     <ChevronRight className="h-4 w-4" />
                   </div>
                 </div>
+                <p className="text-[11px] font-semibold text-slate-400 ml-1 leading-relaxed">
+                  주소에 쓰이는 영문 식별자입니다. 소문자·숫자·하이픈(-)만 허용되며, 한글·공백은 저장 시 제거됩니다.
+                </p>
               </div>
               <div className="md:col-span-2 space-y-2">
                 <label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">간단 요약 설명</label>
