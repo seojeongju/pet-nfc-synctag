@@ -74,8 +74,9 @@ export function ProductContentEditorPanel({
     const el = visualRef.current;
     if (!el) return;
     if (visualFocusRef.current) return;
-    if (el.innerHTML !== contentHtml) {
-      el.innerHTML = contentHtml || "<p><br></p>";
+    const safe = sanitizeShopContentHtml(contentHtml) || "<p><br></p>";
+    if (el.innerHTML !== safe) {
+      el.innerHTML = safe;
     }
   }, [contentHtml, editMode]);
 
@@ -90,7 +91,7 @@ export function ProductContentEditorPanel({
     if (typeof document === "undefined") return;
     visualRef.current?.focus();
     document.execCommand(cmd, false, value);
-    const next = visualRef.current?.innerHTML ?? "";
+    const next = sanitizeShopContentHtml(visualRef.current?.innerHTML ?? "");
     onContentChange(next);
   };
 
@@ -122,8 +123,7 @@ export function ProductContentEditorPanel({
       runCmd("insertImage", url);
       // 포커스 유지 및 추가 정리
       if (visualRef.current) {
-        const next = visualRef.current.innerHTML;
-        onContentChange(next);
+        onContentChange(sanitizeShopContentHtml(visualRef.current.innerHTML));
       }
     } catch (err) {
       console.error("Inline image upload failed:", err);
@@ -283,7 +283,9 @@ export function ProductContentEditorPanel({
                 suppressContentEditableWarning
                 onFocus={() => { visualFocusRef.current = true; }}
                 onBlur={() => { visualFocusRef.current = false; }}
-                onInput={(e) => onContentChange(e.currentTarget.innerHTML)}
+                onInput={(e) =>
+                  onContentChange(sanitizeShopContentHtml(e.currentTarget.innerHTML))
+                }
                 className={cn(
                   "prose prose-slate max-w-none min-h-[500px] outline-none",
                   "prose-img:rounded-[24px] prose-img:shadow-xl prose-img:my-8 prose-img:mx-auto prose-img:block",
