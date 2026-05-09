@@ -140,7 +140,7 @@ export default function ShopHomeClient({
               <Sparkles className="h-4 w-4 text-amber-400" aria-hidden />
             </div>
             <div
-              className="flex gap-2 overflow-x-auto pb-1 -mx-0.5 px-0.5 scrollbar-thin"
+              className="grid grid-cols-3 gap-2"
               role="tablist"
               aria-label="스토어 모드 선택"
             >
@@ -151,7 +151,7 @@ export default function ShopHomeClient({
                 aria-selected={isAllKind}
                 onClick={() => selectKind("all")}
                 className={cn(
-                  "shrink-0 inline-flex items-center gap-2 rounded-2xl border px-3.5 py-2.5 text-left transition min-h-[48px]",
+                  "inline-flex flex-col items-center justify-center gap-1 rounded-2xl border px-2 py-2 text-center transition min-h-[72px]",
                   isAllKind
                     ? "border-teal-400 bg-gradient-to-br from-teal-50 to-cyan-50/80 shadow-sm ring-2 ring-teal-200/60"
                     : "border-slate-200 bg-slate-50/80 hover:border-teal-200 hover:bg-white"
@@ -159,15 +159,15 @@ export default function ShopHomeClient({
               >
                 <span
                   className={cn(
-                    "flex h-9 w-9 items-center justify-center rounded-xl",
+                    "flex h-7 w-7 items-center justify-center rounded-lg",
                     isAllKind ? "bg-teal-100 text-teal-700" : "bg-white text-slate-500"
                   )}
                 >
-                  <Package className="h-5 w-5" />
+                  <Package className="h-4 w-4" />
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-[12px] font-black text-slate-900 leading-tight">전체</span>
-                  <span className="block text-[10px] font-semibold text-slate-500 mt-0.5">모든 상품</span>
+                  <span className="block text-[11px] font-black text-slate-900 leading-tight">전체</span>
+                  <span className="block text-[9px] font-semibold text-slate-500 mt-0.5">모든 상품</span>
                 </span>
               </button>
 
@@ -181,7 +181,7 @@ export default function ShopHomeClient({
                     aria-selected={active}
                     onClick={() => selectKind(k)}
                     className={cn(
-                      "shrink-0 inline-flex items-center gap-2 rounded-2xl border px-3.5 py-2.5 text-left transition min-h-[48px]",
+                      "inline-flex flex-col items-center justify-center gap-1 rounded-2xl border px-2 py-2 text-center transition min-h-[72px]",
                       active
                         ? "border-teal-400 bg-gradient-to-br from-teal-50 to-cyan-50/80 shadow-sm ring-2 ring-teal-200/60"
                         : "border-slate-200 bg-slate-50/80 hover:border-teal-200 hover:bg-white"
@@ -189,17 +189,17 @@ export default function ShopHomeClient({
                   >
                     <span
                       className={cn(
-                        "flex h-9 w-9 items-center justify-center rounded-xl",
+                        "flex h-7 w-7 items-center justify-center rounded-lg",
                         active ? "bg-teal-100 text-teal-700" : "bg-white text-slate-500"
                       )}
                     >
                       <ModeIcon kind={k} />
                     </span>
                     <span className="min-w-0">
-                      <span className="block text-[12px] font-black text-slate-900 leading-tight">
+                      <span className="block text-[11px] font-black text-slate-900 leading-tight">
                         {subjectKindMeta[k].label}
                       </span>
-                      <span className="block text-[10px] font-semibold text-slate-500 mt-0.5 truncate max-w-[10rem]">
+                      <span className="block text-[9px] font-semibold text-slate-500 mt-0.5">
                         상품 보기
                       </span>
                     </span>

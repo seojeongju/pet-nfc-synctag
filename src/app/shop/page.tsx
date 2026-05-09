@@ -63,7 +63,9 @@ export default async function ShopPage({
   const fallbackKind = allowedKinds[0] ?? "pet";
   const requested = parseKindQuery(sp.kind);
   const initialKind: SubjectKind | "all" =
-    requested === "all"
+    requested == null
+      ? "all"
+      : requested === "all"
       ? "all"
       : requested && allowedKinds.includes(requested)
         ? requested
