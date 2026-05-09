@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { nanoid } from "nanoid";
+import { nanoid, customAlphabet } from "nanoid";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { getDB } from "@/lib/db";
 import { SUBJECT_KINDS, type SubjectKind } from "@/lib/subject-kind";
@@ -188,6 +188,33 @@ export async function getAdminShopProduct(id: string): Promise<AdminShopProductR
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
+/** 슬러그 접미사(SLUG_RE 호환: 소문자·숫자만) */
+const shopSlugSuffix = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 8);
+
+/**
+ * 신규 상품용: 상품명에서 유도한 뒤 DB에서 중복되지 않을 때까지 접미사를 붙입니다.
+ * 한글 등으로 이름에서 유효 슬러그가 비면 `item`을 기준으로 합니다.
+ */
+async function allocateUniqueShopProductSlug(db: D1Database, name: string): Promise<string> {
+  let base = normalizeShopProductSlug(name);
+  if (!base) base = "item";
+  if (base.length > 80) {
+    base = base.slice(0, 80).replace(/-+$/g, "");
+    if (!base) base = "item";
+  }
+
+  let candidate = base;
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const row = await db
+      .prepare(`SELECT id FROM shop_products WHERE slug = ?`)
+      .bind(candidate)
+      .first<{ id: string }>();
+    if (!row && SLUG_RE.test(candidate)) return candidate;
+    candidate = `${base}-${shopSlugSuffix()}`;
+  }
+  return `${base}-${shopSlugSuffix()}${shopSlugSuffix()}`;
+}
+
 /** save 시에도 PRAGMA 결과와 맞출 것 — 마이그레이션 누락 D1에서 확장 컬럼 없으면 고정 UPDATE/INSERT가 500 */
 const SHOP_PRODUCT_WRITABLE_COLUMNS = [
   "slug",
@@ -296,7 +323,7 @@ export async function saveShopProduct(
       return typeof v === "string" ? v.trim() : "";
     };
 
-    const slugRaw = normalizeShopProductSlug(getS("slug"));
+    const slugFromForm = normalizeShopProductSlug(getS("slug"));
     const name = getS("name");
     const description = getS("description");
     const priceRaw = Number(formData.get("price_krw"));
@@ -318,16 +345,9 @@ export async function saveShopProduct(
     const modes = parseKindsFromForm(formData);
     const target_modes = JSON.stringify(modes);
 
-    console.log(`[saveShopProduct] Payload: name=${name}, slug=${slugRaw}, htmlLength=${contentHtml.length}`);
+    console.log(`[saveShopProduct] Payload: name=${name}, slugFromForm=${slugFromForm}, htmlLength=${contentHtml.length}`);
     console.log(`[saveShopProduct] Media Raw: image=${imageUrlRaw}, video=${videoUrlRaw}, additionalImages=${additionalImagesRaw}`);
 
-    if (!slugRaw || !SLUG_RE.test(slugRaw)) {
-      return {
-        success: false,
-        error:
-          "URL 슬러그는 영문 소문자, 숫자, 하이픈(-)만 사용할 수 있습니다. 한글·공백은 자동으로 제거되며, 비워지면 영문으로 입력해 주세요. 예: pet-nfc-tag",
-      };
-    }
     if (!name) {
       return { success: false, error: "상품명을 입력하세요." };
     }
@@ -368,6 +388,28 @@ export async function saveShopProduct(
     if (!shopCols.has("id")) {
       throw new Error("shop_products 테이블 스키마 정보가 없습니다.");
     }
+
+    let slugRaw: string;
+    if (idExisting) {
+      slugRaw = slugFromForm;
+      if (!slugRaw) {
+        const priorSlug = await db
+          .prepare(`SELECT slug FROM shop_products WHERE id = ?`)
+          .bind(idExisting)
+          .first<{ slug: string | null }>();
+        slugRaw = normalizeShopProductSlug(priorSlug?.slug ?? "");
+      }
+    } else {
+      slugRaw = await allocateUniqueShopProductSlug(db, name);
+    }
+
+    if (!slugRaw || !SLUG_RE.test(slugRaw)) {
+      return {
+        success: false,
+        error: "상품 주소(슬러그)를 만들 수 없습니다. 상품명을 확인한 뒤 다시 저장해 주세요.",
+      };
+    }
+
     const writeCols = filterShopProductWriteColumns(shopCols);
     if (writeCols.length === 0) {
       throw new Error("저장 가능한 컬럼이 정의되지 않았습니다.");

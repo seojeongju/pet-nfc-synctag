@@ -20,7 +20,6 @@ import {
   Save,
   Trash2,
   Coins,
-  ChevronRight,
   Info,
   Layers,
   Monitor,
@@ -37,7 +36,6 @@ import {
   resizeProductImageForUpload,
 } from "@/lib/resize-shop-image";
 import { ProductContentEditorPanel } from "@/components/admin/shop/ProductContentEditorPanel";
-import { normalizeShopProductSlug } from "@/lib/shop-slug";
 
 type AdminShopSaveApiResult = {
   success?: boolean;
@@ -101,8 +99,6 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [slugField, setSlugField] = useState(product?.slug ?? "");
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isSaving || isUploading) return;
@@ -111,11 +107,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
     setSaveError(null);
 
     try {
-      const slugNormalized = normalizeShopProductSlug(slugField);
-      setSlugField(slugNormalized);
-
       const formData = new FormData(e.currentTarget);
-      formData.set("slug", slugNormalized);
       
       // 저장 시에는 캐시 버스팅용 타임스탬프(?t=...) 제거하여 순수 URL만 저장
       const cleanImageUrl = imageUrl.split('?')[0];
@@ -130,7 +122,6 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
         additionalImages: cleanAdditionalImages,
         options,
         id: product?.id,
-        slug: product?.slug
       };
       
       formData.append("_clientState", JSON.stringify(clientState));
@@ -311,6 +302,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
       )}
 
       {isEdit && <input type="hidden" name="id" value={product!.id} />}
+      {isEdit && <input type="hidden" name="slug" value={product!.slug} />}
       <input type="hidden" name="content_html" value={contentHtml} />
       <input type="hidden" name="image_url" value={imageUrl} />
       <input type="hidden" name="video_url" value={videoUrl} />
@@ -363,7 +355,7 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
           <section id="section-basic" className={cn(adminUi.sectionCard, "p-6 md:p-10 scroll-mt-24")}>
             <SectionHeader icon={Package} title="기본 정보" description="스토어에 노출될 상품의 기본 정체성을 정의합니다." badge="Essential" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-2">
+              <div className="md:col-span-2 space-y-2">
                 <label className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">
                   상품명 <span className="text-rose-500">*</span>
                 </label>
@@ -373,27 +365,10 @@ export function AdminShopProductForm({ product }: { product: AdminShopProductRow
                   className={cn("w-full h-14 px-5 rounded-2xl text-[15px] font-bold", adminUi.input)}
                   placeholder="예: 링크유-펫 NFC 안심 스마트 태그"
                 />
-              </div>
-              <div className="space-y-2">
-                <label className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">
-                  URL 슬러그 <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <input
-                    name="slug"
-                    value={slugField}
-                    onChange={(e) => setSlugField(e.target.value)}
-                    onBlur={() => setSlugField((s) => normalizeShopProductSlug(s))}
-                    className={cn("w-full h-14 pl-5 pr-12 rounded-2xl text-[15px] font-mono font-bold", adminUi.input)}
-                    placeholder="pet-nfc-tag"
-                    autoComplete="off"
-                  />
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300">
-                    <ChevronRight className="h-4 w-4" />
-                  </div>
-                </div>
                 <p className="text-[11px] font-semibold text-slate-400 ml-1 leading-relaxed">
-                  주소에 쓰이는 영문 식별자입니다. 소문자·숫자·하이픈(-)만 허용되며, 한글·공백은 저장 시 제거됩니다.
+                  {isEdit
+                    ? `공개 페이지 주소는 /shop/${product?.slug} 입니다. (등록 시 부여된 주소는 유지됩니다.)`
+                    : "저장 시 `/shop/...` 주소는 상품명에서 자동으로 만들어집니다. 영문·숫자가 없으면 item 접두와 임의 문자로 고유 주소가 부여됩니다."}
                 </p>
               </div>
               <div className="md:col-span-2 space-y-2">
