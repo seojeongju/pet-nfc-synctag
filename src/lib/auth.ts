@@ -3,11 +3,46 @@ import { betterAuth } from "better-auth";
 type AuthEnv = CloudflareEnv & {
     BETTER_AUTH_SECRET?: string;
     BETTER_AUTH_URL?: string;
+    NEXT_PUBLIC_APP_URL?: string;
     GOOGLE_CLIENT_ID?: string;
     GOOGLE_CLIENT_SECRET?: string;
     KAKAO_CLIENT_ID?: string;
     KAKAO_CLIENT_SECRET?: string;
 };
+
+function normalizeOrigin(urlLike?: string | null): string | null {
+    if (!urlLike) return null;
+    try {
+        return new URL(urlLike).origin;
+    } catch {
+        return null;
+    }
+}
+
+function buildTrustedOrigins(env: AuthEnv): string[] {
+    const origins = new Set<string>();
+
+    const addOrigin = (urlLike?: string | null) => {
+        const origin = normalizeOrigin(urlLike);
+        if (!origin) return;
+        origins.add(origin);
+
+        const parsed = new URL(origin);
+        if (!parsed.hostname.startsWith("www.")) {
+            origins.add(`${parsed.protocol}//www.${parsed.hostname}`);
+        }
+    };
+
+    addOrigin(env.BETTER_AUTH_URL);
+    addOrigin(env.NEXT_PUBLIC_APP_URL);
+
+    if (process.env.NODE_ENV !== "production") {
+        origins.add("http://localhost:3000");
+        origins.add("http://127.0.0.1:3000");
+    }
+
+    return [...origins];
+}
 
 export const getAuth = (env: AuthEnv) => {
     // 필수 환경 변수 체크 - 누락될 경우 구체적인 에러 발생 유도
@@ -22,6 +57,7 @@ export const getAuth = (env: AuthEnv) => {
         database: env.DB, // D1 네이티브 드라이버 자동 감지 및 배치 처리 지원
         secret: env.BETTER_AUTH_SECRET,
         baseURL: env.BETTER_AUTH_URL,
+        trustedOrigins: buildTrustedOrigins(env),
         trustHost: true, // Edge Runtime 호스트 인식을 위해 최상위 옵션으로 이동
         emailAndPassword: {
             enabled: true
