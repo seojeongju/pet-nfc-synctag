@@ -40,6 +40,9 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png",
     shortcut: "/icons/icon-192x192.png",
   },
+  other: {
+    "naver-site-verification": "ba44fdda87301268312e215cb8d0aa5c660bc40c",
+  },
 };
 
 export const viewport: Viewport = {
