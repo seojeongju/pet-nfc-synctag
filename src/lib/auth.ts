@@ -19,29 +19,23 @@ function normalizeOrigin(urlLike?: string | null): string | null {
     }
 }
 
-function buildTrustedOrigins(env: AuthEnv): string[] {
-    const origins = new Set<string>();
+function buildBaseUrlConfig(env: AuthEnv) {
+    const fallback =
+        normalizeOrigin(env.NEXT_PUBLIC_APP_URL) ||
+        normalizeOrigin(env.BETTER_AUTH_URL) ||
+        "https://wow-linku.co.kr";
 
-    const addOrigin = (urlLike?: string | null) => {
-        const origin = normalizeOrigin(urlLike);
-        if (!origin) return;
-        origins.add(origin);
-
-        const parsed = new URL(origin);
-        if (!parsed.hostname.startsWith("www.")) {
-            origins.add(`${parsed.protocol}//www.${parsed.hostname}`);
-        }
+    return {
+        allowedHosts: [
+            "wow-linku.co.kr",
+            "www.wow-linku.co.kr",
+            "pet-nfc-synctag.pages.dev",
+            "localhost:3000",
+            "127.0.0.1:3000",
+        ],
+        fallback,
+        protocol: "auto" as const,
     };
-
-    addOrigin(env.BETTER_AUTH_URL);
-    addOrigin(env.NEXT_PUBLIC_APP_URL);
-
-    if (process.env.NODE_ENV !== "production") {
-        origins.add("http://localhost:3000");
-        origins.add("http://127.0.0.1:3000");
-    }
-
-    return [...origins];
 }
 
 export const getAuth = (env: AuthEnv) => {
@@ -49,15 +43,11 @@ export const getAuth = (env: AuthEnv) => {
     if (!env.BETTER_AUTH_SECRET) {
         throw new Error("Missing BETTER_AUTH_SECRET in environment variables");
     }
-    if (!env.BETTER_AUTH_URL) {
-        throw new Error("Missing BETTER_AUTH_URL in environment variables");
-    }
 
     return betterAuth({
         database: env.DB, // D1 네이티브 드라이버 자동 감지 및 배치 처리 지원
         secret: env.BETTER_AUTH_SECRET,
-        baseURL: env.BETTER_AUTH_URL,
-        trustedOrigins: buildTrustedOrigins(env),
+        baseURL: buildBaseUrlConfig(env),
         trustHost: true, // Edge Runtime 호스트 인식을 위해 최상위 옵션으로 이동
         emailAndPassword: {
             enabled: true
