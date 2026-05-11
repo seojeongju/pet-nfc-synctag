@@ -44,16 +44,6 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png",
     shortcut: "/icons/icon-192x192.png",
   },
-  ...(googleSiteVerification || naverSiteVerification
-    ? {
-        verification: {
-          ...(googleSiteVerification ? { google: googleSiteVerification } : {}),
-          ...(naverSiteVerification
-            ? { other: { "naver-site-verification": naverSiteVerification } }
-            : {}),
-        },
-      }
-    : {}),
 };
 
 export const viewport: Viewport = {
@@ -74,6 +64,12 @@ export default function RootLayout({
     <html lang="ko" className={cn("font-outfit h-full")}>
       <head>
         <meta name="mobile-web-app-capable" content="yes" />
+        {googleSiteVerification ? (
+          <meta name="google-site-verification" content={googleSiteVerification} />
+        ) : null}
+        {naverSiteVerification ? (
+          <meta name="naver-site-verification" content={naverSiteVerification} />
+        ) : null}
         {/* Cloudflare Edge에서 next/font Google 로더 이슈 회피 — 루트에서 전역 링크 */}
         {/* eslint-disable @next/next/no-page-custom-font -- root layout; applies site-wide */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
