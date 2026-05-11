@@ -41,6 +41,21 @@ const withPWA = withPWAInit({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [
+          {
+            type: "host",
+            value: "www.wow-linku.co.kr",
+          },
+        ],
+        destination: "https://wow-linku.co.kr/:path*",
+        permanent: true,
+      },
+    ];
+  },
   images: {
     unoptimized: true,
   },
