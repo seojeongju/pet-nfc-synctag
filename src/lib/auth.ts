@@ -2,41 +2,11 @@ import { betterAuth } from "better-auth";
 
 type AuthEnv = CloudflareEnv & {
     BETTER_AUTH_SECRET?: string;
-    BETTER_AUTH_URL?: string;
-    NEXT_PUBLIC_APP_URL?: string;
     GOOGLE_CLIENT_ID?: string;
     GOOGLE_CLIENT_SECRET?: string;
     KAKAO_CLIENT_ID?: string;
     KAKAO_CLIENT_SECRET?: string;
 };
-
-function normalizeOrigin(urlLike?: string | null): string | null {
-    if (!urlLike) return null;
-    try {
-        return new URL(urlLike).origin;
-    } catch {
-        return null;
-    }
-}
-
-function buildBaseUrlConfig(env: AuthEnv) {
-    const fallback =
-        normalizeOrigin(env.NEXT_PUBLIC_APP_URL) ||
-        normalizeOrigin(env.BETTER_AUTH_URL) ||
-        "https://wow-linku.co.kr";
-
-    return {
-        allowedHosts: [
-            "wow-linku.co.kr",
-            "www.wow-linku.co.kr",
-            "pet-nfc-synctag.pages.dev",
-            "localhost:3000",
-            "127.0.0.1:3000",
-        ],
-        fallback,
-        protocol: "auto" as const,
-    };
-}
 
 export const getAuth = (env: AuthEnv) => {
     // 필수 환경 변수 체크 - 누락될 경우 구체적인 에러 발생 유도
@@ -47,8 +17,10 @@ export const getAuth = (env: AuthEnv) => {
     return betterAuth({
         database: env.DB, // D1 네이티브 드라이버 자동 감지 및 배치 처리 지원
         secret: env.BETTER_AUTH_SECRET,
-        baseURL: buildBaseUrlConfig(env),
         trustHost: true, // Edge Runtime 호스트 인식을 위해 최상위 옵션으로 이동
+        advanced: {
+            trustedProxyHeaders: true,
+        },
         emailAndPassword: {
             enabled: true
         },
