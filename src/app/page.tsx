@@ -1,8 +1,23 @@
 import MultiModeHomeClient from "@/components/landing/MultiModeHomeClient";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { getLandingSessionState } from "@/lib/landing-session";
 import { getOrgManageHrefForUser } from "@/lib/org-manage-href";
+import { SITE_DESCRIPTION, SITE_TITLE_DEFAULT, buildHomePageJsonLd, buildPublicMetadata } from "@/lib/seo";
 
 export const runtime = "edge";
+
+export const metadata = buildPublicMetadata({
+  title: SITE_TITLE_DEFAULT,
+  description: SITE_DESCRIPTION,
+  path: "/",
+  keywords: [
+    "NFC 보호자 연결",
+    "반려동물 안전 서비스",
+    "실종 예방 태그",
+    "스마트 인식표 플랫폼",
+    "NFC 안심 플랫폼",
+  ],
+});
 
 export default async function Home({
   searchParams,
@@ -19,13 +34,16 @@ export default async function Home({
   const adminButtonLabel = isAdmin ? "관리자 센터" : "관리자 로그인";
 
   return (
-    <MultiModeHomeClient
-      session={session}
-      isAdmin={isAdmin}
-      adminEntryLink={adminEntryLink}
-      adminButtonLabel={adminButtonLabel}
-      orgManageHref={orgManageHref}
-      activateTagId={activateTagId}
-    />
+    <>
+      <JsonLd data={buildHomePageJsonLd()} />
+      <MultiModeHomeClient
+        session={session}
+        isAdmin={isAdmin}
+        adminEntryLink={adminEntryLink}
+        adminButtonLabel={adminButtonLabel}
+        orgManageHref={orgManageHref}
+        activateTagId={activateTagId}
+      />
+    </>
   );
 }

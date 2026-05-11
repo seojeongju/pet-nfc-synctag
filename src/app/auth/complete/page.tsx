@@ -13,8 +13,10 @@
 
 import { Suspense } from "react";
 import { AuthCompleteBridge } from "./auth-complete-bridge";
+import { buildNoIndexMetadata } from "@/lib/seo";
 
 export const runtime = "edge";
+export const metadata = buildNoIndexMetadata("링크유 인증 처리");
 
 interface Props {
   searchParams: Promise<{ next?: string }>;

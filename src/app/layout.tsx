@@ -5,10 +5,30 @@ import { PwaInstallProvider } from "@/components/pwa-install-context";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { ViewportFix } from "@/components/viewport-fix";
 import { SiteLegalFooter } from "@/components/layout/SiteLegalFooter";
+import { JsonLd } from "@/components/seo/JsonLd";
+import {
+  BRAND_KEYWORDS,
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_TITLE_DEFAULT,
+  buildOrganizationJsonLd,
+  buildPublicMetadata,
+  buildWebSiteJsonLd,
+  getSiteUrl,
+} from "@/lib/seo";
+
+const googleSiteVerification = process.env.GOOGLE_SITE_VERIFICATION?.trim();
+const naverSiteVerification = process.env.NAVER_SITE_VERIFICATION?.trim();
 
 export const metadata: Metadata = {
-  title: "링크유 Link-U | NFC로 연결하는 안심 플랫폼",
-  description: "반려동물·가족·아이·수하물까지 NFC 태그로 보호자와 연결하는 링크유(Link-U)입니다.",
+  ...buildPublicMetadata({
+    title: SITE_TITLE_DEFAULT,
+    description: SITE_DESCRIPTION,
+    path: "/",
+  }),
+  metadataBase: new URL(getSiteUrl()),
+  applicationName: SITE_NAME,
+  keywords: [...BRAND_KEYWORDS],
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -16,9 +36,23 @@ export const metadata: Metadata = {
     title: "Link-U",
   },
   icons: {
-    icon: "/icon.png",
-    apple: "/apple-icon.png",
+    icon: [
+      { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+    shortcut: "/icons/icon-192x192.png",
   },
+  ...(googleSiteVerification || naverSiteVerification
+    ? {
+        verification: {
+          ...(googleSiteVerification ? { google: googleSiteVerification } : {}),
+          ...(naverSiteVerification
+            ? { other: { "naver-site-verification": naverSiteVerification } }
+            : {}),
+        },
+      }
+    : {}),
 };
 
 export const viewport: Viewport = {
@@ -50,6 +84,7 @@ export default function RootLayout({
         {/* eslint-enable @next/next/no-page-custom-font */}
       </head>
       <body className="min-h-dvh min-h-[100svh] antialiased font-outfit">
+        <JsonLd data={[buildOrganizationJsonLd(), buildWebSiteJsonLd()]} />
         {/* Google OAuth 복귀 시 viewport 오염 자동 복구 */}
         <ViewportFix />
         <PwaInstallProvider>

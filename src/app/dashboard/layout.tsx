@@ -7,8 +7,10 @@ import { getUserConsentStatus } from "@/lib/privacy-consent";
 import { redirect } from "next/navigation";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { isPasswordChangeRequired } from "@/lib/password-change";
+import { buildNoIndexMetadata } from "@/lib/seo";
 
 export const runtime = "edge";
+export const metadata = buildNoIndexMetadata("링크유 대시보드");
 
 export default async function DashboardLayout({
   children,

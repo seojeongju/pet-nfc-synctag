@@ -2,8 +2,10 @@ import { Suspense } from "react";
 import { LoginForm } from "./login-form";
 import { parseSubjectKind } from "@/lib/subject-kind";
 import { redirect } from "next/navigation";
+import { buildNoIndexMetadata } from "@/lib/seo";
 
 export const runtime = "edge";
+export const metadata = buildNoIndexMetadata("링크유 로그인");
 
 function LoginFallback() {
   return (

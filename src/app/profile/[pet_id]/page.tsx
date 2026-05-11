@@ -8,6 +8,7 @@ import PetProfileClient from "@/components/profile/PetProfileClient";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
 import { isTenantSuspendedSafe } from "@/lib/tenant-status";
 import NotFoundView from "./NotFoundView";
+import { buildNoIndexMetadata } from "@/lib/seo";
 
 export const runtime = "edge";
 
@@ -19,14 +20,14 @@ export async function generateMetadata({
   const { pet_id } = await params;
   const row = (await getPetById(pet_id)) as { name?: string; subject_kind?: string | null } | null;
   if (!row?.name) {
-    return { title: "프로필 · 링크유 Link-U" };
+    return buildNoIndexMetadata("프로필 · 링크유 Link-U");
   }
   const kind = parseSubjectKind(row.subject_kind);
   const label = subjectKindMeta[kind].label;
-  return {
-    title: `${row.name} · ${label} · 링크유`,
-    description: `${label} 연락 안내 페이지입니다. NFC 스캔 시 발견 위치를 남길 수 있습니다.`,
-  };
+  return buildNoIndexMetadata(
+    `${row.name} · ${label} · 링크유`,
+    `${label} 연락 안내 페이지입니다. NFC 스캔 시 발견 위치를 남길 수 있습니다.`
+  );
 }
 type PetDetail = {
   id: string;

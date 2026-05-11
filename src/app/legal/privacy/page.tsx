@@ -1,4 +1,13 @@
+import { buildPublicMetadata } from "@/lib/seo";
+
 export const runtime = "edge";
+
+export const metadata = buildPublicMetadata({
+  title: "링크유 개인정보처리방침",
+  description: "링크유(Link-U) 서비스의 개인정보 처리방침 안내입니다.",
+  path: "/legal/privacy",
+  keywords: ["링크유 개인정보처리방침", "Link-U privacy policy"],
+});
 
 export default function PrivacyPage() {
   return (

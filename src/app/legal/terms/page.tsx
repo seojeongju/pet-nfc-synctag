@@ -1,4 +1,13 @@
+import { buildPublicMetadata } from "@/lib/seo";
+
 export const runtime = "edge";
+
+export const metadata = buildPublicMetadata({
+  title: "링크유 서비스 이용약관",
+  description: "링크유(Link-U) 서비스 이용약관 요약본입니다.",
+  path: "/legal/terms",
+  keywords: ["링크유 이용약관", "Link-U 약관"],
+});
 
 export default function TermsPage() {
   return (

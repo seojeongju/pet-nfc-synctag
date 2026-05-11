@@ -12,8 +12,10 @@ import {
 } from "@/lib/shop-gold-price-tab";
 import { getOrgManageHrefForUser } from "@/lib/org-manage-href";
 import ShopHomeClient from "./ShopHomeClient";
+import { buildNoIndexMetadata } from "@/lib/seo";
 
 export const runtime = "edge";
+export const metadata = buildNoIndexMetadata("링크유 스토어");
 
 function parseKindQuery(v: string | undefined): SubjectKind | "all" | null {
   if (v == null || !String(v).trim()) return null;

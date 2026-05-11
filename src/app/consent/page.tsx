@@ -4,8 +4,10 @@ import { getAuth } from "@/lib/auth";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { getUserConsentStatus } from "@/lib/privacy-consent";
 import { ConsentForm } from "./ConsentForm";
+import { buildNoIndexMetadata } from "@/lib/seo";
 
 export const runtime = "edge";
+export const metadata = buildNoIndexMetadata("링크유 약관 및 동의");
 
 function sanitizeNext(raw: string | undefined): string {
   const t = (raw ?? "").trim();

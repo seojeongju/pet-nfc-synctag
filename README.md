@@ -44,9 +44,28 @@ Recommended production values:
 
 - GitHub Actions variable: `NEXT_PUBLIC_APP_URL=https://wow-linku.co.kr`
 - Cloudflare Pages production environment variable: `BETTER_AUTH_URL=https://wow-linku.co.kr`
+- Cloudflare Pages production environment variable (optional): `GOOGLE_SITE_VERIFICATION=<google meta content>`
+- Cloudflare Pages production environment variable (optional): `NAVER_SITE_VERIFICATION=<naver meta content>`
 
 Also register both `https://wow-linku.co.kr` and `https://www.wow-linku.co.kr` under the Kakao key’s **JavaScript SDK 도메인**.  
 The app redirects `www.wow-linku.co.kr` to the apex domain, so use `https://wow-linku.co.kr` as the canonical base URL for OAuth/callback settings.
+
+## SEO / AEO
+
+The app now exposes:
+
+- `https://wow-linku.co.kr/robots.txt`
+- `https://wow-linku.co.kr/sitemap.xml`
+
+Recommended production steps:
+
+1. Add `https://wow-linku.co.kr` as a property in **Google Search Console**
+2. Submit `https://wow-linku.co.kr/sitemap.xml`
+3. Add `wow-linku.co.kr` in **Naver Search Advisor**
+4. Submit the same sitemap URL there as well
+5. If you use HTML meta verification, store the issued values in:
+   - `GOOGLE_SITE_VERIFICATION`
+   - `NAVER_SITE_VERIFICATION`
 
 ## Native NFC Writer Fallback
 

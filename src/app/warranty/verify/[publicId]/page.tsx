@@ -3,9 +3,11 @@ import { notFound } from "next/navigation";
 import { getWarrantyByPublicId } from "@/lib/jewelry-warranty-db";
 import type { JewelryWarrantyProductSnapshot } from "@/types/warranty";
 import { ShieldCheck, ShieldOff } from "lucide-react";
+import { buildNoIndexMetadata } from "@/lib/seo";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
+export const metadata = buildNoIndexMetadata("링크유 공개 진위 조회");
 
 function parseSnapshot(json: string): JewelryWarrantyProductSnapshot | null {
   try {

@@ -6,10 +6,12 @@ import { getAuth } from "@/lib/auth";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { decodeTagPathParam, normalizeTagUid } from "@/lib/tag-uid-format";
 import UnknownTagView from "./UnknownTagView";
+import { buildNoIndexMetadata } from "@/lib/seo";
 
 export const runtime = "edge";
 
 export const dynamic = "force-dynamic";
+export const metadata = buildNoIndexMetadata("링크유 태그 스캔");
 
 export default async function TagResolvePage({ params }: { params: Promise<{ tag_id: string }> }) {
   const db = getDB();
