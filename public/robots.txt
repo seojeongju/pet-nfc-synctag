@@ -1,0 +1,21 @@
+User-agent: *
+Allow: /
+
+Disallow: /admin
+Disallow: /api/
+Disallow: /auth/
+Disallow: /consent
+Disallow: /dashboard
+Disallow: /force-password
+Disallow: /geofences
+Disallow: /hub
+Disallow: /invite/
+Disallow: /login
+Disallow: /profile/
+Disallow: /scans
+Disallow: /share/
+Disallow: /shop
+Disallow: /t/
+Disallow: /warranty/verify/
+
+Sitemap: https://wow-linku.co.kr/sitemap.xml

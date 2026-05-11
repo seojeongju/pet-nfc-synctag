@@ -18,7 +18,8 @@ import {
 } from "@/lib/seo";
 
 const googleSiteVerification = process.env.GOOGLE_SITE_VERIFICATION?.trim();
-const naverSiteVerification = process.env.NAVER_SITE_VERIFICATION?.trim();
+const naverSiteVerification =
+  process.env.NAVER_SITE_VERIFICATION?.trim() || "ba44fdda87301268312e215cb8d0aa5c660bc40c";
 
 export const metadata: Metadata = {
   ...buildPublicMetadata({
