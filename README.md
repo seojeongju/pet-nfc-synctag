@@ -40,7 +40,13 @@ Add the same key in the GitHub repository:
 **Settings → Secrets and variables → Actions** → **Secrets** or **Variables** →  
 name: `NEXT_PUBLIC_KAKAO_MAP_JS_KEY`, value: your Kakao **JavaScript** key.
 
-Also register your production URL under the key’s **JavaScript SDK 도메인** in Kakao Developers.
+Recommended production values:
+
+- GitHub Actions variable: `NEXT_PUBLIC_APP_URL=https://wow-linku.co.kr`
+- Cloudflare Pages production environment variable: `BETTER_AUTH_URL=https://wow-linku.co.kr`
+
+Also register both `https://wow-linku.co.kr` and `https://www.wow-linku.co.kr` under the Kakao key’s **JavaScript SDK 도메인**.  
+The app redirects `www.wow-linku.co.kr` to the apex domain, so use `https://wow-linku.co.kr` as the canonical base URL for OAuth/callback settings.
 
 ## Native NFC Writer Fallback
 

@@ -1,7 +1,7 @@
 ﻿# 이 파일을 복사해 android-native-writer/local.properties 로 두면
 # app/build.gradle.kts 가 빌드 시 BuildConfig(NATIVE_*)에 주입합니다.
 # Play 스토어 없이 개발할 때는 앱 화면의 "서버 보고 설정"에도 동일 값을 넣을 수 있습니다.
-NATIVE_API_BASE_URL=https://your-project.pages.dev
+NATIVE_API_BASE_URL=https://wow-linku.co.kr
 NATIVE_APP_API_KEY=replace_with_NFC_NATIVE_APP_API_KEY_on_server
 NATIVE_HMAC_SECRET_CURRENT=
 NATIVE_HMAC_SECRET_NEXT=
