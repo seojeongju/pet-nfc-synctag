@@ -176,10 +176,19 @@ export function LoginForm() {
         ? `/auth/complete?next=${encodeURIComponent(consentNext)}`
         : consentNext;
 
-    await signIn.social({
-      provider,
-      callbackURL: resolvedCallbackURL,
-    });
+    try {
+      const result = await signIn.social({
+        provider,
+        callbackURL: resolvedCallbackURL,
+      });
+      const signInError = result && typeof result === "object" && "error" in result ? (result as { error?: { message?: string } }).error : undefined;
+      if (signInError) {
+        setLoginError(signInError.message?.trim() || "소셜 로그인을 시작할 수 없습니다. 잠시 후 다시 시도해 주세요.");
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "소셜 로그인 중 오류가 발생했습니다.";
+      setLoginError(message);
+    }
   };
 
   const handleEmailLogin = async (e: React.FormEvent<HTMLFormElement>) => {

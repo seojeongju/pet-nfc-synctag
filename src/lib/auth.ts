@@ -2,6 +2,8 @@ import { betterAuth } from "better-auth";
 
 type AuthEnv = CloudflareEnv & {
     BETTER_AUTH_SECRET?: string;
+    /** OAuth 리디렉트·쿠키 기준 URL(예: https://wow-linku.co.kr). Pages 바인딩에 두면 process.env와 달라도 일관됨 */
+    BETTER_AUTH_URL?: string;
     GOOGLE_CLIENT_ID?: string;
     GOOGLE_CLIENT_SECRET?: string;
     KAKAO_CLIENT_ID?: string;
@@ -14,7 +16,10 @@ export const getAuth = (env: AuthEnv) => {
         throw new Error("Missing BETTER_AUTH_SECRET in environment variables");
     }
 
+    const baseURL = env.BETTER_AUTH_URL?.trim().replace(/\/+$/, "");
+
     return betterAuth({
+        ...(baseURL ? { baseURL } : {}),
         database: env.DB, // D1 네이티브 드라이버 자동 감지 및 배치 처리 지원
         secret: env.BETTER_AUTH_SECRET,
         trustHost: true, // Edge Runtime 호스트 인식을 위해 최상위 옵션으로 이동
