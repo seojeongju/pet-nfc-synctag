@@ -7,11 +7,18 @@ export const runtime = "edge";
 /**
  * 공개 스팟 메타(발행된 스팟만). 인증 없음 — 이후 /wayfinder/s/[slug] 페이지에서 사용.
  */
-export async function GET(_request: Request, ctx: { params: Promise<{ slug: string }> }) {
+export async function GET(request: Request, ctx: { params: Promise<{ slug: string }> }) {
   const { slug: raw } = await ctx.params;
   const slug = typeof raw === "string" ? raw.trim() : "";
   if (!slug) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  let origin = "";
+  try {
+    origin = new URL(request.url).origin;
+  } catch {
+    origin = "";
   }
 
   try {
@@ -20,7 +27,10 @@ export async function GET(_request: Request, ctx: { params: Promise<{ slug: stri
     if (!row) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
+    const publicPagePath = `/wayfinder/s/${row.slug}`;
     return NextResponse.json({
+      publicPageUrl: origin ? `${origin}${publicPagePath}` : null,
+      publicPagePath,
       spot: {
         slug: row.slug,
         title: row.title,
