@@ -1,8 +1,35 @@
+import { subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
+import { linkuCompanionMenuTitle, linkuCompanionServiceDescription } from "@/lib/wayfinder/copy";
+
+/** 상단 FlowTopNav 모드 라벨(동행 화면은 subject kind와 별도 표기) */
+export function dashboardHeaderModeDisplay(
+  pathname: string,
+  kind: SubjectKind
+): { label: string; description: string } {
+  if (isDashboardWayfinder(pathname)) {
+    return {
+      label: linkuCompanionMenuTitle,
+      description: linkuCompanionServiceDescription,
+    };
+  }
+  const meta = subjectKindMeta[kind];
+  return { label: meta.label, description: meta.description };
+}
+
 export function isDashboardHome(pathname: string): boolean {
   // /dashboard (legacy) or /dashboard/[kind] (new)
   const segments = pathname.split("/").filter(Boolean);
   if (segments.length === 1 && segments[0] === "dashboard") return true;
-  if (segments.length === 2 && segments[0] === "dashboard" && segments[1] !== "pets" && segments[1] !== "scans" && segments[1] !== "geofences") return true;
+  if (
+    segments.length === 2 &&
+    segments[0] === "dashboard" &&
+    segments[1] !== "pets" &&
+    segments[1] !== "scans" &&
+    segments[1] !== "geofences" &&
+    segments[1] !== "wayfinder"
+  ) {
+    return true;
+  }
   return false;
 }
 

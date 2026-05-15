@@ -11,7 +11,7 @@ import {
   Images,
   Store,
 } from "lucide-react";
-import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
+import { parseSubjectKind } from "@/lib/subject-kind";
 import { subjectKindFromDashboardPathname } from "@/lib/dashboard-path-kind";
 import { useDashboardNavSearchSnapshot } from "@/hooks/use-dashboard-nav-search-snapshot";
 import { FlowTopNavContent, type FlowTopNavSession } from "@/components/layout/FlowTopNav";
@@ -20,6 +20,7 @@ import { DashboardContextualHelp } from "@/components/dashboard/DashboardContext
 import { dashboardTopNavLinkClass } from "@/lib/dashboard-nav-styles";
 import { cn } from "@/lib/utils";
 import {
+  dashboardHeaderModeDisplay,
   isDashboardAlbums,
   isDashboardGeofences,
   isDashboardHome,
@@ -41,18 +42,21 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
   const pathKind = subjectKindFromDashboardPathname(pathname);
   const kind =
     pathKind ?? (searchSnap == null ? parseSubjectKind(null) : parseSubjectKind(searchSnap.kind));
-  const currentModeLabel = subjectKindMeta[kind].label;
-  const currentModeDescription = subjectKindMeta[kind].description;
+  const pathnameSafe = pathname ?? "";
+  const { label: currentModeLabel, description: currentModeDescription } = dashboardHeaderModeDisplay(
+    pathnameSafe,
+    kind
+  );
   const tenant = searchSnap == null ? null : searchSnap.tenant;
   const tenantQs = tenant ? `?tenant=${encodeURIComponent(tenant)}` : "";
 
-  const dashHome = isDashboardHome(pathname);
-  const dashPets = isDashboardPets(pathname);
-  const dashScans = isDashboardScans(pathname);
-  const dashGeo = isDashboardGeofences(pathname);
-  const dashAlbums = isDashboardAlbums(pathname);
-  const dashNfc = isDashboardNfc(pathname);
-  const dashStore = pathname === "/shop" || pathname.startsWith("/shop/");
+  const dashHome = isDashboardHome(pathnameSafe);
+  const dashPets = isDashboardPets(pathnameSafe);
+  const dashScans = isDashboardScans(pathnameSafe);
+  const dashGeo = isDashboardGeofences(pathnameSafe);
+  const dashAlbums = isDashboardAlbums(pathnameSafe);
+  const dashNfc = isDashboardNfc(pathnameSafe);
+  const dashStore = pathnameSafe === "/shop" || pathnameSafe.startsWith("/shop/");
 
   const navItems = [
     {
