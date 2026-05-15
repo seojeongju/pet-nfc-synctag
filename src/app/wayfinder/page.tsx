@@ -31,6 +31,11 @@ export default function WayfinderPage() {
       <p className="text-sm text-slate-500">
         환경 변수 <span className="font-mono text-xs">NEXT_PUBLIC_WAYFINDER_ENABLED=true</span>
       </p>
+      <p className="text-sm font-medium leading-relaxed text-slate-600">
+        발행된 개별 스팟은 플래그와 관계 없이{" "}
+        <span className="font-mono text-xs text-slate-700">/wayfinder/s/스팟-slug</span> 주소로 열립니다(NFC·QR
+        연동용).
+      </p>
     </main>
   );
 }
