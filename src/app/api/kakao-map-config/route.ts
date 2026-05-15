@@ -1,45 +1,53 @@
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { NextResponse } from "next/server";
+import {
+  KAKAO_MAP_APP_KEY_ENV_NAMES,
+  normalizeKakaoMapAppKey,
+  type KakaoMapKeySource,
+} from "@/lib/kakao-map-app-key";
 
 export const runtime = "edge";
 
-/** Cloudflare Pages 대시보드만 설정해도 런타임에 주입되도록 서버 전용 이름을 둡니다(재빌드 없이 변경 가능). */
-const KEY_CANDIDATES = [
-  "KAKAO_MAP_JS_KEY",
-  "NEXT_PUBLIC_KAKAO_MAP_JS_KEY",
-  "NEXT_PUBLIC_KAKAO_MAP_KEY",
-] as const;
-
-function pickFirstFromRecord(record: Record<string, unknown> | undefined): string | null {
+function pickFromRecord(
+  record: Record<string, unknown> | undefined
+): { key: string; source: KakaoMapKeySource } | null {
   if (!record) return null;
-  for (const k of KEY_CANDIDATES) {
+  for (const k of KAKAO_MAP_APP_KEY_ENV_NAMES) {
     const v = record[k];
-    if (typeof v === "string" && v.trim()) return v.trim();
+    if (typeof v !== "string") continue;
+    const n = normalizeKakaoMapAppKey(v);
+    if (n) return { key: n, source: k };
   }
   return null;
 }
 
-function pickFirstFromProcess(): string | null {
-  for (const k of KEY_CANDIDATES) {
+function pickFromProcess(): { key: string; source: KakaoMapKeySource } | null {
+  for (const k of KAKAO_MAP_APP_KEY_ENV_NAMES) {
     const v = process.env[k];
-    if (typeof v === "string" && v.trim()) return v.trim();
+    if (typeof v !== "string") continue;
+    const n = normalizeKakaoMapAppKey(v);
+    if (n) return { key: n, source: k };
   }
   return null;
 }
 
 export async function GET() {
-  let fromWorker: string | null = null;
+  let fromWorker: { key: string; source: KakaoMapKeySource } | null = null;
   try {
     const { env } = getRequestContext();
-    fromWorker = pickFirstFromRecord(env as unknown as Record<string, unknown>);
+    fromWorker = pickFromRecord(env as unknown as Record<string, unknown>);
   } catch {
     // Local dev without Workers request context
   }
 
-  const appKey = fromWorker ?? pickFirstFromProcess();
+  const chosen = fromWorker ?? pickFromProcess();
 
   return NextResponse.json(
-    { appKey: appKey || null },
+    {
+      appKey: chosen?.key ?? null,
+      /** 어떤 환경 변수가 선택됐는지(값은 노출하지 않음). 403 시 잘못된 시크릿 구분용 */
+      keySource: chosen?.source ?? null,
+    },
     {
       headers: {
         "Cache-Control": "private, no-store, max-age=0",

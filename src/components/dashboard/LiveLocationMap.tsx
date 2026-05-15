@@ -102,6 +102,7 @@ export default function LiveLocationMap({
   const [sdkLoaded, setSdkLoaded] = useState(false);
   /** CI 빌드에 잘못된 키가 박혀도 Cloudflare 런타임 env를 쓰도록 API에서 조회 */
   const [appKey, setAppKey] = useState<string | null>(null);
+  const [keySource, setKeySource] = useState<string | null>(null);
   const [configStatus, setConfigStatus] = useState<"loading" | "ready" | "missing" | "error">("loading");
   const [scriptLoadFailed, setScriptLoadFailed] = useState(false);
   /** sdk.js?libraries=clusterer 로드 실패 시 코어만 재시도(도메인 문제가 아닌 라이브러리 이슈 배제) */
@@ -150,17 +151,22 @@ export default function LiveLocationMap({
       try {
         const res = await fetch("/api/kakao-map-config", { cache: "no-store" });
         if (!res.ok) throw new Error("config fetch failed");
-        const data = (await res.json()) as { appKey: string | null };
+        const data = (await res.json()) as { appKey: string | null; keySource?: string | null };
         if (cancelled) return;
         if (data.appKey) {
           setAppKey(data.appKey);
+          setKeySource(typeof data.keySource === "string" ? data.keySource : null);
           setConfigStatus("ready");
         } else {
           setAppKey(null);
+          setKeySource(null);
           setConfigStatus("missing");
         }
       } catch {
-        if (!cancelled) setConfigStatus("error");
+        if (!cancelled) {
+          setKeySource(null);
+          setConfigStatus("error");
+        }
       }
     })();
     return () => {
@@ -980,7 +986,7 @@ export default function LiveLocationMap({
                     </div>
                     <p className="text-[10px] text-amber-700 font-bold leading-relaxed">
                         카카오맵 API 키(
-                        KAKAO_MAP_JS_KEY 또는 NEXT_PUBLIC_KAKAO_MAP_JS_KEY 등)가 설정되지 않았습니다.<br />
+                        NEXT_PUBLIC_KAKAO_MAP_JS_KEY 또는 KAKAO_MAP_JS_KEY 등)가 설정되지 않았습니다.<br />
                         Cloudflare Pages 환경 변수를 확인한 뒤 재배포해 주세요.
                     </p>
                 </div>
@@ -1010,6 +1016,14 @@ export default function LiveLocationMap({
                       Cloudflare Pages 미리보기(<span className="font-mono">*.pages.dev</span>)로 볼 때는 그때의
                       <span className="font-mono">https://…pages.dev</span> 호스트를 콘솔에 따로 넣어야 합니다.
                     </p>
+                    {keySource ? (
+                      <p className="mt-2 text-[10px] text-amber-900 font-bold leading-relaxed">
+                        현재 사용 중인 환경 변수: <span className="font-mono">{keySource}</span>
+                        <br />
+                        403이면 다른 이름에 예전 키가 남아 있을 수 있습니다. Cloudflare에서 잘못된 항목을 지우거나, 모두 동일한
+                        JavaScript 키로 맞춘 뒤 재배포하세요.
+                      </p>
+                    ) : null}
                 </div>
             ) : configStatus === "ready" && appKey ? (
                 <p className="text-[11px] text-slate-400 font-bold mt-2 font-outfit uppercase tracking-widest">Initialising SDK</p>

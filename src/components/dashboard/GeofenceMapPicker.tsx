@@ -65,6 +65,7 @@ export function GeofenceMapPicker({
   const markerRef = useRef<{ setMap: (m: unknown) => void; setPosition?: (p: unknown) => void } | null>(null);
   const circleRef = useRef<{ setMap: (m: unknown) => void } | null>(null);
   const [appKey, setAppKey] = useState<string | null>(null);
+  const [keySource, setKeySource] = useState<string | null>(null);
   const [configState, setConfigState] = useState<"loading" | "ready" | "missing" | "error">("loading");
   const [mapReady, setMapReady] = useState(false);
   const [mapScriptError, setMapScriptError] = useState(false);
@@ -87,16 +88,22 @@ export function GeofenceMapPicker({
       try {
         const res = await fetch("/api/kakao-map-config", { cache: "no-store" });
         if (!res.ok) throw new Error("cfg");
-        const d = (await res.json()) as { appKey: string | null };
+        const d = (await res.json()) as { appKey: string | null; keySource?: string | null };
         if (c) return;
         if (d.appKey) {
           setAppKey(d.appKey);
+          setKeySource(typeof d.keySource === "string" ? d.keySource : null);
           setConfigState("ready");
         } else {
+          setAppKey(null);
+          setKeySource(null);
           setConfigState("missing");
         }
       } catch {
-        if (!c) setConfigState("error");
+        if (!c) {
+          setKeySource(null);
+          setConfigState("error");
+        }
       }
     })();
     return () => {
@@ -270,9 +277,9 @@ export function GeofenceMapPicker({
               지도를 쓰려면 Kakao Map JavaScript 키가 필요합니다
             </div>
             <p className="text-[11px] font-semibold leading-relaxed text-amber-800/90">
-              아래에서 위도·경도·반경을 직접 입력하거나, Cloudflare Pages 환경 변수에{" "}
-              <span className="font-mono">KAKAO_MAP_JS_KEY</span>(권장) 또는{" "}
-              <span className="font-mono">NEXT_PUBLIC_KAKAO_MAP_JS_KEY</span>를 설정한 뒤 재배포해 주세요.
+              아래에서 위도·경도·반경을 직접 입력하거나, Cloudflare Pages에{" "}
+              <span className="font-mono">NEXT_PUBLIC_KAKAO_MAP_JS_KEY</span> 또는{" "}
+              <span className="font-mono">KAKAO_MAP_JS_KEY</span>(동일 JavaScript 키)를 설정한 뒤 재배포해 주세요.
             </p>
           </div>
         ) : configState === "ready" && appKey && mapScriptError ? (
@@ -294,6 +301,12 @@ export function GeofenceMapPicker({
               Pages 미리보기(<span className="font-mono">*.pages.dev</span>)에서는 해당 미리보기 URL의 호스트를 콘솔에
               따로 등록해야 합니다.
             </p>
+            {keySource ? (
+              <p className="mt-2 text-[10px] text-amber-900 font-bold leading-relaxed">
+                사용 중인 환경 변수: <span className="font-mono">{keySource}</span> — 403이면 다른 이름에 잘못된 키가
+                남아 있을 수 있으니 삭제하거나 모두 같은 JavaScript 키로 맞추세요.
+              </p>
+            ) : null}
           </div>
         ) : configState === "ready" && appKey ? (
           <>

@@ -25,24 +25,26 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 Create `.env.local` in the project root and set the Kakao Maps **JavaScript** key (from [Kakao Developers](https://developers.kakao.com/) → My Application → App Keys → **JavaScript key**).
 
 ```env
-# Either is enough for `/api/kakao-map-config` (used by geofence / live maps):
-KAKAO_MAP_JS_KEY=your_kakao_javascript_key_here
-# or:
+# Either is enough for `/api/kakao-map-config` (used by geofence / live maps). If you set more than one, the first match below wins:
 NEXT_PUBLIC_KAKAO_MAP_JS_KEY=your_kakao_javascript_key_here
+# or (Pages runtime only):
+#KAKAO_MAP_JS_KEY=your_kakao_javascript_key_here
 ```
 
 For backward compatibility, `NEXT_PUBLIC_KAKAO_MAP_KEY` is also supported.
 
 ### Production (Cloudflare Pages)
 
-`/api/kakao-map-config` reads, in order: **`KAKAO_MAP_JS_KEY`** → `NEXT_PUBLIC_KAKAO_MAP_JS_KEY` → `NEXT_PUBLIC_KAKAO_MAP_KEY` (from the Worker `env` object, then `process.env`).
+`/api/kakao-map-config` reads, in order: **`NEXT_PUBLIC_KAKAO_MAP_JS_KEY`** → `NEXT_PUBLIC_KAKAO_MAP_KEY` → **`KAKAO_MAP_JS_KEY`** (from the Worker `env` object, then `process.env`). The response also includes `keySource` (the winning variable name) so you can debug **403** issues caused by a stale/wrong secret taking precedence.
 
-**Recommended:** set **`KAKAO_MAP_JS_KEY`** in **Cloudflare Dashboard → Workers & Pages → your project → Settings → Environment variables → Production** to the same value as the Kakao **JavaScript** key. Then **redeploy** (or trigger a new deployment) so the variable is applied. This avoids relying on the key being present only at GitHub Actions build time.
+If **`sdk.js` returns 403** in the browser: (1) confirm the Kakao **JavaScript** key (not REST) is used, (2) register the exact **JavaScript SDK 도메인** for your current origin, (3) if multiple env vars are set, ensure they all contain the **same** key—or remove the wrong one (older setups often had a bad `KAKAO_MAP_JS_KEY` shadowing a correct `NEXT_PUBLIC_*`).
+
+**Recommended for Cloudflare-only setup:** set **`KAKAO_MAP_JS_KEY`** in **Cloudflare Dashboard → Workers & Pages → your project → Settings → Environment variables → Production** to the same value as the Kakao **JavaScript** key, then **redeploy**. For CI builds, prefer **`NEXT_PUBLIC_KAKAO_MAP_JS_KEY`** in GitHub Actions so the value is consistent.
 
 ### Production (GitHub Actions → Cloudflare Pages)
 
 `NEXT_PUBLIC_*` values are inlined at **build time** when CI runs `npm run build`.  
-If the key exists only in the Cloudflare dashboard and **not** in the GitHub Actions environment for `npm run build`, some client bundles may still miss it—but **`KAKAO_MAP_JS_KEY` in Pages** is enough for map config served by `/api/kakao-map-config`.
+If the key exists only in the Cloudflare dashboard and **not** in the GitHub Actions environment for `npm run build`, some client bundles may still miss `NEXT_PUBLIC_*` values—but **`KAKAO_MAP_JS_KEY` in Pages** is still enough for map config served by `/api/kakao-map-config` when no `NEXT_PUBLIC_*` key is present.
 
 Add the same key in the GitHub repository if you also want it at build time:
 
