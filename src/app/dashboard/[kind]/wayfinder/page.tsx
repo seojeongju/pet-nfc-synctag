@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { absoluteUrl } from "@/lib/seo";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -306,6 +307,9 @@ export default async function DashboardWayfinderPage({
                                 <div className="min-w-0 space-y-1">
                                   <p className="truncate font-black text-slate-900">{s.title}</p>
                                   <p className="font-mono text-[11px] font-bold text-indigo-600">/{s.slug}</p>
+                                  <p className="break-all font-mono text-[10px] font-semibold text-slate-500">
+                                    NFC·QR: {absoluteUrl(`/wayfinder/s/${s.slug}`)}
+                                  </p>
                                   {tenantId && s.owner_id !== session.user.id ? (
                                     <p className="text-[10px] font-bold text-violet-600">조직 스팟 · 등록자 다른 멤버</p>
                                   ) : null}

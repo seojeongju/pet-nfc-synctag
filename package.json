@@ -10,7 +10,8 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "d1:apply:platform-admin-role": "wrangler d1 execute pet-id-db --remote --file=migrations/0009_platform_admin_role.sql"
+    "d1:apply:platform-admin-role": "wrangler d1 execute pet-id-db --remote --file=migrations/0009_platform_admin_role.sql",
+    "d1:apply:wayfinder-spots": "wrangler d1 execute pet-id-db --remote --file=migrations/0033_wayfinder_spots.sql"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",

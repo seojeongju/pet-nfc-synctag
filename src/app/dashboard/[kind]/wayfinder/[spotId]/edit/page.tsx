@@ -6,6 +6,10 @@ import { ArrowLeft, ExternalLink, Navigation2, Trash2 } from "lucide-react";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
 import { requireTenantMember, getMembership } from "@/lib/tenant-membership";
+import { isPlatformAdminRole } from "@/lib/platform-admin";
+import { rethrowNextControlFlowErrors } from "@/lib/next-redirect-guard";
+import { canUseModeFeature } from "@/lib/mode-visibility";
+import { getTenantStatus } from "@/lib/tenant-status";
 import { linkuCompanionMenuTitle, linkuCompanionServiceDescription } from "@/lib/wayfinder/copy";
 import { isWayfinderEnabled } from "@/lib/wayfinder/feature";
 import {
@@ -18,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { absoluteUrl } from "@/lib/seo";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -189,6 +194,11 @@ export default async function WayfinderSpotEditPage({
                         defaultValue={spot.slug}
                         className="h-12 rounded-2xl font-mono text-xs"
                       />
+                      <p className="break-all text-[10px] font-semibold leading-snug text-slate-500">
+                        태그에 넣을 전체 URL:{" "}
+                        <span className="font-mono text-indigo-700">{absoluteUrl(`/wayfinder/s/${spot.slug}`)}</span>
+                        (slug 변경 시 URL도 함께 바뀝니다)
+                      </p>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="ed-summary">한 줄 요약</Label>
