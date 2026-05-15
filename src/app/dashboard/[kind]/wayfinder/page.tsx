@@ -9,7 +9,7 @@ import { rethrowNextControlFlowErrors } from "@/lib/next-redirect-guard";
 import { canUseModeFeature } from "@/lib/mode-visibility";
 import { getTenantStatus } from "@/lib/tenant-status";
 import Link from "next/link";
-import { ArrowLeft, ExternalLink, Navigation2, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, ExternalLink, LayoutGrid, Navigation2, Pencil, Trash2 } from "lucide-react";
 import { linkuCompanionMenuTitle, linkuCompanionServiceDescription } from "@/lib/wayfinder/copy";
 import { isWayfinderEnabled } from "@/lib/wayfinder/feature";
 import { listWayfinderSpotsForDashboard, canMutateWayfinderSpot, type WayfinderSpotRow } from "@/lib/wayfinder-spots-db";
@@ -115,7 +115,14 @@ export default async function DashboardWayfinderPage({
         <div className="relative min-h-0 w-full min-w-0 overflow-x-hidden bg-[#F8FAFC] pb-8 font-outfit">
           <div className="pointer-events-none absolute left-0 top-0 h-[240px] w-full bg-gradient-to-b from-indigo-500/10 to-transparent" />
           <div className="relative mx-auto w-full min-w-0 max-w-lg space-y-6 px-4 pt-6 sm:px-5 sm:pt-8">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+              <Link
+                href="/hub"
+                className="inline-flex items-center gap-2 self-start rounded-2xl border border-violet-200 bg-violet-50/80 px-3 py-2 text-xs font-black text-violet-800 shadow-sm transition hover:border-violet-300 hover:bg-violet-50"
+              >
+                <LayoutGrid className="h-4 w-4 shrink-0" aria-hidden />
+                허브·모드
+              </Link>
               <Link
                 href={`/dashboard/${subjectKind}${tenantQs}`}
                 className="inline-flex items-center gap-2 self-start rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50/80 hover:text-indigo-800"
@@ -149,7 +156,7 @@ export default async function DashboardWayfinderPage({
                 <p className="mt-2 text-sm font-semibold leading-relaxed text-amber-950/90">
                   상세 개발·베타 화면은 배포 환경에서{" "}
                   <span className="font-mono text-xs">NEXT_PUBLIC_WAYFINDER_ENABLED=true</span>일 때 확장됩니다.
-                  허브에서는 항상 6번째 타일로 안내합니다.
+                  진입은 <strong className="font-black">허브(/hub) → 모드 선택</strong>의 링크유-동행 타일을 이용해 주세요.
                 </p>
               </section>
             ) : null}

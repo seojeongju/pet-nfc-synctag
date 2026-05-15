@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import Link from "next/link";
 import { deleteInventoryTagAdmin, updateTagProductProfile } from "@/app/actions/admin";
 import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,34 @@ function getStatusLabel(status: string) {
   if (status === "unsold") return "미판매";
   if (status === "inactive") return "비활성";
   return status;
+}
+
+function WayfinderSpotCell({ tag }: { tag: AdminTag }) {
+  const slug = (tag.wayfinder_spot_slug ?? "").trim();
+  const title = (tag.wayfinder_spot_title ?? "").trim();
+  if (!slug && !title) {
+    return <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">—</span>;
+  }
+  const label = title || slug;
+  return (
+    <div className="max-w-[168px] space-y-0.5">
+      {slug ? (
+        <Link
+          href={`/wayfinder/s/${encodeURIComponent(slug)}`}
+          className={cn(adminUi.tableBodyCellStrong, "block truncate text-[11px] text-teal-700 underline-offset-2 hover:underline")}
+          target="_blank"
+          rel="noreferrer"
+        >
+          {label}
+        </Link>
+      ) : (
+        <p className={cn(adminUi.tableBodyCellStrong, "truncate text-[11px]")}>{label}</p>
+      )}
+      {slug ? (
+        <p className="truncate font-mono text-[9px] font-bold text-slate-500">/wayfinder/s/{slug}</p>
+      ) : null}
+    </div>
+  );
 }
 
 export function TagProductRow({
@@ -118,6 +147,9 @@ export function TagProductRow({
                 >
                   {getStatusLabel(tag.status)}
                 </span>
+                {tag.wayfinder_spot_slug || tag.wayfinder_spot_title
+                  ? ` · 동행 ${(tag.wayfinder_spot_title ?? tag.wayfinder_spot_slug ?? "").trim() || "—"}`
+                  : ""}
                 {tag.pet_name ? ` · ${tag.pet_name}` : ""}
               </p>
             )}
@@ -133,6 +165,14 @@ export function TagProductRow({
 
         {mobileOpen && (
           <div className="space-y-3 border-t border-slate-100 p-3">
+            {(tag.wayfinder_spot_slug || tag.wayfinder_spot_title) && (
+              <div className="rounded-lg border border-teal-100 bg-teal-50/50 px-3 py-2 text-[10px] font-bold text-teal-900">
+                <span className="font-black uppercase tracking-tight text-teal-700">동행 스팟</span>
+                <div className="mt-1">
+                  <WayfinderSpotCell tag={tag} />
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-1 gap-2">
               <input
                 value={productName}
@@ -257,6 +297,9 @@ export function TagProductRow({
             </option>
           ))}
         </select>
+      </td>
+      <td className="py-4 px-2 align-top">
+        <WayfinderSpotCell tag={tag} />
       </td>
       <td className="py-4 px-2">
         <input

@@ -3,8 +3,44 @@ import { JsonLd } from "@/components/seo/JsonLd";
 import { getLandingSessionState } from "@/lib/landing-session";
 import { getOrgManageHrefForUser } from "@/lib/org-manage-href";
 import { SITE_DESCRIPTION, SITE_TITLE_DEFAULT, buildHomePageJsonLd, buildPublicMetadata } from "@/lib/seo";
+import { getCfRequestContext } from "@/lib/cf-request-context";
+import { isPlatformAdminRole } from "@/lib/platform-admin";
+import { listTenantsForUser } from "@/lib/tenant-membership";
+import { getDashboardPathForUserTenant } from "@/lib/mode-visibility";
 
 export const runtime = "edge";
+
+function buildWayfinderHrefFromDashboardPath(dashboardPath: string): string {
+  const [pathOnly, query] = dashboardPath.split("?");
+  const base = pathOnly.replace(/\/$/, "");
+  return query && query.length > 0 ? `${base}/wayfinder?${query}` : `${base}/wayfinder`;
+}
+
+async function resolveHomeCompanionHref(userId: string | undefined): Promise<string> {
+  if (!userId) {
+    return `/login?callbackUrl=${encodeURIComponent("/hub")}`;
+  }
+  const context = getCfRequestContext();
+  const db = context.env.DB;
+  let isPlatformAdmin = false;
+  try {
+    const roleRow = await db
+      .prepare("SELECT role FROM user WHERE id = ?")
+      .bind(userId)
+      .first<{ role?: string | null }>();
+    isPlatformAdmin = isPlatformAdminRole(roleRow?.role);
+  } catch {
+    /* noop */
+  }
+  const tenants = await listTenantsForUser(db, userId).catch(() => []);
+  if (tenants.length > 0) {
+    const dashPath = await getDashboardPathForUserTenant(db, userId, tenants[0]!.id, {
+      isPlatformAdmin,
+    });
+    return buildWayfinderHrefFromDashboardPath(dashPath);
+  }
+  return "/dashboard/pet/wayfinder";
+}
 
 export const metadata = buildPublicMetadata({
   title: SITE_TITLE_DEFAULT,
@@ -29,6 +65,7 @@ export default async function Home({
   const { session, isAdmin } = await getLandingSessionState();
 
   const orgManageHref = await getOrgManageHrefForUser(session?.user?.id).catch(() => null);
+  const companionHref = await resolveHomeCompanionHref(session?.user?.id);
   /** 메인 랜딩 하단은 관리자 진입만 강조 (보호자는 상단 모드 타일 → 각 모드 페이지에서 로그인) */
   const adminEntryLink = isAdmin ? "/admin" : "/admin/login";
   const adminButtonLabel = isAdmin ? "관리자 센터" : "관리자 로그인";
@@ -43,6 +80,7 @@ export default async function Home({
         adminButtonLabel={adminButtonLabel}
         orgManageHref={orgManageHref}
         activateTagId={activateTagId}
+        companionHref={companionHref}
       />
     </>
   );

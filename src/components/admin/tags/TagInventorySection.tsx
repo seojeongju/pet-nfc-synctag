@@ -171,7 +171,7 @@ export function TagInventorySection({
               type="search"
               name="q"
               defaultValue={initialQ}
-              placeholder="UID · 제품명 · 펫 · 소유자 이메일"
+              placeholder="UID · 제품명 · 펫 · 이메일 · 동행 스팟(slug·제목)"
               maxLength={120}
               className={cn(
                 adminUi.searchInput,
@@ -278,6 +278,7 @@ export function TagInventorySection({
               <AdminTableHeadCell className="min-w-[140px] px-4 py-5">태그 UID</AdminTableHeadCell>
               <AdminTableHeadCell className="min-w-[100px] px-4 py-5">제품명</AdminTableHeadCell>
               <AdminTableHeadCell className="min-w-[120px] px-4 py-5">할당 모드</AdminTableHeadCell>
+              <AdminTableHeadCell className="min-w-[140px] px-4 py-5">동행 스팟</AdminTableHeadCell>
               <AdminTableHeadCell className="min-w-[120px] px-4 py-5">BLE MAC</AdminTableHeadCell>
               <AdminTableHeadCell className="px-4 py-5">상태</AdminTableHeadCell>
               <AdminTableHeadCell className="px-4 py-5">연결</AdminTableHeadCell>
@@ -290,7 +291,7 @@ export function TagInventorySection({
               tags.map((tag) => <TagProductRow key={tag.id} tag={tag} onAfterSave={() => router.refresh()} />)
             ) : (
               <tr>
-                <td colSpan={8} className="py-24 text-center">
+                <td colSpan={9} className="py-24 text-center">
                   <div className="flex flex-col items-center gap-3 opacity-20">
                     <Database className="h-12 w-12 text-slate-400" />
                     <p className="text-xs font-black uppercase tracking-widest text-slate-400">

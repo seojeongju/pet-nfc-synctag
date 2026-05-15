@@ -2,7 +2,12 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { recordNfcWebReadAudit, registerBulkTags, type RegisterBulkTagsOptions } from "@/app/actions/admin";
+import {
+  listWayfinderSpotsForAdminTagLink,
+  recordNfcWebReadAudit,
+  registerBulkTags,
+  type RegisterBulkTagsOptions,
+} from "@/app/actions/admin";
 import { AdminCard } from "@/components/admin/ui/AdminCard";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +22,7 @@ import {
   Gem,
   Smartphone,
   Loader2,
+  MapPin,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -62,6 +68,8 @@ const kindShortLabel: Record<SubjectKind, string> = {
   gold: "링크유-골드",
 };
 
+type RegisterBulkMode = "subject" | "wayfinder";
+
 const kindTabStyles: Record<
   SubjectKind,
   { active: string; inactive: string; iconBg: string }
@@ -95,6 +103,20 @@ const kindTabStyles: Record<
 
 export function TagBulkRegisterCard() {
   const router = useRouter();
+  const [registerMode, setRegisterMode] = useState<RegisterBulkMode>("subject");
+  const [wayfinderSpotId, setWayfinderSpotId] = useState("");
+  const [wfUids, setWfUids] = useState("");
+  const [wfSpots, setWfSpots] = useState<
+    Array<{
+      id: string;
+      slug: string;
+      title: string;
+      tenant_id: string | null;
+      is_published: number;
+      subject_kind: string;
+    }>
+  >([]);
+  const [wfSpotsLoading, setWfSpotsLoading] = useState(false);
   const [activeKind, setActiveKind] = useState<SubjectKind>("pet");
   const [uidsByKind, setUidsByKind] = useState<Record<SubjectKind, string>>({
     pet: "",
@@ -116,6 +138,8 @@ export function TagBulkRegisterCard() {
   /** NFC 읽기가 비동기라, 완료 시점의 활성 모드 기준으로 UID를 반영합니다 */
   const activeKindRef = useRef<SubjectKind>(activeKind);
   activeKindRef.current = activeKind;
+  const registerModeRef = useRef<RegisterBulkMode>(registerMode);
+  registerModeRef.current = registerMode;
   /** iOS / Safari 환경 감지 (NFC 읽기·쓰기 모두 미지원) */
   const [isIosSafari, setIsIosSafari] = useState(false);
 
@@ -136,17 +160,67 @@ export function TagBulkRegisterCard() {
     };
   }, []);
 
+  useEffect(() => {
+    if (registerMode !== "wayfinder") return;
+    let cancelled = false;
+    setWfSpotsLoading(true);
+    void listWayfinderSpotsForAdminTagLink()
+      .then((rows) => {
+        if (!cancelled) setWfSpots(rows);
+      })
+      .finally(() => {
+        if (!cancelled) setWfSpotsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [registerMode]);
+
   const uids = uidsByKind[activeKind];
   const setUidsForActive = (value: string) =>
     setUidsByKind((prev) => ({ ...prev, [activeKind]: value }));
 
-  const uidTokens = uids.split(/[\n,]+/).map(normalizeTagUid).filter((u) => u.length > 0);
+  const bulkUidText = registerMode === "wayfinder" ? wfUids : uids;
+  const uidTokens = bulkUidText.split(/[\n,]+/).map(normalizeTagUid).filter((u) => u.length > 0);
   const uniqueTokens = Array.from(new Set(uidTokens));
   const validUids = uniqueTokens.filter(isValidTagUidFormat);
   const duplicateInInputCount = uidTokens.length - uniqueTokens.length;
   const invalidCount = uniqueTokens.length - validUids.length;
 
   const handleRegister = () => {
+    if (registerMode === "wayfinder") {
+      const spot = wayfinderSpotId.trim();
+      if (!spot) {
+        setMessage({ type: "error", text: "동행 스팟을 선택하세요." });
+        return;
+      }
+      if (!wfUids.trim()) return;
+      const uidList = wfUids.split(/[\n,]+/).map(normalizeTagUid).filter((u) => u.length > 0);
+      if (uidList.length === 0) return;
+      startTransition(async () => {
+        try {
+          const result = await registerBulkTags(uidList, {
+            wayfinderSpotId: spot,
+            existingUidBehavior,
+          });
+          const metaLine =
+            existingUidBehavior === "update_meta" && result.updatedExistingMeta > 0
+              ? ` · 기존 UID 메타 갱신 ${result.updatedExistingMeta}개`
+              : "";
+          setMessage({
+            type: "success",
+            text: `[링크유-동행] 등록 완료: 신규 ${result.registeredCount}개 / 요청 ${result.requestedCount}개 · 무효 ${result.invalidCount}개 · 요청 내 중복 ${result.duplicateInRequest}개 · DB에 이미 있던 UID ${result.duplicateExisting}개${metaLine} (배치 ${result.batchId})`,
+          });
+          setNfcHint(null);
+          setWfUids("");
+          router.refresh();
+        } catch {
+          setMessage({ type: "error", text: "등록 처리 중 오류가 발생했습니다." });
+        }
+      });
+      return;
+    }
+
     if (!uids.trim()) return;
     const uidList = uids.split(/[\n,]+/).map(normalizeTagUid).filter((u) => u.length > 0);
     if (uidList.length === 0) return;
@@ -191,6 +265,11 @@ export function TagBulkRegisterCard() {
     gold: "bg-amber-50/80 border-amber-200",
   };
 
+  const statsPanelClass =
+    registerMode === "wayfinder"
+      ? "bg-emerald-50/50 border-emerald-100"
+      : statsPanelByKind[activeKind];
+
   return (
     <AdminCard variant="section" className="space-y-7 overflow-hidden relative">
       <div className="space-y-2 relative z-10">
@@ -199,10 +278,54 @@ export function TagBulkRegisterCard() {
           NFC 태그 대량 등록
         </h3>
         <p className="text-[11px] font-black uppercase tracking-tight text-slate-500 sm:text-[10px]">
-          모드 선택 → UID 입력/스캔 → 등록
+          등록 유형 선택 → UID 입력/스캔 → 등록
         </p>
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            sessionRef.current?.stop();
+            sessionRef.current = null;
+            setNfcContinuous(false);
+            setRegisterMode("subject");
+            setMessage(null);
+            setNfcHint(null);
+          }}
+          className={cn(
+            "touch-manipulation flex min-h-[48px] min-w-[140px] flex-1 items-center gap-2 rounded-2xl border px-4 py-3 text-left transition-all sm:min-h-0 sm:flex-none sm:py-2.5",
+            registerMode === "subject"
+              ? "border-teal-500 bg-teal-50 text-teal-900 shadow-sm"
+              : "border-slate-200 bg-white text-slate-600 hover:border-teal-200"
+          )}
+        >
+          <PlusCircle className="h-4 w-4 shrink-0 text-teal-600" />
+          <span className="text-xs font-black leading-snug">제품 NFC (모드별)</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            sessionRef.current?.stop();
+            sessionRef.current = null;
+            setNfcContinuous(false);
+            setRegisterMode("wayfinder");
+            setMessage(null);
+            setNfcHint(null);
+          }}
+          className={cn(
+            "touch-manipulation flex min-h-[48px] min-w-[140px] flex-1 items-center gap-2 rounded-2xl border px-4 py-3 text-left transition-all sm:min-h-0 sm:flex-none sm:py-2.5",
+            registerMode === "wayfinder"
+              ? "border-emerald-600 bg-emerald-50 text-emerald-950 shadow-sm"
+              : "border-slate-200 bg-white text-slate-600 hover:border-emerald-200"
+          )}
+        >
+          <MapPin className="h-4 w-4 shrink-0 text-emerald-700" />
+          <span className="text-xs font-black leading-snug">링크유-동행 (스팟 연결)</span>
+        </button>
+      </div>
+
+      {registerMode === "subject" ? (
       <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {SUBJECT_KINDS.map((kind) => {
           const Icon = kindIcon[kind];
@@ -244,6 +367,31 @@ export function TagBulkRegisterCard() {
           );
         })}
       </div>
+      ) : (
+        <div className="space-y-2 rounded-2xl border border-emerald-100 bg-emerald-50/30 p-4">
+          <label className="block space-y-1.5">
+            <span className="text-[10px] font-black uppercase tracking-wide text-emerald-800">연결할 동행 스팟</span>
+            <select
+              value={wayfinderSpotId}
+              onChange={(e) => setWayfinderSpotId(e.target.value)}
+              disabled={wfSpotsLoading || isPending}
+              className="min-h-[44px] w-full rounded-xl border border-emerald-200 bg-white px-3 text-sm font-bold text-slate-900 sm:min-h-10 sm:text-xs"
+            >
+              <option value="">{wfSpotsLoading ? "스팟 목록 불러오는 중…" : "스팟을 선택하세요"}</option>
+              {wfSpots.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.title} — {s.slug}
+                  {Number(s.is_published) !== 1 ? " (미발행)" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="text-[12px] font-semibold leading-relaxed text-emerald-900/90 sm:text-[11px]">
+            NFC로 UID만 목록에 추가합니다. 칩 자동 기록은 하지 않습니다. 스팟을 발행한 뒤「URL 기록」에서{" "}
+            <span className="font-mono font-bold">/wayfinder/s/…</span> URL을 기록하세요.
+          </p>
+        </div>
+      )}
 
       <div className="relative z-10 space-y-2">
         <div className="flex flex-col gap-2">
@@ -261,20 +409,28 @@ export function TagBulkRegisterCard() {
               setNfcBusy(true);
               void readNfcTagUidOnce().then(async (r) => {
                 if (r.ok) {
-                  const k = activeKindRef.current;
-                  setUidsByKind((prev) => {
-                    const cur = prev[k].trim();
-                    const next = cur ? `${cur}\n${r.uid}` : r.uid;
-                    return { ...prev, [k]: next };
-                  });
-                  // UID 읽기 직후 URL을 칩에 자동 기록
-                  const writeResult = await tryWriteUrlToChip(r.uid);
-                  if (writeResult.ok) {
-                    setNfcHint(`[${kindShortLabel[k]}] UID 추가 + URL 자동 기록 완료: ${r.uid}`);
+                  if (registerModeRef.current === "wayfinder") {
+                    setWfUids((prev) => {
+                      const cur = prev.trim();
+                      return cur ? `${cur}\n${r.uid}` : r.uid;
+                    });
+                    setNfcHint(`[링크유-동행] UID 추가: ${r.uid} (칩 URL 자동 기록 없음 → 발행 후 URL 기록)`);
+                    void recordNfcWebReadAudit({ success: true, source: "bulk_register", tagId: r.uid });
                   } else {
-                    setNfcHint(`[${kindShortLabel[k]}] UID 추가됨: ${r.uid}\n⚠️ URL 자동 기록 실패(${writeResult.error}) — 수동으로 URL 기록 페이지에서 처리하세요.`);
+                    const k = activeKindRef.current;
+                    setUidsByKind((prev) => {
+                      const cur = prev[k].trim();
+                      const next = cur ? `${cur}\n${r.uid}` : r.uid;
+                      return { ...prev, [k]: next };
+                    });
+                    const writeResult = await tryWriteUrlToChip(r.uid);
+                    if (writeResult.ok) {
+                      setNfcHint(`[${kindShortLabel[k]}] UID 추가 + URL 자동 기록 완료: ${r.uid}`);
+                    } else {
+                      setNfcHint(`[${kindShortLabel[k]}] UID 추가됨: ${r.uid}\n⚠️ URL 자동 기록 실패(${writeResult.error}) — 수동으로 URL 기록 페이지에서 처리하세요.`);
+                    }
+                    void recordNfcWebReadAudit({ success: true, source: "bulk_register", tagId: r.uid });
                   }
-                  void recordNfcWebReadAudit({ success: true, source: "bulk_register", tagId: r.uid });
                 } else {
                   setNfcHint(r.error);
                   void recordNfcWebReadAudit({ success: false, source: "bulk_register", clientError: r.error });
@@ -313,6 +469,20 @@ export function TagBulkRegisterCard() {
                 setNfcBusy(true);
                 void startNfcUidScanSession({
                   onUid: async (uid) => {
+                    if (registerModeRef.current === "wayfinder") {
+                      setWfUids((prev) => {
+                        const tokens = prev
+                          .split(/[\n,]+/)
+                          .map(normalizeTagUid)
+                          .filter((v) => v.length > 0);
+                        if (tokens.includes(uid)) return prev;
+                        const cur = prev.trim();
+                        return cur ? `${cur}\n${uid}` : uid;
+                      });
+                      setNfcHint(`[링크유-동행] 연속 스캔: ${uid} (칩 자동 기록 없음)`);
+                      void recordNfcWebReadAudit({ success: true, source: "bulk_register", tagId: uid });
+                      return;
+                    }
                     const k = activeKindRef.current;
                     setUidsByKind((prev) => {
                       const tokens = prev[k]
@@ -324,7 +494,6 @@ export function TagBulkRegisterCard() {
                       const next = cur ? `${cur}\n${uid}` : uid;
                       return { ...prev, [k]: next };
                     });
-                    // 연속 스캔 시에도 URL 자동 기록
                     const writeResult = await tryWriteUrlToChip(uid);
                     if (writeResult.ok) {
                       setNfcHint(`[${kindShortLabel[k]}] 연속 스캔 + URL 자동 기록: ${uid}`);
@@ -379,22 +548,35 @@ export function TagBulkRegisterCard() {
             {nfcHint}
           </p>
         )}
-        <textarea
-          value={uids}
-          onChange={(e) => setUidsForActive(e.target.value)}
-          placeholder="UID (줄 또는 쉼표로 구분)"
-          className={cn(
-            "min-h-[11rem] w-full resize-none rounded-[23px] border border-slate-200 bg-slate-50 p-5 font-mono text-base text-slate-700 shadow-inner",
-            "transition-all focus:outline-none focus:ring-4 sm:h-44 sm:text-sm",
-            focusRingByKind[activeKind]
-          )}
-        />
+        {registerMode === "wayfinder" ? (
+          <textarea
+            value={wfUids}
+            onChange={(e) => setWfUids(e.target.value)}
+            placeholder="UID (줄 또는 쉼표로 구분)"
+            className={cn(
+              "min-h-[11rem] w-full resize-none rounded-[23px] border border-slate-200 bg-slate-50 p-5 font-mono text-base text-slate-700 shadow-inner",
+              "transition-all focus:outline-none focus:ring-4 sm:h-44 sm:text-sm",
+              "focus:ring-emerald-500/10 focus:border-emerald-500/50"
+            )}
+          />
+        ) : (
+          <textarea
+            value={uids}
+            onChange={(e) => setUidsForActive(e.target.value)}
+            placeholder="UID (줄 또는 쉼표로 구분)"
+            className={cn(
+              "min-h-[11rem] w-full resize-none rounded-[23px] border border-slate-200 bg-slate-50 p-5 font-mono text-base text-slate-700 shadow-inner",
+              "transition-all focus:outline-none focus:ring-4 sm:h-44 sm:text-sm",
+              focusRingByKind[activeKind]
+            )}
+          />
+        )}
       </div>
 
       <div
         className={cn(
           "space-y-2 rounded-xl border p-4 text-[13px] font-bold sm:text-[11px]",
-          statsPanelByKind[activeKind]
+          statsPanelClass
         )}
       >
         <div className="flex items-center justify-between gap-2">
@@ -445,7 +627,7 @@ export function TagBulkRegisterCard() {
           <span>
             <span className="block text-[13px] font-black text-slate-900 sm:text-xs">할당 모드·배치 갱신</span>
             <span className="block text-[12px] font-semibold leading-snug text-slate-500 sm:text-[10px] sm:font-bold">
-              위에서 선택한 모드·이번 배치 ID로 기존 태그 메타를 덮어씁니다. (펫 연결은 유지됩니다. 완전 삭제는 인벤토리
+              위에서 선택한 모드·이번 배치 ID(또는 동행 스팟 연결)로 기존 태그 메타를 덮어씁니다. (펫 연결은 유지됩니다. 완전 삭제는 인벤토리
               목록의 삭제를 사용하세요.)
             </span>
           </span>
@@ -478,7 +660,10 @@ export function TagBulkRegisterCard() {
       <Button
         type="button"
         onClick={handleRegister}
-        disabled={isPending || !uids.trim()}
+        disabled={
+          isPending ||
+          (registerMode === "wayfinder" ? !wfUids.trim() || !wayfinderSpotId.trim() : !uids.trim())
+        }
         className={cn(
           "min-h-14 w-full touch-manipulation rounded-[24px] px-4 py-4 text-[15px] shadow-xl transition-all group relative overflow-hidden font-black active:scale-[0.98] sm:py-3 sm:text-sm",
           adminUi.darkButton
@@ -487,6 +672,11 @@ export function TagBulkRegisterCard() {
         <span className="relative z-10 flex w-full items-center justify-center gap-2 text-center leading-snug break-keep whitespace-normal">
           {isPending ? (
             "처리 중..."
+          ) : registerMode === "wayfinder" ? (
+            <>
+              링크유-동행 태그 인벤토리 등록
+              <ArrowUpRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity" />
+            </>
           ) : (
             <>
               {kindShortLabel[activeKind]} 태그 인벤토리 등록

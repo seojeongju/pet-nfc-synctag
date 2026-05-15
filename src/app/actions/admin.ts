@@ -7,6 +7,7 @@ import { getCfRequestContext } from "@/lib/cf-request-context";
 import { parseSubjectKind, SUBJECT_KINDS, type SubjectKind } from "@/lib/subject-kind";
 import { normalizeBleMac } from "@/lib/device-mode";
 import { isValidTagUidFormat, normalizeTagUid } from "@/lib/tag-uid-format";
+import { computeNdefWriteUrlForInventoryTag } from "@/lib/nfc-inventory-ndef-url";
 import { mintNativeHandoffToken } from "@/lib/nfc-native-security";
 import {
     requirePlatformOrTenantAdminActor,
@@ -47,6 +48,8 @@ export type RegisterBulkTagsOptions = {
     batchId?: string;
     /** 등록 시점에 태그에 부여할 할당 모드 (허브 자동 진입 등에 사용) */
     assignedSubjectKind?: SubjectKind | null;
+    /** 링크유-동행 스팟 연결 시: 인벤토리 UID가 기록할 NDEF URL이 /wayfinder/s/{slug} 가 되도록 함 */
+    wayfinderSpotId?: string | null;
     /**
      * 이미 인벤토리에 있는 UID 처리
      * - skip: 기존과 동일(INSERT만, 중복은 건너뜀)
@@ -68,7 +71,7 @@ export async function registerBulkTags(uids: string[], options?: RegisterBulkTag
     const kind = options?.assignedSubjectKind ?? null;
     const kindSlug =
         kind && (SUBJECT_KINDS as readonly string[]).includes(kind) ? kind : "generic";
-    const currentBatch = options?.batchId || `BATCH-${kindSlug}-${Date.now()}`;
+    let currentBatch = options?.batchId || `BATCH-${kindSlug}-${Date.now()}`;
     const normalized = uids.map(normalizeTagUid).filter((uid) => uid.length > 0);
     const uniqueNormalized = Array.from(new Set(normalized));
     const validUids = uniqueNormalized.filter(isValidTagUidFormat);
@@ -92,6 +95,39 @@ export async function registerBulkTags(uids: string[], options?: RegisterBulkTag
         const hasBatchIdColumn = tagColumns.has("batch_id");
         const hasAssignedKindColumn = tagColumns.has("assigned_subject_kind");
         const hasTenantIdColumn = tagColumns.has("tenant_id");
+        const hasWayfinderSpotColumn = tagColumns.has("wayfinder_spot_id");
+
+        const wayfinderSpotIdOpt = (options?.wayfinderSpotId ?? "").trim() || null;
+        let effectiveAssignedKind: SubjectKind | null = kind;
+        if (wayfinderSpotIdOpt) {
+            if (!hasWayfinderSpotColumn) {
+                throw new Error(
+                    "tags.wayfinder_spot_id 컬럼이 없습니다. 마이그레이션 0034_tags_wayfinder_spot.sql 을 적용하세요."
+                );
+            }
+            const wfRow = await db
+                .prepare("SELECT id, tenant_id, subject_kind FROM wayfinder_spots WHERE id = ?")
+                .bind(wayfinderSpotIdOpt)
+                .first<{ id: string; tenant_id: string | null; subject_kind: string }>();
+            if (!wfRow) {
+                throw new Error("동행 스팟을 찾을 수 없습니다.");
+            }
+            if (!scope.actor.isPlatformAdmin) {
+                const stid = (wfRow.tenant_id ?? "").trim() || null;
+                if (stid) {
+                    if (!forcedTenantId || stid !== forcedTenantId) {
+                        throw new Error("선택한 동행 스팟은 현재 조직 인벤토리 범위와 맞지 않습니다.");
+                    }
+                } else if (forcedTenantId) {
+                    throw new Error("개인(비조직) 동행 스팟에는 테넌트 인벤토리 태그를 연결할 수 없습니다.");
+                }
+            }
+            effectiveAssignedKind = parseSubjectKind(wfRow.subject_kind);
+        }
+        const assignKindForTags = effectiveAssignedKind;
+        if (!options?.batchId && wayfinderSpotIdOpt) {
+            currentBatch = `BATCH-wf-${Date.now()}`;
+        }
 
         const chunks = chunkArray(validUids, 200);
         for (const chunk of chunks) {
@@ -122,10 +158,14 @@ export async function registerBulkTags(uids: string[], options?: RegisterBulkTag
             const setParts: string[] = ["updated_at = CURRENT_TIMESTAMP"];
             const setBinds: unknown[] = [];
             setParts.push("assigned_subject_kind = ?");
-            setBinds.push(kind);
+            setBinds.push(assignKindForTags);
             if (hasBatchIdColumn) {
                 setParts.push("batch_id = ?");
                 setBinds.push(currentBatch);
+            }
+            if (hasWayfinderSpotColumn && wayfinderSpotIdOpt) {
+                setParts.push("wayfinder_spot_id = ?");
+                setBinds.push(wayfinderSpotIdOpt);
             }
             const setSql = setParts.join(", ");
 
@@ -181,7 +221,12 @@ export async function registerBulkTags(uids: string[], options?: RegisterBulkTag
             if (hasAssignedKindColumn) {
                 columns.push("assigned_subject_kind");
                 values.push("?");
-                binds.push(kind);
+                binds.push(assignKindForTags);
+            }
+            if (hasWayfinderSpotColumn && wayfinderSpotIdOpt) {
+                columns.push("wayfinder_spot_id");
+                values.push("?");
+                binds.push(wayfinderSpotIdOpt);
             }
             if (hasTenantIdColumn && forcedTenantId) {
                 columns.push("tenant_id");
@@ -202,7 +247,8 @@ export async function registerBulkTags(uids: string[], options?: RegisterBulkTag
         const result = {
             success: true,
             batchId: currentBatch,
-            assignedSubjectKind: kind,
+            assignedSubjectKind: assignKindForTags,
+            wayfinderSpotId: wayfinderSpotIdOpt,
             requestedCount: normalized.length,
             registeredCount: toInsert.length,
             invalidCount,
@@ -317,9 +363,9 @@ export async function getTagsInventoryPage(
     if (qRaw.length > 0) {
         const pat = `%${qRaw.toLowerCase()}%`;
         conditions.push(
-            `(LOWER(t.id) LIKE ? OR LOWER(COALESCE(p.name,'')) LIKE ? OR LOWER(COALESCE(t.product_name,'')) LIKE ? OR LOWER(COALESCE(u.email,'')) LIKE ?)`
+            `(LOWER(t.id) LIKE ? OR LOWER(COALESCE(p.name,'')) LIKE ? OR LOWER(COALESCE(t.product_name,'')) LIKE ? OR LOWER(COALESCE(u.email,'')) LIKE ? OR LOWER(COALESCE(wf.slug,'')) LIKE ? OR LOWER(COALESCE(wf.title,'')) LIKE ?)`
         );
-        binds.push(pat, pat, pat, pat);
+        binds.push(pat, pat, pat, pat, pat, pat);
     }
     if (status !== "all") {
         conditions.push(`t.status = ?`);
@@ -360,6 +406,7 @@ export async function getTagsInventoryPage(
         FROM tags t
         LEFT JOIN pets p ON t.pet_id = p.id
         LEFT JOIN user u ON p.owner_id = u.id
+        LEFT JOIN wayfinder_spots wf ON wf.id = t.wayfinder_spot_id
         ${whereSql}
     `;
 
@@ -376,7 +423,8 @@ export async function getTagsInventoryPage(
     const listBinds = [...binds, pageSize, offset];
     const { results } = await db
         .prepare(
-            `SELECT t.*, p.name as pet_name, u.email as owner_email
+            `SELECT t.*, p.name as pet_name, u.email as owner_email,
+                    wf.slug AS wayfinder_spot_slug, wf.title AS wayfinder_spot_title
              ${baseFrom}
              ORDER BY t.created_at DESC
              LIMIT ? OFFSET ?`
@@ -1059,21 +1107,89 @@ export async function prepareNfcTagWrite(tagIdRaw: string): Promise<
     const db = getDB();
     const row = await (
         scope.actor.isPlatformAdmin || !scope.tenantIds || scope.tenantIds.length === 0
-            ? db.prepare("SELECT id FROM tags WHERE id = ?").bind(id)
+            ? db
+                  .prepare(
+                      `SELECT t.id AS tag_id, t.wayfinder_spot_id AS wf_spot,
+                              w.slug AS wf_slug, w.is_published AS wf_pub
+                       FROM tags t
+                       LEFT JOIN wayfinder_spots w ON w.id = t.wayfinder_spot_id
+                       WHERE t.id = ?`
+                  )
+                  .bind(id)
             : db
                   .prepare(
-                      `SELECT id
-                       FROM tags
-                       WHERE id = ?
-                         AND tenant_id IN (${scope.tenantIds.map(() => "?").join(", ")})`
+                      `SELECT t.id AS tag_id, t.wayfinder_spot_id AS wf_spot,
+                              w.slug AS wf_slug, w.is_published AS wf_pub
+                       FROM tags t
+                       LEFT JOIN wayfinder_spots w ON w.id = t.wayfinder_spot_id
+                       WHERE t.id = ?
+                         AND t.tenant_id IN (${scope.tenantIds.map(() => "?").join(", ")})`
                   )
                   .bind(id, ...scope.tenantIds)
-    ).first<{ id: string }>();
+    ).first<{ tag_id: string; wf_spot: string | null; wf_slug: string | null; wf_pub: number | null }>();
     if (!row) {
         return { ok: false, error: "등록되지 않은 태그입니다. 먼저 태그를 인벤토리에 등록하세요." };
     }
-    const url = `${base}/t/${encodeURIComponent(id)}`;
-    return { ok: true, tagId: id, url };
+    const built = computeNdefWriteUrlForInventoryTag(base, id, row);
+    if (!built.ok) {
+        return { ok: false, error: built.error };
+    }
+    return { ok: true, tagId: id, url: built.url };
+}
+
+const WAYFINDER_SPOT_PICK_LIMIT = 400;
+
+/** 대량 등록(동행 스팟 연결)용 스팟 선택 목록 */
+export async function listWayfinderSpotsForAdminTagLink(): Promise<
+    Array<{
+        id: string;
+        slug: string;
+        title: string;
+        tenant_id: string | null;
+        is_published: number;
+        subject_kind: string;
+    }>
+> {
+    const scope = await resolveAdminScope("admin");
+    const db = getDB();
+    if (scope.actor.isPlatformAdmin || !scope.tenantIds || scope.tenantIds.length === 0) {
+        const { results } = await db
+            .prepare(
+                `SELECT id, slug, title, tenant_id, is_published, subject_kind
+                 FROM wayfinder_spots
+                 ORDER BY datetime(updated_at) DESC
+                 LIMIT ?`
+            )
+            .bind(WAYFINDER_SPOT_PICK_LIMIT)
+            .all<{
+                id: string;
+                slug: string;
+                title: string;
+                tenant_id: string | null;
+                is_published: number;
+                subject_kind: string;
+            }>();
+        return results ?? [];
+    }
+    const ph = scope.tenantIds.map(() => "?").join(", ");
+    const { results } = await db
+        .prepare(
+            `SELECT id, slug, title, tenant_id, is_published, subject_kind
+             FROM wayfinder_spots
+             WHERE tenant_id IN (${ph})
+             ORDER BY datetime(updated_at) DESC
+             LIMIT ?`
+        )
+        .bind(...scope.tenantIds, WAYFINDER_SPOT_PICK_LIMIT)
+        .all<{
+            id: string;
+            slug: string;
+            title: string;
+            tenant_id: string | null;
+            is_published: number;
+            subject_kind: string;
+        }>();
+    return results ?? [];
 }
 
 /**

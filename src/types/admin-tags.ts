@@ -38,6 +38,10 @@ export type AdminTag = {
   product_name?: string | null;
   assigned_subject_kind?: string | null;
   ble_mac?: string | null;
+  /** 링크유-동행 스팟 연결 시 JOIN 결과 */
+  wayfinder_spot_id?: string | null;
+  wayfinder_spot_slug?: string | null;
+  wayfinder_spot_title?: string | null;
 };
 
 export type TagsInventoryPageResult = {

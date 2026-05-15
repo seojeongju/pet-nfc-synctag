@@ -22,12 +22,14 @@ import {
   Sparkles,
   UserRound,
   Tag,
+  Navigation2,
   X,
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
 import { FlowTopNav } from "@/components/layout/FlowTopNav";
+import { linkuCompanionMenuTitle, linkuCompanionServiceDescription } from "@/lib/wayfinder/copy";
 
 const modeIcons: Record<SubjectKind, LucideIcon> = {
   pet: PawPrint,
@@ -46,7 +48,11 @@ interface MultiModeHomeClientProps {
   orgManageHref?: string | null;
   /** /t/[uid]에서 미연결 태그 스캔 시 전달되는 UID (활성화 안내 배너용) */
   activateTagId?: string | null;
+  /** 링크유-동행: 로그인 시 대시보드 동행 URL, 비로그인 시 로그인 후 허브로 */
+  companionHref: string;
 }
+
+type PendingNavSelection = SubjectKind | "companion" | null;
 
 export default function MultiModeHomeClient({
   session,
@@ -55,9 +61,10 @@ export default function MultiModeHomeClient({
   adminButtonLabel,
   orgManageHref = null,
   activateTagId = null,
+  companionHref,
 }: MultiModeHomeClientProps) {
   const router = useRouter();
-  const [selectedKind, setSelectedKind] = useState<SubjectKind | null>(null);
+  const [pendingNav, setPendingNav] = useState<PendingNavSelection>(null);
   const [isRouting, setIsRouting] = useState(false);
   const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
@@ -67,14 +74,15 @@ export default function MultiModeHomeClient({
   const showActivateBanner = Boolean(activateTagId) && !bannerDismissed;
   const heroTitle = "당신의 일상을 지키는 가장 스마트한 선택,\nLink-U";
   const heroBody =
-    "반려동물·어르신·아이·수하물·주얼리까지.\n링크유는 스캔 이후의 안내와 연결 흐름을 쉽고 다정하게 이어줍니다.";
-  const selectedMeta = selectedKind ? subjectKindMeta[selectedKind] : null;
+    "반려동물·어르신·아이·수하물·주얼리·시설 동행 안내까지.\n링크유는 스캔 이후의 안내와 연결 흐름을 쉽고 다정하게 이어줍니다.";
+  const selectedMeta =
+    pendingNav && pendingNav !== "companion" ? subjectKindMeta[pendingNav] : null;
   const guardianSteps = [
     {
       id: "mode",
       title: "모드 선택",
       summary: "사용 목적에 맞는 링크유 모드를 선택합니다.",
-      detail: "반려동물·어르신·아이·수하물·주얼리 중 현재 관리할 대상에 맞는 모드를 먼저 고르세요.",
+      detail: "반려동물·어르신·아이·수하물·주얼리 중 현재 관리할 대상에 맞는 모드를 고르거나, 시설·동행 안내는 링크유-동행을 선택하세요.",
       Icon: ScanLine,
     },
     {
@@ -150,13 +158,22 @@ export default function MultiModeHomeClient({
 
   const handleModeClick = (kind: SubjectKind) => {
     if (isRouting) return;
-    setSelectedKind(kind);
+    setPendingNav(kind);
     setIsRouting(true);
     window.setTimeout(() => {
       // 활성화 태그가 있으면 모드 선택 후 해당 태그 파라미터를 함께 전달
       const qs = new URLSearchParams({ from: "home" });
       if (activateTagId) qs.set("tag", activateTagId);
       router.push(`/${kind}?${qs.toString()}`);
+    }, 260);
+  };
+
+  const handleCompanionClick = () => {
+    if (isRouting) return;
+    setPendingNav("companion");
+    setIsRouting(true);
+    window.setTimeout(() => {
+      router.push(companionHref);
     }, 260);
   };
 
@@ -316,7 +333,7 @@ export default function MultiModeHomeClient({
           <LayoutGroup id="mode-cards">
           <div className="mb-2.5 flex items-center justify-between px-1 min-[390px]:mb-3">
             <p className="text-[11px] font-black tracking-wider text-teal-600">태그 스캔 후 모드 선택</p>
-            <p className="text-[11px] font-bold text-slate-400">5가지 전용 흐름</p>
+            <p className="text-[11px] font-bold text-slate-400">5가지 모드 + 링크유-동행</p>
           </div>
           <div className="pointer-events-none relative mb-2.5 h-16 overflow-hidden rounded-2xl border border-teal-100/80 bg-gradient-to-r from-teal-50/70 via-white to-cyan-50/70">
             <motion.span
@@ -345,12 +362,25 @@ export default function MultiModeHomeClient({
                 </div>
               </motion.div>
             ) : null}
+            {pendingNav === "companion" ? (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                className="mb-2"
+              >
+                <div className="inline-flex items-center gap-2 rounded-full bg-violet-50 px-3 py-1.5 text-[11px] font-black text-violet-800">
+                  <motion.span className="h-1.5 w-1.5 rounded-full bg-violet-500" />
+                  {linkuCompanionMenuTitle} 이동 중...
+                </div>
+              </motion.div>
+            ) : null}
           </AnimatePresence>
           <div className="grid grid-cols-1 gap-2">
             {SUBJECT_KINDS.map((k) => {
               const Icon = modeIcons[k];
               const meta = subjectKindMeta[k];
-              const isActive = selectedKind === k;
+              const isActive = pendingNav === k;
               return (
                 <button
                   key={k}
@@ -393,6 +423,56 @@ export default function MultiModeHomeClient({
                 </button>
               );
             })}
+            <button
+              type="button"
+              onClick={() => void handleCompanionClick()}
+              disabled={isRouting}
+              className={cn(
+                "group relative flex min-h-12 items-center justify-between rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-left transition min-[390px]:px-4 min-[390px]:py-3",
+                "hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-md",
+                isRouting && pendingNav !== "companion" && "opacity-70",
+                pendingNav === "companion" && "border-violet-300 shadow-md"
+              )}
+            >
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-0 rounded-2xl bg-[linear-gradient(120deg,rgba(255,255,255,0.26)_0%,rgba(255,255,255,0.08)_36%,rgba(237,233,254,0.35)_52%,rgba(255,255,255,0.06)_74%,rgba(255,255,255,0.24)_100%)]"
+              />
+              {pendingNav === "companion" ? (
+                <motion.div
+                  layoutId="active-mode-bg"
+                  className="absolute inset-0 rounded-2xl bg-gradient-to-r from-violet-50 to-indigo-50"
+                  transition={{ type: "spring", stiffness: 360, damping: 32 }}
+                />
+              ) : null}
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className={cn(
+                    "relative z-10 flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600 min-[390px]:h-9 min-[390px]:w-9",
+                    pendingNav === "companion" && "bg-violet-100"
+                  )}
+                >
+                  <Navigation2 className="h-4.5 w-4.5" />
+                </div>
+                <div className="relative z-10 min-w-0">
+                  <p className="text-[13px] font-black text-slate-900 min-[390px]:text-sm break-keep [word-break:keep-all] leading-snug">
+                    {linkuCompanionMenuTitle}
+                  </p>
+                  <p className="mt-0.5 text-[11px] font-semibold text-slate-500 leading-snug break-keep [word-break:keep-all]">
+                    {linkuCompanionServiceDescription}
+                  </p>
+                </div>
+              </div>
+              <ArrowRight
+                className={cn(
+                  "relative z-10 h-4 w-4 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-violet-500",
+                  pendingNav === "companion" && "text-violet-500"
+                )}
+              />
+              {pendingNav === "companion" ? (
+                <motion.span className="absolute right-3 top-3 h-1.5 w-1.5 rounded-full bg-violet-500" />
+              ) : null}
+            </button>
           </div>
           </LayoutGroup>
         </motion.section>

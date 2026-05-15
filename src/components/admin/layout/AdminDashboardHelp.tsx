@@ -27,7 +27,10 @@ function helpContentForPath(p: string): { title: string; body: ReactNode } {
       body: (
         <>
           <p>
-            <strong>대상:</strong> 인벤토리에 이미 등록된 UID만 NDEF URL(<code className="rounded bg-slate-100 px-1 font-mono text-[11px]">앱주소/t/UID</code>)로 기록됩니다. 미등록 UID는 거절됩니다.
+            <strong>대상:</strong> 인벤토리에 이미 등록된 UID만 NDEF URL로 기록됩니다. 미등록 UID는 거절됩니다. 일반 태그는{" "}
+            <code className="rounded bg-slate-100 px-1 font-mono text-[11px]">앱주소/t/UID</code>, 링크유-동행 스팟에 연결되고
+            발행된 태그는 <code className="rounded bg-slate-100 px-1 font-mono text-[11px]">앱주소/wayfinder/s/slug</code>가
+            기록됩니다.
           </p>
           <p>
             <strong>환경:</strong> Android Chrome·HTTPS·화면 탭(제스처)이 필요합니다. iOS Safari는 Web NFC를 지원하지 않습니다.
@@ -55,7 +58,11 @@ function helpContentForPath(p: string): { title: string; body: ReactNode } {
       body: (
         <>
           <p>
-            <strong>모드 탭:</strong> 펫·메모리·키즈·러기지·골드 중 할당 모드를 고른 뒤 UID를 입력합니다. 선택한 모드가 인벤토리에 미리 연결됩니다.
+            <strong>등록 유형:</strong> 「제품 NFC」는 모드 탭으로 할당 모드를 고릅니다. 「링크유-동행」은 동행 스팟을 고른 뒤 UID를
+            넣으며, 할당 모드는 스팟의 대상 종류에 맞춰 저장됩니다.
+          </p>
+          <p>
+            <strong>동행 + NFC 스캔:</strong> 동행 등록 화면에서는 칩에 <code className="rounded bg-slate-100 px-1 font-mono text-[11px]">/t/UID</code>를 자동으로 쓰지 않습니다. 스팟을 발행한 뒤「URL 기록」에서 기록하세요.
           </p>
           <p>
             <strong>입력 형식:</strong> 한 줄에 하나, 또는 쉼표로 구분합니다. <code className="rounded bg-slate-100 px-1 font-mono text-[11px]">AA:BB:CC:DD:EE:FF</code> 등 허용 형식을 따르세요. DB에 이미 있는 UID는 건너뜁니다.
@@ -84,7 +91,7 @@ function helpContentForPath(p: string): { title: string; body: ReactNode } {
         <>
           <p>마스터 데이터에서 UID·제품·할당 모드·BLE MAC 등을 관리합니다.</p>
           <p>
-            <strong>검색·필터:</strong> 주소창 쿼리로 동작합니다. 검색(UID·제품명·펫·이메일), 상태(미판매 등), 배치 ID를
+            <strong>검색·필터:</strong> 주소창 쿼리로 동작합니다. 검색(UID·제품명·펫·이메일·동행 스팟 slug·제목), 상태(미판매 등), 배치 ID를
             조합한 뒤 <strong>적용</strong>을 누르세요. 목록은 서버에서 페이지 단위로 불러옵니다.
           </p>
           <p>
@@ -115,7 +122,7 @@ function helpContentForPath(p: string): { title: string; body: ReactNode } {
         <>
           <p>인벤토리 등록부터 감사까지 표준 순서로 이동합니다. 표준 순서를 따르면 미등록 UID 기록·중복 작업이 줄어듭니다.</p>
           <p><strong>운영 순서:</strong> UID 등록 → URL 기록 → 인벤토리 점검 → 연결·감사.</p>
-          <p><strong>보안:</strong> URL 기록은 DB에 등록된 UID에만 허용됩니다. Web NFC 규칙과 동일합니다.</p>
+          <p><strong>보안:</strong> URL 기록은 DB에 등록된 UID에만 허용됩니다. 동행 연결 태그는 스팟이 발행된 경우에만 기록 URL이 허용됩니다.</p>
         </>
       ),
     };

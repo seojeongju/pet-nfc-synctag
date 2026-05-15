@@ -108,7 +108,7 @@ export function AdminNfcWriteCard() {
     );
   }, []);
 
-  const localPreview = useMemo(() => {
+  const unverifiedTagUrlGuess = useMemo(() => {
     const t = normalizeTagUid(tagId);
     if (!t || !isValidTagUidFormat(t)) return null;
     const base = normalizeAppBaseUrl(
@@ -117,6 +117,9 @@ export function AdminNfcWriteCard() {
     if (!base) return null;
     return `${base}/t/${encodeURIComponent(t)}`;
   }, [tagId]);
+
+  const displayWriteUrl =
+    uidCheck.status === "ok" ? uidCheck.url : unverifiedTagUrlGuess;
 
   const runVerify = useCallback(async (raw: string) => {
     const t = normalizeTagUid(raw);
@@ -342,9 +345,9 @@ export function AdminNfcWriteCard() {
         <div className="space-y-2 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 sm:p-5">
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">② 기록될 URL (미리보기)</h3>
-            {localPreview ? (
+            {displayWriteUrl ? (
               <a
-                href={localPreview}
+                href={displayWriteUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1 text-[10px] font-black text-indigo-700 hover:underline"
@@ -355,16 +358,17 @@ export function AdminNfcWriteCard() {
             ) : null}
           </div>
           <p className="break-all font-mono text-sm font-bold text-slate-800 sm:text-xs">
-            {uidCheck.status === "ok" ? uidCheck.url : localPreview || "— UID를 입력·확인하면 /t/… URL이 나옵니다 (인벤에 등록된 태그만)."}
+            {displayWriteUrl ||
+              "— UID를 입력·확인하면 서버가 인벤토리 기준으로 기록 URL을 돌려줍니다(일반 태그는 /t/UID, 링크유-동행 스팟 연결·발행 시 /wayfinder/s/…)."}
           </p>
-          {(uidCheck.status === "ok" || localPreview) && (
+          {(uidCheck.status === "ok" || unverifiedTagUrlGuess) && (
             <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
                 variant="outline"
                 className="h-9 touch-manipulation rounded-xl text-[10px] font-black"
                 onClick={async () => {
-                  const t = uidCheck.status === "ok" ? uidCheck.url : localPreview;
+                  const t = uidCheck.status === "ok" ? uidCheck.url : unverifiedTagUrlGuess;
                   if (!t) return;
                   try {
                     await copyToClipboard(t);

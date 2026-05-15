@@ -169,7 +169,7 @@ export default async function HubPage({
     .bind(session.user.id)
     .first<{ role?: string | null }>();
   const isPlatformAdmin = isPlatformAdminRole(roleRow?.role);
-  /** 정책: 5개 subject 모드 + 링크유-동행(6번째 타일) 허브 노출 */
+  /** 링크유-동행은 허브(/hub)「모드 선택」에서만 진입 — 대시보드 상·하단 메뉴에는 넣지 않습니다. */
   const hubVisibleKinds: SubjectKind[] = [...SUBJECT_KINDS];
   const hubModeTileCount = hubVisibleKinds.length + 1;
 
@@ -408,9 +408,14 @@ export default async function HubPage({
         </section>
 
         <nav className="space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <p className="text-[11px] font-black uppercase tracking-widest text-slate-500">모드 선택</p>
-            <p className="text-[10px] font-bold text-slate-400">{hubModeTileCount}개 모드·기능</p>
+          <div className="space-y-1 px-1">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-black uppercase tracking-widest text-slate-500">모드 선택</p>
+              <p className="text-[10px] font-bold text-slate-400">{hubModeTileCount}개 모드·기능</p>
+            </div>
+            <p className="text-[11px] font-semibold leading-snug text-slate-500">
+              링크유-동행은 대시보드 메인 메뉴가 아니라, 아래 전용 타일에서만 들어갑니다.
+            </p>
           </div>
           <div className="grid grid-cols-1 min-[430px]:grid-cols-2 gap-3">
           {hubVisibleKinds.map((kind) => {
@@ -442,6 +447,7 @@ export default async function HubPage({
             );
           })}
             <a
+              id="hub-wayfinder"
               href={`${onboardingDashboardHref}/wayfinder`}
               className={cn(
                 "flex items-center gap-3 rounded-[24px] border border-slate-100 bg-white p-4 min-[430px]:p-5 shadow-sm",

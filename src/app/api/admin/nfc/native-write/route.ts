@@ -1,6 +1,10 @@
 ﻿import { NextResponse } from "next/server";
 import { getDB } from "@/lib/db";
 import { isValidTagUidFormat, normalizeTagUid } from "@/lib/tag-uid-format";
+import {
+    computeNdefWriteUrlForInventoryTag,
+    nfcWriteUrlsEquivalent,
+} from "@/lib/nfc-inventory-ndef-url";
 import { verifyNativeHandoffToken, verifyWithSecret } from "@/lib/nfc-native-security";
 
 export const runtime = "edge";
@@ -227,10 +231,45 @@ export async function POST(request: Request) {
   }
 
   const db = getDB();
-  const tag = await db.prepare("SELECT id FROM tags WHERE id = ?").bind(tagId).first<{ id: string }>();
-  if (!tag) {
+  const tagRow = await db
+      .prepare(
+          `SELECT t.id AS tag_id, t.wayfinder_spot_id AS wf_spot,
+                  w.slug AS wf_slug, w.is_published AS wf_pub
+           FROM tags t
+           LEFT JOIN wayfinder_spots w ON w.id = t.wayfinder_spot_id
+           WHERE t.id = ?`
+      )
+      .bind(tagId)
+      .first<{ tag_id: string; wf_spot: string | null; wf_slug: string | null; wf_pub: number | null }>();
+  if (!tagRow) {
     await logNativeReject("unknown_tag_id", { tagId });
     return NextResponse.json({ error: "Unknown tagId" }, { status: 404 });
+  }
+
+  const appBase = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "").trim() || "";
+  if (!appBase) {
+    await logNativeReject("missing_next_public_app_url", { tagId });
+    return NextResponse.json({ error: "NEXT_PUBLIC_APP_URL not configured" }, { status: 503 });
+  }
+
+  const canonical = computeNdefWriteUrlForInventoryTag(appBase, tagId, tagRow);
+  if (!canonical.ok) {
+    await logNativeReject("canonical_url_resolve_failed", {
+      tagId,
+      error: canonical.error,
+    });
+    return NextResponse.json({ error: canonical.error }, { status: 400 });
+  }
+  if (!nfcWriteUrlsEquivalent(canonical.url, url)) {
+    await logNativeReject("url_mismatch_canonical", {
+      tagId,
+      expected: canonical.url,
+      got: url,
+    });
+    return NextResponse.json(
+      { error: "url does not match current inventory NDEF target (refresh handoff)" },
+      { status: 400 }
+    );
   }
 
   await db.prepare(`

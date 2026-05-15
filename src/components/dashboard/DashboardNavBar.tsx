@@ -1,7 +1,6 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useState } from "react";
 import {
   PawPrint,
   MapPin,
@@ -11,8 +10,6 @@ import {
   ScanLine,
   Images,
   Store,
-  LayoutGrid,
-  Navigation2,
 } from "lucide-react";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
 import { subjectKindFromDashboardPathname } from "@/lib/dashboard-path-kind";
@@ -29,9 +26,7 @@ import {
   isDashboardNfc,
   isDashboardPets,
   isDashboardScans,
-  isDashboardWayfinder,
 } from "@/lib/dashboard-nav-active";
-import { linkuCompanionMenuTitle, linkuCompanionServiceDescription } from "@/lib/wayfinder/copy";
 
 type DashboardNavBarProps = {
   session: FlowTopNavSession;
@@ -57,7 +52,6 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
   const dashGeo = isDashboardGeofences(pathname);
   const dashAlbums = isDashboardAlbums(pathname);
   const dashNfc = isDashboardNfc(pathname);
-  const dashWayfinder = isDashboardWayfinder(pathname);
   const dashStore = pathname === "/shop" || pathname.startsWith("/shop/");
 
   const navItems = [
@@ -78,13 +72,6 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
       label: "NFC 읽기",
       active: dashNfc,
       Icon: NotebookPen,
-    },
-    {
-      href: `/dashboard/${kind}/wayfinder${tenantQs}`,
-      label: linkuCompanionMenuTitle,
-      title: linkuCompanionServiceDescription,
-      active: dashWayfinder,
-      Icon: Navigation2,
     },
     {
       href: `/dashboard/${kind}/scans${tenantQs}`,
@@ -111,8 +98,6 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
       Icon: Store,
     },
   ] as const;
-
-  const activeNavItem = navItems.find((item) => item.active);
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200/90 bg-white/90 backdrop-blur-md">
@@ -154,7 +139,6 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
                 href={item.href}
                 className={cn("inline-flex items-center gap-1.5", dashboardTopNavLinkClass(item.active))}
                 aria-current={item.active ? "page" : undefined}
-                title={"title" in item ? item.title : undefined}
               >
                 <item.Icon className="h-4 w-4 shrink-0" />
                 {item.label}
@@ -169,7 +153,6 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
                   key={item.href}
                   href={item.href}
                   aria-current={item.active ? "page" : undefined}
-                  title={"title" in item ? item.title : undefined}
                   className={cn(
                     "flex min-h-[3.5rem] flex-col items-center justify-center gap-1 rounded-xl border px-1 py-1.5 text-center transition-all",
                     item.active
