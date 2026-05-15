@@ -17,7 +17,11 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { parseSubjectKind, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
 import { parseGuideSteps, type GuideStep } from "@/lib/wayfinder/parse-guide-steps";
-import { linkuCompanionMenuTitle } from "@/lib/wayfinder/copy";
+import {
+  linkuCompanionMenuTitle,
+  linkuCompanionSpotSubLabel,
+  linkuCompanionServiceDescription,
+} from "@/lib/wayfinder/copy";
 import { WayfinderSpeechAnnouncer } from "@/components/wayfinder/WayfinderSpeechAnnouncer";
 import { WayfinderSpotUrlCopy } from "@/components/wayfinder/WayfinderSpotUrlCopy";
 import { WayfinderStationMap } from "@/components/wayfinder/WayfinderStationMap";
@@ -91,15 +95,27 @@ export function WayfinderPublicSpotView({
 
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-lg flex-col gap-6 pb-16 font-outfit text-slate-900">
+      <Link
+        href="/wayfinder"
+        className="flex items-center gap-3 rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 to-violet-50 p-3.5 shadow-sm transition hover:border-indigo-200"
+      >
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white">
+          <Navigation2 className="h-5 w-5" aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1 text-left">
+          <span className="block text-[10px] font-black uppercase tracking-wide text-indigo-600">메인 기능</span>
+          <span className="block text-sm font-black text-slate-900">{linkuCompanionServiceDescription}</span>
+          <span className="block text-[11px] font-semibold text-slate-600">GPS로 근처 지하철역 찾기 →</span>
+        </span>
+      </Link>
       <header className="space-y-4">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1 text-[10px] font-black tracking-wider text-indigo-700">
-            <Navigation2 className="h-3.5 w-3.5" aria-hidden />
-            {linkuCompanionMenuTitle}
+          <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black tracking-wider text-slate-600">
+            보조 · {linkuCompanionSpotSubLabel}
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-black text-slate-600">
             <KindIcon className="h-3.5 w-3.5 text-indigo-500" aria-hidden />
-            {kindLabel} 안내
+            {kindLabel}
           </span>
         </div>
 
@@ -224,14 +240,26 @@ export function WayfinderPublicSpotView({
 
       <footer className="space-y-3 border-t border-slate-100 pt-6 text-center">
         <p className="text-[11px] font-semibold leading-relaxed text-slate-500">
-          NFC·QR로 연결된 공개 안내입니다. 긴급 상황이면 가까운 직원·안내 데스크에 도움을 요청하세요.
+          NFC·QR 지점 안내(보조)입니다. 지하철 이동 경로는{" "}
+          <Link href="/wayfinder" className="font-black text-indigo-600 underline-offset-2 hover:underline">
+            {linkuCompanionMenuTitle} 메인
+          </Link>
+          에서 찾을 수 있습니다.
         </p>
-        <Link
-          href="/"
-          className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-black text-slate-800 hover:bg-slate-50"
-        >
-          링크유 홈
-        </Link>
+        <div className="flex flex-wrap justify-center gap-2">
+          <Link
+            href="/wayfinder"
+            className="inline-flex h-10 items-center justify-center rounded-xl bg-indigo-600 px-4 text-xs font-black text-white hover:bg-indigo-700"
+          >
+            지하철역 찾기
+          </Link>
+          <Link
+            href="/"
+            className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-black text-slate-800 hover:bg-slate-50"
+          >
+            링크유 홈
+          </Link>
+        </div>
       </footer>
     </div>
   );

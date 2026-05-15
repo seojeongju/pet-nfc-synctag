@@ -1,5 +1,23 @@
 /** 대시보드·허브·하단 탭 등 내비에 표시하는 기능명 */
 export const linkuCompanionMenuTitle = "링크유-동행";
 
-/** 부제·설명(카드 본문, 페이지 리드, 접근성 보조) */
-export const linkuCompanionServiceDescription = "교통약자 맞춤 이동·시설 안내 서비스";
+/** 메인 가치: 위치 기반 지하철·교통약자 이동 안내 */
+export const linkuCompanionServiceDescription = "지하철·교통약자 이동 경로 안내";
+
+/** 공개·대시보드 리드 (한 줄) */
+export const linkuCompanionMainLead =
+  "지금 위치에서 가까운 지하철역을 찾고, 카카오맵으로 역까지·역 안 이동 방향을 안내합니다.";
+
+/** 서브 기능 라벨 */
+export const linkuCompanionSpotSubLabel = "시설·지점 안내";
+
+export const linkuCompanionSpotSubDescription =
+  "NFC·QR로 연결된 특정 지점(엘리베이터 앞, 안내 데스크 등)의 음성·연락 안내입니다. 지하철 경로 안내의 보조 기능입니다.";
+
+/** 대상 이용자 (칩 표시) */
+export const wayfinderAudienceTags = [
+  "휠체어",
+  "시각장애",
+  "유모차·보호자",
+  "교통약자",
+] as const;

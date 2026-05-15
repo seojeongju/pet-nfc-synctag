@@ -10,7 +10,12 @@ import { canUseModeFeature } from "@/lib/mode-visibility";
 import { getTenantStatus } from "@/lib/tenant-status";
 import Link from "next/link";
 import { ArrowLeft, ExternalLink, LayoutGrid, Navigation2, Pencil, Trash2 } from "lucide-react";
-import { linkuCompanionMenuTitle, linkuCompanionServiceDescription } from "@/lib/wayfinder/copy";
+import {
+  linkuCompanionMainLead,
+  linkuCompanionMenuTitle,
+  linkuCompanionServiceDescription,
+  linkuCompanionSpotSubLabel,
+} from "@/lib/wayfinder/copy";
 import { isWayfinderEnabled } from "@/lib/wayfinder/feature";
 import { listWayfinderSpotsForDashboard, canMutateWayfinderSpot, type WayfinderSpotRow } from "@/lib/wayfinder-spots-db";
 import { createWayfinderSpotForm, deleteWayfinderSpotForm, toggleWayfinderSpotPublishedForm } from "@/app/actions/wayfinder-spots";
@@ -108,7 +113,6 @@ export default async function DashboardWayfinderPage({
         }
       }
 
-      const publicSpotApiBase = "/api/wayfinder/public/spot";
       const publicSpotPageBase = "/wayfinder/s";
 
       return (
@@ -140,12 +144,25 @@ export default async function DashboardWayfinderPage({
               <h1 className="text-2xl font-black leading-tight text-slate-900 sm:text-[26px]">
                 {linkuCompanionServiceDescription}
               </h1>
-              <p className="text-sm font-semibold leading-relaxed text-slate-600">
-                {meta.label} 모드 진입입니다. 발행된 스팟은 방문자 페이지{" "}
-                <span className="font-mono text-xs text-slate-500">{publicSpotPageBase}/[slug]</span> · JSON{" "}
-                <span className="font-mono text-xs text-slate-500">{publicSpotApiBase}/[slug]</span> 로 제공됩니다.
-              </p>
+              <p className="text-sm font-semibold leading-relaxed text-slate-600">{linkuCompanionMainLead}</p>
+              <Link
+                href="/wayfinder"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-2xl border border-indigo-200 bg-indigo-600 px-4 py-2.5 text-xs font-black text-white shadow-sm transition hover:bg-indigo-700"
+              >
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                방문자용 지하철 이동 안내 열기
+              </Link>
             </header>
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">보조 기능</p>
+              <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-700">
+                {linkuCompanionSpotSubLabel}: NFC·QR 지점 안내 URL{" "}
+                <span className="font-mono text-xs text-slate-500">{publicSpotPageBase}/[slug]</span>
+              </p>
+            </section>
 
             {!wayfinderBeta ? (
               <section
@@ -183,11 +200,12 @@ export default async function DashboardWayfinderPage({
               <>
                 <section
                   className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-                  aria-label={`${linkuCompanionMenuTitle} 안내 스팟`}
+                  aria-label={`${linkuCompanionSpotSubLabel} 스팟 관리`}
                 >
                   <p className="text-sm font-semibold text-slate-700 leading-relaxed">
-                    개인 모드에서는 본인이 등록한 스팟만 보입니다. 조직 모드에서는 멤버는 본인 스팟만,{" "}
-                    <strong>owner/admin</strong>은 같은 조직의 모든 스팟을 보고 수정·삭제·발행 전환할 수 있습니다.
+                    아래는 <strong>보조 기능</strong>인 시설·지점 스팟(NFC·QR) 관리입니다. 개인 모드에서는 본인 스팟만,
+                    조직 모드에서는 멤버는 본인 스팟만, <strong>owner/admin</strong>은 조직 전체 스팟을 관리할 수
+                    있습니다.
                   </p>
                 </section>
 
@@ -199,7 +217,9 @@ export default async function DashboardWayfinderPage({
                   <>
                     <Card className="rounded-[28px] border-slate-100 shadow-lg">
                       <CardContent className="space-y-4 p-6">
-                        <h2 className="text-sm font-black uppercase tracking-widest text-slate-400">새 스팟 추가</h2>
+                        <h2 className="text-sm font-black uppercase tracking-widest text-slate-400">
+                          보조: 새 {linkuCompanionSpotSubLabel} 스팟
+                        </h2>
                         <form action={createWayfinderSpotForm} className="grid gap-4">
                           <input type="hidden" name="kind" value={subjectKind} />
                           {tenantId ? <input type="hidden" name="tenant" value={tenantId} /> : null}

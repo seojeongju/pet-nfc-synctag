@@ -3,10 +3,7 @@ import { Clock, Navigation2 } from "lucide-react";
 import { linkuCompanionMenuTitle } from "@/lib/wayfinder/copy";
 export function WayfinderSpotUnpublished() {
   return (
-    <main
-      className="mx-auto flex min-h-[60vh] max-w-lg flex-col items-center justify-center gap-5 px-4 py-16 text-center font-outfit"
-      lang="ko"
-    >
+    <div className="mx-auto flex min-h-[50vh] flex-col items-center justify-center gap-5 py-8 text-center">
       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-50 text-amber-700">
         <Clock className="h-8 w-8" aria-hidden />
       </div>
@@ -20,12 +17,20 @@ export function WayfinderSpotUnpublished() {
           이 주소는 등록되었지만 발행 전 상태입니다. 시설 담당자가 공개(발행)한 뒤 다시 스캔해 주세요.
         </p>
       </div>
-      <Link
-        href="/"
-        className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-black text-slate-800 hover:bg-slate-50"
-      >
-        링크유 홈
-      </Link>
-    </main>
+      <div className="flex flex-wrap justify-center gap-2">
+        <Link
+          href="/wayfinder"
+          className="inline-flex h-10 items-center justify-center rounded-xl bg-indigo-600 px-4 text-xs font-black text-white hover:bg-indigo-700"
+        >
+          지하철 이동 안내
+        </Link>
+        <Link
+          href="/"
+          className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-black text-slate-800 hover:bg-slate-50"
+        >
+          링크유 홈
+        </Link>
+      </div>
+    </div>
   );
 }

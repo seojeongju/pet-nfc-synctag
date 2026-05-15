@@ -6,13 +6,14 @@ import {
   getWayfinderSlugAvailability,
   normalizeWayfinderSlug,
 } from "@/lib/wayfinder-spots-db";
-import { linkuCompanionMenuTitle } from "@/lib/wayfinder/copy";
+import { linkuCompanionMenuTitle, linkuCompanionSpotSubLabel } from "@/lib/wayfinder/copy";
 import { buildPublicMetadata, absoluteUrl } from "@/lib/seo";
 import { buildWayfinderPublicSpeechText } from "@/lib/wayfinder/build-public-speech";
 import { normalizeContactPhoneForLink } from "@/lib/wayfinder/normalize-contact-phone";
 import { buildKakaoMapPinHref, buildKakaoMapRouteHref } from "@/lib/wayfinder/kakao-map-links";
 import { WayfinderPublicSpotView } from "@/components/wayfinder/WayfinderPublicSpotView";
 import { WayfinderSpotUnpublished } from "@/components/wayfinder/WayfinderSpotUnpublished";
+import { WayfinderPublicShell } from "@/components/wayfinder/WayfinderPublicShell";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -49,10 +50,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
   const path = `/wayfinder/s/${row.slug}`;
   return buildPublicMetadata({
-    title: `${row.title} | ${linkuCompanionMenuTitle}`,
-    description: row.summary?.trim() || `${row.title} — ${linkuCompanionMenuTitle} 시설 안내`,
+    title: `${row.title} · ${linkuCompanionSpotSubLabel} | ${linkuCompanionMenuTitle}`,
+    description: row.summary?.trim() || `${row.title} — ${linkuCompanionSpotSubLabel}(보조)`,
     path,
-    keywords: ["링크유", "동행", "교통약자", "시설 안내", "NFC 안내", "접근성", row.title],
+    keywords: ["링크유", "동행", "교통약자", "시설 안내", "NFC", row.title],
     noIndex: false,
   });
 }
@@ -62,7 +63,11 @@ export default async function WayfinderPublicSpotPage({ params }: PageProps) {
   const { availability, row } = await loadPublishedSpot(slugRaw);
 
   if (availability === "draft") {
-    return <WayfinderSpotUnpublished />;
+    return (
+      <WayfinderPublicShell backHref="/wayfinder">
+        <WayfinderSpotUnpublished />
+      </WayfinderPublicShell>
+    );
   }
   if (!row) {
     notFound();
@@ -82,7 +87,7 @@ export default async function WayfinderPublicSpotPage({ params }: PageProps) {
   const contactPhoneDisplay = (row.contact_phone ?? "").trim() || null;
 
   return (
-    <main className="px-4 py-10 sm:px-5" lang="ko">
+    <WayfinderPublicShell backHref="/wayfinder" backLabel="지하철 이동 안내">
       <WayfinderPublicSpotView
         title={row.title}
         summary={row.summary}
@@ -98,6 +103,6 @@ export default async function WayfinderPublicSpotPage({ params }: PageProps) {
         pageUrl={pageUrl}
         speechText={speechText}
       />
-    </main>
+    </WayfinderPublicShell>
   );
 }
