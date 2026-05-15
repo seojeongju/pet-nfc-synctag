@@ -3,8 +3,9 @@ import type { Metadata } from "next";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { getPublishedWayfinderSpotBySlug, normalizeWayfinderSlug } from "@/lib/wayfinder-spots-db";
 import { linkuCompanionMenuTitle } from "@/lib/wayfinder/copy";
-import { buildPublicMetadata } from "@/lib/seo";
+import { buildPublicMetadata, absoluteUrl } from "@/lib/seo";
 import { WayfinderSpeechAnnouncer } from "@/components/wayfinder/WayfinderSpeechAnnouncer";
+import { WayfinderSpotUrlCopy } from "@/components/wayfinder/WayfinderSpotUrlCopy";
 import { MapPin, Navigation2 } from "lucide-react";
 
 export const runtime = "edge";
@@ -72,6 +73,7 @@ export default async function WayfinderPublicSpotPage({ params }: PageProps) {
   }
 
   const speechText = buildSpeechText(row);
+  const pageUrl = absoluteUrl(`/wayfinder/s/${row.slug}`);
   const mapHref =
     row.latitude != null &&
     row.longitude != null &&
@@ -98,6 +100,10 @@ export default async function WayfinderPublicSpotPage({ params }: PageProps) {
           </p>
         ) : null}
         {row.summary ? <p className="text-base font-semibold leading-relaxed text-slate-700">{row.summary}</p> : null}
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <WayfinderSpotUrlCopy url={pageUrl} className="text-[11px]" />
+          <span className="text-[10px] font-semibold text-slate-400">안내 링크 공유</span>
+        </div>
       </header>
 
       <section aria-label="음성 안내" className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4 shadow-sm">

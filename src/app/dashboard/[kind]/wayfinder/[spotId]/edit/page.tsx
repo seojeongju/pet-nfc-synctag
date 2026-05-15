@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { absoluteUrl } from "@/lib/seo";
+import { WayfinderSpotUrlCopy } from "@/components/wayfinder/WayfinderSpotUrlCopy";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -194,11 +195,18 @@ export default async function WayfinderSpotEditPage({
                         defaultValue={spot.slug}
                         className="h-12 rounded-2xl font-mono text-xs"
                       />
-                      <p className="break-all text-[10px] font-semibold leading-snug text-slate-500">
-                        태그에 넣을 전체 URL:{" "}
-                        <span className="font-mono text-indigo-700">{absoluteUrl(`/wayfinder/s/${spot.slug}`)}</span>
-                        (slug 변경 시 URL도 함께 바뀝니다)
-                      </p>
+                      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2">
+                        <p className="min-w-0 flex-1 break-all text-[10px] font-semibold leading-snug text-slate-600">
+                          <span className="font-sans font-bold text-slate-500">태그 URL:</span>{" "}
+                          <span className="font-mono text-indigo-800">
+                            {absoluteUrl(`/wayfinder/s/${spot.slug}`)}
+                          </span>
+                          <span className="mt-1 block font-sans text-slate-400">
+                            (slug 저장 후 이 주소로 NFC를 갱신하세요)
+                          </span>
+                        </p>
+                        <WayfinderSpotUrlCopy url={absoluteUrl(`/wayfinder/s/${spot.slug}`)} />
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="ed-summary">한 줄 요약</Label>
