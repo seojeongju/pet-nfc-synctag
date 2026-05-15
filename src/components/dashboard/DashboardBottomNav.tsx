@@ -26,6 +26,7 @@ import {
   isDashboardScans,
   isDashboardWayfinder,
 } from "@/lib/dashboard-nav-active";
+import { linkuCompanionMenuTitle, linkuCompanionServiceDescription } from "@/lib/wayfinder/copy";
 import { isWayfinderEnabled } from "@/lib/wayfinder/feature";
 
 const subjectAvatars: Record<SubjectKind, LucideIcon> = {
@@ -114,11 +115,19 @@ export function DashboardBottomNav() {
           href={`/dashboard/${kind}/wayfinder${tenantQs}`}
           className="group flex min-w-0 flex-1 flex-col items-center gap-0.5 py-1"
           aria-current={wayfinder ? "page" : undefined}
+          title={linkuCompanionServiceDescription}
         >
           <div className={cn(dashboardBottomIconWrap(wayfinder))}>
             <Navigation2 className="h-5 w-5 min-[400px]:h-6 min-[400px]:w-6" aria-hidden />
           </div>
-          <span className={dashboardBottomLabelClass(wayfinder)}>Wayfinder</span>
+          <span
+            className={cn(
+              dashboardBottomLabelClass(wayfinder),
+              "max-w-[4.5rem] text-center leading-tight tracking-tight"
+            )}
+          >
+            {linkuCompanionMenuTitle}
+          </span>
         </a>
       ) : null}
 

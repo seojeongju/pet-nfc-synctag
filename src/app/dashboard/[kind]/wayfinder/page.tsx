@@ -10,6 +10,7 @@ import { canUseModeFeature } from "@/lib/mode-visibility";
 import { getTenantStatus } from "@/lib/tenant-status";
 import Link from "next/link";
 import { ArrowLeft, Navigation2 } from "lucide-react";
+import { linkuCompanionMenuTitle, linkuCompanionServiceDescription } from "@/lib/wayfinder/copy";
 import { isWayfinderEnabled } from "@/lib/wayfinder/feature";
 
 export const runtime = "edge";
@@ -79,38 +80,49 @@ export default async function DashboardWayfinderPage({
             </div>
 
             <header className="space-y-2">
-              <div className="inline-flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-indigo-700">
+              <div className="inline-flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1 text-[10px] font-black tracking-wider text-indigo-700">
                 <Navigation2 className="h-3.5 w-3.5" aria-hidden />
-                Wayfinder
+                {linkuCompanionMenuTitle}
               </div>
-              <h1 className="text-2xl font-black leading-tight text-slate-900 sm:text-[26px]">정밀 장소 안내</h1>
+              <h1 className="text-2xl font-black leading-tight text-slate-900 sm:text-[26px]">
+                {linkuCompanionServiceDescription}
+              </h1>
               <p className="text-sm font-semibold leading-relaxed text-slate-600">
-                {meta.label} 모드에서 NFC 스팟·동선 안내 기능을 준비 중입니다. 스팟 데이터·음성 안내는 이후 단계에서
-                연결됩니다.
+                {meta.label} 모드에서 스팟·동선 데이터를 연결할 예정입니다. 공개 진입 경로는{" "}
+                <span className="font-mono text-xs text-slate-500">/wayfinder</span> 입니다.
               </p>
             </header>
 
             <section
               className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-              aria-label="Wayfinder 안내"
+              aria-label={`${linkuCompanionMenuTitle} 상태`}
             >
               <p className="text-sm font-semibold text-slate-700 leading-relaxed">
                 {writeLocked
                   ? "현재 모드 이용이 제한되었거나 조직이 정지된 상태입니다. 관리자에게 문의하세요."
-                  : "공개 스팟 페이지(/wayfinder)와 연동되는 관리 화면·API를 단계적으로 추가할 예정입니다."}
+                  : "다음으로 D1 스팟 스키마·읽기 API·공개 스팟 페이지를 순서대로 붙입니다. 설정·문구는 프로필(휠체어·시각 등)별로 확장합니다."}
               </p>
+            </section>
+
+            <section className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4 shadow-sm" aria-label="개발 로드맵">
+              <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">진행 예정</p>
+              <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-sm font-semibold text-slate-700">
+                <li>시설·스팟 메타데이터 (D1 마이그레이션)</li>
+                <li>공개 스팟 뷰 + Web Speech API 안내</li>
+                <li>이 화면에서 스팟 목록·문구 편집(권한 연동)</li>
+              </ol>
             </section>
           </div>
         </div>
       );
     } catch (dataError: unknown) {
       rethrowNextControlFlowErrors(dataError);
-      console.error("Wayfinder dashboard page data error:", dataError);
+      console.error("linku-companion dashboard page data error:", dataError);
       redirect(`/dashboard/${subjectKind}${tenantQs}`);
     }
   } catch (error: unknown) {
     rethrowNextControlFlowErrors(error);
-    console.error("Wayfinder dashboard page auth error:", error);
+    console.error("linku-companion dashboard page auth error:", error);
     redirect("/login");
   }
 }

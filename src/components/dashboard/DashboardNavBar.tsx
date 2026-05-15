@@ -31,6 +31,7 @@ import {
   isDashboardScans,
   isDashboardWayfinder,
 } from "@/lib/dashboard-nav-active";
+import { linkuCompanionMenuTitle, linkuCompanionServiceDescription } from "@/lib/wayfinder/copy";
 import { isWayfinderEnabled } from "@/lib/wayfinder/feature";
 
 type DashboardNavBarProps = {
@@ -84,7 +85,8 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
       ? ([
           {
             href: `/dashboard/${kind}/wayfinder${tenantQs}`,
-            label: "Wayfinder",
+            label: linkuCompanionMenuTitle,
+            title: linkuCompanionServiceDescription,
             active: dashWayfinder,
             Icon: Navigation2,
           },
@@ -158,6 +160,7 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
                 href={item.href}
                 className={cn("inline-flex items-center gap-1.5", dashboardTopNavLinkClass(item.active))}
                 aria-current={item.active ? "page" : undefined}
+                title={"title" in item ? item.title : undefined}
               >
                 <item.Icon className="h-4 w-4 shrink-0" />
                 {item.label}
@@ -172,6 +175,7 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
                   key={item.href}
                   href={item.href}
                   aria-current={item.active ? "page" : undefined}
+                  title={"title" in item ? item.title : undefined}
                   className={cn(
                     "flex min-h-[3.5rem] flex-col items-center justify-center gap-1 rounded-xl border px-1 py-1.5 text-center transition-all",
                     item.active

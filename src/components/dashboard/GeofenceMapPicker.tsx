@@ -67,6 +67,8 @@ export function GeofenceMapPicker({
   const [appKey, setAppKey] = useState<string | null>(null);
   const [configState, setConfigState] = useState<"loading" | "ready" | "missing" | "error">("loading");
   const [mapReady, setMapReady] = useState(false);
+  const [mapScriptError, setMapScriptError] = useState(false);
+  const [siteOrigin, setSiteOrigin] = useState("");
 
   const [lat, setLat] = useState(defaultLat);
   const [lng, setLng] = useState(defaultLng);
@@ -74,6 +76,10 @@ export function GeofenceMapPicker({
   const [geoMsg, setGeoMsg] = useState<string | null>(null);
   const [showManual, setShowManual] = useState(false);
   const lastCenterKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    setSiteOrigin(typeof window !== "undefined" ? window.location.origin : "");
+  }, []);
 
   useEffect(() => {
     let c = false;
@@ -243,26 +249,21 @@ export function GeofenceMapPicker({
         </div>
         {geoMsg ? <p className="text-[11px] font-bold text-amber-700">{geoMsg}</p> : null}
 
-        {configState === "ready" && appKey ? (
-          <>
-            <Script
-              src={`https://dapi.kakao.com/v2/maps/sdk.js?appkey=${encodeURIComponent(appKey)}&autoload=false`}
-              onLoad={() => {
-                setTimeout(() => initMap(), 0);
-              }}
-              onError={() => setConfigState("error")}
-            />
-            <div
-              ref={containerRef}
-              className="relative z-0 min-h-[260px] w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-inner h-[min(50vh,380px)]"
-              role="application"
-              aria-label="안심 구역 지도, 탭하여 중심 설정"
-            />
-            {!mapReady && (
-              <p className="text-[11px] font-semibold text-slate-500">지도를 불러오는 중…</p>
-            )}
-          </>
-        ) : (
+        {configState === "loading" ? (
+          <div className="flex min-h-[200px] items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-[12px] font-bold text-slate-500">
+            지도 설정을 불러오는 중…
+          </div>
+        ) : configState === "error" ? (
+          <div className="rounded-2xl border border-rose-100 bg-rose-50/60 px-4 py-3 text-sm text-rose-900">
+            <div className="mb-1 flex items-center gap-1.5 font-black text-rose-800">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              지도 설정 API를 불러오지 못했습니다
+            </div>
+            <p className="text-[11px] font-semibold leading-relaxed text-rose-800/90">
+              잠시 후 새로고침하거나, 네트워크·배포 상태를 확인해 주세요.
+            </p>
+          </div>
+        ) : configState === "missing" ? (
           <div className="rounded-2xl border border-amber-100 bg-amber-50/60 px-4 py-3 text-sm text-amber-900">
             <div className="mb-1 flex items-center gap-1.5 font-black text-amber-800">
               <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -274,7 +275,48 @@ export function GeofenceMapPicker({
               <span className="font-mono">NEXT_PUBLIC_KAKAO_MAP_JS_KEY</span>를 설정한 뒤 재배포해 주세요.
             </p>
           </div>
-        )}
+        ) : configState === "ready" && appKey && mapScriptError ? (
+          <div className="rounded-2xl border border-amber-100 bg-amber-50/60 px-4 py-3 text-sm text-amber-900">
+            <div className="mb-1 flex items-center gap-1.5 font-black text-amber-800">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              카카오 지도 SDK를 불러오지 못했습니다
+            </div>
+            <p className="text-[11px] font-semibold leading-relaxed text-amber-800/90">
+              Kakao 개발자 콘솔 → <strong>JavaScript 키</strong> 사용 여부와, <strong>플랫폼 Web 사이트 도메인</strong>에
+              아래 주소가 등록돼 있는지 확인해 주세요.
+            </p>
+            {siteOrigin ? (
+              <p className="mt-2 rounded-lg bg-white/80 px-2 py-1.5 text-center font-mono text-[10px] font-bold text-slate-800 break-all">
+                {siteOrigin}
+              </p>
+            ) : null}
+            <p className="mt-2 text-[10px] text-amber-800/90 font-semibold leading-relaxed">
+              Pages 미리보기(<span className="font-mono">*.pages.dev</span>)에서는 해당 미리보기 URL의 호스트를 콘솔에
+              따로 등록해야 합니다.
+            </p>
+          </div>
+        ) : configState === "ready" && appKey ? (
+          <>
+            <Script
+              strategy="afterInteractive"
+              src={`https://dapi.kakao.com/v2/maps/sdk.js?appkey=${encodeURIComponent(appKey)}&autoload=false`}
+              onLoad={() => {
+                setMapScriptError(false);
+                setTimeout(() => initMap(), 0);
+              }}
+              onError={() => setMapScriptError(true)}
+            />
+            <div
+              ref={containerRef}
+              className="relative z-0 min-h-[260px] w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-inner h-[min(50vh,380px)]"
+              role="application"
+              aria-label="안심 구역 지도, 탭하여 중심 설정"
+            />
+            {!mapReady && (
+              <p className="text-[11px] font-semibold text-slate-500">지도를 불러오는 중…</p>
+            )}
+          </>
+        ) : null}
 
         <div className="space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2">

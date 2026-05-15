@@ -32,7 +32,7 @@ export function isDashboardNfc(pathname: string): boolean {
   return segments.length >= 3 && segments[0] === "dashboard" && segments[2] === "nfc";
 }
 
-/** /dashboard/[kind]/wayfinder — Wayfinder(정밀 장소 안내) */
+/** /dashboard/[kind]/wayfinder — 링크유-동행(교통약자 맞춤 이동·시설 안내) */
 export function isDashboardWayfinder(pathname: string): boolean {
   const segments = pathname.split("/").filter(Boolean);
   return segments.length >= 3 && segments[0] === "dashboard" && segments[2] === "wayfinder";

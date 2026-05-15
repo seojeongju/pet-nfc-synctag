@@ -104,6 +104,9 @@ export default function LiveLocationMap({
   const [appKey, setAppKey] = useState<string | null>(null);
   const [configStatus, setConfigStatus] = useState<"loading" | "ready" | "missing" | "error">("loading");
   const [scriptLoadFailed, setScriptLoadFailed] = useState(false);
+  /** sdk.js?libraries=clusterer 로드 실패 시 코어만 재시도(도메인 문제가 아닌 라이브러리 이슈 배제) */
+  const [kakaoSdkClustererSkipped, setKakaoSdkClustererSkipped] = useState(false);
+  const [siteOrigin, setSiteOrigin] = useState("");
   const [followMyLocation, setFollowMyLocation] = useState(false);
   const [compassMode, setCompassMode] = useState(false);
   const [geoDenied, setGeoDenied] = useState(false);
@@ -136,6 +139,10 @@ export default function LiveLocationMap({
   const initialGpsCenterDoneRef = useRef(false);
   /** 좁은 화면에서 좌측 관제 패널만 접기 (우측 도구는 상시 노출) */
   const [mapLeftOpen, setMapLeftOpen] = useState(false);
+
+  useEffect(() => {
+    setSiteOrigin(typeof window !== "undefined" ? window.location.origin : "");
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -243,6 +250,12 @@ export default function LiveLocationMap({
       setMapReady(true);
     });
   };
+
+  useEffect(() => {
+    if (kakaoSdkClustererSkipped) {
+      setUseClustering(false);
+    }
+  }, [kakaoSdkClustererSkipped]);
 
   const moveToMyLocation = (usePan = true) => {
     if (!mapInstanceRef.current || !lastMyLatLngRef.current) return;
@@ -984,7 +997,18 @@ export default function LiveLocationMap({
                         <span className="text-xs font-black uppercase">SDK 로드 실패</span>
                     </div>
                     <p className="text-[10px] text-amber-700 font-bold leading-relaxed">
-                        카카오 JavaScript 키·JavaScript SDK 도메인(현재 사이트 주소)이 일치하는지 확인해 주세요.
+                        카카오 개발자 콘솔에서 이 앱의 <strong>JavaScript 키</strong>(REST 키 아님)를 쓰는지 확인하고,
+                        <strong> 플랫폼 → Web → 사이트 도메인</strong>에 아래 주소(및 사용 중인 미리보기 도메인)를 등록해 주세요.
+                    </p>
+                    {siteOrigin ? (
+                      <p className="mt-2 rounded-lg bg-white/80 px-2 py-1.5 text-center font-mono text-[10px] font-bold text-slate-800 break-all">
+                        {siteOrigin}
+                      </p>
+                    ) : null}
+                    <p className="mt-2 text-[10px] text-amber-800/90 font-semibold leading-relaxed">
+                      운영: <span className="font-mono">https://wow-linku.co.kr</span> 등 실제 서비스 URL을 등록합니다.
+                      Cloudflare Pages 미리보기(<span className="font-mono">*.pages.dev</span>)로 볼 때는 그때의
+                      <span className="font-mono">https://…pages.dev</span> 호스트를 콘솔에 따로 넣어야 합니다.
                     </p>
                 </div>
             ) : configStatus === "ready" && appKey ? (
@@ -995,13 +1019,32 @@ export default function LiveLocationMap({
 
       {appKey && configStatus === "ready" ? (
         <Script
-          src={`https://dapi.kakao.com/v2/maps/sdk.js?appkey=${encodeURIComponent(appKey)}&autoload=false&libraries=clusterer`}
+          key={kakaoSdkClustererSkipped ? "kakao-maps-sdk-core" : "kakao-maps-sdk-clusterer"}
+          strategy="afterInteractive"
+          src={`https://dapi.kakao.com/v2/maps/sdk.js?appkey=${encodeURIComponent(appKey)}&autoload=false${
+            kakaoSdkClustererSkipped ? "" : "&libraries=clusterer"
+          }`}
           onLoad={() => {
             setScriptLoadFailed(false);
             setSdkLoaded(true);
             initMap();
           }}
-          onError={() => setScriptLoadFailed(true)}
+          onError={() => {
+            if (typeof window !== "undefined" && window.kakao) {
+              try {
+                delete (window as unknown as { kakao?: unknown }).kakao;
+              } catch {
+                // noop
+              }
+            }
+            if (!kakaoSdkClustererSkipped) {
+              setKakaoSdkClustererSkipped(true);
+              setScriptLoadFailed(false);
+              setSdkLoaded(false);
+              return;
+            }
+            setScriptLoadFailed(true);
+          }}
         />
       ) : null}
     </Card>

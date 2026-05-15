@@ -59,6 +59,8 @@ Recommended production values:
 Also register both `https://wow-linku.co.kr` and `https://www.wow-linku.co.kr` under the Kakao key’s **JavaScript SDK 도메인**.  
 The app redirects `www.wow-linku.co.kr` to the apex domain, so use `https://wow-linku.co.kr` as the canonical base URL for OAuth/callback settings.
 
+If the map shows **“SDK 로드 실패”** but the key is set: the browser origin must match Kakao **Web 플랫폼 사이트 도메인** exactly (including `https://`). For Cloudflare **Preview** URLs (`https://<hash>.<project>.pages.dev`), add that host in Kakao as well—wildcards are not always accepted, use the full preview origin you open in the browser.
+
 ## SEO / AEO
 
 The app now exposes:
