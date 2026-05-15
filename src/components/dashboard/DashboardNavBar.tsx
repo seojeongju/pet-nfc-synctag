@@ -32,7 +32,6 @@ import {
   isDashboardWayfinder,
 } from "@/lib/dashboard-nav-active";
 import { linkuCompanionMenuTitle, linkuCompanionServiceDescription } from "@/lib/wayfinder/copy";
-import { isWayfinderEnabled } from "@/lib/wayfinder/feature";
 
 type DashboardNavBarProps = {
   session: FlowTopNavSession;
@@ -60,7 +59,6 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
   const dashNfc = isDashboardNfc(pathname);
   const dashWayfinder = isDashboardWayfinder(pathname);
   const dashStore = pathname === "/shop" || pathname.startsWith("/shop/");
-  const wayfinderOn = isWayfinderEnabled();
 
   const navItems = [
     {
@@ -81,17 +79,13 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
       active: dashNfc,
       Icon: NotebookPen,
     },
-    ...(wayfinderOn
-      ? ([
-          {
-            href: `/dashboard/${kind}/wayfinder${tenantQs}`,
-            label: linkuCompanionMenuTitle,
-            title: linkuCompanionServiceDescription,
-            active: dashWayfinder,
-            Icon: Navigation2,
-          },
-        ] as const)
-      : []),
+    {
+      href: `/dashboard/${kind}/wayfinder${tenantQs}`,
+      label: linkuCompanionMenuTitle,
+      title: linkuCompanionServiceDescription,
+      active: dashWayfinder,
+      Icon: Navigation2,
+    },
     {
       href: `/dashboard/${kind}/scans${tenantQs}`,
       label: "스캔기록",

@@ -30,10 +30,7 @@ export default async function DashboardWayfinderPage({
   const tenantId = typeof tenantParam === "string" && tenantParam.trim() ? tenantParam.trim() : null;
   const tenantQs = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : "";
   const meta = subjectKindMeta[subjectKind];
-
-  if (!isWayfinderEnabled()) {
-    redirect(`/dashboard/${subjectKind}${tenantQs}`);
-  }
+  const wayfinderBeta = isWayfinderEnabled();
 
   try {
     const context = getCfRequestContext();
@@ -88,30 +85,61 @@ export default async function DashboardWayfinderPage({
                 {linkuCompanionServiceDescription}
               </h1>
               <p className="text-sm font-semibold leading-relaxed text-slate-600">
-                {meta.label} 모드에서 스팟·동선 데이터를 연결할 예정입니다. 공개 진입 경로는{" "}
+                {meta.label} 모드 진입입니다. 공개 스팟 URL은{" "}
                 <span className="font-mono text-xs text-slate-500">/wayfinder</span> 입니다.
               </p>
             </header>
 
-            <section
-              className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-              aria-label={`${linkuCompanionMenuTitle} 상태`}
-            >
-              <p className="text-sm font-semibold text-slate-700 leading-relaxed">
-                {writeLocked
-                  ? "현재 모드 이용이 제한되었거나 조직이 정지된 상태입니다. 관리자에게 문의하세요."
-                  : "다음으로 D1 스팟 스키마·읽기 API·공개 스팟 페이지를 순서대로 붙입니다. 설정·문구는 프로필(휠체어·시각 등)별로 확장합니다."}
-              </p>
-            </section>
+            {!wayfinderBeta ? (
+              <section
+                className="rounded-2xl border border-amber-100 bg-amber-50/70 p-4 shadow-sm"
+                aria-label={`${linkuCompanionMenuTitle} 준비 안내`}
+              >
+                <p className="text-sm font-black text-amber-900">기능 점진 오픈 중</p>
+                <p className="mt-2 text-sm font-semibold leading-relaxed text-amber-950/90">
+                  상세 개발·베타 화면은 배포 환경에서{" "}
+                  <span className="font-mono text-xs">NEXT_PUBLIC_WAYFINDER_ENABLED=true</span>일 때 확장됩니다.
+                  허브에서는 항상 6번째 타일로 안내합니다.
+                </p>
+              </section>
+            ) : null}
 
-            <section className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4 shadow-sm" aria-label="개발 로드맵">
-              <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">진행 예정</p>
-              <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-sm font-semibold text-slate-700">
-                <li>시설·스팟 메타데이터 (D1 마이그레이션)</li>
-                <li>공개 스팟 뷰 + Web Speech API 안내</li>
-                <li>이 화면에서 스팟 목록·문구 편집(권한 연동)</li>
-              </ol>
-            </section>
+            {writeLocked ? (
+              <section
+                className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+                aria-label="이용 제한"
+              >
+                <p className="text-sm font-semibold text-slate-700 leading-relaxed">
+                  현재 모드 이용이 제한되었거나 조직이 정지된 상태입니다. 관리자에게 문의하세요.
+                </p>
+              </section>
+            ) : null}
+
+            {wayfinderBeta && !writeLocked ? (
+              <>
+                <section
+                  className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+                  aria-label={`${linkuCompanionMenuTitle} 상태`}
+                >
+                  <p className="text-sm font-semibold text-slate-700 leading-relaxed">
+                    다음으로 D1 스팟 스키마·읽기 API·공개 스팟 페이지를 순서대로 붙입니다. 설정·문구는 프로필(휠체어·시각
+                    등)별로 확장합니다.
+                  </p>
+                </section>
+
+                <section
+                  className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4 shadow-sm"
+                  aria-label="개발 로드맵"
+                >
+                  <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">진행 예정</p>
+                  <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-sm font-semibold text-slate-700">
+                    <li>시설·스팟 메타데이터 (D1 마이그레이션)</li>
+                    <li>공개 스팟 뷰 + Web Speech API 안내</li>
+                    <li>이 화면에서 스팟 목록·문구 편집(권한 연동)</li>
+                  </ol>
+                </section>
+              </>
+            ) : null}
           </div>
         </div>
       );

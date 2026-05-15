@@ -37,7 +37,7 @@ For backward compatibility, `NEXT_PUBLIC_KAKAO_MAP_KEY` is also supported.
 
 `/api/kakao-map-config` reads, in order: **`NEXT_PUBLIC_KAKAO_MAP_JS_KEY`** → `NEXT_PUBLIC_KAKAO_MAP_KEY` → **`KAKAO_MAP_JS_KEY`** (from the Worker `env` object, then `process.env`). The response also includes `keySource` (the winning variable name) so you can debug **403** issues caused by a stale/wrong secret taking precedence.
 
-If **`sdk.js` returns 403** in the browser: (1) confirm the Kakao **JavaScript** key (not REST) is used, (2) register the exact **JavaScript SDK 도메인** for your current origin, (3) if multiple env vars are set, ensure they all contain the **same** key—or remove the wrong one (older setups often had a bad `KAKAO_MAP_JS_KEY` shadowing a correct `NEXT_PUBLIC_*`).
+If **`sdk.js` returns 403** in the browser: (1) confirm the Kakao **JavaScript** key (not REST) is used, (2) register the exact **JavaScript SDK 도메인** for your current origin, (3) in [Kakao Developers Console](https://developers.kakao.com/console/app) open your app → **Kakao Map (카카오맵)** → **Usage settings (사용 설정)** and set **Status to ON** (required for new apps since Dec 2024 per [Kakao docs](https://developers.kakao.com/docs/ko/kakaomap/common)), (4) if multiple env vars are set, ensure they all contain the **same** key—or remove the wrong one.
 
 **Recommended for Cloudflare-only setup:** set **`KAKAO_MAP_JS_KEY`** in **Cloudflare Dashboard → Workers & Pages → your project → Settings → Environment variables → Production** to the same value as the Kakao **JavaScript** key, then **redeploy**. For CI builds, prefer **`NEXT_PUBLIC_KAKAO_MAP_JS_KEY`** in GitHub Actions so the value is consistent.
 

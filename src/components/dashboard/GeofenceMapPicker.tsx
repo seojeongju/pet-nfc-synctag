@@ -292,6 +292,9 @@ export function GeofenceMapPicker({
               Kakao 개발자 콘솔 → <strong>JavaScript 키</strong> 사용 여부와, <strong>플랫폼 Web 사이트 도메인</strong>에
               아래 주소가 등록돼 있는지 확인해 주세요.
             </p>
+            <p className="mt-2 text-[10px] text-amber-900 font-black leading-relaxed">
+              <strong>카카오맵 → 사용 설정 → 상태</strong>를 <strong>ON</strong>으로 설정해야 합니다. (신규 앱 필수)
+            </p>
             {siteOrigin ? (
               <p className="mt-2 rounded-lg bg-white/80 px-2 py-1.5 text-center font-mono text-[10px] font-bold text-slate-800 break-all">
                 {siteOrigin}

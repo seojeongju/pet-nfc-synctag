@@ -1006,6 +1006,10 @@ export default function LiveLocationMap({
                         카카오 개발자 콘솔에서 이 앱의 <strong>JavaScript 키</strong>(REST 키 아님)를 쓰는지 확인하고,
                         <strong> 플랫폼 → Web → 사이트 도메인</strong>에 아래 주소(및 사용 중인 미리보기 도메인)를 등록해 주세요.
                     </p>
+                    <p className="mt-2 text-[10px] text-amber-800 font-black leading-relaxed">
+                      앱 관리 페이지에서 <strong>카카오맵 → 사용 설정 → 상태</strong>를 <strong>ON</strong>으로 바꿔 주세요.
+                      (2024년 12월 이후 신규 앱은 필수. 꺼져 있으면 <span className="font-mono">sdk.js</span>가 403일 수 있습니다.)
+                    </p>
                     {siteOrigin ? (
                       <p className="mt-2 rounded-lg bg-white/80 px-2 py-1.5 text-center font-mono text-[10px] font-bold text-slate-800 break-all">
                         {siteOrigin}

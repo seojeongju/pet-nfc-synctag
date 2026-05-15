@@ -27,7 +27,6 @@ import {
   isDashboardWayfinder,
 } from "@/lib/dashboard-nav-active";
 import { linkuCompanionMenuTitle, linkuCompanionServiceDescription } from "@/lib/wayfinder/copy";
-import { isWayfinderEnabled } from "@/lib/wayfinder/feature";
 
 const subjectAvatars: Record<SubjectKind, LucideIcon> = {
   pet: PawPrint,
@@ -56,14 +55,10 @@ export function DashboardBottomNav() {
   const scans = isDashboardScans(pathname);
   const geofences = isDashboardGeofences(pathname);
   const wayfinder = isDashboardWayfinder(pathname);
-  const wayfinderOn = isWayfinderEnabled();
 
   return (
     <nav
-      className={cn(
-        "pointer-events-auto fixed bottom-4 left-1/2 z-50 flex h-[4.25rem] max-w-[96vw] -translate-x-1/2 items-center justify-around rounded-[28px] border border-white/20 bg-slate-900/85 px-1 shadow-[0_20px_50px_rgba(0,0,0,0.35)] backdrop-blur-md supports-[backdrop-filter]:bg-slate-900/75 min-[400px]:px-2",
-        wayfinderOn ? "w-[min(100%,28rem)]" : "w-[min(100%,24rem)]"
-      )}
+      className="pointer-events-auto fixed bottom-4 left-1/2 z-50 flex h-[4.25rem] w-[min(100%,28rem)] max-w-[96vw] -translate-x-1/2 items-center justify-around rounded-[28px] border border-white/20 bg-slate-900/85 px-1 shadow-[0_20px_50px_rgba(0,0,0,0.35)] backdrop-blur-md supports-[backdrop-filter]:bg-slate-900/75 min-[400px]:px-2"
       aria-label="대시보드 하단 메뉴"
     >
       <a
@@ -110,26 +105,24 @@ export function DashboardBottomNav() {
         <span className={dashboardBottomLabelClass(geofences)}>안심</span>
       </a>
 
-      {wayfinderOn ? (
-        <a
-          href={`/dashboard/${kind}/wayfinder${tenantQs}`}
-          className="group flex min-w-0 flex-1 flex-col items-center gap-0.5 py-1"
-          aria-current={wayfinder ? "page" : undefined}
-          title={linkuCompanionServiceDescription}
+      <a
+        href={`/dashboard/${kind}/wayfinder${tenantQs}`}
+        className="group flex min-w-0 flex-1 flex-col items-center gap-0.5 py-1"
+        aria-current={wayfinder ? "page" : undefined}
+        title={linkuCompanionServiceDescription}
+      >
+        <div className={cn(dashboardBottomIconWrap(wayfinder))}>
+          <Navigation2 className="h-5 w-5 min-[400px]:h-6 min-[400px]:w-6" aria-hidden />
+        </div>
+        <span
+          className={cn(
+            dashboardBottomLabelClass(wayfinder),
+            "max-w-[4.5rem] text-center leading-tight tracking-tight"
+          )}
         >
-          <div className={cn(dashboardBottomIconWrap(wayfinder))}>
-            <Navigation2 className="h-5 w-5 min-[400px]:h-6 min-[400px]:w-6" aria-hidden />
-          </div>
-          <span
-            className={cn(
-              dashboardBottomLabelClass(wayfinder),
-              "max-w-[4.5rem] text-center leading-tight tracking-tight"
-            )}
-          >
-            {linkuCompanionMenuTitle}
-          </span>
-        </a>
-      ) : null}
+          {linkuCompanionMenuTitle}
+        </span>
+      </a>
 
       <a
         href={`/logout?kind=${encodeURIComponent(kind)}`}

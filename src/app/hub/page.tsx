@@ -37,7 +37,6 @@ import { getDashboardPathForUserTenant } from "@/lib/mode-visibility";
 import type { D1Database } from "@cloudflare/workers-types";
 import { isPasswordChangeRequired } from "@/lib/password-change";
 import { linkuCompanionMenuTitle, linkuCompanionServiceDescription } from "@/lib/wayfinder/copy";
-import { isWayfinderEnabled } from "@/lib/wayfinder/feature";
 
 export const runtime = "edge";
 
@@ -56,6 +55,8 @@ const modeIconTone: Record<SubjectKind, string> = {
   luggage: "bg-amber-50 text-amber-600",
   gold: "bg-fuchsia-50 text-fuchsia-600",
 };
+
+const companionHubTone = "bg-violet-50 text-violet-600";
 
 function limitText(used: number, limit: number | null): string {
   return `${used}/${limit == null ? "∞" : limit}`;
@@ -168,8 +169,9 @@ export default async function HubPage({
     .bind(session.user.id)
     .first<{ role?: string | null }>();
   const isPlatformAdmin = isPlatformAdminRole(roleRow?.role);
-  /** 정책: 모든 보호자에게 5개 모드 노출 */
+  /** 정책: 5개 subject 모드 + 링크유-동행(6번째 타일) 허브 노출 */
   const hubVisibleKinds: SubjectKind[] = [...SUBJECT_KINDS];
+  const hubModeTileCount = hubVisibleKinds.length + 1;
 
   const isWelcomeOnboarding = sp.onboarding === "welcome";
   const billingMessage =
@@ -408,7 +410,7 @@ export default async function HubPage({
         <nav className="space-y-3">
           <div className="flex items-center justify-between px-1">
             <p className="text-[11px] font-black uppercase tracking-widest text-slate-500">모드 선택</p>
-            <p className="text-[10px] font-bold text-slate-400">{hubVisibleKinds.length}개 모드</p>
+            <p className="text-[10px] font-bold text-slate-400">{hubModeTileCount}개 모드·기능</p>
           </div>
           <div className="grid grid-cols-1 min-[430px]:grid-cols-2 gap-3">
           {hubVisibleKinds.map((kind) => {
@@ -439,15 +441,34 @@ export default async function HubPage({
               </a>
             );
           })}
+            <a
+              href={`${onboardingDashboardHref}/wayfinder`}
+              className={cn(
+                "flex items-center gap-3 rounded-[24px] border border-slate-100 bg-white p-4 min-[430px]:p-5 shadow-sm",
+                "transition-all hover:border-violet-200 hover:shadow-md active:scale-[0.99]"
+              )}
+              aria-label={`${linkuCompanionMenuTitle}. ${linkuCompanionServiceDescription}`}
+            >
+              <div
+                className={cn(
+                  "flex h-12 w-12 min-[430px]:h-14 min-[430px]:w-14 shrink-0 items-center justify-center rounded-2xl",
+                  companionHubTone
+                )}
+              >
+                <Navigation2 className="h-6 w-6 min-[430px]:h-7 min-[430px]:w-7" aria-hidden />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-black text-slate-900 text-[15px] min-[430px]:text-base">{linkuCompanionMenuTitle}</p>
+                <p className="text-[12px] text-slate-500 font-medium mt-0.5 leading-snug line-clamp-2">
+                  {linkuCompanionServiceDescription}
+                </p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-slate-300 shrink-0" />
+            </a>
           </div>
         </nav>
 
-        <div
-          className={cn(
-            "grid grid-cols-1 gap-2",
-            isWayfinderEnabled() ? "min-[430px]:grid-cols-3" : "min-[430px]:grid-cols-2"
-          )}
-        >
+        <div className="grid grid-cols-1 gap-2 min-[430px]:grid-cols-2">
           <a
             href={`/shop?kind=${encodeURIComponent(hubVisibleKinds[0] ?? "pet")}`}
             className="flex items-center gap-3 rounded-2xl border border-teal-200 bg-gradient-to-r from-white to-teal-50/90 p-4 shadow-sm transition hover:border-teal-300 hover:shadow-md active:scale-[0.99]"
@@ -474,26 +495,6 @@ export default async function HubPage({
             </div>
             <ChevronRight className="h-5 w-5 text-slate-300 shrink-0" />
           </a>
-          {isWayfinderEnabled() ? (
-            <a
-              href={`${onboardingDashboardHref}/wayfinder`}
-              className="flex items-center gap-3 rounded-2xl border border-violet-200 bg-gradient-to-r from-white to-violet-50/70 p-4 shadow-sm transition hover:border-violet-300 hover:shadow-md active:scale-[0.99]"
-              aria-label={`${linkuCompanionMenuTitle}. ${linkuCompanionServiceDescription}`}
-            >
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-violet-100 text-violet-700">
-                <Navigation2 className="h-6 w-6" aria-hidden />
-              </div>
-              <div className="min-w-0 flex-1 text-left">
-                <p className="text-[10px] font-black uppercase tracking-widest text-violet-600">
-                  {linkuCompanionMenuTitle}
-                </p>
-                <p className="text-[13px] font-black text-slate-900 leading-snug line-clamp-3">
-                  {linkuCompanionServiceDescription}
-                </p>
-              </div>
-              <ChevronRight className="h-5 w-5 text-slate-300 shrink-0" />
-            </a>
-          ) : null}
         </div>
 
         {billingMessage && (
