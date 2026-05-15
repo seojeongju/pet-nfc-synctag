@@ -26,15 +26,12 @@ export default function WayfinderPage() {
         <h1 className="text-2xl font-black tracking-tight leading-snug">{linkuCompanionServiceDescription}</h1>
       </header>
       <p className="text-base font-medium leading-relaxed text-slate-700">
-        공개 스팟 URL로 열리는 안내 화면입니다. 개발·스테이징에서는 플래그를 켠 뒤 내용을 채워 넣습니다.
-      </p>
-      <p className="text-sm text-slate-500">
-        환경 변수 <span className="font-mono text-xs">NEXT_PUBLIC_WAYFINDER_ENABLED=true</span>
+        시설·이동 안내 스팟을 등록하고, 발행된 주소로 방문자에게 NFC·QR·음성 안내를 제공합니다. 보호자는 허브에서
+        링크유-동행 타일을 선택한 뒤 대시보드에서 스팟을 관리할 수 있습니다.
       </p>
       <p className="text-sm font-medium leading-relaxed text-slate-600">
-        발행된 개별 스팟은 플래그와 관계 없이{" "}
-        <span className="font-mono text-xs text-slate-700">/wayfinder/s/스팟-slug</span> 주소로 열립니다(NFC·QR
-        연동용).
+        발행된 개별 스팟은{" "}
+        <span className="font-mono text-xs text-slate-700">/wayfinder/s/스팟-slug</span> 주소로 열립니다.
       </p>
     </main>
   );

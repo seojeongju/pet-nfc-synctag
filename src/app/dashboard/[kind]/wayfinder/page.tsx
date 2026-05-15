@@ -150,13 +150,14 @@ export default async function DashboardWayfinderPage({
             {!wayfinderBeta ? (
               <section
                 className="rounded-2xl border border-amber-100 bg-amber-50/70 p-4 shadow-sm"
-                aria-label={`${linkuCompanionMenuTitle} 준비 안내`}
+                aria-label={`${linkuCompanionMenuTitle} 비활성 안내`}
               >
-                <p className="text-sm font-black text-amber-900">기능 점진 오픈 중</p>
+                <p className="text-sm font-black text-amber-900">링크유-동행이 꺼져 있습니다</p>
                 <p className="mt-2 text-sm font-semibold leading-relaxed text-amber-950/90">
-                  상세 개발·베타 화면은 배포 환경에서{" "}
-                  <span className="font-mono text-xs">NEXT_PUBLIC_WAYFINDER_ENABLED=true</span>일 때 확장됩니다.
-                  진입은 <strong className="font-black">허브(/hub) → 모드 선택</strong>의 링크유-동행 타일을 이용해 주세요.
+                  운영·빌드 환경에서{" "}
+                  <span className="font-mono text-xs">NEXT_PUBLIC_WAYFINDER_ENABLED</span>가{" "}
+                  <span className="font-mono text-xs">false</span>로 설정된 경우입니다. 스팟 관리 화면을 쓰려면 값을
+                  제거하거나 <span className="font-mono text-xs">true</span>로 설정한 뒤 다시 배포하세요.
                 </p>
               </section>
             ) : null}
@@ -396,16 +397,18 @@ export default async function DashboardWayfinderPage({
 
                 <section
                   className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4 shadow-sm"
-                  aria-label="개발 로드맵"
+                  aria-label="이용 안내"
                 >
-                  <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">로드맵</p>
-                  <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-sm font-semibold text-slate-700">
-                    <li className="text-indigo-800">시설·스팟 메타데이터 (D1) — 목록·저장·공개 API 1차</li>
-                    <li className="text-indigo-800">
-                      공개 스팟 페이지(/wayfinder/s/[slug]) + Web Speech API 음성 안내
+                  <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">이용 안내</p>
+                  <ul className="mt-2 list-disc space-y-1.5 pl-4 text-sm font-semibold text-slate-700">
+                    <li>
+                      발행한 스팟은 방문자 페이지{" "}
+                      <span className="font-mono text-xs text-slate-600">{publicSpotPageBase}/[slug]</span> 로
+                      열립니다. NFC·QR에는 이 URL을 기록하세요.
                     </li>
-                    <li className="text-indigo-800">대시보드에서 편집·발행 전환·조직 owner/admin 권한 반영</li>
-                  </ol>
+                    <li>미발행 스팟은 방문자에게 보이지 않습니다. 인벤토리·URL 기록 전에 발행 여부를 확인하세요.</li>
+                    <li>조직 모드에서는 owner/admin이 같은 조직의 모든 스팟을 관리할 수 있습니다.</li>
+                  </ul>
                 </section>
               </>
             ) : null}
