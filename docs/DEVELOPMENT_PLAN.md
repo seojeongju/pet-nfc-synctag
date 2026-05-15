@@ -64,6 +64,20 @@
 
 ---
 
+## 링크유-동행 (교통약자 · 지하철·NFC 안내)
+
+**마스터 로드맵:** [`docs/WAYFINDER_SUBWAY_NAV.md`](./WAYFINDER_SUBWAY_NAV.md)
+
+| 단계 | 내용 | 상태 |
+|------|------|------|
+| **0** | 방문자 스팟 UX — `/wayfinder/s/{slug}`, TTS·단계·연락처·지도 | 코드 반영 · D1 `0035` |
+| **1** | GPS 근처 지하철역 — `/wayfinder`, `/wayfinder/stations/[id]` | 코드 반영 · D1 `0036`·`0037` |
+| **2~4** | 역 시설 POI · NFC 앵커 · 공공데이터 | 예정 |
+
+동행 기능 플래그: `NEXT_PUBLIC_WAYFINDER_ENABLED` (미설정 시 ON). 보호자는 허브 → 링크유-동행 → 대시보드에서 스팟·NFC 인벤토리 관리.
+
+---
+
 ## 부록: 추적·연락 제품 목표(로드맵 요약)
 
 BLE·Find My·NFC 등 **축별 약속 범위**와 대외 문구 가이드는 아래 문서에 정리합니다.

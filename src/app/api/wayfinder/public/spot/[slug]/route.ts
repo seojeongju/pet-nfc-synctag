@@ -37,6 +37,7 @@ export async function GET(request: Request, ctx: { params: Promise<{ slug: strin
         summary: row.summary,
         guideText: row.guide_text,
         floorLabel: row.floor_label,
+        contactPhone: row.contact_phone,
         latitude: row.latitude,
         longitude: row.longitude,
         updatedAt: row.updated_at,

@@ -12,7 +12,10 @@
     "typecheck": "tsc --noEmit",
     "d1:apply:platform-admin-role": "wrangler d1 execute pet-id-db --remote --file=migrations/0009_platform_admin_role.sql",
     "d1:apply:wayfinder-spots": "wrangler d1 execute pet-id-db --remote --file=migrations/0033_wayfinder_spots.sql",
-    "d1:apply:tags-wayfinder-spot": "wrangler d1 execute pet-id-db --remote --file=migrations/0034_tags_wayfinder_spot.sql"
+    "d1:apply:tags-wayfinder-spot": "wrangler d1 execute pet-id-db --remote --file=migrations/0034_tags_wayfinder_spot.sql",
+    "d1:apply:wayfinder-spot-contact": "wrangler d1 execute pet-id-db --remote --file=migrations/0035_wayfinder_spot_contact_phone.sql",
+    "d1:apply:wayfinder-stations": "wrangler d1 execute pet-id-db --remote --file=migrations/0036_wayfinder_stations.sql",
+    "d1:apply:wayfinder-stations-seed": "wrangler d1 execute pet-id-db --remote --file=migrations/0037_wayfinder_stations_pilot_seed.sql"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",

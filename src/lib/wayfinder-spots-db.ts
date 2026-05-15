@@ -15,10 +15,16 @@ export type WayfinderSpotRow = {
   latitude: number | null;
   longitude: number | null;
   floor_label: string | null;
+  contact_phone: string | null;
   is_published: number;
   created_at: string;
   updated_at: string;
 };
+
+const WF_SPOT_SELECT = `id, owner_id, tenant_id, subject_kind, slug, title, summary, guide_text,
+              latitude, longitude, floor_label, contact_phone, is_published, created_at, updated_at`;
+
+export type WayfinderSlugAvailability = "published" | "draft" | "missing";
 
 const RESERVED_SLUGS = new Set(["api", "public", "static", "wayfinder", "dashboard", "login"]);
 
@@ -57,13 +63,11 @@ export async function listWayfinderSpotsForOwnerKind(
 ): Promise<WayfinderSpotRow[]> {
   const tenant = (tenantId ?? "").trim();
   const query = tenant
-    ? `SELECT id, owner_id, tenant_id, subject_kind, slug, title, summary, guide_text,
-              latitude, longitude, floor_label, is_published, created_at, updated_at
+    ? `SELECT ${WF_SPOT_SELECT}
        FROM wayfinder_spots
        WHERE owner_id = ? AND subject_kind = ? AND tenant_id = ?
        ORDER BY datetime(updated_at) DESC`
-    : `SELECT id, owner_id, tenant_id, subject_kind, slug, title, summary, guide_text,
-              latitude, longitude, floor_label, is_published, created_at, updated_at
+    : `SELECT ${WF_SPOT_SELECT}
        FROM wayfinder_spots
        WHERE owner_id = ? AND subject_kind = ? AND tenant_id IS NULL
        ORDER BY datetime(updated_at) DESC`;
@@ -90,7 +94,7 @@ export async function listWayfinderSpotsForDashboard(
   const { results } = await db
     .prepare(
       `SELECT w.id, w.owner_id, w.tenant_id, w.subject_kind, w.slug, w.title, w.summary, w.guide_text,
-              w.latitude, w.longitude, w.floor_label, w.is_published, w.created_at, w.updated_at
+              w.latitude, w.longitude, w.floor_label, w.contact_phone, w.is_published, w.created_at, w.updated_at
        FROM wayfinder_spots w
        WHERE w.subject_kind = ? AND w.tenant_id = ?
          AND (
@@ -118,8 +122,7 @@ export async function getWayfinderSpotForDashboard(
 ): Promise<WayfinderSpotRow | null> {
   const row = await db
     .prepare(
-      `SELECT id, owner_id, tenant_id, subject_kind, slug, title, summary, guide_text,
-              latitude, longitude, floor_label, is_published, created_at, updated_at
+      `SELECT ${WF_SPOT_SELECT}
        FROM wayfinder_spots WHERE id = ? AND subject_kind = ?`
     )
     .bind(spotId, subjectKind)
@@ -169,6 +172,7 @@ export async function updateWayfinderSpotFields(
     lat: number | null;
     lon: number | null;
     floorLabel: string | null;
+    contactPhone: string | null;
     isPublished: number;
   }
 ): Promise<boolean> {
@@ -176,7 +180,7 @@ export async function updateWayfinderSpotFields(
     .prepare(
       `UPDATE wayfinder_spots SET
          slug = ?, title = ?, summary = ?, guide_text = ?,
-         latitude = ?, longitude = ?, floor_label = ?, is_published = ?,
+         latitude = ?, longitude = ?, floor_label = ?, contact_phone = ?, is_published = ?,
          updated_at = datetime('now')
        WHERE id = ?`
     )
@@ -188,6 +192,7 @@ export async function updateWayfinderSpotFields(
       fields.lat,
       fields.lon,
       fields.floorLabel,
+      fields.contactPhone,
       fields.isPublished,
       spotId
     )
@@ -203,14 +208,25 @@ export async function setWayfinderSpotPublished(db: D1Database, spotId: string, 
   return (r.meta?.changes ?? 0) > 0;
 }
 
+export async function getWayfinderSlugAvailability(
+  db: D1Database,
+  slug: string
+): Promise<WayfinderSlugAvailability> {
+  const row = await db
+    .prepare("SELECT is_published FROM wayfinder_spots WHERE slug = ? LIMIT 1")
+    .bind(slug)
+    .first<{ is_published: number }>();
+  if (!row) return "missing";
+  return Number(row.is_published) === 1 ? "published" : "draft";
+}
+
 export async function getPublishedWayfinderSpotBySlug(
   db: D1Database,
   slug: string
 ): Promise<WayfinderSpotRow | null> {
   return await db
     .prepare(
-      `SELECT id, owner_id, tenant_id, subject_kind, slug, title, summary, guide_text,
-              latitude, longitude, floor_label, is_published, created_at, updated_at
+      `SELECT ${WF_SPOT_SELECT}
        FROM wayfinder_spots WHERE slug = ? AND is_published = 1`
     )
     .bind(slug)

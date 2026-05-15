@@ -104,7 +104,7 @@ export default async function DashboardWayfinderPage({
         } catch (e: unknown) {
           console.error("wayfinder spots list error:", e);
           spotsLoadError =
-            "스팟 목록을 불러오지 못했습니다. 로컬·배포 환경에 마이그레이션 0033_wayfinder_spots.sql 적용 여부를 확인해 주세요.";
+            "스팟 목록을 불러오지 못했습니다. D1 마이그레이션 0033_wayfinder_spots.sql · 0035_wayfinder_spot_contact_phone.sql 적용 여부를 확인해 주세요.";
         }
       }
 
@@ -225,6 +225,22 @@ export default async function DashboardWayfinderPage({
                             />
                           </div>
                           <div className="space-y-2">
+                            <Label htmlFor="wf-contact">시설·데스크 연락처 (선택)</Label>
+                            <Input
+                              id="wf-contact"
+                              name="contact_phone"
+                              type="tel"
+                              inputMode="tel"
+                              autoComplete="tel"
+                              maxLength={40}
+                              placeholder="예: 02-3144-3137"
+                              className="h-12 rounded-2xl font-mono text-sm"
+                            />
+                            <p className="text-[10px] font-semibold text-slate-500">
+                              방문자 화면에 전화·문자 버튼으로 표시됩니다.
+                            </p>
+                          </div>
+                          <div className="space-y-2">
                             <Label htmlFor="wf-summary">한 줄 요약 (선택)</Label>
                             <Input
                               id="wf-summary"
@@ -245,7 +261,7 @@ export default async function DashboardWayfinderPage({
                                 "w-full resize-y rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium",
                                 "placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200"
                               )}
-                              placeholder="방문객에게 읽어 줄 상세 안내를 적어 주세요."
+                              placeholder="방문객에게 읽어 줄 상세 안내. 단계는 줄마다 1. … 2. … 형식으로 적으면 방문자 화면에 단계 카드로 표시됩니다."
                             />
                           </div>
                           <div className="grid gap-4 sm:grid-cols-2">

@@ -209,6 +209,20 @@ export default async function WayfinderSpotEditPage({
                       </div>
                     </div>
                     <div className="space-y-2">
+                      <Label htmlFor="ed-contact">시설·데스크 연락처</Label>
+                      <Input
+                        id="ed-contact"
+                        name="contact_phone"
+                        type="tel"
+                        inputMode="tel"
+                        autoComplete="tel"
+                        maxLength={40}
+                        defaultValue={spot.contact_phone ?? ""}
+                        placeholder="예: 02-3144-3137"
+                        className="h-12 rounded-2xl font-mono text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
                       <Label htmlFor="ed-summary">한 줄 요약</Label>
                       <Input
                         id="ed-summary"
@@ -226,6 +240,7 @@ export default async function WayfinderSpotEditPage({
                         maxLength={8000}
                         rows={5}
                         defaultValue={spot.guide_text ?? ""}
+                        placeholder="단계는 줄마다 1. … 2. … 형식으로 적으면 방문자 화면에 단계 카드로 표시됩니다."
                         className={cn(
                           "w-full resize-y rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium",
                           "placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200"

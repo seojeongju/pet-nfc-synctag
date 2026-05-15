@@ -52,12 +52,22 @@ async function tenantRoleForUser(db: D1Database, userId: string, tenantId: strin
   return await getMembership(db, userId, tenantId);
 }
 
+function contactPhoneFromForm(formData: FormData): string | null {
+  const raw = String(formData.get("contact_phone") ?? "").trim().slice(0, 40);
+  return raw.length > 0 ? raw : null;
+}
+
+function revalidateWayfinderPublicPaths(slug: string) {
+  revalidatePath(`/wayfinder/s/${slug}`);
+}
+
 export async function createWayfinderSpotForm(formData: FormData): Promise<void> {
   const ownerId = await requireSessionUserId();
   const title = String(formData.get("title") ?? "").trim().slice(0, 200);
   const summary = String(formData.get("summary") ?? "").trim().slice(0, 2000) || null;
   const guideText = String(formData.get("guide_text") ?? "").trim().slice(0, 8000) || null;
   const floorLabel = String(formData.get("floor_label") ?? "").trim().slice(0, 80) || null;
+  const contactPhone = contactPhoneFromForm(formData);
   const kindParam = String(formData.get("kind") ?? "pet").trim();
   const tenantParam = String(formData.get("tenant") ?? "").trim();
   const tenantId = tenantParam || null;
@@ -120,8 +130,8 @@ export async function createWayfinderSpotForm(formData: FormData): Promise<void>
       .prepare(
         `INSERT INTO wayfinder_spots (
            id, owner_id, tenant_id, subject_kind, slug, title, summary, guide_text,
-           latitude, longitude, floor_label, is_published
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+           latitude, longitude, floor_label, contact_phone, is_published
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .bind(
         id,
@@ -135,6 +145,7 @@ export async function createWayfinderSpotForm(formData: FormData): Promise<void>
         lat,
         lon,
         floorLabel,
+        contactPhone,
         isPublished
       )
       .run();
@@ -143,6 +154,9 @@ export async function createWayfinderSpotForm(formData: FormData): Promise<void>
   }
 
   revalidatePath(`/dashboard/${kind}/wayfinder`);
+  if (isPublished) {
+    revalidateWayfinderPublicPaths(slug);
+  }
   redirectToWayfinder(kind, tenantId);
 }
 
@@ -162,6 +176,7 @@ export async function updateWayfinderSpotForm(formData: FormData): Promise<void>
   const summary = String(formData.get("summary") ?? "").trim().slice(0, 2000) || null;
   const guideText = String(formData.get("guide_text") ?? "").trim().slice(0, 8000) || null;
   const floorLabel = String(formData.get("floor_label") ?? "").trim().slice(0, 80) || null;
+  const contactPhone = contactPhoneFromForm(formData);
   const latRaw = String(formData.get("latitude") ?? "").trim();
   const lonRaw = String(formData.get("longitude") ?? "").trim();
   const lat = latRaw === "" ? null : Number(latRaw);
@@ -216,6 +231,7 @@ export async function updateWayfinderSpotForm(formData: FormData): Promise<void>
     lat,
     lon,
     floorLabel,
+    contactPhone,
     isPublished,
   });
   if (!ok) {
@@ -224,6 +240,10 @@ export async function updateWayfinderSpotForm(formData: FormData): Promise<void>
 
   revalidatePath(`/dashboard/${kind}/wayfinder`);
   revalidatePath(`/dashboard/${kind}/wayfinder/${spotId}/edit`);
+  revalidateWayfinderPublicPaths(normalized);
+  if (spot.slug !== normalized) {
+    revalidateWayfinderPublicPaths(spot.slug);
+  }
   redirectToWayfinder(kind, tenantId);
 }
 
@@ -257,6 +277,7 @@ export async function toggleWayfinderSpotPublishedForm(formData: FormData): Prom
   await setWayfinderSpotPublished(db, spotId, next);
   revalidatePath(`/dashboard/${kind}/wayfinder`);
   revalidatePath(`/dashboard/${kind}/wayfinder/${spotId}/edit`);
+  revalidateWayfinderPublicPaths(spot.slug);
   redirectToWayfinder(kind, tenantId);
 }
 
