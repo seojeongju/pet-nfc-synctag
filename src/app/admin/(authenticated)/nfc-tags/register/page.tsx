@@ -12,7 +12,7 @@ export default function AdminNfcTagsRegisterPage() {
         <div className="mb-8 space-y-6">
           <AdminPageIntro
             title="① 태그 UID 등록"
-            subtitle="모드 선택 후 UID를 붙여넣거나 NFC 스캔으로 추가하세요."
+            subtitle="제품 NFC(모드별) 또는 링크유-동행(스팟 연결)을 고른 뒤 UID를 붙여넣거나 NFC 스캔으로 추가하세요."
             crumbs={[
               { label: "관리자", href: "/admin" },
               { label: "Pet-ID NFC", href: "/admin/nfc-tags" },
