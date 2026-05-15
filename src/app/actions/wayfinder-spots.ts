@@ -34,7 +34,10 @@ async function requireSessionUserId(): Promise<string> {
 function redirectToWayfinder(kind: SubjectKind, tenantId: string | null, err?: string): never {
   const qs = new URLSearchParams();
   if (tenantId) qs.set("tenant", tenantId);
-  if (err) qs.set("err", err);
+  if (err) {
+    qs.set("err", err);
+    qs.set("register", "1");
+  }
   const q = qs.toString();
   redirect(`/dashboard/${kind}/wayfinder${q ? `?${q}` : ""}`);
 }
