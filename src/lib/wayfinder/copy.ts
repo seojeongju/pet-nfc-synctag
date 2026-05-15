@@ -12,7 +12,7 @@ export const linkuCompanionMainLead =
 export const linkuCompanionSpotSubLabel = "시설·지점 안내";
 
 export const linkuCompanionSpotSubDescription =
-  "NFC·QR로 연결된 특정 지점(엘리베이터 앞, 안내 데스크 등)의 음성·연락 안내입니다. 지하철 경로 안내의 보조 기능입니다.";
+  "NFC 태그 스캔 시 기본은 GPS·가까운 역 안내입니다. 특정 지점(엘리베이터 앞 등) 메타를 연결하면 보조 안내 카드가 함께 표시됩니다.";
 
 /** 대상 이용자 (칩 표시) */
 export const wayfinderAudienceTags = [

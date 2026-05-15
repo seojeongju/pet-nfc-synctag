@@ -91,7 +91,7 @@ export type RegisterBulkTagsOptions = {
     batchId?: string;
     /** 등록 시점에 태그에 부여할 할당 모드 (허브 자동 진입 등에 사용) */
     assignedSubjectKind?: SubjectKind | null;
-    /** 링크유-동행 스팟 연결 시: 인벤토리 UID가 기록할 NDEF URL이 /wayfinder/s/{slug} 가 되도록 함 */
+    /** 링크유-동행 스팟 연결 시: NDEF URL은 /wayfinder?from=nfc&tag=UID (GPS·근처 역 메인) */
     wayfinderSpotId?: string | null;
     /**
      * 이미 인벤토리에 있는 UID 처리

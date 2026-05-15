@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import type { AdminWayfinderSpotPickRow } from "@/types/admin-tags";
 import { computeNdefWriteUrlForInventoryTag } from "@/lib/nfc-inventory-ndef-url";
+import { buildWayfinderCompanionPublicUrl } from "@/lib/wayfinder/companion-url";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { adminUi } from "@/styles/admin/ui";
@@ -59,13 +60,14 @@ async function tryWriteUrlToChip(uid: string): Promise<{ ok: boolean; error?: st
   return { ok: false, error: result.error };
 }
 
-/** 동행 스팟 연결 태그: /wayfinder/s/{slug} (미발행도 allowUnpublished로 기록 가능) */
+/** 링크유-동행 태그: /wayfinder?from=nfc&tag=UID (GPS·근처 역 메인, 스팟 slug는 보조) */
 async function tryWriteWayfinderUrlToChip(
+  uid: string,
   spot: Pick<AdminWayfinderSpotPickRow, "id" | "slug" | "is_published" | "title">
 ): Promise<{ ok: boolean; error?: string; url?: string }> {
   const built = computeNdefWriteUrlForInventoryTag(
     appBaseUrl(),
-    "inventory",
+    uid,
     {
       wf_spot: spot.id,
       wf_slug: spot.slug,
@@ -128,6 +130,23 @@ const kindTabStyles: Record<
     iconBg: "bg-amber-500/15 text-amber-700",
   },
 };
+
+const wayfinderTabStyle = {
+  active: "border-emerald-600 bg-emerald-50 text-emerald-950 shadow-sm ring-offset-white focus-visible:ring-emerald-500/40",
+  inactive: "border-slate-100 bg-white text-slate-500 hover:border-emerald-200 hover:bg-emerald-50/40 focus-visible:ring-slate-300",
+  iconBg: "bg-emerald-500/15 text-emerald-700",
+};
+
+const WAYFINDER_MODE_LABEL = "링크유-동행";
+
+function stopNfcSession(
+  sessionRef: React.MutableRefObject<NfcUidScanSession | null>,
+  setNfcContinuous: (v: boolean) => void
+) {
+  sessionRef.current?.stop();
+  sessionRef.current = null;
+  setNfcContinuous(false);
+}
 
 export function TagBulkRegisterCard() {
   const router = useRouter();
@@ -306,8 +325,8 @@ export function TagBulkRegisterCard() {
 
   const selectedWfSpot = wfSpots.find((s) => s.id === wayfinderSpotId.trim()) ?? null;
   const selectedWfPreviewUrl = selectedWfSpot
-    ? `${appBaseUrl()}/wayfinder/s/${encodeURIComponent(selectedWfSpot.slug)}`
-    : null;
+    ? buildWayfinderCompanionPublicUrl(appBaseUrl(), "…UID…", selectedWfSpot.slug)
+    : `${appBaseUrl()}/wayfinder?from=nfc`;
 
   const appendWfUid = (uid: string) => {
     setWfUids((prev) => {
@@ -319,6 +338,21 @@ export function TagBulkRegisterCard() {
       const cur = prev.trim();
       return cur ? `${cur}\n${uid}` : uid;
     });
+  };
+
+  const selectSubjectKind = (kind: SubjectKind) => {
+    stopNfcSession(sessionRef, setNfcContinuous);
+    setRegisterMode("subject");
+    setActiveKind(kind);
+    setMessage(null);
+    setNfcHint(null);
+  };
+
+  const selectWayfinderMode = () => {
+    stopNfcSession(sessionRef, setNfcContinuous);
+    setRegisterMode("wayfinder");
+    setMessage(null);
+    setNfcHint(null);
   };
 
   const handleWayfinderNfcUid = async (uid: string, continuous: boolean) => {
@@ -333,7 +367,7 @@ export function TagBulkRegisterCard() {
       return;
     }
     appendWfUid(uid);
-    const writeResult = await tryWriteWayfinderUrlToChip(spot);
+    const writeResult = await tryWriteWayfinderUrlToChip(uid, spot);
     const pub = Number(spot.is_published) === 1;
     if (writeResult.ok) {
       const warn =
@@ -364,14 +398,7 @@ export function TagBulkRegisterCard() {
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={() => {
-            sessionRef.current?.stop();
-            sessionRef.current = null;
-            setNfcContinuous(false);
-            setRegisterMode("subject");
-            setMessage(null);
-            setNfcHint(null);
-          }}
+          onClick={() => selectSubjectKind(activeKind)}
           className={cn(
             "touch-manipulation flex min-h-[48px] min-w-[140px] flex-1 items-center gap-2 rounded-2xl border px-4 py-3 text-left transition-all sm:min-h-0 sm:flex-none sm:py-2.5",
             registerMode === "subject"
@@ -384,14 +411,7 @@ export function TagBulkRegisterCard() {
         </button>
         <button
           type="button"
-          onClick={() => {
-            sessionRef.current?.stop();
-            sessionRef.current = null;
-            setNfcContinuous(false);
-            setRegisterMode("wayfinder");
-            setMessage(null);
-            setNfcHint(null);
-          }}
+          onClick={selectWayfinderMode}
           className={cn(
             "touch-manipulation flex min-h-[48px] min-w-[140px] flex-1 items-center gap-2 rounded-2xl border px-4 py-3 text-left transition-all sm:min-h-0 sm:flex-none sm:py-2.5",
             registerMode === "wayfinder"
@@ -404,24 +424,16 @@ export function TagBulkRegisterCard() {
         </button>
       </div>
 
-      {registerMode === "subject" ? (
       <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {SUBJECT_KINDS.map((kind) => {
           const Icon = kindIcon[kind];
           const tab = kindTabStyles[kind];
-          const active = kind === activeKind;
+          const active = registerMode === "subject" && kind === activeKind;
           return (
             <button
               key={kind}
               type="button"
-              onClick={() => {
-                sessionRef.current?.stop();
-                sessionRef.current = null;
-                setNfcContinuous(false);
-                setActiveKind(kind);
-                setMessage(null);
-                setNfcHint(null);
-              }}
+              onClick={() => selectSubjectKind(kind)}
               className={cn(
                 "touch-manipulation shrink-0 flex min-h-[52px] min-w-[112px] items-center gap-2 rounded-2xl border px-3 py-3 text-left transition-all outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-[0.99] sm:min-h-0 sm:py-2.5",
                 active ? tab.active : tab.inactive,
@@ -445,21 +457,39 @@ export function TagBulkRegisterCard() {
             </button>
           );
         })}
-      </div>
-      ) : (
-        <div className="space-y-3 rounded-2xl border border-emerald-200 bg-gradient-to-b from-emerald-50/80 to-white p-4 shadow-sm">
-          <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
-              <TrainFront className="h-5 w-5" aria-hidden />
+        <button
+          type="button"
+          onClick={selectWayfinderMode}
+          className={cn(
+            "touch-manipulation shrink-0 flex min-h-[52px] min-w-[112px] items-center gap-2 rounded-2xl border px-3 py-3 text-left transition-all outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-[0.99] sm:min-h-0 sm:py-2.5",
+            registerMode === "wayfinder" ? wayfinderTabStyle.active : wayfinderTabStyle.inactive,
+            registerMode === "wayfinder" ? "ring-offset-white focus-visible:ring-emerald-500/40" : "focus-visible:ring-slate-300"
+          )}
+        >
+          <span
+            className={cn(
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+              registerMode === "wayfinder" ? wayfinderTabStyle.iconBg : "bg-slate-100 text-slate-400"
+            )}
+          >
+            <TrainFront className="h-4 w-4" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-[10px] font-black uppercase tracking-tight text-slate-400">모드</span>
+            <span className="block text-xs font-black leading-snug break-words [text-wrap:balance]">
+              {WAYFINDER_MODE_LABEL}
             </span>
-            <div className="min-w-0 space-y-0.5">
-              <p className="text-xs font-black text-emerald-950">링크유-동행 · 스팟 연결 등록</p>
-              <p className="text-[11px] font-semibold leading-relaxed text-emerald-900/85">
-                UID를 인벤토리에 넣고 선택한 동행 스팟과 연결합니다. 스팟 선택 후 NFC 스캔 시{" "}
-                <span className="font-mono font-bold">/wayfinder/s/…</span> URL을 칩에 자동 기록합니다.
-              </p>
-            </div>
-          </div>
+          </span>
+        </button>
+      </div>
+
+      {registerMode === "wayfinder" ? (
+        <div className="space-y-3 rounded-2xl border border-emerald-200 bg-gradient-to-b from-emerald-50/80 to-white p-4 shadow-sm">
+          <p className="text-[11px] font-semibold leading-relaxed text-emerald-900/85">
+            태그 스캔 시 방문자는 <strong className="text-emerald-950">GPS로 가까운 지하철역</strong> 안내(
+            <span className="font-mono font-bold">/wayfinder</span>)로 이동합니다. 선택한 스팟은 보조 지점
+            안내용 메타입니다.
+          </p>
 
           {wfSpotsError ? (
             <div className="flex gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-[11px] font-bold text-rose-900">
@@ -521,7 +551,7 @@ export function TagBulkRegisterCard() {
             </div>
           ) : null}
         </div>
-      )}
+      ) : null}
 
       <div className="relative z-10 space-y-2">
         <div className="flex flex-col gap-2">

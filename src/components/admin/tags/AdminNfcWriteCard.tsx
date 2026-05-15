@@ -49,7 +49,7 @@ function getUnpublishedWayfinderWarning(
 function confirmUnpublishedWayfinderWrite(w: NdefWriteWayfinderWarning): boolean {
   const label = (w.title || w.slug).trim();
   return confirm(
-    `${w.message}\n\n스팟: ${label}\n/wayfinder/s/${w.slug}\n\n미발행 URL을 태그에 그대로 기록합니다. 스캔 시 공개 페이지가 보이지 않을 수 있습니다. 계속할까요?`
+    `${w.message}\n\n보조 스팟: ${label}\n기록 URL: /wayfinder?from=nfc&tag=…\n\n미발행 스팟은 지점 안내 카드만 숨겨지며, GPS·근처 역 안내는 이용 가능합니다. 계속할까요?`
   );
 }
 
@@ -71,12 +71,12 @@ function WayfinderUnpublishedNotice({ warning }: { warning: NdefWriteWayfinderWa
           스팟: <strong>{label}</strong>
           {" · "}
           <Link
-            href={`/wayfinder/s/${encodeURIComponent(warning.slug)}`}
+            href={`/wayfinder?spot=${encodeURIComponent(warning.slug)}&from=nfc`}
             className="font-black text-amber-900 underline-offset-2 hover:underline"
             target="_blank"
             rel="noreferrer"
           >
-            /wayfinder/s/{warning.slug}
+            /wayfinder?spot={warning.slug}
           </Link>
         </p>
         <p className="text-[10px] font-bold text-amber-800">
@@ -446,7 +446,7 @@ export function AdminNfcWriteCard() {
           </div>
           <p className="break-all font-mono text-sm font-bold text-slate-800 sm:text-xs">
             {displayWriteUrl ||
-              "— UID를 입력·확인하면 서버가 인벤토리 기준으로 기록 URL을 돌려줍니다(일반 태그는 /t/UID, 링크유-동행 스팟 연결·발행 시 /wayfinder/s/…)."}
+              "— UID를 입력·확인하면 서버가 인벤토리 기준으로 기록 URL을 돌려줍니다(일반 태그 /t/UID, 링크유-동행 /wayfinder?from=nfc&tag=UID)."}
           </p>
           {(uidCheck.status === "ok" || unverifiedTagUrlGuess) && (
             <div className="flex flex-wrap gap-2">

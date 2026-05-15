@@ -1,16 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
   ChevronRight,
+  ExternalLink,
   LocateFixed,
   MapPin,
   Navigation2,
   RefreshCw,
   TrainFront,
 } from "lucide-react";
+import { buildKakaoMapRouteHref } from "@/lib/wayfinder/kakao-map-links";
 import { cn } from "@/lib/utils";
 
 type NearbyStation = {
@@ -25,7 +27,13 @@ type NearbyStation = {
 
 type GeoPhase = "idle" | "locating" | "ready" | "denied" | "unsupported";
 
-export function WayfinderNearbyStations() {
+type Props = {
+  /** NFC 태그 진입: GPS·근처 역 블록 강조·자동 스크롤 */
+  nfcEntry?: boolean;
+};
+
+export function WayfinderNearbyStations({ nfcEntry = false }: Props) {
+  const sectionRef = useRef<HTMLElement>(null);
   const [phase, setPhase] = useState<GeoPhase>("idle");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [stations, setStations] = useState<NearbyStation[]>([]);
@@ -76,6 +84,14 @@ export function WayfinderNearbyStations() {
     requestLocation();
   }, [requestLocation]);
 
+  useEffect(() => {
+    if (!nfcEntry) return;
+    const t = window.setTimeout(() => {
+      sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, [nfcEntry]);
+
   const refresh = () => {
     if (coords) {
       setPhase("locating");
@@ -88,16 +104,28 @@ export function WayfinderNearbyStations() {
   const nearest = stations[0] ?? null;
   const others = stations.slice(1);
   const isLoading = phase === "locating" || (phase === "ready" && loadingStations && stations.length === 0);
+  const nearestRouteHref =
+    nearest && Number.isFinite(nearest.latitude) && Number.isFinite(nearest.longitude)
+      ? buildKakaoMapRouteHref(nearest.name, nearest.latitude, nearest.longitude)
+      : null;
 
   return (
-    <section className="space-y-4" aria-labelledby="wf-nearby-heading">
+    <section
+      ref={sectionRef}
+      id="wf-nearby"
+      className={cn("space-y-4 scroll-mt-4", nfcEntry && "rounded-[28px] border-2 border-indigo-200/90 bg-indigo-50/30 p-3 sm:p-4")}
+      aria-labelledby="wf-nearby-heading"
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2
           id="wf-nearby-heading"
-          className="flex items-center gap-2 text-sm font-black text-slate-900"
+          className={cn(
+            "flex items-center gap-2 font-black text-slate-900",
+            nfcEntry ? "text-base sm:text-lg" : "text-sm"
+          )}
         >
-          <TrainFront className="h-5 w-5 text-indigo-600" aria-hidden />
-          가까운 지하철역
+          <TrainFront className={cn("text-indigo-600", nfcEntry ? "h-6 w-6" : "h-5 w-5")} aria-hidden />
+          {nfcEntry ? "지금 위치에서 가까운 지하철역" : "가까운 지하철역"}
         </h2>
         <button
           type="button"
@@ -156,13 +184,29 @@ export function WayfinderNearbyStations() {
               <p className="mt-0.5 text-xs font-bold text-slate-500">{nearest.lines}</p>
             ) : null}
             <p className="mt-2 text-sm font-black text-indigo-600">약 {nearest.distanceLabel}</p>
+            {nearestRouteHref ? (
+              <a
+                href={nearestRouteHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border-b-4 border-indigo-800 bg-indigo-600 py-4 text-base font-black text-white shadow-lg transition hover:bg-indigo-700 active:scale-[0.99]"
+              >
+                <Navigation2 className="h-5 w-5" aria-hidden />
+                카카오맵으로 길찾기
+                <ExternalLink className="h-4 w-4 opacity-80" aria-hidden />
+              </a>
+            ) : null}
             <Link
               href={`/wayfinder/stations/${encodeURIComponent(nearest.id)}`}
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 py-3.5 text-sm font-black text-white shadow-md transition hover:bg-indigo-700 active:scale-[0.99]"
+              className={cn(
+                "flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-black transition active:scale-[0.99]",
+                nearestRouteHref
+                  ? "mt-2 border border-indigo-200 bg-indigo-50 text-indigo-800 hover:bg-indigo-100"
+                  : "mt-4 bg-indigo-600 text-white shadow-md hover:bg-indigo-700"
+              )}
             >
-              <Navigation2 className="h-5 w-5" aria-hidden />
-              이 역으로 이동 안내
               <ArrowRight className="h-4 w-4" aria-hidden />
+              역 상세·교통약자 안내
             </Link>
           </div>
         </div>

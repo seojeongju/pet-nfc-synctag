@@ -5,6 +5,7 @@ import { parseSubjectKind } from "@/lib/subject-kind";
 import { getAuth } from "@/lib/auth";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { decodeTagPathParam, normalizeTagUid } from "@/lib/tag-uid-format";
+import { buildWayfinderCompanionPath } from "@/lib/wayfinder/companion-url";
 import UnknownTagView from "./UnknownTagView";
 import { buildNoIndexMetadata } from "@/lib/seo";
 
@@ -26,6 +27,8 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
     assigned_subject_kind: string | null;
     pet_subject_kind: string | null;
     pet_tenant_id: string | null;
+    wayfinder_spot_id: string | null;
+    wf_slug: string | null;
   };
 
   /**
@@ -37,10 +40,13 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
     tag = await db
       .prepare(
         `SELECT t.id, t.pet_id, t.is_active, t.assigned_subject_kind,
+                t.wayfinder_spot_id,
                 p.subject_kind AS pet_subject_kind,
-                p.tenant_id AS pet_tenant_id
+                p.tenant_id AS pet_tenant_id,
+                w.slug AS wf_slug
          FROM tags t
          LEFT JOIN pets p ON p.id = t.pet_id
+         LEFT JOIN wayfinder_spots w ON w.id = t.wayfinder_spot_id
          WHERE t.id = ?`
       )
       .bind(normalizedTagId)
@@ -54,10 +60,13 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
       tag = await db
         .prepare(
           `SELECT t.id, t.pet_id, t.is_active, t.assigned_subject_kind,
+                  t.wayfinder_spot_id,
                   p.subject_kind AS pet_subject_kind,
-                  p.tenant_id AS pet_tenant_id
+                  p.tenant_id AS pet_tenant_id,
+                  w.slug AS wf_slug
            FROM tags t
            LEFT JOIN pets p ON p.id = t.pet_id
+           LEFT JOIN wayfinder_spots w ON w.id = t.wayfinder_spot_id
            WHERE UPPER(REPLACE(REPLACE(REPLACE(t.id, ':', ''), '-', ''), '_', '')) = ?`
         )
         .bind(compactTagId)
@@ -83,6 +92,12 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
       .run()
       .catch(() => {});
     return <UnknownTagView tagId={normalizedTagId} />;
+  }
+
+  /** 링크유-동행 인벤토리 태그: GPS·근처 역 안내(메인). 별도 관리대상(pet) 없음 */
+  const wfSpotId = (tag.wayfinder_spot_id ?? "").trim();
+  if (wfSpotId) {
+    redirect(buildWayfinderCompanionPath(tag.id, tag.wf_slug));
   }
 
   /**
