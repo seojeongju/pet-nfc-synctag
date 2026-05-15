@@ -28,6 +28,7 @@ import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
 import { isWebNfcReadSupported, readNfcTagUidOnce } from "@/lib/web-nfc-read-uid";
 import { isWebNfcWriteSupported, writeNfcUrlRecord } from "@/lib/web-nfc-write-url";
+import type { NdefWriteWayfinderWarning } from "@/lib/nfc-inventory-ndef-url";
 
 const SHOW_NFC_NATIVE_HANDOFF = process.env.NEXT_PUBLIC_NFC_NATIVE_HANDOFF_ENABLED === "true";
 const NFC_NATIVE_APP_STORE_URL = (process.env.NEXT_PUBLIC_NFC_NATIVE_APP_STORE_URL || "").trim();
@@ -35,9 +36,56 @@ const NFC_NATIVE_APP_STORE_URL = (process.env.NEXT_PUBLIC_NFC_NATIVE_APP_STORE_U
 type UidCheckState =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "ok"; url: string; tagId: string }
+  | { status: "ok"; url: string; tagId: string; warnings?: NdefWriteWayfinderWarning[] }
   | { status: "err"; message: string }
   | { status: "format" };
+
+function getUnpublishedWayfinderWarning(
+  warnings?: NdefWriteWayfinderWarning[]
+): NdefWriteWayfinderWarning | undefined {
+  return warnings?.find((w) => w.code === "wayfinder_unpublished");
+}
+
+function confirmUnpublishedWayfinderWrite(w: NdefWriteWayfinderWarning): boolean {
+  const label = (w.title || w.slug).trim();
+  return confirm(
+    `${w.message}\n\n스팟: ${label}\n/wayfinder/s/${w.slug}\n\n미발행 URL을 태그에 그대로 기록합니다. 스캔 시 공개 페이지가 보이지 않을 수 있습니다. 계속할까요?`
+  );
+}
+
+function WayfinderUnpublishedNotice({ warning }: { warning: NdefWriteWayfinderWarning }) {
+  const label = (warning.title || warning.slug).trim();
+  return (
+    <div
+      role="alert"
+      className={cn(
+        "flex items-start gap-3 rounded-2xl border px-4 py-3 text-[12px] font-bold leading-relaxed sm:text-xs",
+        "border-amber-200 bg-amber-50 text-amber-950"
+      )}
+    >
+      <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
+      <div className="min-w-0 space-y-1">
+        <p className="font-black">동행 스팟 미발행</p>
+        <p>{warning.message}</p>
+        <p className="text-[11px]">
+          스팟: <strong>{label}</strong>
+          {" · "}
+          <Link
+            href={`/wayfinder/s/${encodeURIComponent(warning.slug)}`}
+            className="font-black text-amber-900 underline-offset-2 hover:underline"
+            target="_blank"
+            rel="noreferrer"
+          >
+            /wayfinder/s/{warning.slug}
+          </Link>
+        </p>
+        <p className="text-[10px] font-bold text-amber-800">
+          Web NFC 기록 시 확인 창이 뜹니다. 앱 핸드오프는 발행된 스팟만 지원합니다.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 type HintState =
   | { type: "idle" }
@@ -121,6 +169,9 @@ export function AdminNfcWriteCard() {
   const displayWriteUrl =
     uidCheck.status === "ok" ? uidCheck.url : unverifiedTagUrlGuess;
 
+  const unpublishedWarning =
+    uidCheck.status === "ok" ? getUnpublishedWayfinderWarning(uidCheck.warnings) : undefined;
+
   const runVerify = useCallback(async (raw: string) => {
     const t = normalizeTagUid(raw);
     if (t !== raw) setTagId(t);
@@ -136,7 +187,12 @@ export function AdminNfcWriteCard() {
     try {
       const prep = await prepareNfcTagWrite(t);
       if (prep.ok) {
-        setUidCheck({ status: "ok", url: prep.url, tagId: prep.tagId });
+        setUidCheck({
+          status: "ok",
+          url: prep.url,
+          tagId: prep.tagId,
+          ...(prep.warnings?.length ? { warnings: prep.warnings } : {}),
+        });
       } else {
         setUidCheck({ status: "err", message: prep.error });
       }
@@ -166,6 +222,17 @@ export function AdminNfcWriteCard() {
         setHint({ type: "error", text: prep.error });
         return;
       }
+      const unpublished = getUnpublishedWayfinderWarning(prep.warnings);
+      if (unpublished && !confirmUnpublishedWayfinderWrite(unpublished)) {
+        setHint({ type: "info", text: "미발행 스팟 URL 기록을 취소했습니다. 스팟을 발행한 뒤 다시 시도하세요." });
+        setUidCheck({
+          status: "ok",
+          url: prep.url,
+          tagId: prep.tagId,
+          ...(prep.warnings?.length ? { warnings: prep.warnings } : {}),
+        });
+        return;
+      }
       try {
         const w = await writeNfcUrlRecord(prep.url);
         if (!w.ok) throw new Error(w.error);
@@ -174,8 +241,18 @@ export function AdminNfcWriteCard() {
           url: prep.url,
           success: true,
         });
-        setHint({ type: "success", text: "태그에 URL이 기록되었습니다. 감사 로그(연결·감사)에도 남습니다." });
-        setUidCheck({ status: "ok", url: prep.url, tagId: prep.tagId });
+        setHint({
+          type: "success",
+          text: unpublished
+            ? "태그에 URL이 기록되었습니다. 동행 스팟이 아직 미발행이므로 공개 후 스캔을 확인하세요."
+            : "태그에 URL이 기록되었습니다. 감사 로그(연결·감사)에도 남습니다.",
+        });
+        setUidCheck({
+          status: "ok",
+          url: prep.url,
+          tagId: prep.tagId,
+          ...(prep.warnings?.length ? { warnings: prep.warnings } : {}),
+        });
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
         await recordNfcWebWriteAudit({
@@ -283,6 +360,10 @@ export function AdminNfcWriteCard() {
         </div>
       ) : null}
 
+      {unpublishedWarning ? (
+        <WayfinderUnpublishedNotice warning={unpublishedWarning} />
+      ) : null}
+
       <AdminCard id="nfc-url-write" variant="section" className="space-y-5 scroll-mt-24">
         <h2 className="sr-only">URL 기록(웹 + 앱)</h2>
 
@@ -333,9 +414,15 @@ export function AdminNfcWriteCard() {
             {uidCheck.status === "loading" && <span className="text-slate-500">인벤토리 확인 중…</span>}
             {uidCheck.status === "format" && <span className="text-amber-700">UID 형식이 일반적이지 않아요(콜론 HEX 또는 8~32자).</span>}
             {uidCheck.status === "ok" && (
-              <span className="text-teal-700">
-                <CheckCircle2 className="mb-0.5 mr-1 inline h-3.5 w-3.5" />
-                인벤토리에 있음. 아래 URL이 태그에 써집니다.
+              <span className={unpublishedWarning ? "text-amber-800" : "text-teal-700"}>
+                {unpublishedWarning ? (
+                  <AlertTriangle className="mb-0.5 mr-1 inline h-3.5 w-3.5" />
+                ) : (
+                  <CheckCircle2 className="mb-0.5 mr-1 inline h-3.5 w-3.5" />
+                )}
+                {unpublishedWarning
+                  ? "인벤토리 확인됨 · 동행 스팟 미발행(기록 전 경고·확인)"
+                  : "인벤토리에 있음. 아래 URL이 태그에 써집니다."}
               </span>
             )}
             {uidCheck.status === "err" && <span className="text-rose-600">확인 실패: {uidCheck.message}</span>}

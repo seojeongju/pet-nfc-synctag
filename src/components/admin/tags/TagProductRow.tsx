@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { AdminTableRow } from "@/components/admin/ui/AdminTable";
 import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
-import type { AdminTag } from "@/types/admin-tags";
+import type { AdminTag, AdminWayfinderSpotPickRow } from "@/types/admin-tags";
 import { AdminInlineContextBlock } from "@/components/admin/ui/AdminInlineContextBlock";
 import { formatOwnerPrimaryLine } from "@/lib/admin-uid-context";
 import { ChevronDown, Trash2 } from "lucide-react";
@@ -20,29 +20,49 @@ function getStatusLabel(status: string) {
   return status;
 }
 
-function WayfinderSpotCell({ tag }: { tag: AdminTag }) {
-  const slug = (tag.wayfinder_spot_slug ?? "").trim();
-  const title = (tag.wayfinder_spot_title ?? "").trim();
-  if (!slug && !title) {
-    return <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">—</span>;
-  }
-  const label = title || slug;
+function WayfinderInventorySpotSelect({
+  value,
+  onChange,
+  wayfinderSpotOptions,
+  orphan,
+  previewSlug,
+  compact,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  wayfinderSpotOptions: AdminWayfinderSpotPickRow[];
+  orphan: { id: string; label: string } | null;
+  previewSlug: string;
+  compact?: boolean;
+}) {
+  const selectClass = compact
+    ? "w-full max-w-[200px] rounded-lg border border-slate-200 px-2 py-1.5 text-[10px] font-bold bg-white"
+    : "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold";
   return (
-    <div className="max-w-[168px] space-y-0.5">
-      {slug ? (
+    <div className={cn("space-y-1", compact ? "" : "mt-1")}>
+      <select value={value} onChange={(e) => onChange(e.target.value)} className={selectClass}>
+        <option value="">동행 연결 없음</option>
+        {orphan ? (
+          <option value={orphan.id}>
+            {orphan.label} (목록 밖)
+          </option>
+        ) : null}
+        {wayfinderSpotOptions.map((s) => (
+          <option key={s.id} value={s.id}>
+            {(s.title || s.slug).trim()} · {s.slug}
+            {Number(s.is_published) !== 1 ? " (미발행)" : ""}
+          </option>
+        ))}
+      </select>
+      {previewSlug ? (
         <Link
-          href={`/wayfinder/s/${encodeURIComponent(slug)}`}
-          className={cn(adminUi.tableBodyCellStrong, "block truncate text-[11px] text-teal-700 underline-offset-2 hover:underline")}
+          href={`/wayfinder/s/${encodeURIComponent(previewSlug)}`}
+          className="inline-block truncate text-[10px] font-black text-teal-700 underline-offset-2 hover:underline"
           target="_blank"
           rel="noreferrer"
         >
-          {label}
+          /wayfinder/s/{previewSlug}
         </Link>
-      ) : (
-        <p className={cn(adminUi.tableBodyCellStrong, "truncate text-[11px]")}>{label}</p>
-      )}
-      {slug ? (
-        <p className="truncate font-mono text-[9px] font-bold text-slate-500">/wayfinder/s/{slug}</p>
       ) : null}
     </div>
   );
@@ -50,16 +70,19 @@ function WayfinderSpotCell({ tag }: { tag: AdminTag }) {
 
 export function TagProductRow({
   tag,
+  wayfinderSpotOptions,
   onAfterSave,
   mobile = false,
 }: {
   tag: AdminTag;
+  wayfinderSpotOptions: AdminWayfinderSpotPickRow[];
   onAfterSave: () => void;
   mobile?: boolean;
 }) {
   const [productName, setProductName] = useState(tag.product_name ?? "");
   const [mode, setMode] = useState(tag.assigned_subject_kind ?? "");
   const [ble, setBle] = useState(tag.ble_mac ?? "");
+  const [wayfinderSpotId, setWayfinderSpotId] = useState(() => (tag.wayfinder_spot_id ?? "").trim());
   const [pending, startTransition] = useTransition();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -67,8 +90,26 @@ export function TagProductRow({
     setProductName(tag.product_name ?? "");
     setMode(tag.assigned_subject_kind ?? "");
     setBle(tag.ble_mac ?? "");
+    setWayfinderSpotId((tag.wayfinder_spot_id ?? "").trim());
     setMobileOpen(false);
-  }, [tag.product_name, tag.assigned_subject_kind, tag.ble_mac, tag.id]);
+  }, [tag.product_name, tag.assigned_subject_kind, tag.ble_mac, tag.id, tag.wayfinder_spot_id]);
+
+  const linkedWfId = (tag.wayfinder_spot_id ?? "").trim();
+  const wfMissingFromList =
+    Boolean(linkedWfId) && !wayfinderSpotOptions.some((o) => o.id === linkedWfId);
+
+  const previewSlug =
+    wayfinderSpotOptions.find((o) => o.id === wayfinderSpotId)?.slug?.trim() ||
+    (wayfinderSpotId === linkedWfId ? (tag.wayfinder_spot_slug ?? "").trim() : "");
+
+  const wfSummaryLabel =
+    !wayfinderSpotId.trim()
+      ? ""
+      : wayfinderSpotOptions.find((o) => o.id === wayfinderSpotId)?.title?.trim() ||
+        wayfinderSpotOptions.find((o) => o.id === wayfinderSpotId)?.slug?.trim() ||
+        (wayfinderSpotId === linkedWfId
+          ? (tag.wayfinder_spot_title ?? tag.wayfinder_spot_slug ?? "").trim()
+          : "동행");
 
   const save = () => {
     startTransition(async () => {
@@ -77,10 +118,11 @@ export function TagProductRow({
           product_name: productName.trim() || null,
           assigned_subject_kind: mode.trim() || null,
           ble_mac: ble.trim() || null,
+          wayfinder_spot_id: wayfinderSpotId.trim() || null,
         });
         onAfterSave();
-      } catch {
-        /* toast optional */
+      } catch (e) {
+        alert(e instanceof Error ? e.message : "저장에 실패했습니다.");
       }
     });
   };
@@ -147,9 +189,7 @@ export function TagProductRow({
                 >
                   {getStatusLabel(tag.status)}
                 </span>
-                {tag.wayfinder_spot_slug || tag.wayfinder_spot_title
-                  ? ` · 동행 ${(tag.wayfinder_spot_title ?? tag.wayfinder_spot_slug ?? "").trim() || "—"}`
-                  : ""}
+                {wfSummaryLabel ? ` · 동행 ${wfSummaryLabel}` : ""}
                 {tag.pet_name ? ` · ${tag.pet_name}` : ""}
               </p>
             )}
@@ -165,14 +205,25 @@ export function TagProductRow({
 
         {mobileOpen && (
           <div className="space-y-3 border-t border-slate-100 p-3">
-            {(tag.wayfinder_spot_slug || tag.wayfinder_spot_title) && (
-              <div className="rounded-lg border border-teal-100 bg-teal-50/50 px-3 py-2 text-[10px] font-bold text-teal-900">
-                <span className="font-black uppercase tracking-tight text-teal-700">동행 스팟</span>
-                <div className="mt-1">
-                  <WayfinderSpotCell tag={tag} />
-                </div>
-              </div>
-            )}
+            <div className="rounded-lg border border-teal-100 bg-teal-50/50 px-3 py-2 text-[10px] font-bold text-teal-900">
+              <span className="font-black uppercase tracking-tight text-teal-700">동행 스팟</span>
+              <WayfinderInventorySpotSelect
+                value={wayfinderSpotId}
+                onChange={setWayfinderSpotId}
+                wayfinderSpotOptions={wayfinderSpotOptions}
+                orphan={
+                  wfMissingFromList
+                    ? {
+                        id: linkedWfId,
+                        label:
+                          (tag.wayfinder_spot_title ?? tag.wayfinder_spot_slug ?? linkedWfId).trim() ||
+                          linkedWfId,
+                      }
+                    : null
+                }
+                previewSlug={previewSlug}
+              />
+            </div>
             <div className="grid grid-cols-1 gap-2">
               <input
                 value={productName}
@@ -299,7 +350,22 @@ export function TagProductRow({
         </select>
       </td>
       <td className="py-4 px-2 align-top">
-        <WayfinderSpotCell tag={tag} />
+        <WayfinderInventorySpotSelect
+          value={wayfinderSpotId}
+          onChange={setWayfinderSpotId}
+          wayfinderSpotOptions={wayfinderSpotOptions}
+          orphan={
+            wfMissingFromList
+              ? {
+                  id: linkedWfId,
+                  label:
+                    (tag.wayfinder_spot_title ?? tag.wayfinder_spot_slug ?? linkedWfId).trim() || linkedWfId,
+                }
+              : null
+          }
+          previewSlug={previewSlug}
+          compact
+        />
       </td>
       <td className="py-4 px-2">
         <input

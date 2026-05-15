@@ -4,6 +4,9 @@ export type TagsInventoryStatusFilter = "all" | "active" | "unsold" | "inactive"
 /** pet_id 연결 여부 */
 export type TagsInventoryLinkFilter = "all" | "linked" | "unlinked";
 
+/** wayfinder_spot_id(링크유-동행) 연결 여부 */
+export type TagsInventoryWayfinderFilter = "all" | "linked" | "unlinked";
+
 export type TagsInventoryPageParams = {
   q?: string;
   status?: TagsInventoryStatusFilter;
@@ -20,6 +23,8 @@ export type TagsInventoryPageParams = {
   kind?: string;
   /** 연결 상태: 전체 / 펫(대상) 연결됨 / 미연결 */
   link?: TagsInventoryLinkFilter;
+  /** 동행 스팟 연결: 전체 / 연결됨 / 미연결 */
+  wf?: TagsInventoryWayfinderFilter;
   /** 등록일(태그 created_at) 시작 YYYY-MM-DD */
   regFrom?: string;
   /** 등록일 종료 YYYY-MM-DD */
@@ -42,6 +47,16 @@ export type AdminTag = {
   wayfinder_spot_id?: string | null;
   wayfinder_spot_slug?: string | null;
   wayfinder_spot_title?: string | null;
+};
+
+/** 인벤토리·대량 등록에서 동행 스팟 선택용 행 */
+export type AdminWayfinderSpotPickRow = {
+  id: string;
+  slug: string;
+  title: string;
+  tenant_id: string | null;
+  is_published: number;
+  subject_kind: string;
 };
 
 export type TagsInventoryPageResult = {

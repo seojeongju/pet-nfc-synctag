@@ -6,13 +6,27 @@ export type TagWayfinderJoinFields = {
     wf_spot: string | null;
     wf_slug: string | null;
     wf_pub: number | null;
+    wf_title?: string | null;
+};
+
+export type NdefWriteWayfinderWarning = {
+    code: "wayfinder_unpublished";
+    slug: string;
+    title: string | null;
+    message: string;
+};
+
+export type ComputeNdefWriteUrlOptions = {
+    /** true면 미발행 스팟 URL도 반환(관리자 Web NFC·확인 후 기록용) */
+    allowUnpublishedWayfinder?: boolean;
 };
 
 export function computeNdefWriteUrlForInventoryTag(
     base: string,
     tagUid: string,
-    row: TagWayfinderJoinFields
-): { ok: true; url: string } | { ok: false; error: string } {
+    row: TagWayfinderJoinFields,
+    options?: ComputeNdefWriteUrlOptions
+): { ok: true; url: string; warnings?: NdefWriteWayfinderWarning[] } | { ok: false; error: string } {
     const b = base.replace(/\/$/, "").trim();
     if (!b) {
         return { ok: false, error: "앱 기준 URL(base)이 비어 있습니다." };
@@ -24,13 +38,31 @@ export function computeNdefWriteUrlForInventoryTag(
                 error: "동행 스팟 연결은 있으나 스팟 정보를 찾을 수 없습니다. 스팟이 삭제되었는지 확인하세요.",
             };
         }
+        const url = `${b}/wayfinder/s/${encodeURIComponent(row.wf_slug)}`;
         if (Number(row.wf_pub) !== 1) {
+            const title = (row.wf_title ?? "").trim() || null;
+            const message =
+                "연결된 동행 스팟이 아직 공개(발행)되지 않았습니다. 발행 후 기록하는 것을 권장합니다.";
+            if (!options?.allowUnpublishedWayfinder) {
+                return {
+                    ok: false,
+                    error: `${message} (스팟: ${title || row.wf_slug})`,
+                };
+            }
             return {
-                ok: false,
-                error: "이 태그는 링크유-동행 스팟에 연결되어 있습니다. 공개(발행)된 뒤에 URL을 기록하세요.",
+                ok: true,
+                url,
+                warnings: [
+                    {
+                        code: "wayfinder_unpublished",
+                        slug: row.wf_slug,
+                        title,
+                        message,
+                    },
+                ],
             };
         }
-        return { ok: true, url: `${b}/wayfinder/s/${encodeURIComponent(row.wf_slug)}` };
+        return { ok: true, url };
     }
     return { ok: true, url: `${b}/t/${encodeURIComponent(tagUid)}` };
 }

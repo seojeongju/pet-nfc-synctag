@@ -2,11 +2,16 @@ import {
   getTagInventoryBatchOptions,
   getTagsInventoryPage,
   getTagBatchesPage,
+  listWayfinderSpotsForAdminTagLink,
 } from "@/app/actions/admin";
 import { AdminPageIntro } from "@/components/admin/layout/AdminPageIntro";
 import { TagInventorySection } from "@/components/admin/tags/TagInventorySection";
 import { adminUi } from "@/styles/admin/ui";
-import type { TagsInventoryLinkFilter, TagsInventoryStatusFilter } from "@/types/admin-tags";
+import type {
+  TagsInventoryLinkFilter,
+  TagsInventoryStatusFilter,
+  TagsInventoryWayfinderFilter,
+} from "@/types/admin-tags";
 import { cn } from "@/lib/utils";
 
 export const runtime = "edge";
@@ -24,6 +29,8 @@ type Search = {
   /** 할당 모드 (assigned_subject_kind), `__unset__` = 미지정 */
   kind?: string;
   link?: string;
+  /** 동행 스팟 연결: wf=linked|unlinked */
+  wf?: string;
   reg_from?: string;
   reg_to?: string;
 };
@@ -34,6 +41,11 @@ function parseStatus(raw: string | undefined): TagsInventoryStatusFilter {
 }
 
 function parseInventoryLink(raw: string | undefined): TagsInventoryLinkFilter {
+  if (raw === "linked" || raw === "unlinked") return raw;
+  return "all";
+}
+
+function parseInventoryWayfinder(raw: string | undefined): TagsInventoryWayfinderFilter {
   if (raw === "linked" || raw === "unlinked") return raw;
   return "all";
 }
@@ -49,6 +61,7 @@ export default async function AdminNfcTagsInventoryPage({
   const batch = (sp.batch ?? "").trim();
   const kind = (sp.kind ?? "").trim().slice(0, 40);
   const link = parseInventoryLink(sp.link);
+  const wf = parseInventoryWayfinder(sp.wf);
   const regFrom = (sp.reg_from ?? "").trim();
   const regTo = (sp.reg_to ?? "").trim();
   const tenantId = (sp.tenant ?? "").trim() || undefined;
@@ -62,7 +75,7 @@ export default async function AdminNfcTagsInventoryPage({
   if (!Number.isFinite(bpageSize)) bpageSize = 5;
   bpageSize = Math.min(30, Math.max(3, Math.floor(bpageSize)));
 
-  const [inventory, batchPage, batchOptions] = await Promise.all([
+  const [inventory, batchPage, batchOptions, wayfinderSpotOptions] = await Promise.all([
     getTagsInventoryPage({
       q,
       status,
@@ -72,11 +85,13 @@ export default async function AdminNfcTagsInventoryPage({
       pageSize,
       kind: kind || undefined,
       link,
+      wf,
       regFrom: regFrom || undefined,
       regTo: regTo || undefined,
     }),
     getTagBatchesPage({ tenantId, page: bpage, pageSize: bpageSize }),
     getTagInventoryBatchOptions(tenantId),
+    listWayfinderSpotsForAdminTagLink(),
   ]);
 
   return (
@@ -85,7 +100,7 @@ export default async function AdminNfcTagsInventoryPage({
         <div className="mb-8 space-y-6">
           <AdminPageIntro
             title="③ 태그 인벤토리"
-            subtitle="UID·할당 모드·연결·등록일·재고·배치로 필터 가능. 쿼리: kind(모드), link(linked|unlinked), reg_from, reg_to. 자산=page·pageSize, 배치 통계=bpage·bpageSize."
+            subtitle="UID·할당 모드·펫 연결·동행 연결·등록일·재고·배치로 필터. 쿼리: kind, link(펫), wf(동행), reg_from·reg_to. 자산=page·pageSize, 배치=bpage·bpageSize."
             crumbs={[
               { label: "관리자", href: "/admin" },
               { label: "Pet-ID NFC", href: "/admin/nfc-tags" },
@@ -103,11 +118,13 @@ export default async function AdminNfcTagsInventoryPage({
           initialBatch={batch}
           initialKind={kind}
           initialLink={link}
+          initialWf={wf}
           initialRegFrom={regFrom}
           initialRegTo={regTo}
           tenantId={tenantId ?? null}
           batchOptions={batchOptions}
           batchPage={batchPage}
+          wayfinderSpotOptions={wayfinderSpotOptions}
         />
       </div>
     </div>

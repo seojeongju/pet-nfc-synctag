@@ -12,10 +12,12 @@ import { cn } from "@/lib/utils";
 import { SUBJECT_KINDS, subjectKindMeta } from "@/lib/subject-kind";
 import type {
   AdminTag,
+  AdminWayfinderSpotPickRow,
   TagBatchesPageResult,
   TagBatchSummaryRow,
   TagsInventoryLinkFilter,
   TagsInventoryStatusFilter,
+  TagsInventoryWayfinderFilter,
 } from "@/types/admin-tags";
 import { TagProductRow } from "./TagProductRow";
 
@@ -25,6 +27,7 @@ export type TagInventoryQueryState = {
   batch: string;
   kind: string;
   link: TagsInventoryLinkFilter;
+  wf: TagsInventoryWayfinderFilter;
   regFrom: string;
   regTo: string;
   tenantId?: string | null;
@@ -46,6 +49,7 @@ export function buildInventorySearchHref(
   if (m.batch.trim()) p.set("batch", m.batch.trim());
   if (m.kind.trim()) p.set("kind", m.kind.trim());
   if (m.link !== "all") p.set("link", m.link);
+  if (m.wf !== "all") p.set("wf", m.wf);
   if (m.regFrom.trim()) p.set("reg_from", m.regFrom.trim());
   if (m.regTo.trim()) p.set("reg_to", m.regTo.trim());
   if (m.tenantId) p.set("tenant", m.tenantId);
@@ -67,12 +71,15 @@ type TagInventorySectionProps = {
   initialBatch: string;
   initialKind: string;
   initialLink: TagsInventoryLinkFilter;
+  initialWf: TagsInventoryWayfinderFilter;
   initialRegFrom: string;
   initialRegTo: string;
   tenantId?: string | null;
   batchOptions: string[];
   /** 배치 ID별 집계(페이징) */
   batchPage: TagBatchesPageResult;
+  /** 동행 스팟 연결 `<select>` 옵션(페이지당 1회 로드) */
+  wayfinderSpotOptions: AdminWayfinderSpotPickRow[];
 };
 
 export function TagInventorySection({
@@ -85,11 +92,13 @@ export function TagInventorySection({
   initialBatch,
   initialKind,
   initialLink,
+  initialWf,
   initialRegFrom,
   initialRegTo,
   tenantId = null,
   batchOptions,
   batchPage,
+  wayfinderSpotOptions,
 }: TagInventorySectionProps) {
   const router = useRouter();
   const totalPages = Math.max(1, Math.ceil(total / pageSize) || 1);
@@ -110,6 +119,7 @@ export function TagInventorySection({
     batch: initialBatch,
     kind: initialKind,
     link: initialLink,
+    wf: initialWf,
     regFrom: initialRegFrom,
     regTo: initialRegTo,
     tenantId,
@@ -228,19 +238,31 @@ export function TagInventorySection({
               ))}
             </select>
           </label>
-          <label className="space-y-1 lg:col-span-4">
-            <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">연결</span>
+          <label className="space-y-1 lg:col-span-3">
+            <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">펫 연결</span>
             <select
               name="link"
               defaultValue={initialLink}
               className={cn(adminUi.input, "min-h-[44px] w-full rounded-xl text-sm font-bold sm:min-h-10 sm:text-xs")}
             >
               <option value="all">전체</option>
-              <option value="linked">펫/대상 연결됨</option>
+              <option value="linked">연결됨</option>
               <option value="unlinked">미연결</option>
             </select>
           </label>
-          <label className="space-y-1 lg:col-span-4">
+          <label className="space-y-1 lg:col-span-3">
+            <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">동행 스팟</span>
+            <select
+              name="wf"
+              defaultValue={initialWf}
+              className={cn(adminUi.input, "min-h-[44px] w-full rounded-xl text-sm font-bold sm:min-h-10 sm:text-xs")}
+            >
+              <option value="all">전체</option>
+              <option value="linked">연결됨</option>
+              <option value="unlinked">미연결</option>
+            </select>
+          </label>
+          <label className="space-y-1 lg:col-span-3">
             <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">등록일 시작</span>
             <input
               type="date"
@@ -249,7 +271,7 @@ export function TagInventorySection({
               className={cn(adminUi.input, "min-h-[44px] w-full rounded-xl text-sm font-bold sm:min-h-10 sm:text-xs")}
             />
           </label>
-          <label className="space-y-1 lg:col-span-4">
+          <label className="space-y-1 lg:col-span-3">
             <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">등록일 종료</span>
             <input
               type="date"
@@ -263,7 +285,15 @@ export function TagInventorySection({
 
       <div className="space-y-3 md:hidden">
         {tags.length > 0 ? (
-          tags.map((tag) => <TagProductRow key={tag.id} tag={tag} onAfterSave={() => router.refresh()} mobile />)
+          tags.map((tag) => (
+            <TagProductRow
+              key={tag.id}
+              tag={tag}
+              wayfinderSpotOptions={wayfinderSpotOptions}
+              onAfterSave={() => router.refresh()}
+              mobile
+            />
+          ))
         ) : (
           <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-xs font-bold text-slate-500">
             조건에 맞는 태그가 없습니다. 필터를 바꿔 보세요.
@@ -288,7 +318,14 @@ export function TagInventorySection({
           </thead>
           <tbody className="divide-y divide-slate-100">
             {tags.length > 0 ? (
-              tags.map((tag) => <TagProductRow key={tag.id} tag={tag} onAfterSave={() => router.refresh()} />)
+              tags.map((tag) => (
+                <TagProductRow
+                  key={tag.id}
+                  tag={tag}
+                  wayfinderSpotOptions={wayfinderSpotOptions}
+                  onAfterSave={() => router.refresh()}
+                />
+              ))
             ) : (
               <tr>
                 <td colSpan={9} className="py-24 text-center">

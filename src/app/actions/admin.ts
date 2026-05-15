@@ -7,7 +7,10 @@ import { getCfRequestContext } from "@/lib/cf-request-context";
 import { parseSubjectKind, SUBJECT_KINDS, type SubjectKind } from "@/lib/subject-kind";
 import { normalizeBleMac } from "@/lib/device-mode";
 import { isValidTagUidFormat, normalizeTagUid } from "@/lib/tag-uid-format";
-import { computeNdefWriteUrlForInventoryTag } from "@/lib/nfc-inventory-ndef-url";
+import {
+    computeNdefWriteUrlForInventoryTag,
+    type NdefWriteWayfinderWarning,
+} from "@/lib/nfc-inventory-ndef-url";
 import { mintNativeHandoffToken } from "@/lib/nfc-native-security";
 import {
     requirePlatformOrTenantAdminActor,
@@ -15,6 +18,7 @@ import {
 } from "@/lib/admin-authz";
 import type {
     AdminTag,
+    AdminWayfinderSpotPickRow,
     TagBatchesPageResult,
     TagBatchSummaryRow,
     TagLinkLogRow,
@@ -23,7 +27,9 @@ import type {
     TagsInventoryPageParams,
     TagsInventoryPageResult,
     TagsInventoryStatusFilter,
+    TagsInventoryWayfinderFilter,
 } from "@/types/admin-tags";
+import type { AdminScope } from "@/lib/admin-authz";
 
 function chunkArray<T>(arr: T[], size: number): T[][] {
     const chunks: T[][] = [];
@@ -31,6 +37,43 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
         chunks.push(arr.slice(i, i + size));
     }
     return chunks;
+}
+
+/** 대량 등록·인벤토리 편집 공통: 스팟 존재 및 테넌트/개인 스팟 규칙 검증 */
+async function resolveWayfinderSpotForInventoryTagLink(
+    db: D1Database,
+    scope: AdminScope,
+    spotId: string,
+    hasWayfinderSpotColumn: boolean
+): Promise<{ id: string; subject_kind: string }> {
+    if (!hasWayfinderSpotColumn) {
+        throw new Error(
+            "tags.wayfinder_spot_id 컬럼이 없습니다. 마이그레이션 0034_tags_wayfinder_spot.sql 을 적용하세요."
+        );
+    }
+    const trimmed = spotId.trim();
+    const forcedTenantId =
+        scope.actor.isPlatformAdmin || !scope.tenantIds || scope.tenantIds.length === 0
+            ? null
+            : scope.tenantIds[0] ?? null;
+    const wfRow = await db
+        .prepare("SELECT id, tenant_id, subject_kind FROM wayfinder_spots WHERE id = ?")
+        .bind(trimmed)
+        .first<{ id: string; tenant_id: string | null; subject_kind: string }>();
+    if (!wfRow) {
+        throw new Error("동행 스팟을 찾을 수 없습니다.");
+    }
+    if (!scope.actor.isPlatformAdmin) {
+        const stid = (wfRow.tenant_id ?? "").trim() || null;
+        if (stid) {
+            if (!forcedTenantId || stid !== forcedTenantId) {
+                throw new Error("선택한 동행 스팟은 현재 조직 인벤토리 범위와 맞지 않습니다.");
+            }
+        } else if (forcedTenantId) {
+            throw new Error("개인(비조직) 동행 스팟에는 테넌트 인벤토리 태그를 연결할 수 없습니다.");
+        }
+    }
+    return { id: wfRow.id, subject_kind: wfRow.subject_kind };
 }
 
 async function getActorEmailSafe() {
@@ -100,29 +143,13 @@ export async function registerBulkTags(uids: string[], options?: RegisterBulkTag
         const wayfinderSpotIdOpt = (options?.wayfinderSpotId ?? "").trim() || null;
         let effectiveAssignedKind: SubjectKind | null = kind;
         if (wayfinderSpotIdOpt) {
-            if (!hasWayfinderSpotColumn) {
-                throw new Error(
-                    "tags.wayfinder_spot_id 컬럼이 없습니다. 마이그레이션 0034_tags_wayfinder_spot.sql 을 적용하세요."
-                );
-            }
-            const wfRow = await db
-                .prepare("SELECT id, tenant_id, subject_kind FROM wayfinder_spots WHERE id = ?")
-                .bind(wayfinderSpotIdOpt)
-                .first<{ id: string; tenant_id: string | null; subject_kind: string }>();
-            if (!wfRow) {
-                throw new Error("동행 스팟을 찾을 수 없습니다.");
-            }
-            if (!scope.actor.isPlatformAdmin) {
-                const stid = (wfRow.tenant_id ?? "").trim() || null;
-                if (stid) {
-                    if (!forcedTenantId || stid !== forcedTenantId) {
-                        throw new Error("선택한 동행 스팟은 현재 조직 인벤토리 범위와 맞지 않습니다.");
-                    }
-                } else if (forcedTenantId) {
-                    throw new Error("개인(비조직) 동행 스팟에는 테넌트 인벤토리 태그를 연결할 수 없습니다.");
-                }
-            }
-            effectiveAssignedKind = parseSubjectKind(wfRow.subject_kind);
+            const wf = await resolveWayfinderSpotForInventoryTagLink(
+                db,
+                scope,
+                wayfinderSpotIdOpt,
+                hasWayfinderSpotColumn
+            );
+            effectiveAssignedKind = parseSubjectKind(wf.subject_kind);
         }
         const assignKindForTags = effectiveAssignedKind;
         if (!options?.batchId && wayfinderSpotIdOpt) {
@@ -308,6 +335,11 @@ function parseInventoryLink(raw: string | undefined): TagsInventoryLinkFilter {
     return "all";
 }
 
+function parseInventoryWayfinder(raw: string | undefined): TagsInventoryWayfinderFilter {
+    if (raw === "linked" || raw === "unlinked") return raw;
+    return "all";
+}
+
 function parseIsoDateDay(raw: string | undefined): string | null {
     const t = (raw ?? "").trim();
     return /^\d{4}-\d{2}-\d{2}$/.test(t) ? t : null;
@@ -342,6 +374,7 @@ export async function getTagsInventoryPage(
     const status = parseInventoryStatus(params.status);
     const batchTrim = (params.batch ?? "").trim().slice(0, 200);
     const linkFilter = parseInventoryLink(params.link);
+    const wfFilter = parseInventoryWayfinder(params.wf);
     const kindRaw = (params.kind ?? "").trim();
     let regFrom = parseIsoDateDay(params.regFrom);
     let regTo = parseIsoDateDay(params.regTo);
@@ -383,6 +416,15 @@ export async function getTagsInventoryPage(
         conditions.push(`t.pet_id IS NOT NULL`);
     } else if (linkFilter === "unlinked") {
         conditions.push(`t.pet_id IS NULL`);
+    }
+    if (wfFilter === "linked") {
+        conditions.push(
+            `(t.wayfinder_spot_id IS NOT NULL AND trim(COALESCE(t.wayfinder_spot_id, '')) != '')`
+        );
+    } else if (wfFilter === "unlinked") {
+        conditions.push(
+            `(t.wayfinder_spot_id IS NULL OR trim(COALESCE(t.wayfinder_spot_id, '')) = '')`
+        );
     }
     if (kindRaw === "__unset__") {
         conditions.push(
@@ -988,7 +1030,7 @@ async function assertAdminRole() {
 }
 
 /**
- * 제품명·할당 모드(링크유-펫/메모리/키즈/러기지)·BLE MAC 관리 (출고 전·운영 중)
+ * 제품명·할당 모드(링크유-펫/메모리/키즈/러기지)·BLE MAC·동행 스팟 연결 관리 (출고 전·운영 중)
  */
 export async function updateTagProductProfile(
     tagId: string,
@@ -996,32 +1038,99 @@ export async function updateTagProductProfile(
         product_name: string | null;
         assigned_subject_kind: string | null;
         ble_mac: string | null;
+        /**
+         * 동행 스팟: `null`·빈 문자열 = 연결 해제.
+         * 키를 생략하면 `wayfinder_spot_id` 컬럼은 변경하지 않음(구 클라이언트 호환).
+         */
+        wayfinder_spot_id?: string | null;
     }
 ) {
-    await assertAdminRole();
+    const scope = await resolveAdminScope("admin");
     const db = getDB();
     const id = normalizeTagUid(tagId);
+    if (!isValidTagUidFormat(id)) {
+        throw new Error("UID 형식이 올바르지 않습니다.");
+    }
+
+    type TableInfoRow = { name?: string | null };
+    const tableInfo = await db
+        .prepare("PRAGMA table_info(tags)")
+        .all<TableInfoRow>()
+        .catch(() => ({ results: [] as TableInfoRow[] }));
+    const tagColumns = new Set(
+        (tableInfo.results ?? [])
+            .map((row) => (typeof row.name === "string" ? row.name : ""))
+            .filter((v) => v.length > 0)
+    );
+    const hasWayfinderSpotColumn = tagColumns.has("wayfinder_spot_id");
+
+    const row = await db
+        .prepare("SELECT id, pet_id, tenant_id FROM tags WHERE id = ?")
+        .bind(id)
+        .first<{ id: string; pet_id: string | null; tenant_id: string | null }>();
+    if (!row) {
+        throw new Error("태그를 찾을 수 없습니다.");
+    }
+
+    if (!scope.actor.isPlatformAdmin) {
+        const tid = (row.tenant_id ?? "").trim();
+        if (!tid || !scope.tenantIds?.includes(tid)) {
+            throw new Error("이 태그를 수정할 권한이 없습니다.");
+        }
+    }
+
     const productName = payload.product_name?.trim() || null;
     const modeRaw = payload.assigned_subject_kind;
-    const mode: string | null =
+    const modeFromPayload: string | null =
         !modeRaw || !String(modeRaw).trim()
             ? null
             : parseSubjectKind(String(modeRaw));
     const mac = payload.ble_mac?.trim() ? normalizeBleMac(payload.ble_mac) : null;
 
-    await db
-        .prepare(
-            `UPDATE tags SET product_name = ?, assigned_subject_kind = ?, ble_mac = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
-        )
-        .bind(productName, mode, mac, id)
-        .run()
-        .catch((e: Error) => {
-            throw new Error(
-                e.message?.includes("no such column")
-                    ? "DB 마이그레이션(product_name, assigned_subject_kind)을 적용해 주세요."
-                    : e.message
+    let modeToStore = modeFromPayload;
+    let wayfinderBind: string | null | undefined = undefined;
+
+    if (hasWayfinderSpotColumn && "wayfinder_spot_id" in payload) {
+        const trimmedWf =
+            payload.wayfinder_spot_id == null ? "" : String(payload.wayfinder_spot_id).trim();
+        if (!trimmedWf) {
+            wayfinderBind = null;
+        } else {
+            const wf = await resolveWayfinderSpotForInventoryTagLink(
+                db,
+                scope,
+                trimmedWf,
+                hasWayfinderSpotColumn
             );
-        });
+            wayfinderBind = wf.id;
+            modeToStore = parseSubjectKind(wf.subject_kind);
+        }
+    }
+
+    const runUpdate = async () => {
+        if (hasWayfinderSpotColumn && wayfinderBind !== undefined) {
+            return db
+                .prepare(
+                    `UPDATE tags SET product_name = ?, assigned_subject_kind = ?, ble_mac = ?, wayfinder_spot_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+                )
+                .bind(productName, modeToStore, mac, wayfinderBind, id)
+                .run();
+        }
+        return db
+            .prepare(
+                `UPDATE tags SET product_name = ?, assigned_subject_kind = ?, ble_mac = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+            )
+            .bind(productName, modeToStore, mac, id)
+            .run();
+    };
+
+    await runUpdate().catch((e: Error) => {
+        throw new Error(
+            e.message?.includes("no such column")
+                ? "DB 마이그레이션(product_name, assigned_subject_kind, wayfinder_spot_id)을 적용해 주세요."
+                : e.message
+        );
+    });
 
     revalidatePath("/admin/tags");
     revalidatePath("/admin/nfc-tags");
@@ -1087,12 +1196,15 @@ const NFC_WRITE_ACTION = "nfc_web_write";
 const NFC_READ_ACTION = "nfc_web_read";
 const NFC_NATIVE_HANDOFF_ACTION = "nfc_native_handoff";
 
+export type PrepareNfcTagWriteResult =
+    | { ok: true; tagId: string; url: string; warnings?: NdefWriteWayfinderWarning[] }
+    | { ok: false; error: string };
+
 /**
  * Web NFC로 기록할 공개 URL을 반환합니다. 태그가 DB에 등록된 경우에만 허용합니다.
+ * 미발행 동행 스팟은 URL을 반환하되 warnings에 담깁니다(클라이언트에서 확인 후 기록).
  */
-export async function prepareNfcTagWrite(tagIdRaw: string): Promise<
-    { ok: true; tagId: string; url: string } | { ok: false; error: string }
-> {
+export async function prepareNfcTagWrite(tagIdRaw: string): Promise<PrepareNfcTagWriteResult> {
     const scope = await resolveAdminScope("admin");
     const id = normalizeTagUid(tagIdRaw);
     if (!isValidTagUidFormat(id)) {
@@ -1110,7 +1222,7 @@ export async function prepareNfcTagWrite(tagIdRaw: string): Promise<
             ? db
                   .prepare(
                       `SELECT t.id AS tag_id, t.wayfinder_spot_id AS wf_spot,
-                              w.slug AS wf_slug, w.is_published AS wf_pub
+                              w.slug AS wf_slug, w.is_published AS wf_pub, w.title AS wf_title
                        FROM tags t
                        LEFT JOIN wayfinder_spots w ON w.id = t.wayfinder_spot_id
                        WHERE t.id = ?`
@@ -1119,37 +1231,41 @@ export async function prepareNfcTagWrite(tagIdRaw: string): Promise<
             : db
                   .prepare(
                       `SELECT t.id AS tag_id, t.wayfinder_spot_id AS wf_spot,
-                              w.slug AS wf_slug, w.is_published AS wf_pub
+                              w.slug AS wf_slug, w.is_published AS wf_pub, w.title AS wf_title
                        FROM tags t
                        LEFT JOIN wayfinder_spots w ON w.id = t.wayfinder_spot_id
                        WHERE t.id = ?
                          AND t.tenant_id IN (${scope.tenantIds.map(() => "?").join(", ")})`
                   )
                   .bind(id, ...scope.tenantIds)
-    ).first<{ tag_id: string; wf_spot: string | null; wf_slug: string | null; wf_pub: number | null }>();
+    ).first<{
+        tag_id: string;
+        wf_spot: string | null;
+        wf_slug: string | null;
+        wf_pub: number | null;
+        wf_title: string | null;
+    }>();
     if (!row) {
         return { ok: false, error: "등록되지 않은 태그입니다. 먼저 태그를 인벤토리에 등록하세요." };
     }
-    const built = computeNdefWriteUrlForInventoryTag(base, id, row);
+    const built = computeNdefWriteUrlForInventoryTag(base, id, row, {
+        allowUnpublishedWayfinder: true,
+    });
     if (!built.ok) {
         return { ok: false, error: built.error };
     }
-    return { ok: true, tagId: id, url: built.url };
+    return {
+        ok: true,
+        tagId: id,
+        url: built.url,
+        ...(built.warnings?.length ? { warnings: built.warnings } : {}),
+    };
 }
 
 const WAYFINDER_SPOT_PICK_LIMIT = 400;
 
 /** 대량 등록(동행 스팟 연결)용 스팟 선택 목록 */
-export async function listWayfinderSpotsForAdminTagLink(): Promise<
-    Array<{
-        id: string;
-        slug: string;
-        title: string;
-        tenant_id: string | null;
-        is_published: number;
-        subject_kind: string;
-    }>
-> {
+export async function listWayfinderSpotsForAdminTagLink(): Promise<AdminWayfinderSpotPickRow[]> {
     const scope = await resolveAdminScope("admin");
     const db = getDB();
     if (scope.actor.isPlatformAdmin || !scope.tenantIds || scope.tenantIds.length === 0) {
@@ -1293,6 +1409,14 @@ export type PrepareNfcNativeHandoffResult =
 export async function prepareNfcNativeHandoff(tagIdRaw: string): Promise<PrepareNfcNativeHandoffResult> {
     const prep = await prepareNfcTagWrite(tagIdRaw);
     if (!prep.ok) return prep;
+    if (prep.warnings?.some((w) => w.code === "wayfinder_unpublished")) {
+        const w = prep.warnings.find((x) => x.code === "wayfinder_unpublished");
+        return {
+            ok: false,
+            error:
+                `${w?.message ?? "동행 스팟이 미발행입니다."} 앱 핸드오프는 발행된 스팟만 지원합니다. 스팟을 발행하거나 Web NFC(확인 후 기록)를 사용하세요.`,
+        };
+    }
     const handoffSecret = process.env.NFC_NATIVE_HANDOFF_SECRET?.trim();
     if (!handoffSecret) {
         return { ok: false, error: "NFC_NATIVE_HANDOFF_SECRET이 설정되지 않았습니다." };
