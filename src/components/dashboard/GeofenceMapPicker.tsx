@@ -269,8 +269,9 @@ export function GeofenceMapPicker({
               지도를 쓰려면 Kakao Map JavaScript 키가 필요합니다
             </div>
             <p className="text-[11px] font-semibold leading-relaxed text-amber-800/90">
-              아래에서 위도·경도·반경을 직접 입력하거나, Cloudflare에 NEXT_PUBLIC_KAKAO_MAP_JS_KEY(또는
-              …_KAKAO_MAP_KEY)를 설정해 주세요.
+              아래에서 위도·경도·반경을 직접 입력하거나, Cloudflare Pages 환경 변수에{" "}
+              <span className="font-mono">KAKAO_MAP_JS_KEY</span>(권장) 또는{" "}
+              <span className="font-mono">NEXT_PUBLIC_KAKAO_MAP_JS_KEY</span>를 설정한 뒤 재배포해 주세요.
             </p>
           </div>
         )}

@@ -17,6 +17,7 @@ import {
   LayoutGrid,
   ScanLine,
   WalletCards,
+  Navigation2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
@@ -35,6 +36,7 @@ import { getUserConsentStatus } from "@/lib/privacy-consent";
 import { getDashboardPathForUserTenant } from "@/lib/mode-visibility";
 import type { D1Database } from "@cloudflare/workers-types";
 import { isPasswordChangeRequired } from "@/lib/password-change";
+import { isWayfinderEnabled } from "@/lib/wayfinder/feature";
 
 export const runtime = "edge";
 
@@ -439,7 +441,12 @@ export default async function HubPage({
           </div>
         </nav>
 
-        <div className="grid grid-cols-1 min-[430px]:grid-cols-2 gap-2">
+        <div
+          className={cn(
+            "grid grid-cols-1 gap-2",
+            isWayfinderEnabled() ? "min-[430px]:grid-cols-3" : "min-[430px]:grid-cols-2"
+          )}
+        >
           <a
             href={`/shop?kind=${encodeURIComponent(hubVisibleKinds[0] ?? "pet")}`}
             className="flex items-center gap-3 rounded-2xl border border-teal-200 bg-gradient-to-r from-white to-teal-50/90 p-4 shadow-sm transition hover:border-teal-300 hover:shadow-md active:scale-[0.99]"
@@ -466,6 +473,21 @@ export default async function HubPage({
             </div>
             <ChevronRight className="h-5 w-5 text-slate-300 shrink-0" />
           </a>
+          {isWayfinderEnabled() ? (
+            <a
+              href={`${onboardingDashboardHref}/wayfinder`}
+              className="flex items-center gap-3 rounded-2xl border border-violet-200 bg-gradient-to-r from-white to-violet-50/70 p-4 shadow-sm transition hover:border-violet-300 hover:shadow-md active:scale-[0.99]"
+            >
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-violet-100 text-violet-700">
+                <Navigation2 className="h-6 w-6" aria-hidden />
+              </div>
+              <div className="min-w-0 flex-1 text-left">
+                <p className="text-[10px] font-black uppercase tracking-widest text-violet-600">Wayfinder</p>
+                <p className="text-[13px] font-black text-slate-900 leading-snug">정밀 장소 안내</p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-slate-300 shrink-0" />
+            </a>
+          ) : null}
         </div>
 
         {billingMessage && (

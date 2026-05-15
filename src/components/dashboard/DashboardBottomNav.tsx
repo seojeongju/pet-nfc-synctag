@@ -1,8 +1,19 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import type { LucideIcon } from "lucide-react";
-import { Baby, Briefcase, Gem, History, Home, LogOut, MapPin, PawPrint, UserRound } from "lucide-react";
+import {
+  Baby,
+  Briefcase,
+  Gem,
+  History,
+  Home,
+  LogOut,
+  MapPin,
+  Navigation2,
+  PawPrint,
+  UserRound,
+  type LucideIcon,
+} from "lucide-react";
 import { parseSubjectKind, type SubjectKind } from "@/lib/subject-kind";
 import { subjectKindFromDashboardPathname } from "@/lib/dashboard-path-kind";
 import { useDashboardNavSearchSnapshot } from "@/hooks/use-dashboard-nav-search-snapshot";
@@ -13,7 +24,9 @@ import {
   isDashboardHome,
   isDashboardPets,
   isDashboardScans,
+  isDashboardWayfinder,
 } from "@/lib/dashboard-nav-active";
+import { isWayfinderEnabled } from "@/lib/wayfinder/feature";
 
 const subjectAvatars: Record<SubjectKind, LucideIcon> = {
   pet: PawPrint,
@@ -41,10 +54,15 @@ export function DashboardBottomNav() {
   const pets = isDashboardPets(pathname);
   const scans = isDashboardScans(pathname);
   const geofences = isDashboardGeofences(pathname);
+  const wayfinder = isDashboardWayfinder(pathname);
+  const wayfinderOn = isWayfinderEnabled();
 
   return (
     <nav
-      className="pointer-events-auto fixed bottom-4 left-1/2 z-50 flex h-[4.25rem] w-[min(100%,24rem)] max-w-[96vw] -translate-x-1/2 items-center justify-around rounded-[28px] border border-white/20 bg-slate-900/85 px-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.35)] backdrop-blur-md supports-[backdrop-filter]:bg-slate-900/75 min-[400px]:px-3"
+      className={cn(
+        "pointer-events-auto fixed bottom-4 left-1/2 z-50 flex h-[4.25rem] max-w-[96vw] -translate-x-1/2 items-center justify-around rounded-[28px] border border-white/20 bg-slate-900/85 px-1 shadow-[0_20px_50px_rgba(0,0,0,0.35)] backdrop-blur-md supports-[backdrop-filter]:bg-slate-900/75 min-[400px]:px-2",
+        wayfinderOn ? "w-[min(100%,28rem)]" : "w-[min(100%,24rem)]"
+      )}
       aria-label="대시보드 하단 메뉴"
     >
       <a
@@ -90,6 +108,19 @@ export function DashboardBottomNav() {
         </div>
         <span className={dashboardBottomLabelClass(geofences)}>안심</span>
       </a>
+
+      {wayfinderOn ? (
+        <a
+          href={`/dashboard/${kind}/wayfinder${tenantQs}`}
+          className="group flex min-w-0 flex-1 flex-col items-center gap-0.5 py-1"
+          aria-current={wayfinder ? "page" : undefined}
+        >
+          <div className={cn(dashboardBottomIconWrap(wayfinder))}>
+            <Navigation2 className="h-5 w-5 min-[400px]:h-6 min-[400px]:w-6" aria-hidden />
+          </div>
+          <span className={dashboardBottomLabelClass(wayfinder)}>Wayfinder</span>
+        </a>
+      ) : null}
 
       <a
         href={`/logout?kind=${encodeURIComponent(kind)}`}

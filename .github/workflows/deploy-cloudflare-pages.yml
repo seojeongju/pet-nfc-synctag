@@ -1,6 +1,6 @@
 # Deploy: lint, typecheck, Next build + next-on-pages, wrangler pages deploy.
 # Repo secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
-# Repo secrets/variables: NEXT_PUBLIC_KAKAO_MAP_JS_KEY — 카카오맵 JS 키 (NEXT_PUBLIC_* 는 CI 빌드 시 인라인됨)
+# Repo secrets/variables: NEXT_PUBLIC_KAKAO_MAP_JS_KEY — 카카오맵 JS 키 (CI 빌드 시 인라인). 또는 Pages에만 KAKAO_MAP_JS_KEY 설정
 # Repo variables (권장): NEXT_PUBLIC_NFC_NATIVE_HANDOFF_ENABLED, NEXT_PUBLIC_NFC_NATIVE_APP_STORE_URL, NEXT_PUBLIC_APP_URL
 # Repo variables (선택): GOOGLE_SITE_VERIFICATION, NAVER_SITE_VERIFICATION
 # Cloudflare Pages 대시보드(Production 런타임): NFC_NATIVE_HANDOFF_SECRET — GitHub에 넣지 말고 Pages 환경 변수(암호화)에만

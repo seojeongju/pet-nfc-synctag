@@ -22,20 +22,29 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 
 ## Environment Variables
 
-Create `.env.local` in the project root and set the Kakao Maps JavaScript key:
+Create `.env.local` in the project root and set the Kakao Maps **JavaScript** key (from [Kakao Developers](https://developers.kakao.com/) → My Application → App Keys → **JavaScript key**).
 
 ```env
+# Either is enough for `/api/kakao-map-config` (used by geofence / live maps):
+KAKAO_MAP_JS_KEY=your_kakao_javascript_key_here
+# or:
 NEXT_PUBLIC_KAKAO_MAP_JS_KEY=your_kakao_javascript_key_here
 ```
 
 For backward compatibility, `NEXT_PUBLIC_KAKAO_MAP_KEY` is also supported.
 
+### Production (Cloudflare Pages)
+
+`/api/kakao-map-config` reads, in order: **`KAKAO_MAP_JS_KEY`** → `NEXT_PUBLIC_KAKAO_MAP_JS_KEY` → `NEXT_PUBLIC_KAKAO_MAP_KEY` (from the Worker `env` object, then `process.env`).
+
+**Recommended:** set **`KAKAO_MAP_JS_KEY`** in **Cloudflare Dashboard → Workers & Pages → your project → Settings → Environment variables → Production** to the same value as the Kakao **JavaScript** key. Then **redeploy** (or trigger a new deployment) so the variable is applied. This avoids relying on the key being present only at GitHub Actions build time.
+
 ### Production (GitHub Actions → Cloudflare Pages)
 
 `NEXT_PUBLIC_*` values are inlined at **build time** when CI runs `npm run build`.  
-Setting the key only in the Cloudflare dashboard does **not** inject it into that GitHub Actions build, which can cause `sdk.js` to return **401** in the browser.
+If the key exists only in the Cloudflare dashboard and **not** in the GitHub Actions environment for `npm run build`, some client bundles may still miss it—but **`KAKAO_MAP_JS_KEY` in Pages** is enough for map config served by `/api/kakao-map-config`.
 
-Add the same key in the GitHub repository:
+Add the same key in the GitHub repository if you also want it at build time:
 
 **Settings → Secrets and variables → Actions** → **Secrets** or **Variables** →  
 name: `NEXT_PUBLIC_KAKAO_MAP_JS_KEY`, value: your Kakao **JavaScript** key.

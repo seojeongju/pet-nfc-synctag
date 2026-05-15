@@ -12,6 +12,7 @@ import {
   Images,
   Store,
   LayoutGrid,
+  Navigation2,
 } from "lucide-react";
 import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
 import { subjectKindFromDashboardPathname } from "@/lib/dashboard-path-kind";
@@ -28,7 +29,9 @@ import {
   isDashboardNfc,
   isDashboardPets,
   isDashboardScans,
+  isDashboardWayfinder,
 } from "@/lib/dashboard-nav-active";
+import { isWayfinderEnabled } from "@/lib/wayfinder/feature";
 
 type DashboardNavBarProps = {
   session: FlowTopNavSession;
@@ -54,7 +57,9 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
   const dashGeo = isDashboardGeofences(pathname);
   const dashAlbums = isDashboardAlbums(pathname);
   const dashNfc = isDashboardNfc(pathname);
+  const dashWayfinder = isDashboardWayfinder(pathname);
   const dashStore = pathname === "/shop" || pathname.startsWith("/shop/");
+  const wayfinderOn = isWayfinderEnabled();
 
   const navItems = [
     {
@@ -75,6 +80,16 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
       active: dashNfc,
       Icon: NotebookPen,
     },
+    ...(wayfinderOn
+      ? ([
+          {
+            href: `/dashboard/${kind}/wayfinder${tenantQs}`,
+            label: "Wayfinder",
+            active: dashWayfinder,
+            Icon: Navigation2,
+          },
+        ] as const)
+      : []),
     {
       href: `/dashboard/${kind}/scans${tenantQs}`,
       label: "스캔기록",

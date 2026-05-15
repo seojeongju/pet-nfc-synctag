@@ -4,6 +4,8 @@ declare global {
   interface CloudflareEnv {
     DB: D1Database;
     R2: R2Bucket;
+    /** 카카오맵 JS 앱키. Pages 대시보드에만 넣어도 `/api/kakao-map-config`에서 사용(값은 Kakao 개발자 콘솔의 JavaScript 키와 동일). */
+    KAKAO_MAP_JS_KEY?: string;
     NEXT_PUBLIC_KAKAO_MAP_JS_KEY?: string;
     NEXT_PUBLIC_KAKAO_MAP_KEY?: string;
     GOOGLE_SITE_VERIFICATION?: string;

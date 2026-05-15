@@ -967,8 +967,8 @@ export default function LiveLocationMap({
                     </div>
                     <p className="text-[10px] text-amber-700 font-bold leading-relaxed">
                         카카오맵 API 키(
-                        NEXT_PUBLIC_KAKAO_MAP_JS_KEY 또는 NEXT_PUBLIC_KAKAO_MAP_KEY)가 설정되지 않았습니다.<br />
-                        Cloudflare Pages 환경 변수를 확인해 주세요.
+                        KAKAO_MAP_JS_KEY 또는 NEXT_PUBLIC_KAKAO_MAP_JS_KEY 등)가 설정되지 않았습니다.<br />
+                        Cloudflare Pages 환경 변수를 확인한 뒤 재배포해 주세요.
                     </p>
                 </div>
             ) : configStatus === "error" ? (
