@@ -7,6 +7,10 @@ import { WayfinderMainExperience } from "@/components/wayfinder/WayfinderMainExp
 import { resolveWayfinderNfcEntry } from "@/lib/wayfinder/resolve-nfc-entry";
 import type { WayfinderCompanionEntryQuery } from "@/lib/wayfinder/companion-url";
 
+/** @cloudflare/next-on-pages: 동적 라우트는 Edge 런타임 필요 */
+export const runtime = "edge";
+export const dynamic = "force-dynamic";
+
 export const metadata = buildPublicMetadata({
   title: `${linkuCompanionMenuTitle} | ${linkuCompanionServiceDescription}`,
   description: `GPS로 근처 지하철역을 찾고, 교통약자 맞춤 이동 경로를 카카오맵으로 안내합니다.`,
