@@ -242,7 +242,7 @@ export function WayfinderNearbyStations({ nfcEntry = false }: Props) {
 
       {phase === "ready" && !loadingStations && !fetchError && stations.length === 0 ? (
         <p className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-600">
-          근처에 등록된 파일럿 역이 없습니다. 서비스 지역을 확대 중입니다.
+          25km 이내에 검색된 지하철역이 없습니다. 수도권 외 지역이거나 위치를 다시 확인해 주세요.
         </p>
       ) : null}
     </section>
