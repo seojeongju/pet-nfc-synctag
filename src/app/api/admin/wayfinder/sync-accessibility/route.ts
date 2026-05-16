@@ -4,7 +4,11 @@ import { getAuth } from "@/lib/auth";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
 import { getWayfinderStationById } from "@/lib/wayfinder-stations-db";
 import {
-  syncAllActiveWayfinderStationsAccessibility,
+  getDedupedMetroStationsForSync,
+  METRO_SYNC_DEFAULT_BATCH_SIZE,
+  METRO_SYNC_MAX_BATCH_SIZE,
+  syncMetroStationsAccessibilityBatch,
+  syncPilotWayfinderStationsAccessibility,
   syncWayfinderStationAccessibility,
 } from "@/lib/wayfinder/sync-station-accessibility";
 
@@ -32,7 +36,10 @@ async function requirePlatformAdmin(request: Request) {
 
 /**
  * 공공데이터(서울교통공사 교통약자이용정보) → D1 wayfinder_station_facilities 동기화.
- * POST body: { stationId?: string, limit?: number }
+ * POST body:
+ * - { stationId } — 단일 역
+ * - { scope: "pilot" } — D1 파일럿 4역
+ * - { scope: "metro", offset?, batchSize? } — 수도권 전체(역명 중복 제거) 배치
  */
 export async function POST(request: Request) {
   const authz = await requirePlatformAdmin(request);
@@ -58,7 +65,16 @@ export async function POST(request: Request) {
   }
 
   const stationId = typeof body.stationId === "string" ? body.stationId.trim() : "";
-  const limit =
+  const scope = body.scope === "metro" ? "metro" : body.scope === "pilot" ? "pilot" : "";
+  const offset =
+    typeof body.offset === "number" && Number.isFinite(body.offset)
+      ? Math.max(0, Math.floor(body.offset))
+      : 0;
+  const batchSize =
+    typeof body.batchSize === "number" && Number.isFinite(body.batchSize)
+      ? Math.min(METRO_SYNC_MAX_BATCH_SIZE, Math.max(1, Math.floor(body.batchSize)))
+      : METRO_SYNC_DEFAULT_BATCH_SIZE;
+  const pilotLimit =
     typeof body.limit === "number" && Number.isFinite(body.limit)
       ? Math.min(50, Math.max(1, Math.floor(body.limit)))
       : undefined;
@@ -72,13 +88,55 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Station not found" }, { status: 404 });
       }
       const result = await syncWayfinderStationAccessibility(db, station, apiKey);
-      return NextResponse.json({ ok: true, results: [result] });
+      return NextResponse.json({
+        ok: true,
+        results: [result],
+        meta: { scope: "single" as const, total: 1, offset: 0, batchSize: 1, nextOffset: null, done: true },
+      });
     }
 
-    const results = await syncAllActiveWayfinderStationsAccessibility(db, apiKey, { limit });
-    return NextResponse.json({ ok: true, results });
+    if (scope === "metro") {
+      const { results, meta } = await syncMetroStationsAccessibilityBatch(db, apiKey, {
+        offset,
+        batchSize,
+      });
+      const facilitiesTotal = results.reduce((n, r) => n + r.upserted, 0);
+      return NextResponse.json({
+        ok: true,
+        results,
+        meta,
+        summary: {
+          facilitiesUpserted: facilitiesTotal,
+          stationsWithErrors: results.filter((r) => r.errors.length > 0).length,
+        },
+      });
+    }
+
+    const { results, meta } = await syncPilotWayfinderStationsAccessibility(db, apiKey, {
+      limit: pilotLimit,
+    });
+    return NextResponse.json({ ok: true, results, meta });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ error: "Sync failed", detail: msg }, { status: 500 });
   }
+}
+
+/** 동기화 대상 역 수 (UI용) */
+export async function GET(request: Request) {
+  const authz = await requirePlatformAdmin(request);
+  if ("error" in authz) return authz.error;
+
+  const pilot = await authz.context.env.DB.prepare(
+    `SELECT COUNT(*) AS c FROM wayfinder_stations WHERE is_active = 1`
+  )
+    .first<{ c: number }>()
+    .catch(() => ({ c: 4 }));
+
+  return NextResponse.json({
+    pilotStationCount: pilot?.c ?? 4,
+    metroStationCount: getDedupedMetroStationsForSync().length,
+    metroBatchDefault: METRO_SYNC_DEFAULT_BATCH_SIZE,
+    metroBatchMax: METRO_SYNC_MAX_BATCH_SIZE,
+  });
 }

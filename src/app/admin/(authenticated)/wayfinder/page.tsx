@@ -6,6 +6,7 @@ import {
   WayfinderAccessibilitySyncCard,
   type WayfinderSyncStationOption,
 } from "@/components/admin/wayfinder/WayfinderAccessibilitySyncCard";
+import { getDedupedMetroStationsForSync } from "@/lib/wayfinder/sync-station-accessibility";
 import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
 
@@ -47,7 +48,7 @@ export default async function AdminWayfinderPage() {
         <div className="mb-8 space-y-6">
           <AdminPageIntro
             title="링크유-동행 · 교통약자 시설"
-            subtitle="공공데이터 API로 지하철역 편의시설을 D1에 동기화합니다. 동기화 후 방문자 역 상세에 엘리베이터·화장실 등이 표시됩니다."
+            subtitle="수도권 전체 역(역명 중복 제거) 또는 파일럿·단일 역 단위로 공공데이터 편의시설을 D1에 동기화합니다."
             crumbs={[
               { label: "관리자", href: "/admin" },
               { label: "Pet-ID NFC", href: "/admin/nfc-tags" },
@@ -55,7 +56,10 @@ export default async function AdminWayfinderPage() {
             ]}
           />
         </div>
-        <WayfinderAccessibilitySyncCard stations={stations} />
+        <WayfinderAccessibilitySyncCard
+          stations={stations}
+          initialMetroStationCount={getDedupedMetroStationsForSync().length}
+        />
       </div>
     </div>
   );

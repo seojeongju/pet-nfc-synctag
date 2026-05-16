@@ -1,5 +1,6 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import type { WayfinderStationRow } from "@/lib/wayfinder-stations-db";
+import { SEOUL_METRO_STATIONS } from "@/lib/wayfinder/seoul-metro-stations";
 import {
   buildUpsertFromDraft,
   replaceWayfinderStationFacilities,
@@ -20,6 +21,36 @@ export type SyncAccessibilityResult = {
   operations: { operation: string; itemCount: number; skipped?: string }[];
   errors: string[];
 };
+
+export type SyncAccessibilityBatchMeta = {
+  scope: "pilot" | "metro";
+  total: number;
+  offset: number;
+  batchSize: number;
+  nextOffset: number | null;
+  done: boolean;
+};
+
+/** Edge 타임아웃·공공 API 일일 한도 고려 (한 요청당 역 수) */
+export const METRO_SYNC_DEFAULT_BATCH_SIZE = 8;
+export const METRO_SYNC_MAX_BATCH_SIZE = 15;
+
+let dedupedMetroStationsCache: Pick<WayfinderStationRow, "id" | "name">[] | null = null;
+
+/** 수도권 역 목록(CC0) — 역명 중복 제거(환승·복수 노선) */
+export function getDedupedMetroStationsForSync(): Pick<WayfinderStationRow, "id" | "name">[] {
+  if (dedupedMetroStationsCache) return dedupedMetroStationsCache;
+  const seen = new Set<string>();
+  const out: Pick<WayfinderStationRow, "id" | "name">[] = [];
+  for (const r of SEOUL_METRO_STATIONS) {
+    const key = r.name.replace(/\s/g, "");
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push({ id: r.id, name: r.name });
+  }
+  dedupedMetroStationsCache = out;
+  return out;
+}
 
 export async function syncWayfinderStationAccessibility(
   db: D1Database,
@@ -75,20 +106,24 @@ export async function syncWayfinderStationAccessibility(
   };
 }
 
-export async function syncAllActiveWayfinderStationsAccessibility(
-  db: D1Database,
-  apiKey: string,
-  options?: { stationIds?: string[]; limit?: number }
-): Promise<SyncAccessibilityResult[]> {
-  let stations: Pick<WayfinderStationRow, "id" | "name">[] = [];
+async function listPilotStationsFromD1(db: D1Database): Promise<Pick<WayfinderStationRow, "id" | "name">[]> {
   try {
     const { results } = await db
       .prepare(`SELECT id, name FROM wayfinder_stations WHERE is_active = 1 ORDER BY name ASC`)
       .all<{ id: string; name: string }>();
-    stations = results ?? [];
+    return results ?? [];
   } catch {
-    stations = [];
+    return [];
   }
+}
+
+/** D1 wayfinder_stations 시드(파일럿 4역)만 동기화 */
+export async function syncPilotWayfinderStationsAccessibility(
+  db: D1Database,
+  apiKey: string,
+  options?: { stationIds?: string[]; limit?: number }
+): Promise<{ results: SyncAccessibilityResult[]; meta: SyncAccessibilityBatchMeta }> {
+  let stations = await listPilotStationsFromD1(db);
 
   if (options?.stationIds?.length) {
     const idSet = new Set(options.stationIds);
@@ -97,9 +132,66 @@ export async function syncAllActiveWayfinderStationsAccessibility(
 
   const limit = options?.limit ?? stations.length;
   const slice = stations.slice(0, limit);
-  const out: SyncAccessibilityResult[] = [];
+  const results: SyncAccessibilityResult[] = [];
   for (const s of slice) {
-    out.push(await syncWayfinderStationAccessibility(db, s, apiKey));
+    results.push(await syncWayfinderStationAccessibility(db, s, apiKey));
   }
-  return out;
+
+  return {
+    results,
+    meta: {
+      scope: "pilot",
+      total: stations.length,
+      offset: 0,
+      batchSize: slice.length,
+      nextOffset: null,
+      done: true,
+    },
+  };
+}
+
+/** 수도권 전체 역(CC0 목록) — offset·batchSize로 나눠 동기화 */
+export async function syncMetroStationsAccessibilityBatch(
+  db: D1Database,
+  apiKey: string,
+  options?: { offset?: number; batchSize?: number }
+): Promise<{ results: SyncAccessibilityResult[]; meta: SyncAccessibilityBatchMeta }> {
+  const all = getDedupedMetroStationsForSync();
+  const total = all.length;
+  const offset = Math.max(0, Math.floor(options?.offset ?? 0));
+  const batchSize = Math.min(
+    METRO_SYNC_MAX_BATCH_SIZE,
+    Math.max(1, Math.floor(options?.batchSize ?? METRO_SYNC_DEFAULT_BATCH_SIZE))
+  );
+  const slice = all.slice(offset, offset + batchSize);
+  const results: SyncAccessibilityResult[] = [];
+
+  for (const s of slice) {
+    results.push(await syncWayfinderStationAccessibility(db, s, apiKey));
+  }
+
+  const nextOffset = offset + slice.length;
+  const done = nextOffset >= total;
+
+  return {
+    results,
+    meta: {
+      scope: "metro",
+      total,
+      offset,
+      batchSize: slice.length,
+      nextOffset: done ? null : nextOffset,
+      done,
+    },
+  };
+}
+
+/** @deprecated pilot 전용 — syncPilotWayfinderStationsAccessibility 사용 */
+export async function syncAllActiveWayfinderStationsAccessibility(
+  db: D1Database,
+  apiKey: string,
+  options?: { stationIds?: string[]; limit?: number }
+): Promise<SyncAccessibilityResult[]> {
+  const { results } = await syncPilotWayfinderStationsAccessibility(db, apiKey, options);
+  return results;
 }
