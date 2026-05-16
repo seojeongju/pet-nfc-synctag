@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { Accessibility, ArrowRight, MapPin, Navigation2, TrainFront } from "lucide-react";
+import { ArrowRight, MapPin, Navigation2, TrainFront } from "lucide-react";
 import { linkuCompanionMenuTitle, linkuCompanionSpotSubLabel } from "@/lib/wayfinder/copy";
+import type { WayfinderFacilityPublic } from "@/lib/wayfinder/facility-types";
+import { WayfinderStationAccessibility } from "@/components/wayfinder/WayfinderStationAccessibility";
 import { WayfinderStationMap } from "@/components/wayfinder/WayfinderStationMap";
 
 type Props = {
@@ -10,9 +12,22 @@ type Props = {
   longitude: number;
   mapHref: string;
   routeHref: string;
+  facilities: WayfinderFacilityPublic[];
+  facilitiesSource: "d1" | "pilot_seed";
+  facilitiesSyncedAt: string | null;
 };
 
-export function WayfinderStationDetail({ name, lines, latitude, longitude, mapHref, routeHref }: Props) {
+export function WayfinderStationDetail({
+  name,
+  lines,
+  latitude,
+  longitude,
+  mapHref,
+  routeHref,
+  facilities,
+  facilitiesSource,
+  facilitiesSyncedAt,
+}: Props) {
   return (
     <div className="space-y-6">
       <header className="space-y-3">
@@ -52,20 +67,11 @@ export function WayfinderStationDetail({ name, lines, latitude, longitude, mapHr
 
       <WayfinderStationMap latitude={latitude} longitude={longitude} label={name} />
 
-      <section
-        className="rounded-2xl border border-teal-100 bg-teal-50/60 p-4"
-        aria-label="교통약자 안내"
-      >
-        <p className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-teal-800">
-          <Accessibility className="h-4 w-4" aria-hidden />
-          교통약자 참고
-        </p>
-        <ul className="space-y-1.5 text-xs font-semibold leading-relaxed text-teal-950/90">
-          <li>· 엘리베이터·에스컬레이터 위치 안내는 곧 역별로 추가됩니다.</li>
-          <li>· 긴급 시 역 직원·안내 데스크(132) 또는 119에 연락하세요.</li>
-          <li>· NFC로 설치된 지점 안내가 있으면 해당 태그를 스캔해 보조 안내를 받을 수 있습니다.</li>
-        </ul>
-      </section>
+      <WayfinderStationAccessibility
+        facilities={facilities}
+        dataSource={facilitiesSource}
+        syncedAt={facilitiesSyncedAt}
+      />
 
       <details className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-xs font-semibold text-slate-600">
         <summary className="cursor-pointer font-black text-slate-700">보조: {linkuCompanionSpotSubLabel}</summary>

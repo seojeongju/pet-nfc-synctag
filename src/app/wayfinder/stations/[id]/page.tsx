@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { getCfRequestContext } from "@/lib/cf-request-context";
+import { listWayfinderStationFacilities } from "@/lib/wayfinder-station-facilities-db";
 import { getWayfinderStationById } from "@/lib/wayfinder-stations-db";
+import { toPublicFacility } from "@/lib/wayfinder/facility-types";
 import { linkuCompanionMenuTitle, linkuCompanionServiceDescription } from "@/lib/wayfinder/copy";
 import { buildKakaoMapPinHref, buildKakaoMapRouteHref } from "@/lib/wayfinder/kakao-map-links";
 import { buildPublicMetadata } from "@/lib/seo";
@@ -49,6 +51,19 @@ export default async function WayfinderStationPage({ params }: PageProps) {
   const mapHref = buildKakaoMapPinHref(row.name, row.latitude, row.longitude);
   const routeHref = buildKakaoMapRouteHref(row.name, row.latitude, row.longitude);
 
+  let facilities: ReturnType<typeof toPublicFacility>[] = [];
+  let facilitiesSource: "d1" | "pilot_seed" = "pilot_seed";
+  let facilitiesSyncedAt: string | null = null;
+  try {
+    const ctx = getCfRequestContext();
+    const loaded = await listWayfinderStationFacilities(ctx.env.DB, row.id, row.name);
+    facilities = loaded.facilities.map(toPublicFacility);
+    facilitiesSource = loaded.source;
+    facilitiesSyncedAt = loaded.facilities[0]?.synced_at ?? null;
+  } catch (e) {
+    console.error("wayfinder facilities load error:", e);
+  }
+
   return (
     <WayfinderPublicShell backHref="/wayfinder" backLabel="근처 역 다시 찾기">
       <WayfinderStationDetail
@@ -58,6 +73,9 @@ export default async function WayfinderStationPage({ params }: PageProps) {
         longitude={row.longitude}
         mapHref={mapHref}
         routeHref={routeHref}
+        facilities={facilities}
+        facilitiesSource={facilitiesSource}
+        facilitiesSyncedAt={facilitiesSyncedAt}
       />
     </WayfinderPublicShell>
   );

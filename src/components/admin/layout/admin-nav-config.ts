@@ -9,6 +9,7 @@ import {
   Smartphone,
   Database,
   History,
+  Accessibility,
   Users,
   ShieldCheck,
   CreditCard,
@@ -22,7 +23,11 @@ export type NavLeaf = { href: string; label: string; icon: LucideIcon; color: st
 export type NavSection = { id: string; title: string; items: NavLeaf[] };
 
 /** 조직(테넌트) 관리자 콘솔 접속 시 숨기는 항목 — 해당 라우트는 서버에서 플랫폼 관리자만 허용 */
-const PLATFORM_ADMIN_ONLY_HREFS = new Set<string>(["/admin/tenants", "/admin/privacy"]);
+const PLATFORM_ADMIN_ONLY_HREFS = new Set<string>([
+  "/admin/tenants",
+  "/admin/privacy",
+  "/admin/wayfinder",
+]);
 
 export function getAdminNavSections(isPlatformAdmin: boolean): NavSection[] {
   if (isPlatformAdmin) return ADMIN_NAV_SECTIONS;
@@ -53,6 +58,12 @@ export const ADMIN_NAV_SECTIONS: NavSection[] = [
       { href: "/admin/nfc-tags/write-url", label: "② URL 기록", icon: Smartphone, color: "text-indigo-600" },
       { href: "/admin/nfc-tags/inventory", label: "③ 인벤토리", icon: Database, color: "text-amber-600" },
       { href: "/admin/nfc-tags/history", label: "④ 연결·감사", icon: History, color: "text-slate-600" },
+      {
+        href: "/admin/wayfinder",
+        label: "동행 · 시설 동기화",
+        icon: Accessibility,
+        color: "text-emerald-600",
+      },
     ],
   },
   {
