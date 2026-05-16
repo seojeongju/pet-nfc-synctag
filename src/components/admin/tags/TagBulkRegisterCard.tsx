@@ -60,11 +60,17 @@ async function tryWriteUrlToChip(uid: string): Promise<{ ok: boolean; error?: st
   return { ok: false, error: result.error };
 }
 
-/** 링크유-동행 태그: /wayfinder?from=nfc&tag=UID (GPS·근처 역 메인, 스팟 slug는 보조) */
+/** 링크유-동행 태그: /wayfinder?from=nfc&tag=UID (스팟 없으면 DB 등록 후에도 동일 URL) */
 async function tryWriteWayfinderUrlToChip(
   uid: string,
-  spot: Pick<AdminWayfinderSpotPickRow, "id" | "slug" | "is_published" | "title">
+  spot: Pick<AdminWayfinderSpotPickRow, "id" | "slug" | "is_published" | "title"> | null
 ): Promise<{ ok: boolean; error?: string; url?: string }> {
+  if (!spot) {
+    const url = buildWayfinderCompanionPublicUrl(appBaseUrl(), uid);
+    const write = await writeNfcUrlRecord(url);
+    if (write.ok) return { ok: true, url };
+    return { ok: false, error: write.error, url };
+  }
   const built = computeNdefWriteUrlForInventoryTag(
     appBaseUrl(),
     uid,
@@ -242,18 +248,15 @@ export function TagBulkRegisterCard() {
 
   const handleRegister = () => {
     if (registerMode === "wayfinder") {
-      const spot = wayfinderSpotId.trim();
-      if (!spot) {
-        setMessage({ type: "error", text: "동행 스팟을 선택하세요." });
-        return;
-      }
       if (!wfUids.trim()) return;
       const uidList = wfUids.split(/[\n,]+/).map(normalizeTagUid).filter((u) => u.length > 0);
       if (uidList.length === 0) return;
+      const spot = wayfinderSpotId.trim() || undefined;
       startTransition(async () => {
         try {
           const result = await registerBulkTags(uidList, {
-            wayfinderSpotId: spot,
+            ...(spot ? { wayfinderSpotId: spot } : {}),
+            linkuWayfinderInventory: true,
             existingUidBehavior,
           });
           const metaLine =
@@ -357,23 +360,17 @@ export function TagBulkRegisterCard() {
 
   const handleWayfinderNfcUid = async (uid: string, continuous: boolean) => {
     const spotId = wayfinderSpotIdRef.current.trim();
-    const spot = wfSpotsRef.current.find((s) => s.id === spotId);
-    if (!spot) {
-      appendWfUid(uid);
-      setNfcHint(
-        `[링크유-동행] UID 추가: ${uid}\n연결할 스팟을 선택한 뒤 등록하세요. (칩 URL 기록은 스팟 선택 후 스캔 시 시도)`
-      );
-      void recordNfcWebReadAudit({ success: true, source: "bulk_register", tagId: uid });
-      return;
-    }
+    const spot = wfSpotsRef.current.find((s) => s.id === spotId) ?? null;
     appendWfUid(uid);
     const writeResult = await tryWriteWayfinderUrlToChip(uid, spot);
-    const pub = Number(spot.is_published) === 1;
     if (writeResult.ok) {
-      const warn =
-        !pub ? "\n⚠️ 미발행 스팟 URL — 방문자 공개 전까지 스캔 시 안내가 보이지 않을 수 있습니다." : "";
+      const warnSpot =
+        spot && Number(spot.is_published) !== 1
+          ? "\n⚠️ 보조 스팟 미발행 — 지점 안내 카드는 공개 전까지 보이지 않을 수 있습니다."
+          : "";
+      const noSpotHint = !spot ? "\n(보조 스팟 미선택 — 인벤토리 등록 후에도 동일 /wayfinder URL로 기록됩니다.)" : "";
       setNfcHint(
-        `[링크유-동행] ${continuous ? "연속 스캔" : "UID 추가"} + URL 기록: ${uid}\n${writeResult.url ?? ""}${warn}`
+        `[링크유-동행] ${continuous ? "연속 스캔" : "UID 추가"} + URL 기록: ${uid}\n${writeResult.url ?? ""}${warnSpot}${noSpotHint}`
       );
     } else {
       setNfcHint(
@@ -499,7 +496,9 @@ export function TagBulkRegisterCard() {
           ) : null}
 
           <label className="block space-y-1.5">
-            <span className="text-[10px] font-black uppercase tracking-wide text-emerald-800">연결할 동행 스팟</span>
+            <span className="text-[10px] font-black uppercase tracking-wide text-emerald-800">
+              보조 스팟 연결 (선택)
+            </span>
             <select
               value={wayfinderSpotId}
               onChange={(e) => setWayfinderSpotId(e.target.value)}
@@ -808,7 +807,7 @@ export function TagBulkRegisterCard() {
         disabled={
           isPending ||
           (registerMode === "wayfinder"
-            ? !wfUids.trim() || !wayfinderSpotId.trim() || Boolean(wfSpotsError) || wfSpots.length === 0
+            ? validUids.length === 0
             : !uids.trim())
         }
         className={cn(

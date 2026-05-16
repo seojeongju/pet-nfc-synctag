@@ -1,4 +1,7 @@
-import { buildWayfinderCompanionPublicUrl } from "@/lib/wayfinder/companion-url";
+import {
+  buildWayfinderCompanionPublicUrl,
+  isWayfinderCompanionInventoryAssignedKind,
+} from "@/lib/wayfinder/companion-url";
 
 /**
  * 인벤토리 태그(tags + wayfinder_spots) 기준으로 NDEF에 기록할 공개 URL을 계산합니다.
@@ -12,6 +15,7 @@ export type TagWayfinderJoinFields = {
     wf_slug: string | null;
     wf_pub: number | null;
     wf_title?: string | null;
+    assigned_subject_kind?: string | null;
 };
 
 export type NdefWriteWayfinderWarning = {
@@ -35,6 +39,9 @@ export function computeNdefWriteUrlForInventoryTag(
     const b = base.replace(/\/$/, "").trim();
     if (!b) {
         return { ok: false, error: "앱 기준 URL(base)이 비어 있습니다." };
+    }
+    if (isWayfinderCompanionInventoryAssignedKind(row.assigned_subject_kind)) {
+        return { ok: true, url: buildWayfinderCompanionPublicUrl(b, tagUid, row.wf_slug) };
     }
     if (row.wf_spot) {
         if (!row.wf_slug) {

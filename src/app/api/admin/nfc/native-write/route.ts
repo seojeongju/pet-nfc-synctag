@@ -234,13 +234,22 @@ export async function POST(request: Request) {
   const tagRow = await db
       .prepare(
           `SELECT t.id AS tag_id, t.wayfinder_spot_id AS wf_spot,
-                  w.slug AS wf_slug, w.is_published AS wf_pub
+                  w.slug AS wf_slug, w.is_published AS wf_pub,
+                  t.assigned_subject_kind AS assigned_subject_kind,
+                  w.title AS wf_title
            FROM tags t
            LEFT JOIN wayfinder_spots w ON w.id = t.wayfinder_spot_id
            WHERE t.id = ?`
       )
       .bind(tagId)
-      .first<{ tag_id: string; wf_spot: string | null; wf_slug: string | null; wf_pub: number | null }>();
+      .first<{
+        tag_id: string;
+        wf_spot: string | null;
+        wf_slug: string | null;
+        wf_pub: number | null;
+        assigned_subject_kind: string | null;
+        wf_title: string | null;
+      }>();
   if (!tagRow) {
     await logNativeReject("unknown_tag_id", { tagId });
     return NextResponse.json({ error: "Unknown tagId" }, { status: 404 });

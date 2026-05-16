@@ -12,6 +12,7 @@ import {
     type NdefWriteWayfinderWarning,
 } from "@/lib/nfc-inventory-ndef-url";
 import { mintNativeHandoffToken } from "@/lib/nfc-native-security";
+import { WAYFINDER_COMPANION_INVENTORY_ASSIGNED_KIND } from "@/lib/wayfinder/companion-url";
 import {
     requirePlatformOrTenantAdminActor,
     resolveAdminScope,
@@ -99,6 +100,8 @@ export type RegisterBulkTagsOptions = {
      * - update_meta: 할당 모드·배치 ID를 현재 등록 설정으로 갱신(펫 연결은 유지)
      */
     existingUidBehavior?: "skip" | "update_meta";
+    /** 관리자 링크유-동행 대량 등록 플로우(스팟 없이도 인벤토리 등록 가능) */
+    linkuWayfinderInventory?: boolean;
 };
 
 /**
@@ -111,10 +114,6 @@ export async function registerBulkTags(uids: string[], options?: RegisterBulkTag
         scope.actor.isPlatformAdmin || !scope.tenantIds || scope.tenantIds.length === 0
             ? null
             : scope.tenantIds[0] ?? null;
-    const kind = options?.assignedSubjectKind ?? null;
-    const kindSlug =
-        kind && (SUBJECT_KINDS as readonly string[]).includes(kind) ? kind : "generic";
-    let currentBatch = options?.batchId || `BATCH-${kindSlug}-${Date.now()}`;
     const normalized = uids.map(normalizeTagUid).filter((uid) => uid.length > 0);
     const uniqueNormalized = Array.from(new Set(normalized));
     const validUids = uniqueNormalized.filter(isValidTagUidFormat);
@@ -141,7 +140,9 @@ export async function registerBulkTags(uids: string[], options?: RegisterBulkTag
         const hasWayfinderSpotColumn = tagColumns.has("wayfinder_spot_id");
 
         const wayfinderSpotIdOpt = (options?.wayfinderSpotId ?? "").trim() || null;
-        let effectiveAssignedKind: SubjectKind | null = kind;
+        const linkuWayfinderInventory = Boolean(options?.linkuWayfinderInventory);
+        const kindOpt = options?.assignedSubjectKind ?? null;
+        let assignKindForTags: string | null = kindOpt;
         if (wayfinderSpotIdOpt) {
             const wf = await resolveWayfinderSpotForInventoryTagLink(
                 db,
@@ -149,10 +150,18 @@ export async function registerBulkTags(uids: string[], options?: RegisterBulkTag
                 wayfinderSpotIdOpt,
                 hasWayfinderSpotColumn
             );
-            effectiveAssignedKind = parseSubjectKind(wf.subject_kind);
+            assignKindForTags = wf.subject_kind;
+        } else if (linkuWayfinderInventory) {
+            assignKindForTags = WAYFINDER_COMPANION_INVENTORY_ASSIGNED_KIND;
         }
-        const assignKindForTags = effectiveAssignedKind;
-        if (!options?.batchId && wayfinderSpotIdOpt) {
+        const kindSlug =
+            wayfinderSpotIdOpt || linkuWayfinderInventory
+                ? "wf"
+                : kindOpt && (SUBJECT_KINDS as readonly string[]).includes(kindOpt)
+                  ? kindOpt
+                  : "generic";
+        let currentBatch = options?.batchId || `BATCH-${kindSlug}-${Date.now()}`;
+        if (!options?.batchId && (wayfinderSpotIdOpt || linkuWayfinderInventory)) {
             currentBatch = `BATCH-wf-${Date.now()}`;
         }
 
@@ -193,6 +202,8 @@ export async function registerBulkTags(uids: string[], options?: RegisterBulkTag
             if (hasWayfinderSpotColumn && wayfinderSpotIdOpt) {
                 setParts.push("wayfinder_spot_id = ?");
                 setBinds.push(wayfinderSpotIdOpt);
+            } else if (hasWayfinderSpotColumn && linkuWayfinderInventory && !wayfinderSpotIdOpt) {
+                setParts.push("wayfinder_spot_id = NULL");
             }
             const setSql = setParts.join(", ");
 
@@ -1222,7 +1233,8 @@ export async function prepareNfcTagWrite(tagIdRaw: string): Promise<PrepareNfcTa
             ? db
                   .prepare(
                       `SELECT t.id AS tag_id, t.wayfinder_spot_id AS wf_spot,
-                              w.slug AS wf_slug, w.is_published AS wf_pub, w.title AS wf_title
+                              w.slug AS wf_slug, w.is_published AS wf_pub, w.title AS wf_title,
+                              t.assigned_subject_kind AS assigned_subject_kind
                        FROM tags t
                        LEFT JOIN wayfinder_spots w ON w.id = t.wayfinder_spot_id
                        WHERE t.id = ?`
@@ -1231,7 +1243,8 @@ export async function prepareNfcTagWrite(tagIdRaw: string): Promise<PrepareNfcTa
             : db
                   .prepare(
                       `SELECT t.id AS tag_id, t.wayfinder_spot_id AS wf_spot,
-                              w.slug AS wf_slug, w.is_published AS wf_pub, w.title AS wf_title
+                              w.slug AS wf_slug, w.is_published AS wf_pub, w.title AS wf_title,
+                              t.assigned_subject_kind AS assigned_subject_kind
                        FROM tags t
                        LEFT JOIN wayfinder_spots w ON w.id = t.wayfinder_spot_id
                        WHERE t.id = ?
@@ -1244,6 +1257,7 @@ export async function prepareNfcTagWrite(tagIdRaw: string): Promise<PrepareNfcTa
         wf_slug: string | null;
         wf_pub: number | null;
         wf_title: string | null;
+        assigned_subject_kind: string | null;
     }>();
     if (!row) {
         return { ok: false, error: "등록되지 않은 태그입니다. 먼저 태그를 인벤토리에 등록하세요." };

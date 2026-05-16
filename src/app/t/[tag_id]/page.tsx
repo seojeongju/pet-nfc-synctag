@@ -5,7 +5,7 @@ import { parseSubjectKind } from "@/lib/subject-kind";
 import { getAuth } from "@/lib/auth";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { decodeTagPathParam, normalizeTagUid } from "@/lib/tag-uid-format";
-import { buildWayfinderCompanionPath } from "@/lib/wayfinder/companion-url";
+import { buildWayfinderCompanionPath, isWayfinderCompanionInventoryAssignedKind } from "@/lib/wayfinder/companion-url";
 import UnknownTagView from "./UnknownTagView";
 import { buildNoIndexMetadata } from "@/lib/seo";
 
@@ -97,6 +97,9 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
   /** 링크유-동행 인벤토리 태그: GPS·근처 역 안내(메인). 별도 관리대상(pet) 없음 */
   const wfSpotId = (tag.wayfinder_spot_id ?? "").trim();
   if (wfSpotId) {
+    redirect(buildWayfinderCompanionPath(tag.id, tag.wf_slug));
+  }
+  if (isWayfinderCompanionInventoryAssignedKind(tag.assigned_subject_kind)) {
     redirect(buildWayfinderCompanionPath(tag.id, tag.wf_slug));
   }
 
