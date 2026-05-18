@@ -75,10 +75,14 @@
 | **2~4** | 역 시설 POI · NFC 앵커 · 공공데이터 | 진행 중 (2단계 Sprint 1 반영) |
 | **5 (추후)** | **공공버스 실시간 도착 안내** | 백로그 — [`WAYFINDER_BUS_REALTIME_PLAN.md`](./WAYFINDER_BUS_REALTIME_PLAN.md) |
 | **R1** | **서울동행맵 연결** | 완료 — [`WAYFINDER_ACCESSIBLE_ROUTING_LINKS.md`](./WAYFINDER_ACCESSIBLE_ROUTING_LINKS.md) |
+| **R2** | **독립 레인** `/dashboard/companion` | 완료 — `wayfinder_spots.subject_kind=companion` (D1 `0041`) |
+| **R3** | **자주 가는 장소** (스팟 CRUD 대체) | 백로그 — [`WAYFINDER_SAVED_PLACES_PLAN.md`](./WAYFINDER_SAVED_PLACES_PLAN.md) |
 
-동행 기능 플래그: `NEXT_PUBLIC_WAYFINDER_ENABLED` (미설정 시 ON). 보호자는 허브 → 링크유-동행 → 대시보드에서 스팟·NFC 인벤토리 관리.
+동행 기능 플래그: `NEXT_PUBLIC_WAYFINDER_ENABLED` (미설정 시 ON). 보호자는 허브 → 링크유-동행 → **`/dashboard/companion/wayfinder`** (현행: 스팟 관리 UI — **R3에서 즐겨찾기로 교체 예정**).
 
 **버스 실시간 안내**는 지하철 Wayfinder 안정화·NFC 앵커(C3) 이후 착수. 구현 체크리스트·Phase B0~B4는 위 버스 계획 문서를 따른다.
+
+**자주 가는 장소(R3)** 는 구현 보류. 스팟 공개 URL·어드민 연동은 단계적 유지 — 상세는 [`WAYFINDER_SAVED_PLACES_PLAN.md`](./WAYFINDER_SAVED_PLACES_PLAN.md).
 
 ---
 
