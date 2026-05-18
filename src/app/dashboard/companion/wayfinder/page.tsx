@@ -5,8 +5,8 @@ import { getCfRequestContext } from "@/lib/cf-request-context";
 import { requireTenantMember } from "@/lib/tenant-membership";
 import { rethrowNextControlFlowErrors } from "@/lib/next-redirect-guard";
 import { getTenantStatus } from "@/lib/tenant-status";
-import Link from "next/link";
-import { AlertCircle, LayoutGrid, Lock, Power } from "lucide-react";
+import { AlertCircle, LayoutGrid, Lock, Power, TrainFront } from "lucide-react";
+import { WfIconNavButton } from "@/components/wayfinder/wayfinder-dashboard-ui";
 import { isWayfinderEnabled } from "@/lib/wayfinder/feature";
 import { listWayfinderSpotsForDashboard, type WayfinderSpotRow } from "@/lib/wayfinder-spots-db";
 import { getMembership } from "@/lib/tenant-membership";
@@ -84,52 +84,40 @@ export default async function CompanionWayfinderDashboardPage({
       }
 
       const publicSpotPageBase = "/wayfinder/s";
-      const spotSectionExpanded = register === "1" || Boolean(err);
+      const registerMode = register === "1" || Boolean(err);
       const publishedCount = spots.filter((s) => s.is_published).length;
 
       return (
         <div className="relative min-h-0 w-full min-w-0 overflow-x-hidden bg-[#F8FAFC] pb-8 font-outfit">
           <div className="pointer-events-none absolute left-0 top-0 h-[280px] w-full bg-gradient-to-b from-indigo-500/12 via-violet-500/5 to-transparent" aria-hidden />
           <div className="relative mx-auto w-full min-w-0 max-w-lg space-y-5 px-4 pt-6 sm:px-5 sm:pt-8">
-            <nav className="flex flex-wrap gap-2" aria-label="빠른 이동">
-              <Link
-                href="/hub"
-                className="inline-flex items-center gap-2 rounded-2xl border border-violet-200 bg-violet-50/90 px-3 py-2 text-xs font-black text-violet-800 shadow-sm transition hover:border-violet-300 hover:bg-violet-50"
-              >
-                <LayoutGrid className="h-4 w-4 shrink-0" aria-hidden />
-                허브·모드
-              </Link>
-              <Link
-                href="/wayfinder"
-                className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50/80 hover:text-indigo-800"
-              >
-                공개 동행 안내
-              </Link>
+            <nav className="flex items-center gap-2" aria-label="빠른 이동">
+              <WfIconNavButton href="/hub" icon={LayoutGrid} label="허브·모드" tone="violet" />
+              <WfIconNavButton href="/wayfinder" icon={TrainFront} label="공개 동행 안내" tone="indigo" external />
             </nav>
 
-            <WayfinderDashboardHeader
-              spotCount={spots.length}
-              publishedCount={publishedCount}
-              publicSpotPageBase={publicSpotPageBase}
-            />
+            {!registerMode ? (
+              <WayfinderDashboardHeader
+                spotCount={spots.length}
+                publishedCount={publishedCount}
+                publicSpotPageBase={publicSpotPageBase}
+              />
+            ) : null}
 
             {!wayfinderBeta ? (
-              <WfAlertBanner variant="warning" icon={Power} title="링크유-동행이 꺼져 있습니다">
-                운영·빌드 환경에서{" "}
-                <span className="font-mono text-xs">NEXT_PUBLIC_WAYFINDER_ENABLED</span>가{" "}
-                <span className="font-mono text-xs">false</span>이면 스팟 관리를 쓸 수 없습니다. 값을 제거하거나{" "}
-                <span className="font-mono text-xs">true</span>로 설정한 뒤 다시 배포하세요.
+              <WfAlertBanner variant="warning" icon={Power} compact title="동행 OFF">
+                NEXT_PUBLIC_WAYFINDER_ENABLED=false
               </WfAlertBanner>
             ) : null}
 
             {writeLocked ? (
-              <WfAlertBanner variant="warning" icon={Lock} title="이용이 제한되었습니다">
-                조직이 정지된 상태입니다. 관리자에게 문의하세요.
+              <WfAlertBanner variant="warning" icon={Lock} compact>
+                조직 이용 제한
               </WfAlertBanner>
             ) : null}
 
             {errMsg ? (
-              <WfAlertBanner variant="error" icon={AlertCircle} title="저장·입력 오류">
+              <WfAlertBanner variant="error" icon={AlertCircle} compact title="오류">
                 {errMsg}
               </WfAlertBanner>
             ) : null}
@@ -142,7 +130,7 @@ export default async function CompanionWayfinderDashboardPage({
                 spotsLoadError={spotsLoadError}
                 sessionUserId={session.user.id}
                 tenantRole={tenantRole}
-                defaultExpanded={spotSectionExpanded}
+                registerMode={registerMode}
                 publicSpotPageBase={publicSpotPageBase}
               />
             ) : null}

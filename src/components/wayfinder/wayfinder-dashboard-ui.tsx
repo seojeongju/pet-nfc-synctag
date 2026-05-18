@@ -59,42 +59,21 @@ export function WfIconBadge({
   );
 }
 
-export function WfFeatureRow({
-  icon: Icon,
-  tone = "indigo",
-  label,
-  title,
-  className,
-}: {
-  icon: LucideIcon;
-  tone?: WfTone;
-  label: string;
-  title: string;
-  className?: string;
-}) {
-  return (
-    <div className={cn("flex items-start gap-3", className)}>
-      <WfIconBadge icon={Icon} tone={tone} size="md" />
-      <div className="min-w-0 pt-0.5">
-        <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">{label}</p>
-        <p className="text-sm font-bold leading-snug text-slate-800">{title}</p>
-      </div>
-    </div>
-  );
-}
-
 export function WfAlertBanner({
   variant = "info",
   icon: Icon,
   title,
   children,
   className,
+  compact,
 }: {
   variant?: "info" | "warning" | "error" | "success";
   icon: LucideIcon;
   title?: string;
   children: React.ReactNode;
   className?: string;
+  /** true면 아이콘 + 한 줄(또는 title만) */
+  compact?: boolean;
 }) {
   const styles = {
     info: "border-indigo-100 bg-indigo-50/90 text-indigo-950",
@@ -104,6 +83,20 @@ export function WfAlertBanner({
   } as const;
   const iconTone: WfTone =
     variant === "warning" ? "amber" : variant === "error" ? "rose" : variant === "success" ? "emerald" : "indigo";
+  if (compact) {
+    return (
+      <div
+        className={cn("flex items-center gap-2.5 rounded-2xl border px-3 py-2.5 shadow-sm", styles[variant], className)}
+        role="alert"
+      >
+        <Icon className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+        <p className="min-w-0 text-xs font-bold leading-snug">
+          {title ? <span className="font-black">{title}. </span> : null}
+          <span className="font-semibold opacity-95">{children}</span>
+        </p>
+      </div>
+    );
+  }
   return (
     <div className={cn("flex gap-3 rounded-2xl border p-4 shadow-sm", styles[variant], className)} role="alert">
       <WfIconBadge icon={Icon} tone={iconTone} size="md" soft />
@@ -127,12 +120,74 @@ export function WfStatChip({
   tone?: WfTone;
 }) {
   return (
-    <div className={cn("flex min-w-0 flex-1 items-center gap-2.5 rounded-2xl border px-3 py-2.5 shadow-sm", toneSoftStyles[tone])}>
-      <Icon className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
-      <div className="min-w-0">
-        <p className="text-[10px] font-black uppercase tracking-wide opacity-80">{label}</p>
-        <p className="truncate text-sm font-black">{value}</p>
-      </div>
+    <div
+      className={cn(
+        "flex min-w-0 flex-1 flex-col items-center gap-1 rounded-2xl border px-2 py-2.5 shadow-sm",
+        toneSoftStyles[tone]
+      )}
+      title={`${label}: ${value}`}
+    >
+      <Icon className="h-5 w-5 shrink-0 opacity-90" aria-hidden />
+      <p className="truncate text-sm font-black leading-none">{value}</p>
+      <p className="text-[9px] font-black uppercase tracking-wide opacity-70">{label}</p>
     </div>
+  );
+}
+
+export function WfFlowTile({
+  icon: Icon,
+  caption,
+  tone = "indigo",
+  className,
+}: {
+  icon: LucideIcon;
+  caption: string;
+  tone?: WfTone;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col items-center gap-1.5 rounded-2xl border px-2 py-3 text-center shadow-sm",
+        toneSoftStyles[tone],
+        className
+      )}
+    >
+      <WfIconBadge icon={Icon} tone={tone} size="sm" soft />
+      <span className="text-[10px] font-black leading-tight text-slate-800">{caption}</span>
+    </div>
+  );
+}
+
+export function WfIconNavButton({
+  href,
+  icon: Icon,
+  label,
+  tone = "slate",
+  external,
+}: {
+  href: string;
+  icon: LucideIcon;
+  label: string;
+  tone?: WfTone;
+  external?: boolean;
+}) {
+  const cls = cn(
+    "inline-flex h-11 w-11 items-center justify-center rounded-2xl border shadow-sm transition active:scale-[0.97]",
+    toneSoftStyles[tone],
+    "hover:brightness-95"
+  );
+  const child = <Icon className="h-5 w-5" aria-hidden />;
+  if (external) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className={cls} aria-label={label} title={label}>
+        {child}
+      </a>
+    );
+  }
+  return (
+    <a href={href} className={cls} aria-label={label} title={label}>
+      {child}
+    </a>
   );
 }
