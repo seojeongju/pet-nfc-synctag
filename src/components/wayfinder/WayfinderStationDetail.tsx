@@ -6,6 +6,7 @@ import type { FacilityMapPoint } from "@/lib/wayfinder/facility-map-layout";
 import type { WayfinderStationEntryContext } from "@/lib/wayfinder/station-entry-context";
 import { WayfinderStationExperience } from "@/components/wayfinder/WayfinderStationExperience";
 import { WayfinderStationNearbyBanner } from "@/components/wayfinder/WayfinderStationNearbyBanner";
+import { WayfinderAccessibleRoutingSection } from "@/components/wayfinder/WayfinderAccessibleRoutingSection";
 
 type Props = {
   name: string;
@@ -74,6 +75,12 @@ export function WayfinderStationDetail({
           역 위치 지도에서 보기
         </a>
       </section>
+
+      <WayfinderAccessibleRoutingSection
+        variant="station"
+        latitude={latitude}
+        longitude={longitude}
+      />
 
       <WayfinderStationExperience
         stationName={name}

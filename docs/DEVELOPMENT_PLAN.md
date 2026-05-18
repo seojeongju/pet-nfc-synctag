@@ -74,6 +74,7 @@
 | **1** | GPS 근처 지하철역 — `/wayfinder`, `/wayfinder/stations/[id]` | 코드 반영 · D1 `0036`·`0037` |
 | **2~4** | 역 시설 POI · NFC 앵커 · 공공데이터 | 진행 중 (2단계 Sprint 1 반영) |
 | **5 (추후)** | **공공버스 실시간 도착 안내** | 백로그 — [`WAYFINDER_BUS_REALTIME_PLAN.md`](./WAYFINDER_BUS_REALTIME_PLAN.md) |
+| **R1** | **무장애나눔길·서울동행맵 연결** | 완료 — [`WAYFINDER_ACCESSIBLE_ROUTING_LINKS.md`](./WAYFINDER_ACCESSIBLE_ROUTING_LINKS.md) |
 
 동행 기능 플래그: `NEXT_PUBLIC_WAYFINDER_ENABLED` (미설정 시 ON). 보호자는 허브 → 링크유-동행 → 대시보드에서 스팟·NFC 인벤토리 관리.
 

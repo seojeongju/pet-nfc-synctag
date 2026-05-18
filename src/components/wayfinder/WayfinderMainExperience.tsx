@@ -9,6 +9,7 @@ import { WayfinderSpotAuxiliary } from "@/components/wayfinder/WayfinderSpotAuxi
 import { WayfinderNfcWelcome } from "@/components/wayfinder/WayfinderNfcWelcome";
 import { WayfinderOptionalSpotCard } from "@/components/wayfinder/WayfinderOptionalSpotCard";
 import { WayfinderStationAnchorCard } from "@/components/wayfinder/WayfinderStationAnchorCard";
+import { WayfinderAccessibleRoutingSection } from "@/components/wayfinder/WayfinderAccessibleRoutingSection";
 
 type Props = {
   entry: WayfinderNfcEntryContext;
@@ -28,6 +29,8 @@ export function WayfinderMainExperience({ entry }: Props) {
       <WayfinderNearbyStations nfcEntry={nfcEntry} />
 
       {entry.spot ? <WayfinderOptionalSpotCard spot={entry.spot} /> : null}
+
+      <WayfinderAccessibleRoutingSection variant="main" />
 
       {!nfcEntry ? <WayfinderHowItWorks /> : null}
       {!nfcEntry ? <WayfinderSpotAuxiliary /> : null}
