@@ -4,22 +4,19 @@ import { useCallback, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   Accessibility,
-  Apple,
   Bus,
   Check,
   Copy,
   Download,
-  ExternalLink,
   MapPin,
   Navigation2,
   Nfc,
-  Play,
   Route,
   Search,
   Sparkles,
-  Store,
   TrainFront,
 } from "lucide-react";
+import { WayfinderSeoulCompanionLaunchButton } from "@/components/wayfinder/WayfinderSeoulCompanionLaunchButton";
 import {
   SEOUL_COMPANION_APP,
   SEOUL_COMPANION_FEATURES,
@@ -219,41 +216,7 @@ export function WayfinderSeoulCompanionPromo({
           })}
         </ul>
 
-        <a
-          href={SEOUL_COMPANION_APP.playStoreUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-4 flex w-full min-h-12 items-center justify-center gap-2.5 rounded-xl border-b-4 border-sky-900/40 bg-white px-4 py-3.5 text-sm font-black text-sky-900 shadow-md transition hover:bg-sky-50 active:scale-[0.99]"
-        >
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-100">
-            <Play className="h-4 w-4 fill-sky-800 text-sky-800" aria-hidden />
-          </span>
-          Google Play에서 설치
-          <ExternalLink className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
-        </a>
-
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          <a
-            href={SEOUL_COMPANION_APP.appStoreUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/10 px-3 py-2 text-[11px] font-black text-white hover:bg-white/20"
-          >
-            <Apple className="h-4 w-4 shrink-0" aria-hidden />
-            App Store
-            <ExternalLink className="h-3 w-3 opacity-80" aria-hidden />
-          </a>
-          <a
-            href={SEOUL_COMPANION_APP.oneStoreUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/10 px-3 py-2 text-[11px] font-black text-white hover:bg-white/20"
-          >
-            <Store className="h-4 w-4 shrink-0" aria-hidden />
-            원스토어
-            <ExternalLink className="h-3 w-3 opacity-80" aria-hidden />
-          </a>
-        </div>
+        <WayfinderSeoulCompanionLaunchButton className="mt-4" />
       </div>
 
       <ol className="space-y-2" aria-label="서울동행맵 이용 순서">
