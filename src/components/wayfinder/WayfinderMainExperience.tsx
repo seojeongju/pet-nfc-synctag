@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Home } from "lucide-react";
 import type { WayfinderNfcEntryContext } from "@/lib/wayfinder/resolve-nfc-entry";
 import { WayfinderSubwayHero } from "@/components/wayfinder/WayfinderSubwayHero";
 import { WayfinderNearbyStations } from "@/components/wayfinder/WayfinderNearbyStations";
@@ -26,11 +27,11 @@ export function WayfinderMainExperience({ entry }: Props) {
 
       {entry.stationAnchor ? <WayfinderStationAnchorCard anchor={entry.stationAnchor} /> : null}
 
+      <WayfinderAccessibleRoutingSection variant="main" />
+
       <WayfinderNearbyStations nfcEntry={nfcEntry} />
 
       {entry.spot ? <WayfinderOptionalSpotCard spot={entry.spot} /> : null}
-
-      <WayfinderAccessibleRoutingSection variant="main" />
 
       {!nfcEntry ? <WayfinderHowItWorks /> : null}
       {!nfcEntry ? <WayfinderSpotAuxiliary /> : null}
@@ -38,8 +39,9 @@ export function WayfinderMainExperience({ entry }: Props) {
       <p className="text-center">
         <Link
           href="/"
-          className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white/90 px-4 text-xs font-black text-slate-700 shadow-sm hover:bg-white"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-4 text-xs font-black text-slate-700 shadow-sm hover:bg-white"
         >
+          <Home className="h-4 w-4 shrink-0 text-indigo-600" aria-hidden />
           링크유 홈
         </Link>
       </p>

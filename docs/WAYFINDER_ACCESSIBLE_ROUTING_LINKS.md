@@ -22,9 +22,9 @@
 | 항목 | 내용 |
 |------|------|
 | 라이브러리 | `src/lib/wayfinder/accessible-routing-links.ts` |
-| UI | `WayfinderAccessibleRoutingSection` |
-| 메인 | `/wayfinder` — 서울동행맵(스토어) |
-| 역 상세 | 서울 좌표 역 — 서울동행맵 카드 |
+| UI | `WayfinderSeoulCompanionPromo` · `WayfinderAccessibleRoutingSection` |
+| 메인 | `/wayfinder` 상단 — 설치 CTA·이용 3단계·기능 칩 |
+| 역 상세 | 서울 역 — 프로모 우선 · 역 이름 복사 · 카카오는 참고로 하단 |
 | 서울 판별 | `isInSeoulMetroBounds(lat, lng)` |
 
 ---

@@ -30,6 +30,8 @@ type Props = {
   facilitiesSource: "d1" | "pilot_seed";
   facilitiesSyncedAt: string | null;
   initialSelectedFacilityId?: string | null;
+  /** 서울 역: 시설·카카오 안내 문구에서 서울동행맵 우선 안내 */
+  seoulCompanionRecommended?: boolean;
 };
 
 function routeHrefForPreset(p: DestinationPreset): string {
@@ -46,6 +48,7 @@ export function WayfinderStationExperience({
   facilitiesSource,
   facilitiesSyncedAt,
   initialSelectedFacilityId = null,
+  seoulCompanionRecommended = false,
 }: Props) {
   const [selectedFacilityId, setSelectedFacilityId] = useState<string | null>(
     initialSelectedFacilityId
@@ -95,8 +98,17 @@ export function WayfinderStationExperience({
         <div className="space-y-2">
           <WayfinderSpeechAnnouncer text={speechText} />
           <p className="text-[11px] font-semibold leading-relaxed text-slate-500">
-            카카오맵 길찾기는 <strong className="text-slate-700">참고 경로</strong>입니다. 휠체어·시각장애
-            동반 시 역무원·안내 데스크에 도움을 요청하세요.
+            {seoulCompanionRecommended ? (
+              <>
+                역까지·역 간 <strong className="text-sky-800">맞춤 경로</strong>는 위 서울동행맵을 이용하고, 아래
+                카카오맵은 <strong className="text-slate-700">참고 경로</strong>입니다.
+              </>
+            ) : (
+              <>
+                카카오맵 길찾기는 <strong className="text-slate-700">참고 경로</strong>입니다. 휠체어·시각장애
+                동반 시 역무원·안내 데스크에 도움을 요청하세요.
+              </>
+            )}
           </p>
         </div>
       ) : null}
@@ -156,7 +168,7 @@ export function WayfinderStationExperience({
           className="flex w-full items-center justify-center gap-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-black text-indigo-900 hover:bg-indigo-100"
         >
           <MapPin className="h-4 w-4 shrink-0" aria-hidden />
-          선택: {selectedPoint.label} — 카카오맵 길찾기
+          선택: {selectedPoint.label} — 카카오맵 (참고)
         </a>
       ) : null}
 

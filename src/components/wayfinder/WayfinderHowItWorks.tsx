@@ -1,4 +1,4 @@
-import { LocateFixed, MapPinned, Route } from "lucide-react";
+import { LocateFixed, MapPinned, Route, Smartphone } from "lucide-react";
 
 const steps = [
   {
@@ -12,9 +12,14 @@ const steps = [
     body: "GPS로 측정한 현재 위치에서 가까운 수도권 지하철역을 거리순으로 보여 줍니다.",
   },
   {
+    icon: Smartphone,
+    title: "서울동행맵 맞춤 경로",
+    body: "서울·수도권 역은 서울동행맵 앱으로 휠체어·유모차에 맞춘 보행·지하철 경로를 안내받습니다. 역 안 시설은 링크유에서 확인합니다.",
+  },
+  {
     icon: Route,
-    title: "이동 경로 안내",
-    body: "카카오맵으로 역까지 길찾기를 엽니다. 역 안 엘리베이터·승강장 안내는 순차적으로 확대됩니다.",
+    title: "참고: 카카오맵 길찾기",
+    body: "일반 도로 기준 경로가 필요할 때 카카오맵을 참고로 열 수 있습니다.",
   },
 ] as const;
 
