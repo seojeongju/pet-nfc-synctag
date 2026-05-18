@@ -62,6 +62,11 @@ npm run d1:apply:tags-wayfinder-station-anchor
    UPDATE tags SET wayfinder_station_id = 'seoul-station' WHERE id = '태그UID';
    ```
 
+### 추후 — 공공버스 실시간 도착
+
+- 전체 계획·구현 체크리스트: [`WAYFINDER_BUS_REALTIME_PLAN.md`](./WAYFINDER_BUS_REALTIME_PLAN.md)  
+- 착수 시점: 지하철 C3·운영 안정화 **이후** (Phase B0 API 조사부터)
+
 ### 다음 스프린트 (코드) — **C3 추천**
 | ID | 작업 | 주요 파일 |
 |----|------|-----------|

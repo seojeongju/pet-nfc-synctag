@@ -72,9 +72,12 @@
 |------|------|------|
 | **0** | 방문자 스팟 UX — `/wayfinder/s/{slug}`, TTS·단계·연락처·지도 | 코드 반영 · D1 `0035` |
 | **1** | GPS 근처 지하철역 — `/wayfinder`, `/wayfinder/stations/[id]` | 코드 반영 · D1 `0036`·`0037` |
-| **2~4** | 역 시설 POI · NFC 앵커 · 공공데이터 | 예정 |
+| **2~4** | 역 시설 POI · NFC 앵커 · 공공데이터 | 진행 중 (2단계 Sprint 1 반영) |
+| **5 (추후)** | **공공버스 실시간 도착 안내** | 백로그 — [`WAYFINDER_BUS_REALTIME_PLAN.md`](./WAYFINDER_BUS_REALTIME_PLAN.md) |
 
 동행 기능 플래그: `NEXT_PUBLIC_WAYFINDER_ENABLED` (미설정 시 ON). 보호자는 허브 → 링크유-동행 → 대시보드에서 스팟·NFC 인벤토리 관리.
+
+**버스 실시간 안내**는 지하철 Wayfinder 안정화·NFC 앵커(C3) 이후 착수. 구현 체크리스트·Phase B0~B4는 위 버스 계획 문서를 따른다.
 
 ---
 

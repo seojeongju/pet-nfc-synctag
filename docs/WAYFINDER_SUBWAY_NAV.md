@@ -180,6 +180,17 @@ wayfinder_spots             — 기존 스팟(콘텐츠·NFC URL) — 점진 흡
 - [ ] **2단계** 시설 POI·맵 마커·길찾기
 - [ ] **3단계** NFC 앵커
 - [ ] **4단계** 공공데이터 연동
+- [ ] **5단계 (추후)** 공공버스 실시간 도착 — [`WAYFINDER_BUS_REALTIME_PLAN.md`](./WAYFINDER_BUS_REALTIME_PLAN.md)
+
+---
+
+## 5단계 (추후) — 공공버스 실시간 도착 안내
+
+**상태:** 백로그 · 지하철 2~4단계·NFC 앵커 안정화 후 착수.
+
+**목표:** GPS로 근처 버스 정류장 → 실시간 도착 예정 → 카카오맵 길찾기 (교통약자·저상버스 표시).
+
+**구현 항목·Phase B0~B4 체크리스트:** [`docs/WAYFINDER_BUS_REALTIME_PLAN.md`](./WAYFINDER_BUS_REALTIME_PLAN.md)
 
 ---
 
@@ -189,4 +200,5 @@ wayfinder_spots             — 기존 스팟(콘텐츠·NFC URL) — 점진 흡
 - `src/lib/wayfinder-stations-db.ts` — 역 조회
 - `src/app/wayfinder/` — 공개 진입
 - `docs/WAYFINDER_SUBWAY_NAV.md` — **본 문서 (마스터)**
+- `docs/WAYFINDER_BUS_REALTIME_PLAN.md` — **추후: 버스 실시간 도착**
 - 기존 스팟: `wayfinder_spots`, `/wayfinder/s/[slug]`, `migrations/0033_*`, `0035_*`
