@@ -6,6 +6,7 @@ import {
   WayfinderAccessibilitySyncCard,
   type WayfinderSyncStationOption,
 } from "@/components/admin/wayfinder/WayfinderAccessibilitySyncCard";
+import { WayfinderSyncReportCard } from "@/components/admin/wayfinder/WayfinderSyncReportCard";
 import { getDedupedMetroStationsForSync } from "@/lib/wayfinder/sync-station-accessibility";
 import { adminUi } from "@/styles/admin/ui";
 import { cn } from "@/lib/utils";
@@ -56,10 +57,13 @@ export default async function AdminWayfinderPage() {
             ]}
           />
         </div>
-        <WayfinderAccessibilitySyncCard
-          stations={stations}
-          initialMetroStationCount={getDedupedMetroStationsForSync().length}
-        />
+        <div className="space-y-6">
+          <WayfinderSyncReportCard />
+          <WayfinderAccessibilitySyncCard
+            stations={stations}
+            initialMetroStationCount={getDedupedMetroStationsForSync().length}
+          />
+        </div>
       </div>
     </div>
   );

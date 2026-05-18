@@ -17,10 +17,18 @@ export type WayfinderOptionalSpotCardData = {
   routeHref: string | null;
 };
 
+export type WayfinderStationAnchor = {
+  stationId: string;
+  stationName: string;
+  facilityId: string | null;
+  facilityLabel: string | null;
+};
+
 export type WayfinderNfcEntryContext = {
   fromNfc: boolean;
   tagId: string | null;
   spot: WayfinderOptionalSpotCardData | null;
+  stationAnchor: WayfinderStationAnchor | null;
 };
 
 async function loadOptionalSpotBySlug(slugRaw: string): Promise<WayfinderOptionalSpotCardData | null> {
@@ -45,6 +53,39 @@ async function loadOptionalSpotBySlug(slugRaw: string): Promise<WayfinderOptiona
       contactPhone,
       mapHref: hasCoords ? buildKakaoMapPinHref(row.title, row.latitude!, row.longitude!) : null,
       routeHref: hasCoords ? buildKakaoMapRouteHref(row.title, row.latitude!, row.longitude!) : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function stationAnchorFromTagId(tagId: string): Promise<WayfinderStationAnchor | null> {
+  try {
+    const row = await getDB()
+      .prepare(
+        `SELECT t.wayfinder_station_id AS station_id,
+                t.wayfinder_facility_id AS facility_id,
+                s.name AS station_name,
+                f.label AS facility_label
+         FROM tags t
+         LEFT JOIN wayfinder_stations s ON s.id = t.wayfinder_station_id
+         LEFT JOIN wayfinder_station_facilities f ON f.id = t.wayfinder_facility_id
+         WHERE t.id = ?`
+      )
+      .bind(tagId)
+      .first<{
+        station_id: string | null;
+        facility_id: string | null;
+        station_name: string | null;
+        facility_label: string | null;
+      }>();
+    const stationId = (row?.station_id ?? "").trim();
+    if (!stationId) return null;
+    return {
+      stationId,
+      stationName: (row?.station_name ?? "").trim() || stationId,
+      facilityId: (row?.facility_id ?? "").trim() || null,
+      facilityLabel: (row?.facility_label ?? "").trim() || null,
     };
   } catch {
     return null;
@@ -82,6 +123,7 @@ export async function resolveWayfinderNfcEntry(
   }
 
   const spot = spotSlug ? await loadOptionalSpotBySlug(spotSlug) : null;
+  const stationAnchor = tagId ? await stationAnchorFromTagId(tagId) : null;
 
-  return { fromNfc, tagId, spot };
+  return { fromNfc, tagId, spot, stationAnchor };
 }

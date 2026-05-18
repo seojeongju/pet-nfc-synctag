@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { listWayfinderStationFacilities } from "@/lib/wayfinder-station-facilities-db";
 import { getWayfinderStationById } from "@/lib/wayfinder-stations-db";
+import { buildFacilityMapPoints } from "@/lib/wayfinder/facility-map-layout";
 import { toPublicFacility } from "@/lib/wayfinder/facility-types";
 import { linkuCompanionMenuTitle, linkuCompanionServiceDescription } from "@/lib/wayfinder/copy";
 import { buildKakaoMapPinHref, buildKakaoMapRouteHref } from "@/lib/wayfinder/kakao-map-links";
@@ -14,6 +15,7 @@ export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ facility?: string }>;
 };
 
 async function loadStation(idRaw: string) {
@@ -43,8 +45,10 @@ export async function generateMetadata({ params }: PageProps) {
   });
 }
 
-export default async function WayfinderStationPage({ params }: PageProps) {
+export default async function WayfinderStationPage({ params, searchParams }: PageProps) {
   const { id } = await params;
+  const sp = await searchParams;
+  const initialFacilityId = typeof sp.facility === "string" ? sp.facility.trim() : "";
   const row = await loadStation(id);
   if (!row) notFound();
 
@@ -52,12 +56,14 @@ export default async function WayfinderStationPage({ params }: PageProps) {
   const routeHref = buildKakaoMapRouteHref(row.name, row.latitude, row.longitude);
 
   let facilities: ReturnType<typeof toPublicFacility>[] = [];
+  let mapPoints = buildFacilityMapPoints(row.latitude, row.longitude, []);
   let facilitiesSource: "d1" | "pilot_seed" = "pilot_seed";
   let facilitiesSyncedAt: string | null = null;
   try {
     const ctx = getCfRequestContext();
     const loaded = await listWayfinderStationFacilities(ctx.env.DB, row.id, row.name);
     facilities = loaded.facilities.map(toPublicFacility);
+    mapPoints = buildFacilityMapPoints(row.latitude, row.longitude, loaded.facilities);
     facilitiesSource = loaded.source;
     facilitiesSyncedAt = loaded.facilities[0]?.synced_at ?? null;
   } catch (e) {
@@ -74,8 +80,10 @@ export default async function WayfinderStationPage({ params }: PageProps) {
         mapHref={mapHref}
         routeHref={routeHref}
         facilities={facilities}
+        mapPoints={mapPoints}
         facilitiesSource={facilitiesSource}
         facilitiesSyncedAt={facilitiesSyncedAt}
+        initialSelectedFacilityId={initialFacilityId || null}
       />
     </WayfinderPublicShell>
   );

@@ -2,8 +2,8 @@ import Link from "next/link";
 import { ArrowRight, MapPin, Navigation2, TrainFront } from "lucide-react";
 import { linkuCompanionMenuTitle, linkuCompanionSpotSubLabel } from "@/lib/wayfinder/copy";
 import type { WayfinderFacilityPublic } from "@/lib/wayfinder/facility-types";
-import { WayfinderStationAccessibility } from "@/components/wayfinder/WayfinderStationAccessibility";
-import { WayfinderStationMap } from "@/components/wayfinder/WayfinderStationMap";
+import type { FacilityMapPoint } from "@/lib/wayfinder/facility-map-layout";
+import { WayfinderStationExperience } from "@/components/wayfinder/WayfinderStationExperience";
 
 type Props = {
   name: string;
@@ -13,8 +13,10 @@ type Props = {
   mapHref: string;
   routeHref: string;
   facilities: WayfinderFacilityPublic[];
+  mapPoints: FacilityMapPoint[];
   facilitiesSource: "d1" | "pilot_seed";
   facilitiesSyncedAt: string | null;
+  initialSelectedFacilityId?: string | null;
 };
 
 export function WayfinderStationDetail({
@@ -25,8 +27,10 @@ export function WayfinderStationDetail({
   mapHref,
   routeHref,
   facilities,
+  mapPoints,
   facilitiesSource,
   facilitiesSyncedAt,
+  initialSelectedFacilityId = null,
 }: Props) {
   return (
     <div className="space-y-6">
@@ -65,12 +69,15 @@ export function WayfinderStationDetail({
         </a>
       </section>
 
-      <WayfinderStationMap latitude={latitude} longitude={longitude} label={name} />
-
-      <WayfinderStationAccessibility
+      <WayfinderStationExperience
+        stationName={name}
+        latitude={latitude}
+        longitude={longitude}
         facilities={facilities}
-        dataSource={facilitiesSource}
-        syncedAt={facilitiesSyncedAt}
+        mapPoints={mapPoints}
+        facilitiesSource={facilitiesSource}
+        facilitiesSyncedAt={facilitiesSyncedAt}
+        initialSelectedFacilityId={initialSelectedFacilityId}
       />
 
       <details className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-xs font-semibold text-slate-600">

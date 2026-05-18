@@ -8,6 +8,7 @@ import { WayfinderHowItWorks } from "@/components/wayfinder/WayfinderHowItWorks"
 import { WayfinderSpotAuxiliary } from "@/components/wayfinder/WayfinderSpotAuxiliary";
 import { WayfinderNfcWelcome } from "@/components/wayfinder/WayfinderNfcWelcome";
 import { WayfinderOptionalSpotCard } from "@/components/wayfinder/WayfinderOptionalSpotCard";
+import { WayfinderStationAnchorCard } from "@/components/wayfinder/WayfinderStationAnchorCard";
 
 type Props = {
   entry: WayfinderNfcEntryContext;
@@ -21,6 +22,8 @@ export function WayfinderMainExperience({ entry }: Props) {
       {nfcEntry ? <WayfinderNfcWelcome tagId={entry.tagId} /> : null}
 
       {!nfcEntry ? <WayfinderSubwayHero /> : null}
+
+      {entry.stationAnchor ? <WayfinderStationAnchorCard anchor={entry.stationAnchor} /> : null}
 
       <WayfinderNearbyStations nfcEntry={nfcEntry} />
 

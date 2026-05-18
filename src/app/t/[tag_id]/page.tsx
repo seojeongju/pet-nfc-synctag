@@ -94,6 +94,24 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
     return <UnknownTagView tagId={normalizedTagId} />;
   }
 
+  try {
+    const anchor = await db
+      .prepare(
+        `SELECT wayfinder_station_id AS station_id, wayfinder_facility_id AS facility_id
+         FROM tags WHERE id = ?`
+      )
+      .bind(tag.id)
+      .first<{ station_id: string | null; facility_id: string | null }>();
+    const wfStationId = (anchor?.station_id ?? "").trim();
+    const wfFacilityId = (anchor?.facility_id ?? "").trim();
+    if (wfStationId) {
+      const q = wfFacilityId ? `?facility=${encodeURIComponent(wfFacilityId)}` : "";
+      redirect(`/wayfinder/stations/${encodeURIComponent(wfStationId)}${q}`);
+    }
+  } catch {
+    /* 마이그레이션 0040 미적용 */
+  }
+
   /** 링크유-동행 인벤토리 태그: GPS·근처 역 안내(메인). 별도 관리대상(pet) 없음 */
   const wfSpotId = (tag.wayfinder_spot_id ?? "").trim();
   if (wfSpotId) {
