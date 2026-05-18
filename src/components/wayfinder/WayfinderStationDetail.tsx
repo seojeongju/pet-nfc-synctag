@@ -3,7 +3,9 @@ import { ArrowRight, MapPin, Navigation2, TrainFront } from "lucide-react";
 import { linkuCompanionMenuTitle, linkuCompanionSpotSubLabel } from "@/lib/wayfinder/copy";
 import type { WayfinderFacilityPublic } from "@/lib/wayfinder/facility-types";
 import type { FacilityMapPoint } from "@/lib/wayfinder/facility-map-layout";
+import type { WayfinderStationEntryContext } from "@/lib/wayfinder/station-entry-context";
 import { WayfinderStationExperience } from "@/components/wayfinder/WayfinderStationExperience";
+import { WayfinderStationNearbyBanner } from "@/components/wayfinder/WayfinderStationNearbyBanner";
 
 type Props = {
   name: string;
@@ -17,6 +19,7 @@ type Props = {
   facilitiesSource: "d1" | "pilot_seed";
   facilitiesSyncedAt: string | null;
   initialSelectedFacilityId?: string | null;
+  entryContext?: WayfinderStationEntryContext;
 };
 
 export function WayfinderStationDetail({
@@ -31,6 +34,7 @@ export function WayfinderStationDetail({
   facilitiesSource,
   facilitiesSyncedAt,
   initialSelectedFacilityId = null,
+  entryContext,
 }: Props) {
   return (
     <div className="space-y-6">
@@ -46,6 +50,8 @@ export function WayfinderStationDetail({
           시각장애·유모차 동반 시 역무원·안내 데스크에 도움을 요청할 수 있습니다.
         </p>
       </header>
+
+      {entryContext ? <WayfinderStationNearbyBanner stationName={name} entry={entryContext} /> : null}
 
       <section aria-label="이동 경로 안내">
         <a
@@ -73,6 +79,7 @@ export function WayfinderStationDetail({
         stationName={name}
         latitude={latitude}
         longitude={longitude}
+        routeHref={routeHref}
         facilities={facilities}
         mapPoints={mapPoints}
         facilitiesSource={facilitiesSource}

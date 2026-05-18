@@ -13,6 +13,7 @@ import {
   TrainFront,
 } from "lucide-react";
 import { buildKakaoMapRouteHref } from "@/lib/wayfinder/kakao-map-links";
+import { buildStationDetailHref } from "@/lib/wayfinder/station-entry-context";
 import { cn } from "@/lib/utils";
 
 type NearbyStation = {
@@ -197,7 +198,10 @@ export function WayfinderNearbyStations({ nfcEntry = false }: Props) {
               </a>
             ) : null}
             <Link
-              href={`/wayfinder/stations/${encodeURIComponent(nearest.id)}`}
+              href={buildStationDetailHref(nearest.id, {
+                distanceM: nearest.distanceM,
+                isNearest: true,
+              })}
               className={cn(
                 "flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-black transition active:scale-[0.99]",
                 nearestRouteHref
@@ -219,7 +223,7 @@ export function WayfinderNearbyStations({ nfcEntry = false }: Props) {
             {others.map((s) => (
               <li key={s.id}>
                 <Link
-                  href={`/wayfinder/stations/${encodeURIComponent(s.id)}`}
+                  href={buildStationDetailHref(s.id, { distanceM: s.distanceM })}
                   className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50/20 active:scale-[0.99]"
                 >
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-indigo-600">

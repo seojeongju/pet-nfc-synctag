@@ -6,6 +6,7 @@ import { buildFacilityMapPoints } from "@/lib/wayfinder/facility-map-layout";
 import { toPublicFacility } from "@/lib/wayfinder/facility-types";
 import { linkuCompanionMenuTitle, linkuCompanionServiceDescription } from "@/lib/wayfinder/copy";
 import { buildKakaoMapPinHref, buildKakaoMapRouteHref } from "@/lib/wayfinder/kakao-map-links";
+import { parseStationEntryFromSearchParams } from "@/lib/wayfinder/station-entry-context";
 import { buildPublicMetadata } from "@/lib/seo";
 import { WayfinderPublicShell } from "@/components/wayfinder/WayfinderPublicShell";
 import { WayfinderStationDetail } from "@/components/wayfinder/WayfinderStationDetail";
@@ -15,7 +16,7 @@ export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ facility?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 async function loadStation(idRaw: string) {
@@ -49,6 +50,7 @@ export default async function WayfinderStationPage({ params, searchParams }: Pag
   const { id } = await params;
   const sp = await searchParams;
   const initialFacilityId = typeof sp.facility === "string" ? sp.facility.trim() : "";
+  const entryContext = parseStationEntryFromSearchParams(sp);
   const row = await loadStation(id);
   if (!row) notFound();
 
@@ -84,6 +86,7 @@ export default async function WayfinderStationPage({ params, searchParams }: Pag
         facilitiesSource={facilitiesSource}
         facilitiesSyncedAt={facilitiesSyncedAt}
         initialSelectedFacilityId={initialFacilityId || null}
+        entryContext={entryContext}
       />
     </WayfinderPublicShell>
   );

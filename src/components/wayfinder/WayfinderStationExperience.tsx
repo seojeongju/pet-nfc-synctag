@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MapPin, Navigation2 } from "lucide-react";
 import {
   buildDestinationPresets,
@@ -9,9 +9,14 @@ import {
   type FacilityMapPoint,
 } from "@/lib/wayfinder/facility-map-layout";
 import type { WayfinderFacilityPublic } from "@/lib/wayfinder/facility-types";
+import {
+  filterFacilitiesByType,
+  type FacilityFilterId,
+} from "@/lib/wayfinder/facility-filter";
 import { buildKakaoMapRouteHref } from "@/lib/wayfinder/kakao-map-links";
 import { WayfinderSpeechAnnouncer } from "@/components/wayfinder/WayfinderSpeechAnnouncer";
 import { WayfinderStationAccessibility } from "@/components/wayfinder/WayfinderStationAccessibility";
+import { WayfinderStationFacilitiesEmpty } from "@/components/wayfinder/WayfinderStationFacilitiesEmpty";
 import { WayfinderStationMap } from "@/components/wayfinder/WayfinderStationMap";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +24,7 @@ type Props = {
   stationName: string;
   latitude: number;
   longitude: number;
+  routeHref: string;
   facilities: WayfinderFacilityPublic[];
   mapPoints: FacilityMapPoint[];
   facilitiesSource: "d1" | "pilot_seed";
@@ -34,6 +40,7 @@ export function WayfinderStationExperience({
   stationName,
   latitude,
   longitude,
+  routeHref,
   facilities,
   mapPoints,
   facilitiesSource,
@@ -43,22 +50,48 @@ export function WayfinderStationExperience({
   const [selectedFacilityId, setSelectedFacilityId] = useState<string | null>(
     initialSelectedFacilityId
   );
+  const [facilityFilter, setFacilityFilter] = useState<FacilityFilterId>("all");
+
+  const filteredFacilities = useMemo(
+    () => filterFacilitiesByType(facilities, facilityFilter),
+    [facilities, facilityFilter]
+  );
+
+  const filteredMapPoints = useMemo(() => {
+    const ids = new Set(filteredFacilities.map((f) => f.id));
+    return mapPoints.filter((p) => ids.has(p.id));
+  }, [filteredFacilities, mapPoints]);
+
+  useEffect(() => {
+    if (selectedFacilityId && !filteredFacilities.some((f) => f.id === selectedFacilityId)) {
+      setSelectedFacilityId(null);
+    }
+  }, [filteredFacilities, selectedFacilityId]);
 
   const presets = useMemo(
-    () => buildDestinationPresets(stationName, latitude, longitude, mapPoints),
-    [mapPoints, latitude, longitude, stationName]
+    () => buildDestinationPresets(stationName, latitude, longitude, filteredMapPoints),
+    [filteredMapPoints, latitude, longitude, stationName]
   );
 
   const speechText = useMemo(
-    () => buildFacilitiesSpeechText(stationName, mapPoints),
-    [mapPoints, stationName]
+    () => buildFacilitiesSpeechText(stationName, filteredMapPoints),
+    [filteredMapPoints, stationName]
   );
 
-  const selectedPoint = mapPoints.find((p) => p.id === selectedFacilityId) ?? null;
+  const selectedPoint = filteredMapPoints.find((p) => p.id === selectedFacilityId) ?? null;
+  const hasFacilities = facilities.length > 0;
 
   return (
     <div className="space-y-4">
-      {mapPoints.length > 0 ? (
+      {!hasFacilities ? (
+        <WayfinderStationFacilitiesEmpty
+          stationName={stationName}
+          routeHref={routeHref}
+          dataSource={facilitiesSource}
+        />
+      ) : null}
+
+      {hasFacilities && filteredMapPoints.length > 0 ? (
         <div className="space-y-2">
           <WayfinderSpeechAnnouncer text={speechText} />
           <p className="text-[11px] font-semibold leading-relaxed text-slate-500">
@@ -68,7 +101,7 @@ export function WayfinderStationExperience({
         </div>
       ) : null}
 
-      {presets.length > 1 ? (
+      {hasFacilities && presets.length > 1 ? (
         <section aria-label="목적지 빠른 길찾기" className="space-y-2">
           <p className="text-xs font-black text-slate-800">목적지 선택</p>
           <div className="flex flex-wrap gap-2">
@@ -106,7 +139,7 @@ export function WayfinderStationExperience({
         latitude={latitude}
         longitude={longitude}
         label={stationName}
-        facilities={mapPoints}
+        facilities={hasFacilities ? filteredMapPoints : mapPoints}
         selectedFacilityId={selectedFacilityId}
         onSelectFacility={setSelectedFacilityId}
       />
@@ -127,15 +160,20 @@ export function WayfinderStationExperience({
         </a>
       ) : null}
 
-      <WayfinderStationAccessibility
-        facilities={facilities}
-        mapPoints={mapPoints}
-        dataSource={facilitiesSource}
-        syncedAt={facilitiesSyncedAt}
-        selectedFacilityId={selectedFacilityId}
-        onSelectFacility={setSelectedFacilityId}
-        stationName={stationName}
-      />
+      {hasFacilities ? (
+        <WayfinderStationAccessibility
+          allFacilities={facilities}
+          facilities={filteredFacilities}
+          mapPoints={filteredMapPoints}
+          dataSource={facilitiesSource}
+          syncedAt={facilitiesSyncedAt}
+          selectedFacilityId={selectedFacilityId}
+          onSelectFacility={setSelectedFacilityId}
+          stationName={stationName}
+          facilityFilter={facilityFilter}
+          onFacilityFilterChange={setFacilityFilter}
+        />
+      ) : null}
     </div>
   );
 }

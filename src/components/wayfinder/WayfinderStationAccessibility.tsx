@@ -12,10 +12,16 @@ import {
 } from "lucide-react";
 import type { FacilityMapPoint } from "@/lib/wayfinder/facility-map-layout";
 import type { WayfinderFacilityPublic, WayfinderFacilityType } from "@/lib/wayfinder/facility-types";
+import {
+  countFacilitiesByFilter,
+  FACILITY_FILTER_OPTIONS,
+  type FacilityFilterId,
+} from "@/lib/wayfinder/facility-filter";
 import { buildKakaoMapRouteHref } from "@/lib/wayfinder/kakao-map-links";
 import { cn } from "@/lib/utils";
 
 type Props = {
+  allFacilities: WayfinderFacilityPublic[];
   facilities: WayfinderFacilityPublic[];
   mapPoints: FacilityMapPoint[];
   dataSource: "d1" | "pilot_seed";
@@ -23,6 +29,8 @@ type Props = {
   stationName: string;
   selectedFacilityId: string | null;
   onSelectFacility: (id: string | null) => void;
+  facilityFilter: FacilityFilterId;
+  onFacilityFilterChange: (id: FacilityFilterId) => void;
 };
 
 const TYPE_ICONS: Partial<Record<WayfinderFacilityType, typeof Accessibility>> = {
@@ -49,6 +57,7 @@ function formatSyncedAt(iso: string): string {
 }
 
 export function WayfinderStationAccessibility({
+  allFacilities,
   facilities,
   mapPoints,
   dataSource,
@@ -56,9 +65,19 @@ export function WayfinderStationAccessibility({
   stationName,
   selectedFacilityId,
   onSelectFacility,
+  facilityFilter,
+  onFacilityFilterChange,
 }: Props) {
-  const hasFacilities = facilities.length > 0;
+  const total = allFacilities.length;
+  const hasAny = total > 0;
+  const hasFiltered = facilities.length > 0;
   const pointById = new Map(mapPoints.map((p) => [p.id, p]));
+  const counts = countFacilitiesByFilter(allFacilities);
+
+  const filterOptions = FACILITY_FILTER_OPTIONS.filter((opt) => {
+    if (opt.id === "all") return hasAny;
+    return counts[opt.id] > 0;
+  });
 
   return (
     <section
@@ -69,6 +88,11 @@ export function WayfinderStationAccessibility({
         <p className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-teal-800">
           <Accessibility className="h-4 w-4" aria-hidden />
           교통약자 편의시설
+          {hasAny ? (
+            <span className="rounded-full bg-teal-100 px-1.5 py-0.5 text-[10px] font-bold text-teal-900">
+              {facilityFilter === "all" ? total : `${facilities.length} / ${total}`}
+            </span>
+          ) : null}
         </p>
         {dataSource === "pilot_seed" ? (
           <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-900">
@@ -81,10 +105,34 @@ export function WayfinderStationAccessibility({
         )}
       </div>
 
-      {!hasFacilities ? (
+      {hasAny && filterOptions.length > 1 ? (
+        <div className="mb-3 flex flex-wrap gap-1.5" role="group" aria-label="시설 유형 필터">
+          {filterOptions.map((opt) => {
+            const active = facilityFilter === opt.id;
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => onFacilityFilterChange(opt.id)}
+                className={cn(
+                  "min-h-9 rounded-full border px-3 py-1.5 text-[11px] font-black transition",
+                  active
+                    ? "border-teal-700 bg-teal-700 text-white shadow-sm"
+                    : "border-teal-200/90 bg-white/90 text-teal-900 hover:border-teal-300"
+                )}
+                aria-pressed={active}
+              >
+                {opt.label}
+                {opt.id !== "all" ? ` (${counts[opt.id]})` : ""}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {!hasAny ? null : !hasFiltered ? (
         <p className="text-xs font-semibold leading-relaxed text-teal-950/90">
-          이 역의 편의시설 정보를 불러오지 못했습니다. 역무원·안내 데스크에 문의하거나 위 목적지·길찾기를
-          이용해 주세요.
+          선택한 유형의 편의시설이 이 역에 없습니다. 「전체」를 누르거나 다른 유형을 선택해 주세요.
         </p>
       ) : (
         <ul className="space-y-2">
