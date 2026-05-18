@@ -1,13 +1,12 @@
 import Link from "next/link";
 import { ArrowRight, MapPin, Navigation2, TrainFront } from "lucide-react";
 import { linkuCompanionMenuTitle, linkuCompanionSpotSubLabel } from "@/lib/wayfinder/copy";
-import { isInSeoulMetroBounds } from "@/lib/wayfinder/accessible-routing-links";
 import type { WayfinderFacilityPublic } from "@/lib/wayfinder/facility-types";
 import type { FacilityMapPoint } from "@/lib/wayfinder/facility-map-layout";
 import type { WayfinderStationEntryContext } from "@/lib/wayfinder/station-entry-context";
 import { WayfinderStationExperience } from "@/components/wayfinder/WayfinderStationExperience";
 import { WayfinderStationNearbyBanner } from "@/components/wayfinder/WayfinderStationNearbyBanner";
-import { WayfinderAccessibleRoutingSection } from "@/components/wayfinder/WayfinderAccessibleRoutingSection";
+import { WayfinderStationLinkuFeatures } from "@/components/wayfinder/WayfinderStationLinkuFeatures";
 
 type Props = {
   name: string;
@@ -38,72 +37,25 @@ export function WayfinderStationDetail({
   initialSelectedFacilityId = null,
   entryContext,
 }: Props) {
-  const isSeoul = isInSeoulMetroBounds(latitude, longitude);
-
   return (
     <div className="space-y-6">
       <header className="space-y-3">
         <div className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-3 py-1 text-[10px] font-black tracking-wider text-white">
           <TrainFront className="h-3.5 w-3.5" aria-hidden />
-          지하철역 · 이동 안내
+          지하철역 · 교통약자 안내
         </div>
         <h1 className="text-2xl font-black leading-tight tracking-tight text-slate-900 sm:text-[28px]">{name}</h1>
         {lines ? <p className="text-sm font-bold text-indigo-700">{lines}</p> : null}
         <p className="text-sm font-semibold leading-relaxed text-slate-600">
-          {isSeoul ? (
-            <>
-              역 안 <strong className="text-slate-800">편의시설</strong>은 아래 링크유 안내로 확인하고,{" "}
-              <strong className="text-sky-800">서울동행맵</strong>으로 이 역까지·역 간 맞춤 보행·지하철 경로를
-              안내받으세요.
-            </>
-          ) : (
-            <>
-              이 역을 기준으로 카카오맵에서 <strong className="text-slate-800">길찾기</strong>를 열어 이동하세요.
-              휠체어·시각장애·유모차 동반 시 역무원·안내 데스크에 도움을 요청할 수 있습니다.
-            </>
-          )}
+          역 안 <strong className="text-indigo-800">엘리베이터·화장실·승강장</strong> 등 편의시설을 링크유-동행
+          지도·목록·음성 안내로 확인하세요. 휠체어·유모차 동반 시 역무원·안내 데스크에 도움을 요청할 수
+          있습니다.
         </p>
       </header>
 
       {entryContext ? <WayfinderStationNearbyBanner stationName={name} entry={entryContext} /> : null}
 
-      {isSeoul ? (
-        <WayfinderAccessibleRoutingSection
-          variant="station"
-          latitude={latitude}
-          longitude={longitude}
-          stationName={name}
-        />
-      ) : null}
-
-      <section aria-label={isSeoul ? "참고 경로 (카카오맵)" : "이동 경로 안내"} className="space-y-2">
-        {isSeoul ? (
-          <p className="px-0.5 text-xs font-black text-slate-500">참고 · 일반 길찾기</p>
-        ) : null}
-        <a
-          href={routeHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={
-            isSeoul
-              ? "flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-center text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50"
-              : "flex w-full items-center justify-center gap-2 rounded-2xl border-b-4 border-indigo-800 bg-indigo-600 px-5 py-4 text-center text-base font-black text-white shadow-lg transition active:scale-[0.99] hover:bg-indigo-700"
-          }
-        >
-          <Navigation2 className="h-5 w-5" aria-hidden />
-          {isSeoul ? "카카오맵 일반 길찾기 (참고)" : "이 역으로 길찾기 (카카오맵)"}
-          <ArrowRight className="h-5 w-5 opacity-80" aria-hidden />
-        </a>
-        <a
-          href={mapHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-800 shadow-sm hover:bg-slate-50"
-        >
-          <MapPin className="h-4 w-4 text-indigo-600" aria-hidden />
-          역 위치 지도에서 보기
-        </a>
-      </section>
+      <WayfinderStationLinkuFeatures stationName={name} facilityCount={facilities.length} />
 
       <WayfinderStationExperience
         stationName={name}
@@ -115,10 +67,43 @@ export function WayfinderStationDetail({
         facilitiesSource={facilitiesSource}
         facilitiesSyncedAt={facilitiesSyncedAt}
         initialSelectedFacilityId={initialSelectedFacilityId}
-        seoulCompanionRecommended={isSeoul}
       />
 
-      <details className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-xs font-semibold text-slate-600">
+      <details className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+        <summary className="flex cursor-pointer list-none items-center gap-2 text-xs font-black text-slate-700 [&::-webkit-details-marker]:hidden">
+          <Navigation2 className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
+          참고 · 외부 길찾기 (카카오맵)
+        </summary>
+        <div className="mt-3 space-y-2">
+          <p className="text-[11px] font-semibold leading-relaxed text-slate-600">
+            일반 도로 기준 경로가 필요할 때만 이용하세요. 역 안 시설 안내는 위 링크유 기능을 사용합니다.
+          </p>
+          <a
+            href={routeHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-800 shadow-sm hover:bg-slate-50"
+          >
+            <Navigation2 className="h-4 w-4 text-indigo-600" aria-hidden />
+            이 역으로 길찾기
+            <ArrowRight className="h-4 w-4 opacity-70" aria-hidden />
+          </a>
+          <a
+            href={mapHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-800 shadow-sm hover:bg-slate-50"
+          >
+            <MapPin className="h-4 w-4 text-indigo-600" aria-hidden />
+            역 위치 지도에서 보기
+          </a>
+        </div>
+      </details>
+
+      <details
+        id="wf-station-nfc-spot"
+        className="scroll-mt-20 rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-xs font-semibold text-slate-600"
+      >
         <summary className="cursor-pointer font-black text-slate-700">보조: {linkuCompanionSpotSubLabel}</summary>
         <p className="mt-2 leading-relaxed">
           역·시설에 설치된 NFC 태그는 특정 지점(승강기 앞 등) 안내용입니다.{" "}

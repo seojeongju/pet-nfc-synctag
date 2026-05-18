@@ -106,7 +106,7 @@ export function WayfinderStationAccessibility({
       </div>
 
       {hasAny && filterOptions.length > 1 ? (
-        <div className="mb-3 flex flex-wrap gap-1.5" role="group" aria-label="시설 유형 필터">
+        <div id="wf-station-filter" className="scroll-mt-20 mb-3 flex flex-wrap gap-1.5" role="group" aria-label="시설 유형 필터">
           {filterOptions.map((opt) => {
             const active = facilityFilter === opt.id;
             return (

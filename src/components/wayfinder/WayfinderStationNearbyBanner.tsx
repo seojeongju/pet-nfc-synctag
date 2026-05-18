@@ -33,7 +33,7 @@ export function WayfinderStationNearbyBanner({ stationName, entry }: Props) {
           <span className="ml-1.5 text-indigo-600">약 {distLabel}</span>
         </p>
         <p className="text-[11px] font-semibold leading-relaxed text-slate-600">
-          아래에서 교통약자 편의시설을 확인한 뒤, 필요하면 시설·역까지 카카오맵 길찾기를 이용하세요.
+          아래 링크유 기능으로 교통약자 편의시설·지도·음성 안내를 이용하세요.
         </p>
       </div>
     </div>
