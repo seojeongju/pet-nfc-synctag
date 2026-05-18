@@ -24,9 +24,9 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
-import type { SubjectKind } from "@/lib/subject-kind";
 import type { TenantRole } from "@/types/tenant-subscription";
 import { linkuCompanionSpotSubLabel } from "@/lib/wayfinder/copy";
+import { companionWayfinderRegisterPath, companionWayfinderSpotEditPath } from "@/lib/companion/dashboard-paths";
 import { canMutateWayfinderSpot, type WayfinderSpotRow } from "@/lib/wayfinder-spots-db";
 import {
   createWayfinderSpotForm,
@@ -43,7 +43,6 @@ import { cn } from "@/lib/utils";
 import { absoluteUrl } from "@/lib/seo";
 
 type Props = {
-  subjectKind: SubjectKind;
   tenantId: string | null;
   tenantQs: string;
   spots: WayfinderSpotRow[];
@@ -53,11 +52,6 @@ type Props = {
   defaultExpanded: boolean;
   publicSpotPageBase: string;
 };
-
-function spotRegisterHref(subjectKind: SubjectKind, tenantQs: string) {
-  const base = `/dashboard/${subjectKind}/wayfinder`;
-  return tenantQs ? `${base}${tenantQs}&register=1` : `${base}?register=1`;
-}
 
 function SpotStatusBadge({ published }: { published: boolean }) {
   return (
@@ -74,7 +68,6 @@ function SpotStatusBadge({ published }: { published: boolean }) {
 }
 
 export function WayfinderDashboardSpotSection({
-  subjectKind,
   tenantId,
   tenantQs,
   spots,
@@ -84,7 +77,7 @@ export function WayfinderDashboardSpotSection({
   defaultExpanded,
   publicSpotPageBase,
 }: Props) {
-  const registerHref = spotRegisterHref(subjectKind, tenantQs);
+  const registerHref = companionWayfinderRegisterPath(tenantId);
 
   return (
     <details open={defaultExpanded} className="group overflow-hidden rounded-[28px] border border-slate-200/90 bg-white shadow-lg">
@@ -135,7 +128,6 @@ export function WayfinderDashboardSpotSection({
                     </p>
                   </div>
                   <form action={createWayfinderSpotForm} className="grid gap-4">
-                    <input type="hidden" name="kind" value={subjectKind} />
                     {tenantId ? <input type="hidden" name="tenant" value={tenantId} /> : null}
 
                     <WfFormField id="wf-title" label="스팟 이름" icon={Building2} tone="indigo">
@@ -274,7 +266,7 @@ export function WayfinderDashboardSpotSection({
                 <ul className="space-y-3">
                   {spots.map((s) => {
                     const canEdit = canMutateWayfinderSpot(sessionUserId, s, tenantId, tenantRole);
-                    const editHref = `/dashboard/${subjectKind}/wayfinder/${s.id}/edit${tenantQs}`;
+                    const editHref = companionWayfinderSpotEditPath(s.id, tenantId);
                     const spotUrl = absoluteUrl(`/wayfinder/s/${s.slug}`);
                     return (
                       <li key={s.id}>
@@ -333,7 +325,6 @@ export function WayfinderDashboardSpotSection({
                                   </Link>
                                   <form action={toggleWayfinderSpotPublishedForm} className="flex-1 sm:flex-none">
                                     <input type="hidden" name="id" value={s.id} />
-                                    <input type="hidden" name="kind" value={subjectKind} />
                                     {tenantId ? <input type="hidden" name="tenant" value={tenantId} /> : null}
                                     <Button
                                       type="submit"
@@ -355,7 +346,6 @@ export function WayfinderDashboardSpotSection({
                                   </form>
                                   <form action={deleteWayfinderSpotForm} className="flex-1 sm:flex-none">
                                     <input type="hidden" name="id" value={s.id} />
-                                    <input type="hidden" name="kind" value={subjectKind} />
                                     {tenantId ? <input type="hidden" name="tenant" value={tenantId} /> : null}
                                     <Button
                                       type="submit"

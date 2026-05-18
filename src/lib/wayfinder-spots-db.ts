@@ -1,6 +1,6 @@
 import type { D1Database } from "@cloudflare/workers-types";
-import type { SubjectKind } from "@/lib/subject-kind";
 import type { TenantRole } from "@/types/tenant-subscription";
+import { COMPANION_SPOT_SUBJECT_KIND } from "@/lib/companion/scope";
 import { roleAtLeast, getMembership } from "@/lib/tenant-membership";
 
 export type WayfinderSpotRow = {
@@ -55,10 +55,9 @@ export async function wayfinderSlugExistsExcept(db: D1Database, slug: string, ex
   return row != null;
 }
 
-export async function listWayfinderSpotsForOwnerKind(
+export async function listWayfinderSpotsForOwner(
   db: D1Database,
   ownerId: string,
-  subjectKind: SubjectKind,
   tenantId?: string
 ): Promise<WayfinderSpotRow[]> {
   const tenant = (tenantId ?? "").trim();
@@ -72,9 +71,10 @@ export async function listWayfinderSpotsForOwnerKind(
        WHERE owner_id = ? AND subject_kind = ? AND tenant_id IS NULL
        ORDER BY datetime(updated_at) DESC`;
   const stmt = db.prepare(query);
-  const { results } = await (tenant ? stmt.bind(ownerId, subjectKind, tenant) : stmt.bind(ownerId, subjectKind)).all<
-    WayfinderSpotRow
-  >();
+  const { results } = await (tenant
+    ? stmt.bind(ownerId, COMPANION_SPOT_SUBJECT_KIND, tenant)
+    : stmt.bind(ownerId, COMPANION_SPOT_SUBJECT_KIND)
+  ).all<WayfinderSpotRow>();
   return results ?? [];
 }
 
@@ -84,12 +84,11 @@ export async function listWayfinderSpotsForOwnerKind(
 export async function listWayfinderSpotsForDashboard(
   db: D1Database,
   userId: string,
-  subjectKind: SubjectKind,
   tenantId?: string
 ): Promise<WayfinderSpotRow[]> {
   const tenant = (tenantId ?? "").trim();
   if (!tenant) {
-    return listWayfinderSpotsForOwnerKind(db, userId, subjectKind, undefined);
+    return listWayfinderSpotsForOwner(db, userId, undefined);
   }
   const { results } = await db
     .prepare(
@@ -107,7 +106,7 @@ export async function listWayfinderSpotsForDashboard(
          )
        ORDER BY datetime(w.updated_at) DESC`
     )
-    .bind(subjectKind, tenant, userId, userId)
+    .bind(COMPANION_SPOT_SUBJECT_KIND, tenant, userId, userId)
     .all<WayfinderSpotRow>();
   return results ?? [];
 }
@@ -117,7 +116,6 @@ export async function getWayfinderSpotForDashboard(
   db: D1Database,
   spotId: string,
   userId: string,
-  subjectKind: SubjectKind,
   tenantId?: string
 ): Promise<WayfinderSpotRow | null> {
   const row = await db
@@ -125,7 +123,7 @@ export async function getWayfinderSpotForDashboard(
       `SELECT ${WF_SPOT_SELECT}
        FROM wayfinder_spots WHERE id = ? AND subject_kind = ?`
     )
-    .bind(spotId, subjectKind)
+    .bind(spotId, COMPANION_SPOT_SUBJECT_KIND)
     .first<WayfinderSpotRow>();
   if (!row) return null;
 

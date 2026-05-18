@@ -7,7 +7,11 @@ import { redirect } from "next/navigation";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { getAuth } from "@/lib/auth";
 import { getDB } from "@/lib/db";
-import { parseSubjectKind, type SubjectKind } from "@/lib/subject-kind";
+import { COMPANION_SPOT_SUBJECT_KIND } from "@/lib/companion/scope";
+import {
+  companionWayfinderPath,
+  companionWayfinderSpotEditPath,
+} from "@/lib/companion/dashboard-paths";
 import {
   deleteWayfinderSpotByIdOnly,
   getWayfinderSpotForDashboard,
@@ -31,7 +35,7 @@ async function requireSessionUserId(): Promise<string> {
   return id;
 }
 
-function redirectToWayfinder(kind: SubjectKind, tenantId: string | null, err?: string): never {
+function redirectToWayfinder(tenantId: string | null, err?: string): never {
   const qs = new URLSearchParams();
   if (tenantId) qs.set("tenant", tenantId);
   if (err) {
@@ -39,15 +43,16 @@ function redirectToWayfinder(kind: SubjectKind, tenantId: string | null, err?: s
     qs.set("register", "1");
   }
   const q = qs.toString();
-  redirect(`/dashboard/${kind}/wayfinder${q ? `?${q}` : ""}`);
+  redirect(q ? `${companionWayfinderPath(null)}?${q}` : companionWayfinderPath(tenantId));
 }
 
-function redirectToWayfinderSpotEdit(kind: SubjectKind, spotId: string, tenantId: string | null, err?: string): never {
+function redirectToWayfinderSpotEdit(spotId: string, tenantId: string | null, err?: string): never {
   const qs = new URLSearchParams();
   if (tenantId) qs.set("tenant", tenantId);
   if (err) qs.set("err", err);
   const q = qs.toString();
-  redirect(`/dashboard/${kind}/wayfinder/${spotId}/edit${q ? `?${q}` : ""}`);
+  const base = companionWayfinderSpotEditPath(spotId, null);
+  redirect(q ? `${base}?${q}` : base);
 }
 
 async function tenantRoleForUser(db: D1Database, userId: string, tenantId: string | null) {
@@ -64,6 +69,8 @@ function revalidateWayfinderPublicPaths(slug: string) {
   revalidatePath(`/wayfinder/s/${slug}`);
 }
 
+const COMPANION_WAYFINDER_DASHBOARD = "/dashboard/companion/wayfinder";
+
 export async function createWayfinderSpotForm(formData: FormData): Promise<void> {
   const ownerId = await requireSessionUserId();
   const title = String(formData.get("title") ?? "").trim().slice(0, 200);
@@ -71,41 +78,39 @@ export async function createWayfinderSpotForm(formData: FormData): Promise<void>
   const guideText = String(formData.get("guide_text") ?? "").trim().slice(0, 8000) || null;
   const floorLabel = String(formData.get("floor_label") ?? "").trim().slice(0, 80) || null;
   const contactPhone = contactPhoneFromForm(formData);
-  const kindParam = String(formData.get("kind") ?? "pet").trim();
   const tenantParam = String(formData.get("tenant") ?? "").trim();
   const tenantId = tenantParam || null;
-  const kind = parseSubjectKind(kindParam);
 
   const latRaw = String(formData.get("latitude") ?? "").trim();
   const lonRaw = String(formData.get("longitude") ?? "").trim();
   const lat = latRaw === "" ? null : Number(latRaw);
   const lon = lonRaw === "" ? null : Number(lonRaw);
   if (lat !== null && Number.isNaN(lat)) {
-    redirectToWayfinder(kind, tenantId, "invalid");
+    redirectToWayfinder(tenantId, "invalid");
   }
   if (lon !== null && Number.isNaN(lon)) {
-    redirectToWayfinder(kind, tenantId, "invalid");
+    redirectToWayfinder(tenantId, "invalid");
   }
   const publishedRaw = String(formData.get("is_published") ?? "").trim();
   const isPublished = publishedRaw === "1" || publishedRaw === "on" ? 1 : 0;
 
   if (!title) {
-    redirectToWayfinder(kind, tenantId, "invalid");
+    redirectToWayfinder(tenantId, "invalid");
   }
   if (lat !== null && (!Number.isFinite(lat) || lat < -90 || lat > 90)) {
-    redirectToWayfinder(kind, tenantId, "invalid");
+    redirectToWayfinder(tenantId, "invalid");
   }
   if (lon !== null && (!Number.isFinite(lon) || lon < -180 || lon > 180)) {
-    redirectToWayfinder(kind, tenantId, "invalid");
+    redirectToWayfinder(tenantId, "invalid");
   }
 
   const db = getDB();
   if (tenantId) {
-    await assertTenantActive(db, tenantId).catch(() => redirectToWayfinder(kind, tenantId, "tenant_suspended"));
+    await assertTenantActive(db, tenantId).catch(() => redirectToWayfinder(tenantId, "tenant_suspended"));
     try {
       await assertTenantRole(db, ownerId, tenantId, "admin");
     } catch {
-      redirectToWayfinder(kind, tenantId, "forbidden");
+      redirectToWayfinder(tenantId, "forbidden");
     }
   }
 
@@ -119,11 +124,11 @@ export async function createWayfinderSpotForm(formData: FormData): Promise<void>
   } else {
     const normalized = normalizeWayfinderSlug(slugInput);
     if (!normalized) {
-      redirectToWayfinder(kind, tenantId, "invalid_slug");
+      redirectToWayfinder(tenantId, "invalid_slug");
     }
     slug = normalized;
     if (await wayfinderSlugExists(db, slug)) {
-      redirectToWayfinder(kind, tenantId, "slug_taken");
+      redirectToWayfinder(tenantId, "slug_taken");
     }
   }
 
@@ -140,7 +145,7 @@ export async function createWayfinderSpotForm(formData: FormData): Promise<void>
         id,
         ownerId,
         tenantId,
-        kind,
+        COMPANION_SPOT_SUBJECT_KIND,
         slug,
         title,
         summary,
@@ -153,26 +158,24 @@ export async function createWayfinderSpotForm(formData: FormData): Promise<void>
       )
       .run();
   } catch {
-    redirectToWayfinder(kind, tenantId, "db");
+    redirectToWayfinder(tenantId, "db");
   }
 
-  revalidatePath(`/dashboard/${kind}/wayfinder`);
+  revalidatePath(COMPANION_WAYFINDER_DASHBOARD);
   if (isPublished) {
     revalidateWayfinderPublicPaths(slug);
   }
-  redirectToWayfinder(kind, tenantId);
+  redirectToWayfinder(tenantId);
 }
 
 export async function updateWayfinderSpotForm(formData: FormData): Promise<void> {
   const ownerId = await requireSessionUserId();
   const spotId = String(formData.get("id") ?? "").trim();
-  const kindParam = String(formData.get("kind") ?? "pet").trim();
   const tenantParam = String(formData.get("tenant") ?? "").trim();
   const tenantId = tenantParam || null;
-  const kind = parseSubjectKind(kindParam);
 
   if (!spotId) {
-    redirectToWayfinder(kind, tenantId, "invalid");
+    redirectToWayfinder(tenantId, "invalid");
   }
 
   const title = String(formData.get("title") ?? "").trim().slice(0, 200);
@@ -185,45 +188,47 @@ export async function updateWayfinderSpotForm(formData: FormData): Promise<void>
   const lat = latRaw === "" ? null : Number(latRaw);
   const lon = lonRaw === "" ? null : Number(lonRaw);
   if (lat !== null && Number.isNaN(lat)) {
-    redirectToWayfinderSpotEdit(kind, spotId, tenantId, "invalid");
+    redirectToWayfinderSpotEdit(spotId, tenantId, "invalid");
   }
   if (lon !== null && Number.isNaN(lon)) {
-    redirectToWayfinderSpotEdit(kind, spotId, tenantId, "invalid");
+    redirectToWayfinderSpotEdit(spotId, tenantId, "invalid");
   }
   const publishedRaw = String(formData.get("is_published") ?? "").trim();
   const isPublished = publishedRaw === "1" || publishedRaw === "on" ? 1 : 0;
 
   if (!title) {
-    redirectToWayfinderSpotEdit(kind, spotId, tenantId, "invalid");
+    redirectToWayfinderSpotEdit(spotId, tenantId, "invalid");
   }
   if (lat !== null && (!Number.isFinite(lat) || lat < -90 || lat > 90)) {
-    redirectToWayfinderSpotEdit(kind, spotId, tenantId, "invalid");
+    redirectToWayfinderSpotEdit(spotId, tenantId, "invalid");
   }
   if (lon !== null && (!Number.isFinite(lon) || lon < -180 || lon > 180)) {
-    redirectToWayfinderSpotEdit(kind, spotId, tenantId, "invalid");
+    redirectToWayfinderSpotEdit(spotId, tenantId, "invalid");
   }
 
   const db = getDB();
   if (tenantId) {
-    await assertTenantActive(db, tenantId).catch(() => redirectToWayfinderSpotEdit(kind, spotId, tenantId, "tenant_suspended"));
+    await assertTenantActive(db, tenantId).catch(() =>
+      redirectToWayfinderSpotEdit(spotId, tenantId, "tenant_suspended")
+    );
   }
 
-  const spot = await getWayfinderSpotForDashboard(db, spotId, ownerId, kind, tenantId ?? undefined);
+  const spot = await getWayfinderSpotForDashboard(db, spotId, ownerId, tenantId ?? undefined);
   if (!spot) {
-    redirectToWayfinder(kind, tenantId, "forbidden");
+    redirectToWayfinder(tenantId, "forbidden");
   }
   const tenantRole = await tenantRoleForUser(db, ownerId, tenantId);
   if (!canMutateWayfinderSpot(ownerId, spot, tenantId, tenantRole)) {
-    redirectToWayfinder(kind, tenantId, "forbidden");
+    redirectToWayfinder(tenantId, "forbidden");
   }
 
   const slugInput = String(formData.get("slug") ?? "").trim();
   const normalized = normalizeWayfinderSlug(slugInput);
   if (!normalized) {
-    redirectToWayfinderSpotEdit(kind, spotId, tenantId, "invalid_slug");
+    redirectToWayfinderSpotEdit(spotId, tenantId, "invalid_slug");
   }
   if (normalized !== spot.slug && (await wayfinderSlugExistsExcept(db, normalized, spotId))) {
-    redirectToWayfinderSpotEdit(kind, spotId, tenantId, "slug_taken");
+    redirectToWayfinderSpotEdit(spotId, tenantId, "slug_taken");
   }
 
   const ok = await updateWayfinderSpotFields(db, spotId, {
@@ -238,80 +243,76 @@ export async function updateWayfinderSpotForm(formData: FormData): Promise<void>
     isPublished,
   });
   if (!ok) {
-    redirectToWayfinderSpotEdit(kind, spotId, tenantId, "db");
+    redirectToWayfinderSpotEdit(spotId, tenantId, "db");
   }
 
-  revalidatePath(`/dashboard/${kind}/wayfinder`);
-  revalidatePath(`/dashboard/${kind}/wayfinder/${spotId}/edit`);
+  revalidatePath(COMPANION_WAYFINDER_DASHBOARD);
+  revalidatePath(`${COMPANION_WAYFINDER_DASHBOARD}/${spotId}/edit`);
   revalidateWayfinderPublicPaths(normalized);
   if (spot.slug !== normalized) {
     revalidateWayfinderPublicPaths(spot.slug);
   }
-  redirectToWayfinder(kind, tenantId);
+  redirectToWayfinder(tenantId);
 }
 
 export async function toggleWayfinderSpotPublishedForm(formData: FormData): Promise<void> {
   const ownerId = await requireSessionUserId();
   const spotId = String(formData.get("id") ?? "").trim();
-  const kindParam = String(formData.get("kind") ?? "pet").trim();
   const tenantParam = String(formData.get("tenant") ?? "").trim();
   const tenantId = tenantParam || null;
-  const kind = parseSubjectKind(kindParam);
 
   if (!spotId) {
-    redirectToWayfinder(kind, tenantId, "invalid");
+    redirectToWayfinder(tenantId, "invalid");
   }
 
   const db = getDB();
   if (tenantId) {
-    await assertTenantActive(db, tenantId).catch(() => redirectToWayfinder(kind, tenantId, "tenant_suspended"));
+    await assertTenantActive(db, tenantId).catch(() => redirectToWayfinder(tenantId, "tenant_suspended"));
   }
 
-  const spot = await getWayfinderSpotForDashboard(db, spotId, ownerId, kind, tenantId ?? undefined);
+  const spot = await getWayfinderSpotForDashboard(db, spotId, ownerId, tenantId ?? undefined);
   if (!spot) {
-    redirectToWayfinder(kind, tenantId, "forbidden");
+    redirectToWayfinder(tenantId, "forbidden");
   }
   const tenantRole = await tenantRoleForUser(db, ownerId, tenantId);
   if (!canMutateWayfinderSpot(ownerId, spot, tenantId, tenantRole)) {
-    redirectToWayfinder(kind, tenantId, "forbidden");
+    redirectToWayfinder(tenantId, "forbidden");
   }
 
   const next = spot.is_published ? 0 : 1;
   await setWayfinderSpotPublished(db, spotId, next);
-  revalidatePath(`/dashboard/${kind}/wayfinder`);
-  revalidatePath(`/dashboard/${kind}/wayfinder/${spotId}/edit`);
+  revalidatePath(COMPANION_WAYFINDER_DASHBOARD);
+  revalidatePath(`${COMPANION_WAYFINDER_DASHBOARD}/${spotId}/edit`);
   revalidateWayfinderPublicPaths(spot.slug);
-  redirectToWayfinder(kind, tenantId);
+  redirectToWayfinder(tenantId);
 }
 
 export async function deleteWayfinderSpotForm(formData: FormData): Promise<void> {
   const ownerId = await requireSessionUserId();
   const spotId = String(formData.get("id") ?? "").trim();
-  const kindParam = String(formData.get("kind") ?? "pet").trim();
   const tenantParam = String(formData.get("tenant") ?? "").trim();
   const tenantId = tenantParam || null;
-  const kind = parseSubjectKind(kindParam);
 
   if (!spotId) {
-    redirectToWayfinder(kind, tenantId, "invalid");
+    redirectToWayfinder(tenantId, "invalid");
   }
 
   const db = getDB();
   if (tenantId) {
-    await assertTenantActive(db, tenantId).catch(() => redirectToWayfinder(kind, tenantId, "tenant_suspended"));
+    await assertTenantActive(db, tenantId).catch(() => redirectToWayfinder(tenantId, "tenant_suspended"));
   }
 
-  const spot = await getWayfinderSpotForDashboard(db, spotId, ownerId, kind, tenantId ?? undefined);
+  const spot = await getWayfinderSpotForDashboard(db, spotId, ownerId, tenantId ?? undefined);
   if (!spot) {
-    redirectToWayfinder(kind, tenantId, "forbidden");
+    redirectToWayfinder(tenantId, "forbidden");
   }
   const tenantRole = await tenantRoleForUser(db, ownerId, tenantId);
   if (!canMutateWayfinderSpot(ownerId, spot, tenantId, tenantRole)) {
-    redirectToWayfinder(kind, tenantId, "forbidden");
+    redirectToWayfinder(tenantId, "forbidden");
   }
 
   await deleteWayfinderSpotByIdOnly(db, spotId);
-  revalidatePath(`/dashboard/${kind}/wayfinder`);
-  revalidatePath(`/dashboard/${kind}/wayfinder/${spotId}/edit`);
-  redirectToWayfinder(kind, tenantId);
+  revalidatePath(COMPANION_WAYFINDER_DASHBOARD);
+  revalidatePath(`${COMPANION_WAYFINDER_DASHBOARD}/${spotId}/edit`);
+  redirectToWayfinder(tenantId);
 }

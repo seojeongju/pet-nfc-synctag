@@ -26,6 +26,7 @@ export function isDashboardHome(pathname: string): boolean {
     segments[1] !== "pets" &&
     segments[1] !== "scans" &&
     segments[1] !== "geofences" &&
+    segments[1] !== "companion" &&
     segments[1] !== "wayfinder"
   ) {
     return true;
@@ -59,8 +60,12 @@ export function isDashboardNfc(pathname: string): boolean {
   return segments.length >= 3 && segments[0] === "dashboard" && segments[2] === "nfc";
 }
 
-/** /dashboard/[kind]/wayfinder — 링크유-동행(교통약자 맞춤 이동·시설 안내). 진입은 허브(/hub) 모드 타일 권장 */
+/** /dashboard/companion/wayfinder — 링크유-동행(교통약자 맞춤 이동·시설 안내) */
 export function isDashboardWayfinder(pathname: string): boolean {
   const segments = pathname.split("/").filter(Boolean);
+  if (segments.length >= 3 && segments[0] === "dashboard" && segments[1] === "companion" && segments[2] === "wayfinder") {
+    return true;
+  }
+  /** 레거시 /dashboard/[kind]/wayfinder — 리다이렉트 전까지 헤더 표기 유지 */
   return segments.length >= 3 && segments[0] === "dashboard" && segments[2] === "wayfinder";
 }

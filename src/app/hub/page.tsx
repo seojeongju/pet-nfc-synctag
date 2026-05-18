@@ -37,6 +37,7 @@ import { getDashboardPathForUserTenant } from "@/lib/mode-visibility";
 import type { D1Database } from "@cloudflare/workers-types";
 import { isPasswordChangeRequired } from "@/lib/password-change";
 import { linkuCompanionMenuTitle, linkuCompanionServiceDescription } from "@/lib/wayfinder/copy";
+import { companionWayfinderPath } from "@/lib/companion/dashboard-paths";
 
 export const runtime = "edge";
 
@@ -448,7 +449,7 @@ export default async function HubPage({
           })}
             <a
               id="hub-wayfinder"
-              href={`${onboardingDashboardHref}/wayfinder`}
+              href={companionWayfinderPath(null)}
               className={cn(
                 "flex items-center gap-3 rounded-[24px] border border-slate-100 bg-white p-4 min-[430px]:p-5 shadow-sm",
                 "transition-all hover:border-violet-200 hover:shadow-md active:scale-[0.99]"

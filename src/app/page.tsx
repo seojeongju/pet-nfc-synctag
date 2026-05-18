@@ -4,17 +4,10 @@ import { getLandingSessionState } from "@/lib/landing-session";
 import { getOrgManageHrefForUser } from "@/lib/org-manage-href";
 import { SITE_DESCRIPTION, SITE_TITLE_DEFAULT, buildHomePageJsonLd, buildPublicMetadata } from "@/lib/seo";
 import { getCfRequestContext } from "@/lib/cf-request-context";
-import { isPlatformAdminRole } from "@/lib/platform-admin";
 import { listTenantsForUser } from "@/lib/tenant-membership";
-import { getDashboardPathForUserTenant } from "@/lib/mode-visibility";
+import { companionWayfinderPath } from "@/lib/companion/dashboard-paths";
 
 export const runtime = "edge";
-
-function buildWayfinderHrefFromDashboardPath(dashboardPath: string): string {
-  const [pathOnly, query] = dashboardPath.split("?");
-  const base = pathOnly.replace(/\/$/, "");
-  return query && query.length > 0 ? `${base}/wayfinder?${query}` : `${base}/wayfinder`;
-}
 
 async function resolveHomeCompanionHref(userId: string | undefined): Promise<string> {
   if (!userId) {
@@ -22,24 +15,11 @@ async function resolveHomeCompanionHref(userId: string | undefined): Promise<str
   }
   const context = getCfRequestContext();
   const db = context.env.DB;
-  let isPlatformAdmin = false;
-  try {
-    const roleRow = await db
-      .prepare("SELECT role FROM user WHERE id = ?")
-      .bind(userId)
-      .first<{ role?: string | null }>();
-    isPlatformAdmin = isPlatformAdminRole(roleRow?.role);
-  } catch {
-    /* noop */
-  }
   const tenants = await listTenantsForUser(db, userId).catch(() => []);
   if (tenants.length > 0) {
-    const dashPath = await getDashboardPathForUserTenant(db, userId, tenants[0]!.id, {
-      isPlatformAdmin,
-    });
-    return buildWayfinderHrefFromDashboardPath(dashPath);
+    return companionWayfinderPath(tenants[0]!.id);
   }
-  return "/dashboard/pet/wayfinder";
+  return companionWayfinderPath(null);
 }
 
 export const metadata = buildPublicMetadata({

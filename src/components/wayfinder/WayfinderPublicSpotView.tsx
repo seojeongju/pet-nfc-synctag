@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { parseSubjectKind, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
+import { isCompanionSpotSubjectKind } from "@/lib/companion/scope";
 import { parseGuideSteps, type GuideStep } from "@/lib/wayfinder/parse-guide-steps";
 import {
   linkuCompanionMenuTitle,
@@ -85,9 +86,10 @@ export function WayfinderPublicSpotView({
   pageUrl,
   speechText,
 }: WayfinderPublicSpotViewProps) {
-  const kind = parseSubjectKind(subjectKindRaw);
-  const KindIcon = kindIcons[kind];
-  const kindLabel = subjectKindMeta[kind].label;
+  const isCompanionSpot = isCompanionSpotSubjectKind(subjectKindRaw);
+  const kind = isCompanionSpot ? ("pet" as SubjectKind) : parseSubjectKind(subjectKindRaw);
+  const KindIcon = isCompanionSpot ? Navigation2 : kindIcons[kind];
+  const kindLabel = isCompanionSpot ? linkuCompanionMenuTitle : subjectKindMeta[kind].label;
   const { steps, remainder } = parseGuideSteps(guideText);
   const detailBody = remainder ?? (steps.length > 0 ? null : guideText?.trim() || null);
   const tel = contactPhone;
