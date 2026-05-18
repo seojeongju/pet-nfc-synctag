@@ -1,4 +1,4 @@
-/** 카카오맵·서울동행맵 등 교통약자 맞춤 경로 연동 (아웃바운드) */
+/** 서울동행맵 등 교통약자 맞춤 경로 연동 (아웃바운드) */
 
 export const SEOUL_COMPANION_APP = {
   name: "서울동행맵",
@@ -8,12 +8,7 @@ export const SEOUL_COMPANION_APP = {
   oneStoreUrl: "https://m.onestore.co.kr/mobilepoc/apps/appsDetail.omp?prodId=0000753480",
 } as const;
 
-export const KAKAO_BARRIER_FREE_TRAIL = {
-  searchLabel: "무장애나눔길",
-  description: "숲길·둘레길 등 전국 무장애 산책 코스 (카카오맵에서 확인)",
-} as const;
-
-/** 서울특별시 대략 경계 (보행·동행맵 안내 노출용) */
+/** 서울특별시 대략 경계 (동행맵 안내 노출용) */
 const SEOUL_LAT_MIN = 37.41;
 const SEOUL_LAT_MAX = 37.72;
 const SEOUL_LNG_MIN = 126.76;
@@ -22,14 +17,4 @@ const SEOUL_LNG_MAX = 127.19;
 export function isInSeoulMetroBounds(lat: number, lng: number): boolean {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
   return lat >= SEOUL_LAT_MIN && lat <= SEOUL_LAT_MAX && lng >= SEOUL_LNG_MIN && lng <= SEOUL_LNG_MAX;
-}
-
-/** 카카오맵 키워드 검색 (앱·웹) */
-export function buildKakaoMapSearchHref(query: string): string {
-  const q = query.trim();
-  return `https://map.kakao.com/link/search/${encodeURIComponent(q || "무장애나눔길")}`;
-}
-
-export function buildKakaoBarrierFreeTrailHref(): string {
-  return buildKakaoMapSearchHref(KAKAO_BARRIER_FREE_TRAIL.searchLabel);
 }
