@@ -69,7 +69,7 @@ npm run d1:apply:tags-wayfinder-station-anchor
 
 ### R1 완료 — 서울동행맵 연동
 
-- [`WAYFINDER_ACCESSIBLE_ROUTING_LINKS.md`](./WAYFINDER_ACCESSIBLE_ROUTING_LINKS.md)
+- [`WAYFINDER_ACCESSIBLE_ROUTING_LINKS.md`](./WAYFINDER_ACCESSIBLE_ROUTING_LINKS.md) — 역할 분리·코드 위치·**§5 법·운영 주의사항**
 
 ### 다음 스프린트 (코드) — **C3 추천**
 | ID | 작업 | 주요 파일 |
