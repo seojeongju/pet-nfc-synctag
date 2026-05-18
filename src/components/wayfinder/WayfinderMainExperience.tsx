@@ -19,7 +19,7 @@ export function WayfinderMainExperience({ entry }: Props) {
 
   return (
     <div className="space-y-6 sm:space-y-8" lang="ko">
-      {nfcEntry ? <WayfinderNfcWelcome tagId={entry.tagId} /> : null}
+      {nfcEntry ? <WayfinderNfcWelcome /> : null}
 
       {!nfcEntry ? <WayfinderSubwayHero /> : null}
 
