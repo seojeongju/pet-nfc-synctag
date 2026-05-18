@@ -10,6 +10,8 @@ const LAUNCH_SCHEME =
     process.env.NEXT_PUBLIC_SEOUL_COMPANION_LAUNCH_SCHEME?.trim()) ||
   "mydata";
 
+const LAUNCH_HOST = "launch";
+
 const ANDROID_PACKAGE = "kr.go.seoul.mydata";
 
 export type SeoulCompanionPlatform = "android" | "ios" | "other";
@@ -28,14 +30,18 @@ export function getSeoulCompanionStoreUrl(platform: SeoulCompanionPlatform = det
 }
 
 export function buildSeoulCompanionLaunchUrl(): string {
-  const path = "";
-  return `${LAUNCH_SCHEME}://${path}`;
+  return `${LAUNCH_SCHEME}://${LAUNCH_HOST}`;
 }
 
-/** Android Chrome: 앱 실행 실패 시 스토어로 폴백 */
+/** Android: 앱만 실행 (스토어 폴백 없음) */
+export function buildSeoulCompanionAndroidDirectIntentUrl(): string {
+  return `intent://${LAUNCH_HOST}#Intent;scheme=${encodeURIComponent(LAUNCH_SCHEME)};package=${ANDROID_PACKAGE};action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;end`;
+}
+
+/** Android: 미설치 시 스토어로 폴백 */
 export function buildSeoulCompanionAndroidIntentUrl(fallbackStoreUrl: string): string {
   const fallback = encodeURIComponent(fallbackStoreUrl);
-  return `intent://open#Intent;scheme=${encodeURIComponent(LAUNCH_SCHEME)};package=${ANDROID_PACKAGE};S.browser_fallback_url=${fallback};end`;
+  return `intent://${LAUNCH_HOST}#Intent;scheme=${encodeURIComponent(LAUNCH_SCHEME)};package=${ANDROID_PACKAGE};S.browser_fallback_url=${fallback};end`;
 }
 
 export function readSeoulCompanionInstalledFlag(): boolean {
@@ -66,32 +72,54 @@ export function clearSeoulCompanionInstalledFlag(): void {
 }
 
 type OpenOptions = {
+  /** UI가 「실행」 상태일 때 true — 스토어 폴백 없이 앱만 연다 */
+  assumeInstalled?: boolean;
   onOpened?: () => void;
   onFallback?: () => void;
   fallbackMs?: number;
 };
 
+function launchViaCustomScheme(): void {
+  const url = buildSeoulCompanionLaunchUrl();
+  window.location.href = url;
+}
+
 /**
- * 앱 실행을 시도하고, 화면이 백그라운드로 가면 설치됨으로 기록합니다.
- * 미설치·데스크톱은 스토어(또는 intent 폴백)로 이동합니다.
+ * 앱 실행을 시도합니다.
+ * assumeInstalled: 설치된 기기 — 스토어로 넘기지 않고 앱 실행만 시도.
  */
 export function openSeoulCompanionApp(options: OpenOptions = {}): void {
   if (typeof window === "undefined") return;
 
   const platform = detectSeoulCompanionPlatform();
   const storeUrl = getSeoulCompanionStoreUrl(platform);
-  const fallbackMs = options.fallbackMs ?? 1400;
-  const alreadyInstalled = readSeoulCompanionInstalledFlag();
+  const assumeInstalled =
+    options.assumeInstalled === true || readSeoulCompanionInstalledFlag();
 
   const goStore = () => {
     options.onFallback?.();
     window.location.href = storeUrl;
   };
 
-  if (platform === "other" && !alreadyInstalled) {
-    goStore();
+  if (platform === "other") {
+    if (assumeInstalled) {
+      launchViaCustomScheme();
+    } else {
+      goStore();
+    }
     return;
   }
+
+  if (assumeInstalled) {
+    if (platform === "android") {
+      window.location.href = buildSeoulCompanionAndroidDirectIntentUrl();
+      return;
+    }
+    launchViaCustomScheme();
+    return;
+  }
+
+  const fallbackMs = options.fallbackMs ?? 1600;
 
   let cleared = false;
   const cleanup = () => {
@@ -100,43 +128,35 @@ export function openSeoulCompanionApp(options: OpenOptions = {}): void {
     window.clearTimeout(timer);
     document.removeEventListener("visibilitychange", onVisibility);
     window.removeEventListener("pagehide", onPageHide);
+    window.removeEventListener("blur", onBlur);
   };
 
-  const onVisibility = () => {
-    if (document.visibilityState === "hidden") {
-      markSeoulCompanionInstalled();
-      options.onOpened?.();
-      cleanup();
-    }
-  };
-
-  const onPageHide = () => {
+  const onOpened = () => {
     markSeoulCompanionInstalled();
     options.onOpened?.();
     cleanup();
   };
 
+  const onVisibility = () => {
+    if (document.visibilityState === "hidden") onOpened();
+  };
+
+  const onPageHide = () => onOpened();
+  const onBlur = () => onOpened();
+
   document.addEventListener("visibilitychange", onVisibility);
   window.addEventListener("pagehide", onPageHide);
+  window.addEventListener("blur", onBlur);
 
   const timer = window.setTimeout(() => {
     cleanup();
-    if (!readSeoulCompanionInstalledFlag()) {
-      goStore();
-    }
+    goStore();
   }, fallbackMs);
 
   if (platform === "android") {
-    window.location.href = alreadyInstalled
-      ? buildSeoulCompanionLaunchUrl()
-      : buildSeoulCompanionAndroidIntentUrl(storeUrl);
+    window.location.href = buildSeoulCompanionAndroidIntentUrl(storeUrl);
     return;
   }
 
-  if (platform === "ios") {
-    window.location.href = buildSeoulCompanionLaunchUrl();
-    return;
-  }
-
-  window.location.href = buildSeoulCompanionLaunchUrl();
+  launchViaCustomScheme();
 }

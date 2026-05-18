@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ExternalLink, Play, Smartphone } from "lucide-react";
+import { ExternalLink, Play, Zap } from "lucide-react";
 import { SEOUL_COMPANION_APP } from "@/lib/wayfinder/accessible-routing-links";
 import {
   openSeoulCompanionApp,
@@ -26,10 +26,11 @@ export function WayfinderSeoulCompanionLaunchButton({ className }: Props) {
     (e: React.MouseEvent) => {
       e.preventDefault();
       openSeoulCompanionApp({
+        assumeInstalled: installed,
         onOpened: () => setInstalled(true),
       });
     },
-    []
+    [installed]
   );
 
   const primaryLabel = !hydrated
@@ -38,7 +39,7 @@ export function WayfinderSeoulCompanionLaunchButton({ className }: Props) {
       ? "서울동행앱 실행"
       : "서울동행맵 설치";
 
-  const PrimaryIcon = installed ? Smartphone : Play;
+  const PrimaryIcon = installed ? Zap : Play;
 
   return (
     <div className={cn("space-y-2", className)}>
@@ -54,7 +55,9 @@ export function WayfinderSeoulCompanionLaunchButton({ className }: Props) {
           />
         </span>
         {primaryLabel}
-        <ExternalLink className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
+        {installed ? null : (
+          <ExternalLink className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
+        )}
       </button>
 
       {!installed && hydrated ? (
