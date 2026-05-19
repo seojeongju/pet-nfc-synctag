@@ -52,7 +52,7 @@ export function WayfinderSeoulCompanionLaunchButton({ className }: Props) {
       }
 
       if (nativeLaunchHref && isMobile) {
-        // preventDefault 하지 않음 — 브라우저가 mydata:// 링크를 직접 처리(Play로 우회 방지)
+        // preventDefault 하지 않음 — Android intent 런처 링크를 브라우저가 직접 처리
         return;
       }
 

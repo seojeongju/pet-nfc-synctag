@@ -72,11 +72,17 @@ export function buildSeoulCompanionAndroidIntentUrl(fallbackStoreUrl: string): s
   return `intent://${LAUNCH_HOST}#Intent;scheme=${LAUNCH_SCHEME};package=${ANDROID_PACKAGE};S.browser_fallback_url=${fallback};end`;
 }
 
-/** 모바일 `<a href>` — 커스텀 스킴이 설치 앱 실행에 가장 안정적 */
+/**
+ * 모바일 `<a href>` — Android는 패키지 런처 intent만 사용.
+ * scheme+package intent·미확인 mydata:// 는 실패 시 Play 스토어로 빠지는 경우가 많음.
+ */
 export function getSeoulCompanionNativeLaunchHref(
   platform: SeoulCompanionPlatform = detectSeoulCompanionPlatform()
 ): string | null {
-  if (platform === "android" || platform === "ios") {
+  if (platform === "android") {
+    return buildSeoulCompanionAndroidPackageIntentUrl();
+  }
+  if (platform === "ios") {
     return buildSeoulCompanionLaunchUrl();
   }
   return null;
@@ -192,11 +198,7 @@ function launchWithDeferredStoreFallback(
 function launchAndroidAppOnly(options: OpenOptions): void {
   attachAppOpenedListeners(options);
 
-  // 1) 커스텀 스킴 (설치 앱 직접 실행, Play 로 안 감)
-  clickHiddenAnchor(buildSeoulCompanionLaunchUrl());
-  // 2) intent scheme+package
-  clickHiddenAnchor(buildSeoulCompanionAndroidLauncherIntentUrl());
-  // 3) package 런처 (삼성·일부 Chrome)
+  // 패키지 런처만 — scheme intent 는 미등록 시 Play 로 우회되는 Chrome 동작이 있음
   clickHiddenAnchor(buildSeoulCompanionAndroidPackageIntentUrl());
 }
 
