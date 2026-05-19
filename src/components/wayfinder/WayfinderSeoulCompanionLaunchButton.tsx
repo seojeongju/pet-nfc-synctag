@@ -61,7 +61,7 @@ export function WayfinderSeoulCompanionLaunchButton({ className }: Props) {
 
       {hydrated && isMobile ? (
         <p className="px-1 text-center text-[10px] font-semibold leading-snug text-sky-100/90">
-          설치된 경우 앱이 바로 열립니다. 열리지 않으면 잠시 후 스토어로 이동합니다.
+          설치된 서울동행맵이 바로 열립니다. 앱이 없으면 아래 Play·iOS·원스토어에서 설치하세요.
         </p>
       ) : null}
 

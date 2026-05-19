@@ -18,7 +18,7 @@ const ANDROID_PACKAGE =
   (typeof process !== "undefined" && process.env.NEXT_PUBLIC_SEOUL_COMPANION_ANDROID_PACKAGE?.trim()) ||
   "kr.go.seoul.mydata";
 
-/** 앱 실행 시도 후 스토어로 넘기기까지 대기 (ms) */
+/** 미설치 추정 시에만 스토어 폴백 (ms). 「앱 실행」 버튼에서는 사용하지 않음 */
 const LAUNCH_FALLBACK_MS = 2800;
 
 export type SeoulCompanionPlatform = "android" | "ios" | "other";
@@ -41,19 +41,14 @@ export function buildSeoulCompanionLaunchUrl(): string {
 }
 
 /**
- * Android: 패키지 런처만 사용 (커스텀 스킴 불필요).
- * 앱이 설치되어 있으면 Chrome이 앱을 연다. browser_fallback_url 은 넣지 않는다.
+ * Android: scheme+package intent (설치 시 앱 실행).
+ * `intent:#Intent;package=...` 단독 형식은 Chrome에서 미동작·스토어로 빠지는 경우가 있어 host+scheme 사용.
  */
 export function buildSeoulCompanionAndroidLauncherIntentUrl(): string {
-  return `intent:#Intent;package=${ANDROID_PACKAGE};action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;end`;
+  return `intent://${LAUNCH_HOST}#Intent;scheme=${encodeURIComponent(LAUNCH_SCHEME)};package=${ANDROID_PACKAGE};action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;end`;
 }
 
-/** @deprecated 스토어 즉시 폴백 유발 — 사용하지 않음 */
-export function buildSeoulCompanionAndroidDirectIntentUrl(): string {
-  return buildSeoulCompanionAndroidLauncherIntentUrl();
-}
-
-/** @deprecated browser_fallback_url 은 미설치·스킴 오류 시 스토어로 바로 감 */
+/** @deprecated browser_fallback_url 은 설치돼 있어도 스토어로 바로 감 */
 export function buildSeoulCompanionAndroidIntentUrl(fallbackStoreUrl: string): string {
   const fallback = encodeURIComponent(fallbackStoreUrl);
   return `intent://${LAUNCH_HOST}#Intent;scheme=${encodeURIComponent(LAUNCH_SCHEME)};package=${ANDROID_PACKAGE};S.browser_fallback_url=${fallback};end`;
@@ -87,40 +82,23 @@ export function clearSeoulCompanionInstalledFlag(): void {
 }
 
 type OpenOptions = {
-  /** @deprecated 모바일에서는 항상 앱 실행을 먼저 시도 */
+  /** true일 때만 앱 미실행 시 스토어로 자동 이동 (기본 false — 실행 버튼용) */
+  allowStoreFallback?: boolean;
+  /** @deprecated allowStoreFallback 사용 */
   assumeInstalled?: boolean;
   onOpened?: () => void;
   onFallback?: () => void;
   fallbackMs?: number;
 };
 
-function tryCustomSchemeViaHiddenFrame(): void {
-  const url = buildSeoulCompanionLaunchUrl();
-  const iframe = document.createElement("iframe");
-  iframe.setAttribute("aria-hidden", "true");
-  iframe.style.cssText = "display:none;width:0;height:0;border:0";
-  iframe.src = url;
-  document.body.appendChild(iframe);
-  window.setTimeout(() => {
-    iframe.remove();
-  }, 2500);
-}
-
-function launchWithDeferredStoreFallback(
-  tryLaunch: () => void,
-  storeUrl: string,
-  options: OpenOptions
-): void {
-  const fallbackMs = options.fallbackMs ?? LAUNCH_FALLBACK_MS;
-
+function attachAppOpenedListeners(options: OpenOptions): () => void {
   let cleared = false;
+
   const cleanup = () => {
     if (cleared) return;
     cleared = true;
-    window.clearTimeout(timer);
     document.removeEventListener("visibilitychange", onVisibility);
     window.removeEventListener("pagehide", onPageHide);
-    window.removeEventListener("blur", onBlur);
   };
 
   const onOpened = () => {
@@ -133,11 +111,35 @@ function launchWithDeferredStoreFallback(
     if (document.visibilityState === "hidden") onOpened();
   };
   const onPageHide = () => onOpened();
-  const onBlur = () => onOpened();
 
   document.addEventListener("visibilitychange", onVisibility);
   window.addEventListener("pagehide", onPageHide);
-  window.addEventListener("blur", onBlur);
+
+  return cleanup;
+}
+
+function launchWithDeferredStoreFallback(
+  tryLaunch: () => void,
+  storeUrl: string,
+  options: OpenOptions
+): void {
+  const fallbackMs = options.fallbackMs ?? LAUNCH_FALLBACK_MS;
+  let cleared = false;
+
+  const cleanup = () => {
+    if (cleared) return;
+    cleared = true;
+    window.clearTimeout(timer);
+    removeOpenedListeners();
+  };
+
+  const removeOpenedListeners = attachAppOpenedListeners({
+    ...options,
+    onOpened: () => {
+      options.onOpened?.();
+      cleanup();
+    },
+  });
 
   const timer = window.setTimeout(() => {
     cleanup();
@@ -146,30 +148,51 @@ function launchWithDeferredStoreFallback(
   }, fallbackMs);
 
   tryLaunch();
-  tryCustomSchemeViaHiddenFrame();
+}
+
+/** 모바일 「앱 실행」: 스토어 자동 이동 없이 intent·커스텀 스킴만 시도 */
+function launchMobileAppOnly(platform: "android" | "ios", options: OpenOptions): void {
+  attachAppOpenedListeners(options);
+
+  if (platform === "android") {
+    window.location.href = buildSeoulCompanionAndroidLauncherIntentUrl();
+    return;
+  }
+
+  window.location.href = buildSeoulCompanionLaunchUrl();
 }
 
 /**
  * 앱 실행을 시도합니다.
- * 모바일(Android/iOS): 설치 여부와 관계없이 **앱 실행을 먼저** 시도하고, 화면이 그대로면 스토어로 이동합니다.
+ * 모바일 기본 동작: 설치된 앱만 실행하고 Play·App Store로 자동 이동하지 않습니다.
+ * 미설치 시 설치는 하단 Play·iOS·원스토어 링크를 이용합니다.
  */
 export function openSeoulCompanionApp(options: OpenOptions = {}): void {
   if (typeof window === "undefined") return;
 
   const platform = detectSeoulCompanionPlatform();
   const storeUrl = getSeoulCompanionStoreUrl(platform);
+  const allowStoreFallback = options.allowStoreFallback === true;
 
   if (platform === "android") {
-    launchWithDeferredStoreFallback(() => {
-      window.location.href = buildSeoulCompanionAndroidLauncherIntentUrl();
-    }, storeUrl, options);
+    if (allowStoreFallback) {
+      launchWithDeferredStoreFallback(() => {
+        window.location.href = buildSeoulCompanionAndroidLauncherIntentUrl();
+      }, storeUrl, options);
+    } else {
+      launchMobileAppOnly("android", options);
+    }
     return;
   }
 
   if (platform === "ios") {
-    launchWithDeferredStoreFallback(() => {
-      window.location.href = buildSeoulCompanionLaunchUrl();
-    }, storeUrl, options);
+    if (allowStoreFallback) {
+      launchWithDeferredStoreFallback(() => {
+        window.location.href = buildSeoulCompanionLaunchUrl();
+      }, storeUrl, options);
+    } else {
+      launchMobileAppOnly("ios", options);
+    }
     return;
   }
 

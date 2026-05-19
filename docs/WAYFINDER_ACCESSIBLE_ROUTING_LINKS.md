@@ -70,9 +70,9 @@
 
 ### 5.3 기술·딥링크
 
-- **Android:** `intent:#Intent;package=kr.go.seoul.mydata;action=MAIN;category=LAUNCHER` 로 앱 실행을 **먼저** 시도 (`browser_fallback_url` 미사용 — 설치돼 있어도 스토어로 바로 가는 현상 방지)
+- **Android:** `intent://launch#Intent;scheme=mydata;package=kr.go.seoul.mydata;...` 로 앱만 실행 (`browser_fallback_url`·2.8초 스토어 자동 이동 **미사용** — 「앱 실행」 시 Play로 빠지는 현상 방지)
 - **iOS·보조:** 커스텀 스킴 `mydata://launch` 등은 **공개 문서 미확인·추정값** (`NEXT_PUBLIC_SEOUL_COMPANION_LAUNCH_SCHEME` / `_LAUNCH_HOST` / `_ANDROID_PACKAGE`)
-- 앱이 열리지 않으면 약 2.8초 후 Play·App Store로 이동
+- 미설치 시 설치는 UI 하단 Play·App Store·원스토어 링크 사용 (`allowStoreFallback` 옵션만 스토어 자동 이동)
 - 설치 여부는 웹에서 직접 조회 불가 → 실행 성공(화면 전환) 시 localStorage 힌트
 - **R2** 착수 시: 서울시·운영사 **공식 딥링크** 확보 후 스킴 env 반영
 
