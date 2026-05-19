@@ -65,26 +65,44 @@ export function seoulCompanionStepsForStation(stationName: string) {
   ];
 }
 
-export const SEOUL_COMPANION_ROLE_LEGEND = [
+/** 맞춤서비스 이동 — 역할 칩 클릭 시 스크롤 대상 */
+export const WAYFINDER_SERVICE_SECTION_IDS = {
+  linku: "wf-service-linku",
+  seoul: "wf-service-seoul",
+  kakao: "wf-service-kakao",
+} as const;
+
+export type WayfinderServiceRoleId = keyof typeof WAYFINDER_SERVICE_SECTION_IDS;
+
+export const SEOUL_COMPANION_ROLE_LEGEND: ReadonlyArray<{
+  id: WayfinderServiceRoleId;
+  label: string;
+  hint: string;
+  tone: "slate" | "sky" | "amber";
+  sectionId: (typeof WAYFINDER_SERVICE_SECTION_IDS)[WayfinderServiceRoleId];
+}> = [
   {
     id: "linku",
     label: "링크유-동행",
     hint: "역·시설·NFC",
-    tone: "slate" as const,
+    tone: "slate",
+    sectionId: WAYFINDER_SERVICE_SECTION_IDS.linku,
   },
   {
     id: "seoul",
     label: "서울동행맵",
     hint: "맞춤 보행·지하철",
-    tone: "sky" as const,
+    tone: "sky",
+    sectionId: WAYFINDER_SERVICE_SECTION_IDS.seoul,
   },
   {
     id: "kakao",
     label: "카카오맵",
     hint: "참고 경로",
-    tone: "amber" as const,
+    tone: "amber",
+    sectionId: WAYFINDER_SERVICE_SECTION_IDS.kakao,
   },
-] as const;
+];
 
 /** 서울특별시 대략 경계 (동행맵 안내 노출용) */
 const SEOUL_LAT_MIN = 37.41;

@@ -22,10 +22,12 @@ import {
   SEOUL_COMPANION_FEATURES,
   SEOUL_COMPANION_ROLE_LEGEND,
   SEOUL_COMPANION_STEPS_MAIN,
+  WAYFINDER_SERVICE_SECTION_IDS,
   type SeoulCompanionFeatureIcon,
   type SeoulCompanionStepIcon,
   seoulCompanionStepsForStation,
 } from "@/lib/wayfinder/accessible-routing-links";
+import { scrollToWayfinderServiceSection } from "@/lib/wayfinder/service-section-scroll";
 import { cn } from "@/lib/utils";
 
 const FEATURE_ICONS: Record<SeoulCompanionFeatureIcon, LucideIcon> = {
@@ -108,17 +110,17 @@ export function WayfinderSeoulCompanionPromo({
   return (
     <section
       className={cn("space-y-4", className)}
-      aria-label="서울동행맵 맞춤 이동 안내"
+      aria-label="맞춤서비스 이동"
     >
       <header className="flex items-start gap-3 px-0.5">
         <IconBadge
           icon={MapPin}
-          label="서울 맞춤 이동"
+          label="맞춤서비스 이동"
           className="bg-gradient-to-br from-sky-500 to-indigo-600 text-white"
         />
         <div className="min-w-0 space-y-1">
           <h2 className="text-sm font-black text-slate-900 sm:text-base">
-            {variant === "main" ? "서울 맞춤 이동 안내" : "서울 맞춤 보행·지하철"}
+            {variant === "main" ? "맞춤서비스 이동" : "맞춤서비스 · 보행·지하철"}
           </h2>
           <p className="text-[11px] font-semibold leading-relaxed text-slate-600">
             지하철·역 시설은 링크유, <strong className="text-sky-800">맞춤 경로</strong>는 서울동행맵,
@@ -128,17 +130,18 @@ export function WayfinderSeoulCompanionPromo({
       </header>
 
       <ul
-        className="grid grid-cols-3 gap-2"
-        aria-label="서비스 역할 안내"
+        className="grid grid-cols-3 gap-1.5 sm:gap-2"
+        role="list"
+        aria-label="맞춤서비스 바로가기"
       >
         {SEOUL_COMPANION_ROLE_LEGEND.map((role) => {
-          const RoleIcon = ROLE_ICONS[role.id as keyof typeof ROLE_ICONS];
+          const RoleIcon = ROLE_ICONS[role.id];
           const tone =
             role.tone === "sky"
-              ? "border-sky-200 bg-sky-50 text-sky-900"
+              ? "border-sky-200 bg-sky-50 text-sky-900 hover:border-sky-300 hover:bg-sky-100/80 focus-visible:outline-sky-500"
               : role.tone === "amber"
-                ? "border-amber-200 bg-amber-50 text-amber-900"
-                : "border-slate-200 bg-slate-50 text-slate-800";
+                ? "border-amber-200 bg-amber-50 text-amber-900 hover:border-amber-300 hover:bg-amber-100/80 focus-visible:outline-amber-500"
+                : "border-slate-200 bg-slate-50 text-slate-800 hover:border-slate-300 hover:bg-slate-100/80 focus-visible:outline-slate-500";
           const iconTone =
             role.tone === "sky"
               ? "bg-sky-600 text-white"
@@ -146,29 +149,37 @@ export function WayfinderSeoulCompanionPromo({
                 ? "bg-amber-500 text-white"
                 : "bg-slate-600 text-white";
           return (
-            <li
-              key={role.id}
-              className={cn(
-                "flex flex-col items-center gap-1.5 rounded-xl border p-2 text-center shadow-sm",
-                tone
-              )}
-            >
-              <span
+            <li key={role.id} className="min-w-0">
+              <button
+                type="button"
+                onClick={() => scrollToWayfinderServiceSection(role.sectionId)}
                 className={cn(
-                  "flex h-8 w-8 items-center justify-center rounded-lg",
-                  iconTone
+                  "flex h-full min-h-[4.5rem] w-full flex-col items-center justify-center gap-1 rounded-xl border p-1.5 text-center shadow-sm transition active:scale-[0.98] sm:min-h-0 sm:gap-1.5 sm:p-2",
+                  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
+                  tone
                 )}
+                aria-label={`${role.label} — ${role.hint} 섹션으로 이동`}
               >
-                <RoleIcon className="h-4 w-4" aria-hidden />
-              </span>
-              <span className="text-[10px] font-black leading-tight">{role.label}</span>
-              <span className="text-[9px] font-semibold opacity-80">{role.hint}</span>
+                <span
+                  className={cn(
+                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg sm:h-8 sm:w-8",
+                    iconTone
+                  )}
+                >
+                  <RoleIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden />
+                </span>
+                <span className="text-[9px] font-black leading-tight sm:text-[10px]">{role.label}</span>
+                <span className="text-[8px] font-semibold opacity-80 sm:text-[9px]">{role.hint}</span>
+              </button>
             </li>
           );
         })}
       </ul>
 
-      <div className="overflow-hidden rounded-2xl border border-sky-300/90 bg-gradient-to-br from-sky-600 via-sky-600 to-indigo-700 p-4 text-white shadow-lg shadow-sky-200/60 sm:p-5">
+      <div
+        id={WAYFINDER_SERVICE_SECTION_IDS.seoul}
+        className="scroll-mt-4 overflow-hidden rounded-2xl border border-sky-300/90 bg-gradient-to-br from-sky-600 via-sky-600 to-indigo-700 p-4 text-white shadow-lg shadow-sky-200/60 sm:p-5"
+      >
         <div className="flex gap-3">
           <div className="relative shrink-0">
             <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">

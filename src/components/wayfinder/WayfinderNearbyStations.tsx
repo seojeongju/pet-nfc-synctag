@@ -12,6 +12,7 @@ import {
   RefreshCw,
   TrainFront,
 } from "lucide-react";
+import { WAYFINDER_SERVICE_SECTION_IDS } from "@/lib/wayfinder/accessible-routing-links";
 import { buildKakaoMapRouteHref } from "@/lib/wayfinder/kakao-map-links";
 import { buildStationDetailHref } from "@/lib/wayfinder/station-entry-context";
 import { cn } from "@/lib/utils";
@@ -103,7 +104,7 @@ export function WayfinderNearbyStations({ nfcEntry = false }: Props) {
 
   return (
     <section
-      id="wf-nearby"
+      id={WAYFINDER_SERVICE_SECTION_IDS.linku}
       className={cn("space-y-4 scroll-mt-4", nfcEntry && "rounded-[28px] border-2 border-indigo-200/90 bg-indigo-50/30 p-3 sm:p-4")}
       aria-labelledby="wf-nearby-heading"
     >
@@ -177,10 +178,11 @@ export function WayfinderNearbyStations({ nfcEntry = false }: Props) {
             <p className="mt-2 text-sm font-black text-indigo-600">약 {nearest.distanceLabel}</p>
             {nearestRouteHref ? (
               <a
+                id={WAYFINDER_SERVICE_SECTION_IDS.kakao}
                 href={nearestRouteHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border-b-4 border-indigo-800 bg-indigo-600 py-4 text-base font-black text-white shadow-lg transition hover:bg-indigo-700 active:scale-[0.99]"
+                className="mt-4 flex w-full scroll-mt-4 items-center justify-center gap-2 rounded-2xl border-b-4 border-indigo-800 bg-indigo-600 py-4 text-base font-black text-white shadow-lg transition hover:bg-indigo-700 active:scale-[0.99]"
               >
                 <Navigation2 className="h-5 w-5" aria-hidden />
                 카카오맵으로 길찾기
@@ -238,6 +240,21 @@ export function WayfinderNearbyStations({ nfcEntry = false }: Props) {
         <p className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-600">
           25km 이내에 검색된 지하철역이 없습니다. 수도권 외 지역이거나 위치를 다시 확인해 주세요.
         </p>
+      ) : null}
+
+      {phase === "ready" && !loadingStations && !nearestRouteHref ? (
+        <div
+          id={WAYFINDER_SERVICE_SECTION_IDS.kakao}
+          className="scroll-mt-4 rounded-2xl border border-amber-200 bg-amber-50/90 px-4 py-3"
+        >
+          <p className="flex items-center gap-2 text-xs font-black text-amber-900">
+            <Navigation2 className="h-4 w-4 shrink-0" aria-hidden />
+            카카오맵 · 참고 경로
+          </p>
+          <p className="mt-1 text-[11px] font-semibold leading-relaxed text-amber-800/95">
+            가까운 역을 찾으면 「카카오맵으로 길찾기」로 일반 도로 경로를 열 수 있습니다.
+          </p>
+        </div>
       ) : null}
     </section>
   );
