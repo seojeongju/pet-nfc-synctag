@@ -12,6 +12,7 @@ import { WayfinderNfcEntryScroll } from "@/components/wayfinder/WayfinderNfcEntr
 import { WayfinderOptionalSpotCard } from "@/components/wayfinder/WayfinderOptionalSpotCard";
 import { WayfinderStationAnchorCard } from "@/components/wayfinder/WayfinderStationAnchorCard";
 import { WayfinderAccessibleRoutingSection } from "@/components/wayfinder/WayfinderAccessibleRoutingSection";
+import { WayfinderServiceNavProvider } from "@/components/wayfinder/WayfinderServiceNavContext";
 
 type Props = {
   entry: WayfinderNfcEntryContext;
@@ -29,9 +30,10 @@ export function WayfinderMainExperience({ entry }: Props) {
 
       {entry.stationAnchor ? <WayfinderStationAnchorCard anchor={entry.stationAnchor} /> : null}
 
-      <WayfinderAccessibleRoutingSection variant="main" />
-
-      <WayfinderNearbyStations nfcEntry={nfcEntry} />
+      <WayfinderServiceNavProvider defaultExpanded={nfcEntry ? "linku" : null}>
+        <WayfinderAccessibleRoutingSection variant="main" />
+        <WayfinderNearbyStations nfcEntry={nfcEntry} />
+      </WayfinderServiceNavProvider>
 
       {entry.spot ? <WayfinderOptionalSpotCard spot={entry.spot} /> : null}
 

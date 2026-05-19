@@ -4,14 +4,17 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
+  ChevronDown,
   ChevronRight,
   ExternalLink,
   LocateFixed,
   MapPin,
   Navigation2,
+  Nfc,
   RefreshCw,
   TrainFront,
 } from "lucide-react";
+import { useWayfinderServiceNav } from "@/components/wayfinder/WayfinderServiceNavContext";
 import { WAYFINDER_SERVICE_SECTION_IDS } from "@/lib/wayfinder/accessible-routing-links";
 import { buildKakaoMapRouteHref } from "@/lib/wayfinder/kakao-map-links";
 import { buildStationDetailHref } from "@/lib/wayfinder/station-entry-context";
@@ -35,6 +38,8 @@ type Props = {
 };
 
 export function WayfinderNearbyStations({ nfcEntry = false }: Props) {
+  const { openSection, isSectionOpen } = useWayfinderServiceNav();
+  const linkuOpen = isSectionOpen("linku");
   const [phase, setPhase] = useState<GeoPhase>("idle");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [stations, setStations] = useState<NearbyStation[]>([]);
@@ -106,31 +111,57 @@ export function WayfinderNearbyStations({ nfcEntry = false }: Props) {
     <section
       id={WAYFINDER_SERVICE_SECTION_IDS.linku}
       className={cn("space-y-4 scroll-mt-4", nfcEntry && "rounded-[28px] border-2 border-indigo-200/90 bg-indigo-50/30 p-3 sm:p-4")}
-      aria-labelledby="wf-nearby-heading"
+      aria-labelledby={linkuOpen ? "wf-nearby-heading" : undefined}
+      aria-label={linkuOpen ? undefined : "링크유-동행 · 가까운 지하철역"}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2
-          id="wf-nearby-heading"
-          className={cn(
-            "flex items-center gap-2 font-black text-slate-900",
-            nfcEntry ? "text-base sm:text-lg" : "text-sm"
-          )}
-        >
-          <TrainFront className={cn("text-indigo-600", nfcEntry ? "h-6 w-6" : "h-5 w-5")} aria-hidden />
-          {nfcEntry ? "지금 위치에서 가까운 지하철역" : "가까운 지하철역"}
-        </h2>
-        <button
-          type="button"
-          onClick={refresh}
-          disabled={isLoading}
-          className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-[11px] font-black text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
-        >
-          <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin")} aria-hidden />
-          위치 다시 찾기
-        </button>
+        {linkuOpen ? (
+          <>
+            <h2
+              id="wf-nearby-heading"
+              className={cn(
+                "flex items-center gap-2 font-black text-slate-900",
+                nfcEntry ? "text-base sm:text-lg" : "text-sm"
+              )}
+            >
+              <TrainFront className={cn("text-indigo-600", nfcEntry ? "h-6 w-6" : "h-5 w-5")} aria-hidden />
+              {nfcEntry ? "지금 위치에서 가까운 지하철역" : "가까운 지하철역"}
+            </h2>
+            <button
+              type="button"
+              onClick={refresh}
+              disabled={isLoading}
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-[11px] font-black text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
+            >
+              <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin")} aria-hidden />
+              위치 다시 찾기
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => openSection("linku")}
+            className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/90 p-3.5 text-left shadow-sm transition hover:border-slate-300 hover:bg-slate-50 active:scale-[0.99] sm:p-4"
+          >
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-600 text-white shadow-sm">
+              <Nfc className="h-5 w-5" aria-hidden />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-black text-slate-900">링크유-동행</span>
+              <span className="mt-0.5 block text-[11px] font-semibold text-slate-600">
+                {nearest
+                  ? `가까운 역 · ${nearest.name} (${nearest.distanceLabel}) · 탭하여 펼치기`
+                  : isLoading
+                    ? "근처 역 찾는 중… · 탭하여 펼치기"
+                    : "역·시설·NFC · 탭하여 펼치기"}
+              </span>
+            </span>
+            <ChevronDown className="h-5 w-5 shrink-0 text-slate-500" aria-hidden />
+          </button>
+        )}
       </div>
 
-      {isLoading ? (
+      {linkuOpen && isLoading ? (
         <div className="rounded-2xl border border-indigo-100 bg-white p-5 shadow-sm">
           <p className="flex items-center gap-2 text-sm font-semibold text-indigo-900">
             <LocateFixed className="h-4 w-4 animate-pulse" aria-hidden />
@@ -139,11 +170,11 @@ export function WayfinderNearbyStations({ nfcEntry = false }: Props) {
         </div>
       ) : null}
 
-      {phase === "unsupported" ? (
+      {linkuOpen && phase === "unsupported" ? (
         <Alert tone="amber">HTTPS 스마트폰 브라우저에서 이용해 주세요. 이 환경에서는 GPS를 쓸 수 없습니다.</Alert>
       ) : null}
 
-      {phase === "denied" ? (
+      {linkuOpen && phase === "denied" ? (
         <Alert tone="amber">
           <p>지하철역 찾기에 위치 권한이 필요합니다.</p>
           <button
@@ -156,7 +187,7 @@ export function WayfinderNearbyStations({ nfcEntry = false }: Props) {
         </Alert>
       ) : null}
 
-      {fetchError ? (
+      {linkuOpen && fetchError ? (
         <Alert tone="rose">
           {fetchError}
           {fetchError.includes("wayfinder_stations") ? (
@@ -167,7 +198,7 @@ export function WayfinderNearbyStations({ nfcEntry = false }: Props) {
         </Alert>
       ) : null}
 
-      {nearest && phase === "ready" && !loadingStations ? (
+      {linkuOpen && nearest && phase === "ready" && !loadingStations ? (
         <div className="overflow-hidden rounded-[24px] border-2 border-indigo-200 bg-gradient-to-br from-indigo-600 to-violet-700 p-[1px] shadow-lg shadow-indigo-200/40">
           <div className="rounded-[22px] bg-white p-4 sm:p-5">
             <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">가장 가까운 역</p>
@@ -208,7 +239,7 @@ export function WayfinderNearbyStations({ nfcEntry = false }: Props) {
         </div>
       ) : null}
 
-      {others.length > 0 ? (
+      {linkuOpen && others.length > 0 ? (
         <div className="space-y-2">
           <p className="px-1 text-[11px] font-black uppercase tracking-widest text-slate-400">다른 근처 역</p>
           <ul className="space-y-2" aria-label="다른 근처 지하철역">
@@ -236,13 +267,13 @@ export function WayfinderNearbyStations({ nfcEntry = false }: Props) {
         </div>
       ) : null}
 
-      {phase === "ready" && !loadingStations && !fetchError && stations.length === 0 ? (
+      {linkuOpen && phase === "ready" && !loadingStations && !fetchError && stations.length === 0 ? (
         <p className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-600">
           25km 이내에 검색된 지하철역이 없습니다. 수도권 외 지역이거나 위치를 다시 확인해 주세요.
         </p>
       ) : null}
 
-      {phase === "ready" && !loadingStations && !nearestRouteHref ? (
+      {linkuOpen && phase === "ready" && !loadingStations && !nearestRouteHref ? (
         <div
           id={WAYFINDER_SERVICE_SECTION_IDS.kakao}
           className="scroll-mt-4 rounded-2xl border border-amber-200 bg-amber-50/90 px-4 py-3"
