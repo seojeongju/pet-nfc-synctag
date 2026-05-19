@@ -68,8 +68,12 @@ export function buildSeoulCompanionLaunchUrl(): string {
   return buildCustomSchemeUrl(LAUNCH_HOST);
 }
 
+/**
+ * Android — MainActivity 직접 실행 (서울동행맵 APK 에 공개 딥링크 스킴 없음).
+ * package 만 넣으면 Chrome 이 Play 로 보내는 경우가 있어 component 를 지정하여 강제 실행 유도.
+ */
 export function buildSeoulCompanionAndroidMainActivityIntentUrl(): string {
-  return `intent:#Intent;package=${ANDROID_PACKAGE};action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;end`;
+  return `intent:#Intent;component=${ANDROID_MAIN_ACTIVITY};action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;launchFlags=0x10000000;end`;
 }
 
 /** @deprecated scheme+package — 미등록 스킴 시 Play 로 우회 */
