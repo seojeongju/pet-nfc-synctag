@@ -103,9 +103,8 @@ export function WayfinderSeoulCompanionLaunchButton({ className }: Props) {
       )}
 
       {hydrated && isMobile ? (
-        <p className="px-1 text-center text-[10px] font-semibold leading-snug text-sky-100/90">
-          설치된 서울동행맵이 바로 열립니다. 실행이 안 되면 Chrome에서 다시 시도하거나 아래에서
-          설치하세요.
+        <p className="px-1 text-center text-[10px] font-semibold leading-snug text-sky-100/90 break-keep">
+          앱 자체 정책으로 직접 실행이 제한되어 스토어 화면으로 이동합니다. 이미 설치하신 경우 <strong>[열기]</strong> 버튼을 눌러 실행해 주세요.
         </p>
       ) : null}
 
