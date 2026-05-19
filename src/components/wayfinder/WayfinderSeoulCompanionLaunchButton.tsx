@@ -4,9 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import { ExternalLink, Play, Zap } from "lucide-react";
 import { SEOUL_COMPANION_APP } from "@/lib/wayfinder/accessible-routing-links";
 import {
+  detectInAppBrowser,
   detectSeoulCompanionPlatform,
-  openSeoulCompanionApp,
+  getSeoulCompanionNativeLaunchHref,
+  launchSeoulCompanionAppFromInAppBrowser,
+  prepareSeoulCompanionLaunch,
   readSeoulCompanionInstalledFlag,
+  type SeoulCompanionPlatform,
 } from "@/lib/wayfinder/seoul-companion-app-launch";
 import { cn } from "@/lib/utils";
 
@@ -14,26 +18,50 @@ type Props = {
   className?: string;
 };
 
+const primaryButtonClassName =
+  "flex w-full min-h-12 items-center justify-center gap-2.5 rounded-xl border-b-4 border-sky-900/40 bg-white px-4 py-3.5 text-sm font-black text-sky-900 shadow-md transition hover:bg-sky-50 active:scale-[0.99] no-underline";
+
 export function WayfinderSeoulCompanionLaunchButton({ className }: Props) {
   const [installedHint, setInstalledHint] = useState(false);
   const [hydrated, setHydrated] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const [platform, setPlatform] = useState<SeoulCompanionPlatform>("other");
+  const [inAppBrowser, setInAppBrowser] = useState(false);
 
   useEffect(() => {
-    const platform = detectSeoulCompanionPlatform();
-    setIsMobile(platform === "android" || platform === "ios");
+    setPlatform(detectSeoulCompanionPlatform());
+    setInAppBrowser(detectInAppBrowser());
     setInstalledHint(readSeoulCompanionInstalledFlag());
     setHydrated(true);
   }, []);
 
+  const isMobile = platform === "android" || platform === "ios";
+  const nativeLaunchHref = hydrated ? getSeoulCompanionNativeLaunchHref(platform) : null;
+
   const handlePrimaryClick = useCallback(
-    (e: React.MouseEvent) => {
+    (e: React.MouseEvent<HTMLAnchorElement | HTMLButtonElement>) => {
+      prepareSeoulCompanionLaunch({
+        onOpened: () => setInstalledHint(true),
+      });
+
+      if (inAppBrowser) {
+        e.preventDefault();
+        launchSeoulCompanionAppFromInAppBrowser({
+          onOpened: () => setInstalledHint(true),
+        });
+        return;
+      }
+
+      if (nativeLaunchHref && isMobile) {
+        // preventDefault 하지 않음 — 브라우저가 mydata:// 링크를 직접 처리(Play로 우회 방지)
+        return;
+      }
+
       e.preventDefault();
-      openSeoulCompanionApp({
+      launchSeoulCompanionAppFromInAppBrowser({
         onOpened: () => setInstalledHint(true),
       });
     },
-    []
+    [inAppBrowser, isMobile, nativeLaunchHref]
   );
 
   const primaryLabel = !hydrated
@@ -46,18 +74,37 @@ export function WayfinderSeoulCompanionLaunchButton({ className }: Props) {
 
   const PrimaryIcon = isMobile || installedHint ? Zap : Play;
 
+  const primaryInner = (
+    <>
+      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-100">
+        <PrimaryIcon className="h-4 w-4 text-sky-800" aria-hidden />
+      </span>
+      {primaryLabel}
+    </>
+  );
+
   return (
     <div className={cn("space-y-2", className)}>
-      <button
-        type="button"
-        onClick={handlePrimaryClick}
-        className="flex w-full min-h-12 items-center justify-center gap-2.5 rounded-xl border-b-4 border-sky-900/40 bg-white px-4 py-3.5 text-sm font-black text-sky-900 shadow-md transition hover:bg-sky-50 active:scale-[0.99]"
-      >
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-100">
-          <PrimaryIcon className="h-4 w-4 text-sky-800" aria-hidden />
-        </span>
-        {primaryLabel}
-      </button>
+      {hydrated && inAppBrowser ? (
+        <p className="rounded-lg bg-amber-500/20 px-2.5 py-2 text-[10px] font-semibold leading-snug text-amber-50">
+          카카오톡·인스타 등 앱 안 브라우저에서는 실행이 막힐 수 있습니다. 메뉴에서 「Chrome으로
+          열기」를 선택한 뒤 다시 시도해 주세요.
+        </p>
+      ) : null}
+
+      {nativeLaunchHref && isMobile && !inAppBrowser ? (
+        <a
+          href={nativeLaunchHref}
+          onClick={handlePrimaryClick}
+          className={primaryButtonClassName}
+        >
+          {primaryInner}
+        </a>
+      ) : (
+        <button type="button" onClick={handlePrimaryClick} className={primaryButtonClassName}>
+          {primaryInner}
+        </button>
+      )}
 
       {hydrated && isMobile ? (
         <p className="px-1 text-center text-[10px] font-semibold leading-snug text-sky-100/90">

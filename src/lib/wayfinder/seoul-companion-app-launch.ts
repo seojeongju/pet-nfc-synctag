@@ -31,6 +31,22 @@ export function detectSeoulCompanionPlatform(): SeoulCompanionPlatform {
   return "other";
 }
 
+/** 카카오톡·인스타 등 인앱 브라우저 — intent 가 Play 스토어로 빠지는 경우가 많음 */
+export function detectInAppBrowser(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  return (
+    /KAKAOTALK/i.test(ua) ||
+    /FBAN|FBAV/i.test(ua) ||
+    /Instagram/i.test(ua) ||
+    /Line\//i.test(ua) ||
+    /NAVER/i.test(ua) ||
+    /DaumApps/i.test(ua) ||
+    /Snapchat/i.test(ua) ||
+    /; wv\)/i.test(ua)
+  );
+}
+
 export function getSeoulCompanionStoreUrl(platform: SeoulCompanionPlatform = detectSeoulCompanionPlatform()): string {
   if (platform === "ios") return SEOUL_COMPANION_APP.appStoreUrl;
   return SEOUL_COMPANION_APP.playStoreUrl;
@@ -40,18 +56,30 @@ export function buildSeoulCompanionLaunchUrl(): string {
   return `${LAUNCH_SCHEME}://${LAUNCH_HOST}`;
 }
 
-/**
- * Android: scheme+package intent (설치 시 앱 실행).
- * `intent:#Intent;package=...` 단독 형식은 Chrome에서 미동작·스토어로 빠지는 경우가 있어 host+scheme 사용.
- */
+/** Android intent — scheme·package (Chrome 권장 형식, browser_fallback_url 없음) */
 export function buildSeoulCompanionAndroidLauncherIntentUrl(): string {
-  return `intent://${LAUNCH_HOST}#Intent;scheme=${encodeURIComponent(LAUNCH_SCHEME)};package=${ANDROID_PACKAGE};action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;end`;
+  return `intent://${LAUNCH_HOST}#Intent;scheme=${LAUNCH_SCHEME};package=${ANDROID_PACKAGE};end`;
+}
+
+/** Android intent — package 런처만 (일부 기기·삼성 브라우저) */
+export function buildSeoulCompanionAndroidPackageIntentUrl(): string {
+  return `intent:#Intent;package=${ANDROID_PACKAGE};action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;end`;
 }
 
 /** @deprecated browser_fallback_url 은 설치돼 있어도 스토어로 바로 감 */
 export function buildSeoulCompanionAndroidIntentUrl(fallbackStoreUrl: string): string {
   const fallback = encodeURIComponent(fallbackStoreUrl);
-  return `intent://${LAUNCH_HOST}#Intent;scheme=${encodeURIComponent(LAUNCH_SCHEME)};package=${ANDROID_PACKAGE};S.browser_fallback_url=${fallback};end`;
+  return `intent://${LAUNCH_HOST}#Intent;scheme=${LAUNCH_SCHEME};package=${ANDROID_PACKAGE};S.browser_fallback_url=${fallback};end`;
+}
+
+/** 모바일 `<a href>` — 커스텀 스킴이 설치 앱 실행에 가장 안정적 */
+export function getSeoulCompanionNativeLaunchHref(
+  platform: SeoulCompanionPlatform = detectSeoulCompanionPlatform()
+): string | null {
+  if (platform === "android" || platform === "ios") {
+    return buildSeoulCompanionLaunchUrl();
+  }
+  return null;
 }
 
 export function readSeoulCompanionInstalledFlag(): boolean {
@@ -82,7 +110,7 @@ export function clearSeoulCompanionInstalledFlag(): void {
 }
 
 type OpenOptions = {
-  /** true일 때만 앱 미실행 시 스토어로 자동 이동 (기본 false — 실행 버튼용) */
+  /** true일 때만 앱 미실행 시 스토어로 자동 이동 (기본 false) */
   allowStoreFallback?: boolean;
   /** @deprecated allowStoreFallback 사용 */
   assumeInstalled?: boolean;
@@ -118,6 +146,17 @@ function attachAppOpenedListeners(options: OpenOptions): () => void {
   return cleanup;
 }
 
+/** Chrome: 사용자 제스처 안에서 숨겨진 `<a>` 클릭이 intent 실행에 가장 안정적 */
+function clickHiddenAnchor(href: string): void {
+  const anchor = document.createElement("a");
+  anchor.href = href;
+  anchor.setAttribute("aria-hidden", "true");
+  anchor.style.cssText = "position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+}
+
 function launchWithDeferredStoreFallback(
   tryLaunch: () => void,
   storeUrl: string,
@@ -150,22 +189,50 @@ function launchWithDeferredStoreFallback(
   tryLaunch();
 }
 
-/** 모바일 「앱 실행」: 스토어 자동 이동 없이 intent·커스텀 스킴만 시도 */
-function launchMobileAppOnly(platform: "android" | "ios", options: OpenOptions): void {
+function launchAndroidAppOnly(options: OpenOptions): void {
   attachAppOpenedListeners(options);
 
+  // 1) 커스텀 스킴 (설치 앱 직접 실행, Play 로 안 감)
+  clickHiddenAnchor(buildSeoulCompanionLaunchUrl());
+  // 2) intent scheme+package
+  clickHiddenAnchor(buildSeoulCompanionAndroidLauncherIntentUrl());
+  // 3) package 런처 (삼성·일부 Chrome)
+  clickHiddenAnchor(buildSeoulCompanionAndroidPackageIntentUrl());
+}
+
+function launchIosAppOnly(options: OpenOptions): void {
+  attachAppOpenedListeners(options);
+  clickHiddenAnchor(buildSeoulCompanionLaunchUrl());
+}
+
+/**
+ * 실행 버튼 클릭 직전 — 앱 전환 감지 리스너만 등록.
+ * 모바일에서는 preventDefault 없이 `<a href="mydata://...">` 네비게이션을 허용하는 것이 좋음.
+ */
+export function prepareSeoulCompanionLaunch(options: OpenOptions = {}): void {
+  attachAppOpenedListeners(options);
+}
+
+/**
+ * 인앱 브라우저 등에서 `<a href>` 만으로 부족할 때 추가 시도 (스토어 자동 이동 없음).
+ */
+export function launchSeoulCompanionAppFromInAppBrowser(options: OpenOptions = {}): void {
+  if (typeof window === "undefined") return;
+
+  const platform = detectSeoulCompanionPlatform();
   if (platform === "android") {
-    window.location.href = buildSeoulCompanionAndroidLauncherIntentUrl();
+    launchAndroidAppOnly(options);
     return;
   }
-
-  window.location.href = buildSeoulCompanionLaunchUrl();
+  if (platform === "ios") {
+    launchIosAppOnly(options);
+    return;
+  }
 }
 
 /**
  * 앱 실행을 시도합니다.
- * 모바일 기본 동작: 설치된 앱만 실행하고 Play·App Store로 자동 이동하지 않습니다.
- * 미설치 시 설치는 하단 Play·iOS·원스토어 링크를 이용합니다.
+ * 모바일 기본: Play·App Store 자동 이동 없음. 설치 링크는 UI 하단 스토어 버튼 사용.
  */
 export function openSeoulCompanionApp(options: OpenOptions = {}): void {
   if (typeof window === "undefined") return;
@@ -176,22 +243,18 @@ export function openSeoulCompanionApp(options: OpenOptions = {}): void {
 
   if (platform === "android") {
     if (allowStoreFallback) {
-      launchWithDeferredStoreFallback(() => {
-        window.location.href = buildSeoulCompanionAndroidLauncherIntentUrl();
-      }, storeUrl, options);
+      launchWithDeferredStoreFallback(() => launchAndroidAppOnly({}), storeUrl, options);
     } else {
-      launchMobileAppOnly("android", options);
+      launchAndroidAppOnly(options);
     }
     return;
   }
 
   if (platform === "ios") {
     if (allowStoreFallback) {
-      launchWithDeferredStoreFallback(() => {
-        window.location.href = buildSeoulCompanionLaunchUrl();
-      }, storeUrl, options);
+      launchWithDeferredStoreFallback(() => launchIosAppOnly({}), storeUrl, options);
     } else {
-      launchMobileAppOnly("ios", options);
+      launchIosAppOnly(options);
     }
     return;
   }
