@@ -69,11 +69,13 @@ export function buildSeoulCompanionLaunchUrl(): string {
 }
 
 /**
- * Android — MainActivity 직접 실행 (서울동행맵 APK 에 공개 딥링크 스킴 없음).
- * package 만 넣으면 Chrome 이 Play 로 보내는 경우가 있어 component 를 지정하여 강제 실행 유도.
+ * Android — 스킴을 이용한 딥링크 실행.
+ * component 지정은 액티비티 이름이 달라 무반응 현상을 일으키고, package 전용 호출은 크롬에서 마켓으로 우회시킵니다.
+ * 앱의 커스텀 스킴(mydata://)을 찔러서 시스템이 앱을 강제로 깨우도록 유도합니다.
  */
 export function buildSeoulCompanionAndroidMainActivityIntentUrl(): string {
-  return `intent:#Intent;component=${ANDROID_MAIN_ACTIVITY};action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;launchFlags=0x10000000;end`;
+  const path = LAUNCH_HOST && LAUNCH_HOST !== "/" ? LAUNCH_HOST : "launch";
+  return `intent://${path}#Intent;scheme=${LAUNCH_SCHEME};package=${ANDROID_PACKAGE};end`;
 }
 
 /** @deprecated scheme+package — 미등록 스킴 시 Play 로 우회 */
