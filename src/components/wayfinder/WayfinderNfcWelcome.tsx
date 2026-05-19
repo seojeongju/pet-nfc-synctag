@@ -1,5 +1,6 @@
 import { MapPin, Nfc, Navigation2, TrainFront } from "lucide-react";
 import { linkuCompanionMenuTitle } from "@/lib/wayfinder/copy";
+import { WAYFINDER_NFC_WELCOME_ID } from "@/components/wayfinder/WayfinderNfcEntryScroll";
 
 const STEPS = [
   { icon: Nfc, label: "태그 인식", color: "bg-emerald-600" },
@@ -10,7 +11,8 @@ const STEPS = [
 export function WayfinderNfcWelcome() {
   return (
     <section
-      className="relative overflow-hidden rounded-[24px] border border-emerald-200/90 bg-gradient-to-br from-emerald-50 via-white to-indigo-50/80 shadow-lg shadow-emerald-100/40"
+      id={WAYFINDER_NFC_WELCOME_ID}
+      className="relative scroll-mt-4 overflow-hidden rounded-[24px] border border-emerald-200/90 bg-gradient-to-br from-emerald-50 via-white to-indigo-50/80 shadow-lg shadow-emerald-100/40"
       aria-label="NFC 태그 인식"
     >
       <div

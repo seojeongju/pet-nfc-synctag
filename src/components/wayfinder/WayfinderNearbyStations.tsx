@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -34,7 +34,6 @@ type Props = {
 };
 
 export function WayfinderNearbyStations({ nfcEntry = false }: Props) {
-  const sectionRef = useRef<HTMLElement>(null);
   const [phase, setPhase] = useState<GeoPhase>("idle");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [stations, setStations] = useState<NearbyStation[]>([]);
@@ -85,14 +84,6 @@ export function WayfinderNearbyStations({ nfcEntry = false }: Props) {
     requestLocation();
   }, [requestLocation]);
 
-  useEffect(() => {
-    if (!nfcEntry) return;
-    const t = window.setTimeout(() => {
-      sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 400);
-    return () => window.clearTimeout(t);
-  }, [nfcEntry]);
-
   const refresh = () => {
     if (coords) {
       setPhase("locating");
@@ -112,7 +103,6 @@ export function WayfinderNearbyStations({ nfcEntry = false }: Props) {
 
   return (
     <section
-      ref={sectionRef}
       id="wf-nearby"
       className={cn("space-y-4 scroll-mt-4", nfcEntry && "rounded-[28px] border-2 border-indigo-200/90 bg-indigo-50/30 p-3 sm:p-4")}
       aria-labelledby="wf-nearby-heading"

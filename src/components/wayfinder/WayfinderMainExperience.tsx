@@ -8,6 +8,7 @@ import { WayfinderNearbyStations } from "@/components/wayfinder/WayfinderNearbyS
 import { WayfinderHowItWorks } from "@/components/wayfinder/WayfinderHowItWorks";
 import { WayfinderSpotAuxiliary } from "@/components/wayfinder/WayfinderSpotAuxiliary";
 import { WayfinderNfcWelcome } from "@/components/wayfinder/WayfinderNfcWelcome";
+import { WayfinderNfcEntryScroll } from "@/components/wayfinder/WayfinderNfcEntryScroll";
 import { WayfinderOptionalSpotCard } from "@/components/wayfinder/WayfinderOptionalSpotCard";
 import { WayfinderStationAnchorCard } from "@/components/wayfinder/WayfinderStationAnchorCard";
 import { WayfinderAccessibleRoutingSection } from "@/components/wayfinder/WayfinderAccessibleRoutingSection";
@@ -21,6 +22,7 @@ export function WayfinderMainExperience({ entry }: Props) {
 
   return (
     <div className="space-y-6 sm:space-y-8" lang="ko">
+      {nfcEntry ? <WayfinderNfcEntryScroll active /> : null}
       {nfcEntry ? <WayfinderNfcWelcome /> : null}
 
       {!nfcEntry ? <WayfinderSubwayHero /> : null}

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ExternalLink, Play, Zap } from "lucide-react";
 import { SEOUL_COMPANION_APP } from "@/lib/wayfinder/accessible-routing-links";
 import {
+  detectSeoulCompanionPlatform,
   openSeoulCompanionApp,
   readSeoulCompanionInstalledFlag,
 } from "@/lib/wayfinder/seoul-companion-app-launch";
@@ -14,11 +15,14 @@ type Props = {
 };
 
 export function WayfinderSeoulCompanionLaunchButton({ className }: Props) {
-  const [installed, setInstalled] = useState(false);
+  const [installedHint, setInstalledHint] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    setInstalled(readSeoulCompanionInstalledFlag());
+    const platform = detectSeoulCompanionPlatform();
+    setIsMobile(platform === "android" || platform === "ios");
+    setInstalledHint(readSeoulCompanionInstalledFlag());
     setHydrated(true);
   }, []);
 
@@ -26,20 +30,21 @@ export function WayfinderSeoulCompanionLaunchButton({ className }: Props) {
     (e: React.MouseEvent) => {
       e.preventDefault();
       openSeoulCompanionApp({
-        assumeInstalled: installed,
-        onOpened: () => setInstalled(true),
+        onOpened: () => setInstalledHint(true),
       });
     },
-    [installed]
+    []
   );
 
   const primaryLabel = !hydrated
     ? "서울동행맵 열기"
-    : installed
+    : isMobile
       ? "서울동행앱 실행"
-      : "서울동행맵 설치";
+      : installedHint
+        ? "서울동행앱 실행"
+        : "서울동행맵 설치";
 
-  const PrimaryIcon = installed ? Zap : Play;
+  const PrimaryIcon = isMobile || installedHint ? Zap : Play;
 
   return (
     <div className={cn("space-y-2", className)}>
@@ -49,26 +54,14 @@ export function WayfinderSeoulCompanionLaunchButton({ className }: Props) {
         className="flex w-full min-h-12 items-center justify-center gap-2.5 rounded-xl border-b-4 border-sky-900/40 bg-white px-4 py-3.5 text-sm font-black text-sky-900 shadow-md transition hover:bg-sky-50 active:scale-[0.99]"
       >
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-100">
-          <PrimaryIcon
-            className={cn("h-4 w-4 text-sky-800", !installed && "fill-sky-800")}
-            aria-hidden
-          />
+          <PrimaryIcon className="h-4 w-4 text-sky-800" aria-hidden />
         </span>
         {primaryLabel}
-        {installed ? null : (
-          <ExternalLink className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
-        )}
       </button>
 
-      {!installed && hydrated ? (
-        <p className="px-1 text-center text-[10px] font-semibold text-sky-100/90">
-          버튼을 누르면 앱이 설치되어 있을 때 실행되고, 없으면 스토어로 이동합니다.
-        </p>
-      ) : null}
-
-      {installed ? (
-        <p className="px-1 text-center text-[10px] font-semibold text-sky-100/90">
-          이 기기에서 이전에 앱을 연 적이 있어 실행으로 표시됩니다.
+      {hydrated && isMobile ? (
+        <p className="px-1 text-center text-[10px] font-semibold leading-snug text-sky-100/90">
+          설치된 경우 앱이 바로 열립니다. 열리지 않으면 잠시 후 스토어로 이동합니다.
         </p>
       ) : null}
 
