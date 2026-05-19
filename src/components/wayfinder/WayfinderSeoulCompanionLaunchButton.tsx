@@ -6,7 +6,9 @@ import { SEOUL_COMPANION_APP } from "@/lib/wayfinder/accessible-routing-links";
 import {
   detectInAppBrowser,
   detectSeoulCompanionPlatform,
+  getSeoulCompanionNativeLaunchHref,
   launchSeoulCompanionAppFromBrowser,
+  prepareSeoulCompanionLaunch,
   readSeoulCompanionInstalledFlag,
   type SeoulCompanionPlatform,
 } from "@/lib/wayfinder/seoul-companion-app-launch";
@@ -17,7 +19,7 @@ type Props = {
 };
 
 const primaryButtonClassName =
-  "flex w-full min-h-12 items-center justify-center gap-2.5 rounded-xl border-b-4 border-sky-900/40 bg-white px-4 py-3.5 text-sm font-black text-sky-900 shadow-md transition hover:bg-sky-50 active:scale-[0.99]";
+  "flex w-full min-h-12 items-center justify-center gap-2.5 rounded-xl border-b-4 border-sky-900/40 bg-white px-4 py-3.5 text-sm font-black text-sky-900 shadow-md transition hover:bg-sky-50 active:scale-[0.99] no-underline";
 
 export function WayfinderSeoulCompanionLaunchButton({ className }: Props) {
   const [installedHint, setInstalledHint] = useState(false);
@@ -33,12 +35,34 @@ export function WayfinderSeoulCompanionLaunchButton({ className }: Props) {
   }, []);
 
   const isMobile = platform === "android" || platform === "ios";
+  const nativeLaunchHref = hydrated ? getSeoulCompanionNativeLaunchHref(platform) : null;
 
-  const handlePrimaryClick = useCallback(() => {
-    launchSeoulCompanionAppFromBrowser({
-      onOpened: () => setInstalledHint(true),
-    });
-  }, []);
+  const handlePrimaryClick = useCallback(
+    (e: React.MouseEvent<HTMLAnchorElement | HTMLButtonElement>) => {
+      prepareSeoulCompanionLaunch({
+        onOpened: () => setInstalledHint(true),
+      });
+
+      if (inAppBrowser) {
+        e.preventDefault();
+        launchSeoulCompanionAppFromBrowser({
+          onOpened: () => setInstalledHint(true),
+        });
+        return;
+      }
+
+      if (nativeLaunchHref && isMobile) {
+        // preventDefault 하지 않음 — intent 링크를 브라우저가 직접 처리
+        return;
+      }
+
+      e.preventDefault();
+      launchSeoulCompanionAppFromBrowser({
+        onOpened: () => setInstalledHint(true),
+      });
+    },
+    [inAppBrowser, isMobile, nativeLaunchHref]
+  );
 
   const primaryLabel = !hydrated
     ? "서울동행맵 열기"
@@ -50,6 +74,15 @@ export function WayfinderSeoulCompanionLaunchButton({ className }: Props) {
 
   const PrimaryIcon = isMobile || installedHint ? Zap : Play;
 
+  const primaryInner = (
+    <>
+      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-100">
+        <PrimaryIcon className="h-4 w-4 text-sky-800" aria-hidden />
+      </span>
+      {primaryLabel}
+    </>
+  );
+
   return (
     <div className={cn("space-y-2", className)}>
       {hydrated && inAppBrowser ? (
@@ -59,16 +92,20 @@ export function WayfinderSeoulCompanionLaunchButton({ className }: Props) {
         </p>
       ) : null}
 
-      <button type="button" onClick={handlePrimaryClick} className={primaryButtonClassName}>
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-100">
-          <PrimaryIcon className="h-4 w-4 text-sky-800" aria-hidden />
-        </span>
-        {primaryLabel}
-      </button>
+      {nativeLaunchHref && isMobile && !inAppBrowser ? (
+        <a href={nativeLaunchHref} onClick={handlePrimaryClick} className={primaryButtonClassName}>
+          {primaryInner}
+        </a>
+      ) : (
+        <button type="button" onClick={handlePrimaryClick} className={primaryButtonClassName}>
+          {primaryInner}
+        </button>
+      )}
 
       {hydrated && isMobile ? (
         <p className="px-1 text-center text-[10px] font-semibold leading-snug text-sky-100/90">
-          설치된 서울동행맵이 바로 열립니다. 앱이 없으면 아래 Play·iOS·원스토어에서 설치하세요.
+          설치된 서울동행맵이 바로 열립니다. 실행이 안 되면 Chrome에서 다시 시도하거나 아래에서
+          설치하세요.
         </p>
       ) : null}
 

@@ -4,7 +4,7 @@ import { SEOUL_COMPANION_APP } from "@/lib/wayfinder/accessible-routing-links";
 
 const INSTALLED_STORAGE_KEY = "linku_seoul_companion_app_installed";
 
-/** 공개 문서 미제공 — env로 덮어쓸 수 있음 */
+/** 공개 문서 미제공 — env로 덮어쓸 수 있음 (APK 기준 MainActivity 에 mydata 스킴 없음) */
 const LAUNCH_SCHEME =
   (typeof process !== "undefined" &&
     process.env.NEXT_PUBLIC_SEOUL_COMPANION_LAUNCH_SCHEME?.trim()) ||
@@ -18,7 +18,10 @@ const ANDROID_PACKAGE =
   (typeof process !== "undefined" && process.env.NEXT_PUBLIC_SEOUL_COMPANION_ANDROID_PACKAGE?.trim()) ||
   "kr.go.seoul.mydata";
 
-/** env에 전체 URL 지정 시 후보 목록 맨 앞에 사용 (예: mydata://main) */
+/** APK AndroidManifest — MainActivity (커스텀 스킴 미등록) */
+const ANDROID_MAIN_ACTIVITY = `${ANDROID_PACKAGE}/kr.go.seoul.mydata.MainActivity`;
+
+/** env에 전체 intent/URL 지정 시 우선 사용 */
 const LAUNCH_URL_OVERRIDE =
   typeof process !== "undefined" ? process.env.NEXT_PUBLIC_SEOUL_COMPANION_LAUNCH_URL?.trim() : "";
 
@@ -66,22 +69,27 @@ export function buildSeoulCompanionLaunchUrl(): string {
 }
 
 /**
- * Android intent — scheme 만 (package 없음).
- * package 가 있으면 Chrome 이 kr.go.seoul.mydata Play 페이지로 보내는 경우가 많음.
+ * Android — MainActivity 직접 실행 (서울동행맵 APK 에 공개 딥링크 스킴 없음).
+ * package 만 넣으면 Chrome 이 Play 로 보내는 경우가 있어 component 지정.
  */
-export function buildSeoulCompanionAndroidSchemeIntentUrl(host: string = LAUNCH_HOST): string {
-  const path = host && host !== "/" ? host : "launch";
-  return `intent://${path}#Intent;scheme=${LAUNCH_SCHEME};action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end`;
+export function buildSeoulCompanionAndroidMainActivityIntentUrl(): string {
+  return `intent://open/#Intent;component=${ANDROID_MAIN_ACTIVITY};action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;launchFlags=0x10000000;end`;
 }
 
-/** @deprecated package 포함 intent — Play 우회 가능성 */
+/** @deprecated scheme+package — 미등록 스킴 시 Play 로 우회 */
 export function buildSeoulCompanionAndroidLauncherIntentUrl(): string {
   return `intent://${LAUNCH_HOST}#Intent;scheme=${LAUNCH_SCHEME};package=${ANDROID_PACKAGE};end`;
 }
 
-/** @deprecated 웹에서 package 런처 intent 는 Play 로 빠지는 경우가 많음 */
+/** @deprecated */
 export function buildSeoulCompanionAndroidPackageIntentUrl(): string {
   return `intent:#Intent;package=${ANDROID_PACKAGE};action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;end`;
+}
+
+/** @deprecated */
+export function buildSeoulCompanionAndroidSchemeIntentUrl(host: string = LAUNCH_HOST): string {
+  const path = host && host !== "/" ? host : "launch";
+  return `intent://${path}#Intent;scheme=${LAUNCH_SCHEME};action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end`;
 }
 
 /** @deprecated browser_fallback_url 은 설치돼 있어도 스토어로 바로 감 */
@@ -90,44 +98,15 @@ export function buildSeoulCompanionAndroidIntentUrl(fallbackStoreUrl: string): s
   return `intent://${LAUNCH_HOST}#Intent;scheme=${LAUNCH_SCHEME};package=${ANDROID_PACKAGE};S.browser_fallback_url=${fallback};end`;
 }
 
-/** Android — 커스텀 스킴 후보 (package intent 제외) */
-export function getSeoulCompanionAndroidLaunchCandidates(): string[] {
-  const hosts = [LAUNCH_HOST, "launch", "main", "app", ""].filter(
-    (host, index, list) => list.indexOf(host) === index
-  );
-
-  const custom = hosts.flatMap((host) => {
-    const base = buildCustomSchemeUrl(host);
-    return host === ANDROID_PACKAGE ? [base] : [base, `${ANDROID_PACKAGE}://${host || "launch"}`];
-  });
-
-  const intents = hosts.map((host) => buildSeoulCompanionAndroidSchemeIntentUrl(host || "launch"));
-
-  const legacySchemes = ["seoulmydata", "seoulapps"].flatMap((scheme) => [
-    `${scheme}://launch`,
-    `${scheme}://`,
-  ]);
-
-  const candidates = [
-    ...(LAUNCH_URL_OVERRIDE ? [LAUNCH_URL_OVERRIDE] : []),
-    ...custom,
-    ...legacySchemes,
-    ...intents,
-    `android-app://${ANDROID_PACKAGE}/${LAUNCH_SCHEME}/${LAUNCH_HOST || "launch"}`,
-  ];
-
-  return [...new Set(candidates)];
-}
-
-/** 모바일 `<a href>` — Android 는 커스텀 스킴만 (Play 우회 방지) */
+/** 모바일 `<a href>` — Android 는 MainActivity intent */
 export function getSeoulCompanionNativeLaunchHref(
   platform: SeoulCompanionPlatform = detectSeoulCompanionPlatform()
 ): string | null {
   if (platform === "android") {
-    return buildSeoulCompanionLaunchUrl();
+    return LAUNCH_URL_OVERRIDE || buildSeoulCompanionAndroidMainActivityIntentUrl();
   }
   if (platform === "ios") {
-    return buildSeoulCompanionLaunchUrl();
+    return LAUNCH_URL_OVERRIDE || buildSeoulCompanionLaunchUrl();
   }
   return null;
 }
@@ -196,27 +175,9 @@ function attachAppOpenedListeners(options: OpenOptions): () => void {
   return cleanup;
 }
 
-/** 사용자 제스처 안에서 커스텀 스킴·intent 시도 (페이지 이탈·Play 우회 최소화) */
-function navigateLaunchUrl(url: string): void {
-  const isCustomScheme =
-    url.startsWith(`${LAUNCH_SCHEME}://`) || url.startsWith(`${ANDROID_PACKAGE}://`);
-
-  if (isCustomScheme) {
-    const iframe = document.createElement("iframe");
-    iframe.style.cssText = "display:none;width:0;height:0;border:0";
-    iframe.src = url;
-    document.body.appendChild(iframe);
-    window.setTimeout(() => iframe.remove(), 1000);
-    return;
-  }
-
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.setAttribute("aria-hidden", "true");
-  anchor.style.cssText = "position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0";
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
+/** 사용자 제스처 직후 동기 실행 (iframe·지연 다중 시도는 Android 에서 무효) */
+function navigateLaunchUrlSync(url: string): void {
+  window.location.assign(url);
 }
 
 function launchWithDeferredStoreFallback(
@@ -252,28 +213,15 @@ function launchWithDeferredStoreFallback(
 }
 
 function launchAndroidAppOnly(options: OpenOptions): void {
-  let cancelled = false;
-
-  attachAppOpenedListeners({
-    ...options,
-    onOpened: () => {
-      cancelled = true;
-      options.onOpened?.();
-    },
-  });
-
-  const candidates = getSeoulCompanionAndroidLaunchCandidates();
-  candidates.forEach((url, index) => {
-    window.setTimeout(() => {
-      if (cancelled || document.visibilityState === "hidden") return;
-      navigateLaunchUrl(url);
-    }, index * 120);
-  });
+  attachAppOpenedListeners(options);
+  const url = LAUNCH_URL_OVERRIDE || buildSeoulCompanionAndroidMainActivityIntentUrl();
+  navigateLaunchUrlSync(url);
 }
 
 function launchIosAppOnly(options: OpenOptions): void {
   attachAppOpenedListeners(options);
-  navigateLaunchUrl(buildSeoulCompanionLaunchUrl());
+  const url = LAUNCH_URL_OVERRIDE || buildSeoulCompanionLaunchUrl();
+  navigateLaunchUrlSync(url);
 }
 
 /**

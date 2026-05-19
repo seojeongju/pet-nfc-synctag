@@ -70,8 +70,8 @@
 
 ### 5.3 기술·딥링크
 
-- **Android:** `mydata://launch` 등 **커스텀 스킴만** 순차 시도. `intent` URL에 `package=kr.go.seoul.mydata` 를 넣으면 Chrome 이 Play 스토어 페이지로 보내는 경우가 있어 **사용하지 않음** (`browser_fallback_url`·2.8초 스토어 자동 이동도 미사용)
-- **iOS·보조:** 커스텀 스킴 `mydata://launch` 등은 **공개 문서 미확인·추정값** (`NEXT_PUBLIC_SEOUL_COMPANION_LAUNCH_SCHEME` / `_LAUNCH_HOST` / `_ANDROID_PACKAGE`)
+- **Android:** APK 기준 **공개 딥링크 스킴 없음** → `MainActivity` component intent 로 실행 (`kr.go.seoul.mydata/kr.go.seoul.mydata.MainActivity`). `mydata://`·`package` 만 있는 intent 는 Play 로 빠지거나 무응답일 수 있음 (`browser_fallback_url`·2.8초 스토어 자동 이동 미사용)
+- **iOS·보조:** 커스텀 스킴은 **공개 문서 미확인** (`NEXT_PUBLIC_SEOUL_COMPANION_LAUNCH_URL` 로 덮어쓰기 가능)
 - 미설치 시 설치는 UI 하단 Play·App Store·원스토어 링크 사용 (`allowStoreFallback` 옵션만 스토어 자동 이동)
 - 설치 여부는 웹에서 직접 조회 불가 → 실행 성공(화면 전환) 시 localStorage 힌트
 - **R2** 착수 시: 서울시·운영사 **공식 딥링크** 확보 후 스킴 env 반영
