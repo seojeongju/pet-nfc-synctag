@@ -18,6 +18,10 @@ const ANDROID_PACKAGE =
   (typeof process !== "undefined" && process.env.NEXT_PUBLIC_SEOUL_COMPANION_ANDROID_PACKAGE?.trim()) ||
   "kr.go.seoul.mydata";
 
+/** env에 전체 URL 지정 시 후보 목록 맨 앞에 사용 (예: mydata://main) */
+const LAUNCH_URL_OVERRIDE =
+  typeof process !== "undefined" ? process.env.NEXT_PUBLIC_SEOUL_COMPANION_LAUNCH_URL?.trim() : "";
+
 /** 미설치 추정 시에만 스토어 폴백 (ms). 「앱 실행」 버튼에서는 사용하지 않음 */
 const LAUNCH_FALLBACK_MS = 2800;
 
@@ -52,16 +56,30 @@ export function getSeoulCompanionStoreUrl(platform: SeoulCompanionPlatform = det
   return SEOUL_COMPANION_APP.playStoreUrl;
 }
 
-export function buildSeoulCompanionLaunchUrl(): string {
-  return `${LAUNCH_SCHEME}://${LAUNCH_HOST}`;
+function buildCustomSchemeUrl(host: string): string {
+  if (!host || host === "/") return `${LAUNCH_SCHEME}://`;
+  return `${LAUNCH_SCHEME}://${host}`;
 }
 
-/** Android intent — scheme·package (Chrome 권장 형식, browser_fallback_url 없음) */
+export function buildSeoulCompanionLaunchUrl(): string {
+  return buildCustomSchemeUrl(LAUNCH_HOST);
+}
+
+/**
+ * Android intent — scheme 만 (package 없음).
+ * package 가 있으면 Chrome 이 kr.go.seoul.mydata Play 페이지로 보내는 경우가 많음.
+ */
+export function buildSeoulCompanionAndroidSchemeIntentUrl(host: string = LAUNCH_HOST): string {
+  const path = host && host !== "/" ? host : "launch";
+  return `intent://${path}#Intent;scheme=${LAUNCH_SCHEME};action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end`;
+}
+
+/** @deprecated package 포함 intent — Play 우회 가능성 */
 export function buildSeoulCompanionAndroidLauncherIntentUrl(): string {
   return `intent://${LAUNCH_HOST}#Intent;scheme=${LAUNCH_SCHEME};package=${ANDROID_PACKAGE};end`;
 }
 
-/** Android intent — package 런처만 (일부 기기·삼성 브라우저) */
+/** @deprecated 웹에서 package 런처 intent 는 Play 로 빠지는 경우가 많음 */
 export function buildSeoulCompanionAndroidPackageIntentUrl(): string {
   return `intent:#Intent;package=${ANDROID_PACKAGE};action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;end`;
 }
@@ -72,15 +90,41 @@ export function buildSeoulCompanionAndroidIntentUrl(fallbackStoreUrl: string): s
   return `intent://${LAUNCH_HOST}#Intent;scheme=${LAUNCH_SCHEME};package=${ANDROID_PACKAGE};S.browser_fallback_url=${fallback};end`;
 }
 
-/**
- * 모바일 `<a href>` — Android는 패키지 런처 intent만 사용.
- * scheme+package intent·미확인 mydata:// 는 실패 시 Play 스토어로 빠지는 경우가 많음.
- */
+/** Android — 커스텀 스킴 후보 (package intent 제외) */
+export function getSeoulCompanionAndroidLaunchCandidates(): string[] {
+  const hosts = [LAUNCH_HOST, "launch", "main", "app", ""].filter(
+    (host, index, list) => list.indexOf(host) === index
+  );
+
+  const custom = hosts.flatMap((host) => {
+    const base = buildCustomSchemeUrl(host);
+    return host === ANDROID_PACKAGE ? [base] : [base, `${ANDROID_PACKAGE}://${host || "launch"}`];
+  });
+
+  const intents = hosts.map((host) => buildSeoulCompanionAndroidSchemeIntentUrl(host || "launch"));
+
+  const legacySchemes = ["seoulmydata", "seoulapps"].flatMap((scheme) => [
+    `${scheme}://launch`,
+    `${scheme}://`,
+  ]);
+
+  const candidates = [
+    ...(LAUNCH_URL_OVERRIDE ? [LAUNCH_URL_OVERRIDE] : []),
+    ...custom,
+    ...legacySchemes,
+    ...intents,
+    `android-app://${ANDROID_PACKAGE}/${LAUNCH_SCHEME}/${LAUNCH_HOST || "launch"}`,
+  ];
+
+  return [...new Set(candidates)];
+}
+
+/** 모바일 `<a href>` — Android 는 커스텀 스킴만 (Play 우회 방지) */
 export function getSeoulCompanionNativeLaunchHref(
   platform: SeoulCompanionPlatform = detectSeoulCompanionPlatform()
 ): string | null {
   if (platform === "android") {
-    return buildSeoulCompanionAndroidPackageIntentUrl();
+    return buildSeoulCompanionLaunchUrl();
   }
   if (platform === "ios") {
     return buildSeoulCompanionLaunchUrl();
@@ -152,10 +196,22 @@ function attachAppOpenedListeners(options: OpenOptions): () => void {
   return cleanup;
 }
 
-/** Chrome: 사용자 제스처 안에서 숨겨진 `<a>` 클릭이 intent 실행에 가장 안정적 */
-function clickHiddenAnchor(href: string): void {
+/** 사용자 제스처 안에서 커스텀 스킴·intent 시도 (페이지 이탈·Play 우회 최소화) */
+function navigateLaunchUrl(url: string): void {
+  const isCustomScheme =
+    url.startsWith(`${LAUNCH_SCHEME}://`) || url.startsWith(`${ANDROID_PACKAGE}://`);
+
+  if (isCustomScheme) {
+    const iframe = document.createElement("iframe");
+    iframe.style.cssText = "display:none;width:0;height:0;border:0";
+    iframe.src = url;
+    document.body.appendChild(iframe);
+    window.setTimeout(() => iframe.remove(), 1000);
+    return;
+  }
+
   const anchor = document.createElement("a");
-  anchor.href = href;
+  anchor.href = url;
   anchor.setAttribute("aria-hidden", "true");
   anchor.style.cssText = "position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0";
   document.body.appendChild(anchor);
@@ -196,29 +252,34 @@ function launchWithDeferredStoreFallback(
 }
 
 function launchAndroidAppOnly(options: OpenOptions): void {
-  attachAppOpenedListeners(options);
+  let cancelled = false;
 
-  // 패키지 런처만 — scheme intent 는 미등록 시 Play 로 우회되는 Chrome 동작이 있음
-  clickHiddenAnchor(buildSeoulCompanionAndroidPackageIntentUrl());
+  attachAppOpenedListeners({
+    ...options,
+    onOpened: () => {
+      cancelled = true;
+      options.onOpened?.();
+    },
+  });
+
+  const candidates = getSeoulCompanionAndroidLaunchCandidates();
+  candidates.forEach((url, index) => {
+    window.setTimeout(() => {
+      if (cancelled || document.visibilityState === "hidden") return;
+      navigateLaunchUrl(url);
+    }, index * 120);
+  });
 }
 
 function launchIosAppOnly(options: OpenOptions): void {
   attachAppOpenedListeners(options);
-  clickHiddenAnchor(buildSeoulCompanionLaunchUrl());
+  navigateLaunchUrl(buildSeoulCompanionLaunchUrl());
 }
 
 /**
- * 실행 버튼 클릭 직전 — 앱 전환 감지 리스너만 등록.
- * 모바일에서는 preventDefault 없이 `<a href="mydata://...">` 네비게이션을 허용하는 것이 좋음.
+ * 「서울동행앱 실행」 버튼 — Play 자동 이동 없음.
  */
-export function prepareSeoulCompanionLaunch(options: OpenOptions = {}): void {
-  attachAppOpenedListeners(options);
-}
-
-/**
- * 인앱 브라우저 등에서 `<a href>` 만으로 부족할 때 추가 시도 (스토어 자동 이동 없음).
- */
-export function launchSeoulCompanionAppFromInAppBrowser(options: OpenOptions = {}): void {
+export function launchSeoulCompanionAppFromBrowser(options: OpenOptions = {}): void {
   if (typeof window === "undefined") return;
 
   const platform = detectSeoulCompanionPlatform();
@@ -230,6 +291,16 @@ export function launchSeoulCompanionAppFromInAppBrowser(options: OpenOptions = {
     launchIosAppOnly(options);
     return;
   }
+}
+
+/** @deprecated launchSeoulCompanionAppFromBrowser 사용 */
+export function prepareSeoulCompanionLaunch(options: OpenOptions = {}): void {
+  attachAppOpenedListeners(options);
+}
+
+/** @deprecated launchSeoulCompanionAppFromBrowser 사용 */
+export function launchSeoulCompanionAppFromInAppBrowser(options: OpenOptions = {}): void {
+  launchSeoulCompanionAppFromBrowser(options);
 }
 
 /**

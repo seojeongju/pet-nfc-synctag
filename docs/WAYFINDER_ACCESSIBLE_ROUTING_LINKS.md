@@ -70,7 +70,7 @@
 
 ### 5.3 기술·딥링크
 
-- **Android:** `intent://launch#Intent;scheme=mydata;package=kr.go.seoul.mydata;...` 로 앱만 실행 (`browser_fallback_url`·2.8초 스토어 자동 이동 **미사용** — 「앱 실행」 시 Play로 빠지는 현상 방지)
+- **Android:** `mydata://launch` 등 **커스텀 스킴만** 순차 시도. `intent` URL에 `package=kr.go.seoul.mydata` 를 넣으면 Chrome 이 Play 스토어 페이지로 보내는 경우가 있어 **사용하지 않음** (`browser_fallback_url`·2.8초 스토어 자동 이동도 미사용)
 - **iOS·보조:** 커스텀 스킴 `mydata://launch` 등은 **공개 문서 미확인·추정값** (`NEXT_PUBLIC_SEOUL_COMPANION_LAUNCH_SCHEME` / `_LAUNCH_HOST` / `_ANDROID_PACKAGE`)
 - 미설치 시 설치는 UI 하단 Play·App Store·원스토어 링크 사용 (`allowStoreFallback` 옵션만 스토어 자동 이동)
 - 설치 여부는 웹에서 직접 조회 불가 → 실행 성공(화면 전환) 시 localStorage 힌트

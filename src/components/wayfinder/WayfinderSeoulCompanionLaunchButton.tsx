@@ -6,9 +6,7 @@ import { SEOUL_COMPANION_APP } from "@/lib/wayfinder/accessible-routing-links";
 import {
   detectInAppBrowser,
   detectSeoulCompanionPlatform,
-  getSeoulCompanionNativeLaunchHref,
-  launchSeoulCompanionAppFromInAppBrowser,
-  prepareSeoulCompanionLaunch,
+  launchSeoulCompanionAppFromBrowser,
   readSeoulCompanionInstalledFlag,
   type SeoulCompanionPlatform,
 } from "@/lib/wayfinder/seoul-companion-app-launch";
@@ -19,7 +17,7 @@ type Props = {
 };
 
 const primaryButtonClassName =
-  "flex w-full min-h-12 items-center justify-center gap-2.5 rounded-xl border-b-4 border-sky-900/40 bg-white px-4 py-3.5 text-sm font-black text-sky-900 shadow-md transition hover:bg-sky-50 active:scale-[0.99] no-underline";
+  "flex w-full min-h-12 items-center justify-center gap-2.5 rounded-xl border-b-4 border-sky-900/40 bg-white px-4 py-3.5 text-sm font-black text-sky-900 shadow-md transition hover:bg-sky-50 active:scale-[0.99]";
 
 export function WayfinderSeoulCompanionLaunchButton({ className }: Props) {
   const [installedHint, setInstalledHint] = useState(false);
@@ -35,34 +33,12 @@ export function WayfinderSeoulCompanionLaunchButton({ className }: Props) {
   }, []);
 
   const isMobile = platform === "android" || platform === "ios";
-  const nativeLaunchHref = hydrated ? getSeoulCompanionNativeLaunchHref(platform) : null;
 
-  const handlePrimaryClick = useCallback(
-    (e: React.MouseEvent<HTMLAnchorElement | HTMLButtonElement>) => {
-      prepareSeoulCompanionLaunch({
-        onOpened: () => setInstalledHint(true),
-      });
-
-      if (inAppBrowser) {
-        e.preventDefault();
-        launchSeoulCompanionAppFromInAppBrowser({
-          onOpened: () => setInstalledHint(true),
-        });
-        return;
-      }
-
-      if (nativeLaunchHref && isMobile) {
-        // preventDefault 하지 않음 — Android intent 런처 링크를 브라우저가 직접 처리
-        return;
-      }
-
-      e.preventDefault();
-      launchSeoulCompanionAppFromInAppBrowser({
-        onOpened: () => setInstalledHint(true),
-      });
-    },
-    [inAppBrowser, isMobile, nativeLaunchHref]
-  );
+  const handlePrimaryClick = useCallback(() => {
+    launchSeoulCompanionAppFromBrowser({
+      onOpened: () => setInstalledHint(true),
+    });
+  }, []);
 
   const primaryLabel = !hydrated
     ? "서울동행맵 열기"
@@ -74,15 +50,6 @@ export function WayfinderSeoulCompanionLaunchButton({ className }: Props) {
 
   const PrimaryIcon = isMobile || installedHint ? Zap : Play;
 
-  const primaryInner = (
-    <>
-      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-100">
-        <PrimaryIcon className="h-4 w-4 text-sky-800" aria-hidden />
-      </span>
-      {primaryLabel}
-    </>
-  );
-
   return (
     <div className={cn("space-y-2", className)}>
       {hydrated && inAppBrowser ? (
@@ -92,19 +59,12 @@ export function WayfinderSeoulCompanionLaunchButton({ className }: Props) {
         </p>
       ) : null}
 
-      {nativeLaunchHref && isMobile && !inAppBrowser ? (
-        <a
-          href={nativeLaunchHref}
-          onClick={handlePrimaryClick}
-          className={primaryButtonClassName}
-        >
-          {primaryInner}
-        </a>
-      ) : (
-        <button type="button" onClick={handlePrimaryClick} className={primaryButtonClassName}>
-          {primaryInner}
-        </button>
-      )}
+      <button type="button" onClick={handlePrimaryClick} className={primaryButtonClassName}>
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-100">
+          <PrimaryIcon className="h-4 w-4 text-sky-800" aria-hidden />
+        </span>
+        {primaryLabel}
+      </button>
 
       {hydrated && isMobile ? (
         <p className="px-1 text-center text-[10px] font-semibold leading-snug text-sky-100/90">
