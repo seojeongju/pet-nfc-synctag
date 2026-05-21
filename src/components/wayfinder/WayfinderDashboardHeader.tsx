@@ -16,7 +16,6 @@ import { WfFlowTile, WfIconBadge, WfStatChip } from "@/components/wayfinder/wayf
 type Props = {
   spotCount: number;
   publishedCount: number;
-  publicSpotPageBase: string;
 };
 
 const audienceIcons = [
@@ -26,7 +25,7 @@ const audienceIcons = [
   { icon: Briefcase, label: "교통약자" },
 ] as const;
 
-export function WayfinderDashboardHeader({ spotCount, publishedCount, publicSpotPageBase }: Props) {
+export function WayfinderDashboardHeader({ spotCount, publishedCount }: Props) {
   return (
     <div className="space-y-4">
       <section className="overflow-hidden rounded-[28px] border border-indigo-100/90 bg-white shadow-lg">
@@ -76,13 +75,10 @@ export function WayfinderDashboardHeader({ spotCount, publishedCount, publicSpot
 
       <div
         className="flex items-center gap-3 rounded-2xl border border-violet-100 bg-violet-50/50 px-3 py-2.5"
-        title={`NFC·QR 지점 안내: ${publicSpotPageBase}/[slug]`}
+        title="NFC·QR로 연결하는 시설·지점 안내"
       >
         <WfIconBadge icon={Nfc} tone="violet" size="sm" soft />
-        <p className="min-w-0 flex-1 text-xs font-black text-violet-900">
-          NFC·QR 스팟
-          <span className="mt-0.5 block font-mono text-[10px] font-bold text-violet-700/80">{publicSpotPageBase}/…</span>
-        </p>
+        <p className="min-w-0 flex-1 text-xs font-black text-violet-900">NFC·QR 스팟</p>
       </div>
     </div>
   );

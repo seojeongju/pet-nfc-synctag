@@ -83,7 +83,6 @@ export default async function CompanionWayfinderDashboardPage({
         }
       }
 
-      const publicSpotPageBase = "/wayfinder/s";
       const registerMode = register === "1" || Boolean(err);
       const publishedCount = spots.filter((s) => s.is_published).length;
 
@@ -97,11 +96,7 @@ export default async function CompanionWayfinderDashboardPage({
             </nav>
 
             {!registerMode ? (
-              <WayfinderDashboardHeader
-                spotCount={spots.length}
-                publishedCount={publishedCount}
-                publicSpotPageBase={publicSpotPageBase}
-              />
+              <WayfinderDashboardHeader spotCount={spots.length} publishedCount={publishedCount} />
             ) : null}
 
             {!wayfinderBeta ? (
@@ -131,7 +126,6 @@ export default async function CompanionWayfinderDashboardPage({
                 sessionUserId={session.user.id}
                 tenantRole={tenantRole}
                 registerMode={registerMode}
-                publicSpotPageBase={publicSpotPageBase}
               />
             ) : null}
           </div>

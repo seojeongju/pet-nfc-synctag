@@ -7,7 +7,6 @@ import {
   ExternalLink,
   Eye,
   EyeOff,
-  Link2,
   MapPin,
   Nfc,
   Pencil,
@@ -36,7 +35,6 @@ type Props = {
   tenantRole: TenantRole | null;
   /** register=1 또는 저장 오류 시 — 간편 등록 화면 우선 */
   registerMode: boolean;
-  publicSpotPageBase: string;
 };
 
 function SpotStatusIcon({ published }: { published: boolean }) {
@@ -152,7 +150,6 @@ export function WayfinderDashboardSpotSection({
   sessionUserId,
   tenantRole,
   registerMode,
-  publicSpotPageBase,
 }: Props) {
   const registerHref = companionWayfinderRegisterPath(tenantId);
 
@@ -212,11 +209,6 @@ export function WayfinderDashboardSpotSection({
         </Link>
 
         <SpotList spots={spots} tenantId={tenantId} sessionUserId={sessionUserId} tenantRole={tenantRole} />
-
-        <p className="flex items-center justify-center gap-1.5 text-[10px] font-bold text-slate-400" title="NFC·QR 연결 주소">
-          <Link2 className="h-3 w-3" aria-hidden />
-          <span className="font-mono">{publicSpotPageBase}/…</span>
-        </p>
       </div>
     </details>
   );
