@@ -14,6 +14,17 @@ export const linkuCompanionSpotSubLabel = "시설·지점 안내";
 export const linkuCompanionSpotSubDescription =
   "NFC 태그 스캔 시 기본은 GPS·가까운 역 안내입니다. 특정 지점(엘리베이터 앞 등) 메타를 연결하면 보조 안내 카드가 함께 표시됩니다.";
 
+/** 공개 동행 화면 — 보조 스팟 안내 아코디언 */
+export const linkuCompanionSpotAuxiliaryLead =
+  "태그를 찍으면 먼저 지하철·길찾기 안내가 열리고, 시설에 연결된 지점이 있으면 그곳 안내 카드가 더해집니다.";
+
+export const linkuCompanionSpotExamplePlaces = [
+  "안내 데스크",
+  "엘리베이터 앞",
+  "역무실·개찰구",
+  "장애인 화장실 앞",
+] as const;
+
 /** 대상 이용자 (칩 표시) */
 export const wayfinderAudienceTags = [
   "휠체어",
