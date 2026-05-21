@@ -231,6 +231,12 @@ export function DashboardNfcQuickRegisterCard({
     startTransition(async () => {
       try {
         const result = await linkTagSafe(selectedSubjectId, uid.trim());
+        if (result.ok && result.relinkedFromPetId) {
+          setTagMessage({
+            type: "success",
+            text: "다른 관리 대상에 연결돼 있던 태그를 해제하고, 선택한 대상에 다시 연결했습니다.",
+          });
+        }
         if (!result.ok) {
           if (isStaleServerActionError(new Error(result.error))) {
             const reloaded = reloadOnceForStaleAction();
