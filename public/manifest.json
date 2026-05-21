@@ -21,6 +21,21 @@
       "purpose": "any maskable"
     }
   ],
+  "related_applications": [
+    {
+      "platform": "play",
+      "id": "com.petidconnect.nfcwriter"
+    },
+    {
+      "platform": "webapp",
+      "url": "https://wow-linku.co.kr/manifest.json"
+    },
+    {
+      "platform": "webapp",
+      "url": "https://synctag.pages.dev/manifest.json"
+    }
+  ],
+  "prefer_related_applications": false,
   "screenshots": [
     {
       "src": "/images/korean_pet_hero_1774861698476.png",

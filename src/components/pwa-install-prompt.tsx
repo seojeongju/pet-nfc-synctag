@@ -8,7 +8,7 @@ export function PwaInstallPrompt() {
   const {
     deferredPrompt,
     isIOS,
-    isStandalone,
+    isAppAlreadyInstalled,
     pauseGlobalInstallChip,
     triggerInstallPrompt,
   } = usePwaInstall();
@@ -29,7 +29,7 @@ export function PwaInstallPrompt() {
 
   if (!isMounted) return null;
 
-  if (isStandalone || pauseGlobalInstallChip) {
+  if (isAppAlreadyInstalled || pauseGlobalInstallChip) {
     return null;
   }
 
