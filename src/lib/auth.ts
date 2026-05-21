@@ -43,6 +43,11 @@ export const getAuth = (env: AuthEnv) => {
             kakao: {
                 clientId: env.KAKAO_CLIENT_ID || "",
                 clientSecret: env.KAKAO_CLIENT_SECRET || "",
+                /**
+                 * Better Auth 기본값(account_email 등)은 콘솔 미설정 시 KOE205.
+                 * 카카오 동의항목(필수 동의)과 동일하게 유지합니다.
+                 */
+                scope: ["profile_nickname", "profile_image"],
             }
         },
     });
