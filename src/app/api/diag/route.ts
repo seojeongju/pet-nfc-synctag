@@ -5,6 +5,13 @@ import { getMigration0008Status } from "@/lib/db-migration-0008";
 
 export const runtime = "edge";
 
+function kakaoClientIdHint(clientId: string | undefined): string | null {
+  const t = clientId?.trim();
+  if (!t) return null;
+  if (t.length <= 8) return "set(short)";
+  return `${t.slice(0, 4)}…${t.slice(-4)}`;
+}
+
 type DiagEnv = CloudflareEnv & {
   BETTER_AUTH_SECRET?: string;
   BETTER_AUTH_URL?: string;
@@ -26,6 +33,8 @@ export async function GET() {
       NEXT_PUBLIC_APP_URL: !!env.NEXT_PUBLIC_APP_URL ? "SET" : "MISSING",
       GOOGLE_CLIENT_ID: !!env.GOOGLE_CLIENT_ID ? "SET" : "MISSING",
       KAKAO_CLIENT_ID: !!env.KAKAO_CLIENT_ID ? "SET" : "MISSING",
+      /** REST 키 앞·뒤 4자 — Pet-ID Connect 키와 Cloudflare 값 일치 여부 확인용 */
+      KAKAO_CLIENT_ID_HINT: kakaoClientIdHint(env.KAKAO_CLIENT_ID),
     },
     database: {
       isBound: !!env.DB,

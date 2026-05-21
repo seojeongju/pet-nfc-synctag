@@ -44,9 +44,11 @@ export const getAuth = (env: AuthEnv) => {
                 clientId: env.KAKAO_CLIENT_ID || "",
                 clientSecret: env.KAKAO_CLIENT_SECRET || "",
                 /**
-                 * Better Auth 기본값(account_email 등)은 콘솔 미설정 시 KOE205.
-                 * 카카오 동의항목(필수 동의)과 동일하게 유지합니다.
+                 * Better Auth 카카오: disableDefaultScope 없으면 scope에 더해질 뿐,
+                 * account_email·profile_image·profile_nickname 기본 3개가 항상 포함됨 → KOE205.
+                 * Pet-ID Connect 동의항목과 맞춤. 이메일 쓰려면 account_email 추가(비즈앱).
                  */
+                disableDefaultScope: true,
                 scope: ["profile_nickname", "profile_image"],
             }
         },
