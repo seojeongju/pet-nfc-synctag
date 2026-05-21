@@ -53,11 +53,11 @@ export async function fetchKakaoUserInfoForAuth(token: KakaoOAuthToken) {
   const name =
     profile.kakao_account?.profile?.nickname?.trim() ||
     profile.properties?.nickname?.trim() ||
-    null;
+    undefined;
   const image =
     profile.kakao_account?.profile?.profile_image_url?.trim() ||
     profile.properties?.profile_image?.trim() ||
-    null;
+    undefined;
 
   return {
     user: {
