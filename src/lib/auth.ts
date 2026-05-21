@@ -44,12 +44,12 @@ export const getAuth = (env: AuthEnv) => {
                 clientId: env.KAKAO_CLIENT_ID || "",
                 clientSecret: env.KAKAO_CLIENT_SECRET || "",
                 /**
-                 * Better Auth 카카오: disableDefaultScope 없으면 scope에 더해질 뿐,
-                 * account_email·profile_image·profile_nickname 기본 3개가 항상 포함됨 → KOE205.
-                 * Pet-ID Connect 동의항목과 맞춤. 이메일 쓰려면 account_email 추가(비즈앱).
+                 * disableDefaultScope: true — 기본 scope를 대체(추가가 아님). 링크유(비즈앱 아님) REST 키면
+                 * account_email 포함 시 KOE205. Pet-ID Connect(비즈앱) REST 키 + 콘솔 이메일 동의 시 아래 3개 사용.
+                 * account_email 없으면 Better Auth/D1 user.email NOT NULL 때문에 콜백 후 세션이 생기지 않을 수 있음.
                  */
                 disableDefaultScope: true,
-                scope: ["profile_nickname", "profile_image"],
+                scope: ["profile_nickname", "profile_image", "account_email"],
             }
         },
     });

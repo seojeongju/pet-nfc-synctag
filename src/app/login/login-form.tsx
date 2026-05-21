@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { recordConsentsFromAuthenticatedLogin } from "@/app/actions/privacy-consent";
 import { signIn, signUp } from "@/lib/auth-client";
@@ -148,6 +148,15 @@ export function LoginForm() {
   const IconComponent = ctx.icon;
   const allAgreed = agreeTerms && agreePrivacy && agreeLocation;
 
+  useEffect(() => {
+    const oauthError = searchParams.get("oauthError");
+    if (oauthError === "session") {
+      setLoginError(
+        "카카오 로그인은 완료됐지만 이 브라우저에 로그인 세션이 연결되지 않았습니다. 카카오 동의 직후 돌아온 브라우저/탭에서 다시 「카카오로 계속하기」를 눌러 주세요. (카카오톡 앱 로그인 후 다른 브라우저로 돌아오면 자주 발생합니다.)"
+      );
+    }
+  }, [searchParams]);
+
   const handleToggleAllAgree = (checked: boolean) => {
     setAgreeTerms(checked);
     setAgreePrivacy(checked);
@@ -164,17 +173,14 @@ export function LoginForm() {
    *         viewport 컨텍스트를 외부 도메인 값으로 승계하는 버그가 존재하기 때문입니다.
    *
    * [카카오]
-   *   카카오톡 딥링크로 처리되어 브라우저 viewport 히스토리 오염이 없으므로
-   *   callbackURL을 직접 최종 목적지로 설정합니다.
+   *   Google과 동일하게 /auth/complete를 거칩니다. 모바일에서 카카오 OAuth 후 연속 302·
+   *   카카오톡 인앱 브라우저 복귀 시 세션 쿠키·viewport가 끊기는 경우를 줄입니다.
    */
   const handleLogin = async (provider: "google" | "kakao") => {
     setLoginError("");
     // 로그인 직후 /consent에서 계정 동의 상태를 확인하고(최초 1회만 폼 노출) 분기합니다.
     const consentNext = `/consent?next=${encodeURIComponent(callbackURL)}`;
-    const resolvedCallbackURL =
-      provider === "google"
-        ? `/auth/complete?next=${encodeURIComponent(consentNext)}`
-        : consentNext;
+    const resolvedCallbackURL = `/auth/complete?next=${encodeURIComponent(consentNext)}`;
 
     try {
       const result = await signIn.social({
@@ -184,6 +190,14 @@ export function LoginForm() {
       const signInError = result && typeof result === "object" && "error" in result ? (result as { error?: { message?: string } }).error : undefined;
       if (signInError) {
         setLoginError(signInError.message?.trim() || "소셜 로그인을 시작할 수 없습니다. 잠시 후 다시 시도해 주세요.");
+        return;
+      }
+      const oauthUrl =
+        result && typeof result === "object" && "data" in result
+          ? (result as { data?: { url?: string } }).data?.url
+          : undefined;
+      if (oauthUrl) {
+        window.location.assign(oauthUrl);
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "소셜 로그인 중 오류가 발생했습니다.";
@@ -408,11 +422,11 @@ export function LoginForm() {
                     />
                     <path
                       fill="#FBBC05"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93 l3.66-2.84z"
                     />
                     <path
                       fill="#EA4335"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.47 2.18 7.07 l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                     />
                   </svg>
                   Google로 계속하기

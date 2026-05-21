@@ -41,7 +41,11 @@ export default async function ConsentPage({
   const session = await auth.api.getSession({ headers: await headers() });
   const userId = session?.user?.id;
   if (!userId) {
-    redirect(`/login?callbackUrl=${encodeURIComponent(next)}`);
+    const loginQs = new URLSearchParams({
+      callbackUrl: next,
+      oauthError: "session",
+    });
+    redirect(`/login?${loginQs.toString()}`);
   }
 
   const consent = await getUserConsentStatus(userId);
