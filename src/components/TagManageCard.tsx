@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { linkTag, unlinkTag } from "@/app/actions/tag";
 import { Loader2, Plus, Trash2, Smartphone, ShieldCheck, Box, Zap, ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { notifyDashboardLinkedTagsChanged } from "@/lib/dashboard-nfc-nav-label";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
@@ -47,6 +48,7 @@ export function TagManageCard({
       try {
         await linkTag(petId, newTagId);
         setNewTagId("");
+        notifyDashboardLinkedTagsChanged();
         router.refresh();
       } catch (e) {
         const msg = e instanceof Error && e.message ? e.message : "태그를 연결하지 못했습니다.";
@@ -62,6 +64,7 @@ export function TagManageCard({
       try {
         await unlinkTag(tagId);
         setPendingUnlink(null);
+        notifyDashboardLinkedTagsChanged();
         router.refresh();
       } catch (e) {
         const msg = e instanceof Error && e.message ? e.message : "태그를 해제하지 못했습니다.";
@@ -166,7 +169,7 @@ export function TagManageCard({
                       있어요.
                     </p>
                     <p className="text-[10px] font-bold text-teal-700">
-                      스캔 후 앱까지 한 번에 이어가려면 대시보드 메뉴의 <span className="font-black">「NFC 읽기」</span>를 이용해 주세요.
+                      스캔 후 앱까지 한 번에 이어가려면 대시보드 메뉴의 <span className="font-black">「태그 연결」</span>을 이용해 주세요.
                     </p>
                   </div>
                 </div>

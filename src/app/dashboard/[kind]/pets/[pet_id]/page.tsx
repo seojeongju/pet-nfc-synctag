@@ -263,7 +263,7 @@ export default async function PetDetailPage({
               className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-teal-200/80 bg-white/90 py-2.5 text-[11px] font-black text-teal-800 shadow-sm transition hover:border-teal-300 hover:bg-teal-50/80 sm:w-auto sm:px-4"
             >
               <ScanLine className="h-4 w-4 shrink-0 text-teal-600" aria-hidden />
-              NFC 읽기에서 이 프로필로 빠르게 연결
+              태그 연결 화면에서 이 프로필로 빠르게 연결
             </a>
 
             <TagManageCard

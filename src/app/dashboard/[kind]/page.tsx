@@ -12,44 +12,11 @@ import { getTenantStatus } from "@/lib/tenant-status";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
 import { rethrowNextControlFlowErrors } from "@/lib/next-redirect-guard";
 import { getScanLogsCountWithDb } from "@/lib/scan-logs-db";
-import type { SubjectKind } from "@/lib/subject-kind";
-import type { D1Database } from "@cloudflare/workers-types";
 import { canUseModeFeature } from "@/lib/mode-visibility";
+import { getLinkedTagCountByScope } from "@/lib/dashboard-linked-tag-count";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
-
-async function getLinkedTagCountByScope(
-  db: D1Database,
-  ownerId: string,
-  subjectKind: SubjectKind,
-  tenantId?: string | null
-): Promise<number> {
-  const tenant = (tenantId ?? "").trim();
-  const query = tenant
-    ? `SELECT COUNT(*) AS count
-       FROM tags t
-       INNER JOIN pets p ON p.id = t.pet_id
-       WHERE p.owner_id = ?
-         AND p.tenant_id = ?
-         AND p.subject_kind = ?
-         AND t.pet_id IS NOT NULL`
-    : `SELECT COUNT(*) AS count
-       FROM tags t
-       INNER JOIN pets p ON p.id = t.pet_id
-       WHERE p.owner_id = ?
-         AND p.tenant_id IS NULL
-         AND p.subject_kind = ?
-         AND t.pet_id IS NOT NULL`;
-
-  const row = await (tenant
-    ? db.prepare(query).bind(ownerId, tenant, subjectKind)
-    : db.prepare(query).bind(ownerId, subjectKind)
-  ).first<{ count?: number | string | null }>();
-
-  const count = Number(row?.count ?? 0);
-  return Number.isFinite(count) && count > 0 ? count : 0;
-}
 
 export default async function DashboardKindPage({
   params,

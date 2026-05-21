@@ -7,9 +7,12 @@ import { parseSubjectKind, subjectKindMeta } from "@/lib/subject-kind";
 import { requireTenantMember } from "@/lib/tenant-membership";
 import { isPlatformAdminRole } from "@/lib/platform-admin";
 import { rethrowNextControlFlowErrors } from "@/lib/next-redirect-guard";
-import type { SubjectKind } from "@/lib/subject-kind";
-import type { D1Database } from "@cloudflare/workers-types";
 import { canUseModeFeature } from "@/lib/mode-visibility";
+import { getLinkedTagCountByScope } from "@/lib/dashboard-linked-tag-count";
+import {
+  getDashboardNfcPageDescription,
+  getDashboardNfcPageTitle,
+} from "@/lib/dashboard-nfc-nav-label";
 import { getTenantStatus } from "@/lib/tenant-status";
 import { DashboardNfcQuickRegisterCard } from "@/components/dashboard/DashboardNfcQuickRegisterCard";
 import Link from "next/link";
@@ -17,38 +20,6 @@ import { ArrowLeft, NotebookPen } from "lucide-react";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
-
-async function getLinkedTagCountByScope(
-  db: D1Database,
-  ownerId: string,
-  subjectKind: SubjectKind,
-  tenantId?: string | null
-): Promise<number> {
-  const tenant = (tenantId ?? "").trim();
-  const query = tenant
-    ? `SELECT COUNT(*) AS count
-       FROM tags t
-       INNER JOIN pets p ON p.id = t.pet_id
-       WHERE p.owner_id = ?
-         AND p.tenant_id = ?
-         AND p.subject_kind = ?
-         AND t.pet_id IS NOT NULL`
-    : `SELECT COUNT(*) AS count
-       FROM tags t
-       INNER JOIN pets p ON p.id = t.pet_id
-       WHERE p.owner_id = ?
-         AND p.tenant_id IS NULL
-         AND p.subject_kind = ?
-         AND t.pet_id IS NOT NULL`;
-
-  const row = await (tenant
-    ? db.prepare(query).bind(ownerId, tenant, subjectKind)
-    : db.prepare(query).bind(ownerId, subjectKind)
-  ).first<{ count?: number | string | null }>();
-
-  const count = Number(row?.count ?? 0);
-  return Number.isFinite(count) && count > 0 ? count : 0;
-}
 
 export default async function DashboardNfcReadPage({
   params,
@@ -125,9 +96,11 @@ export default async function DashboardNfcReadPage({
                 <NotebookPen className="h-3.5 w-3.5" aria-hidden />
                 NFC
               </div>
-              <h1 className="text-2xl font-black leading-tight text-slate-900 sm:text-[26px]">NFC 읽기</h1>
+              <h1 className="text-2xl font-black leading-tight text-slate-900 sm:text-[26px]">
+                {getDashboardNfcPageTitle(linkedTagCount)}
+              </h1>
               <p className="text-sm font-semibold leading-relaxed text-slate-600">
-                {meta.label} 모드에서 태그 UID를 맞추고 프로필에 연결합니다. 모바일·데스크톱 너비에 맞춰 한 화면에서 진행해요.
+                {getDashboardNfcPageDescription(linkedTagCount, meta.label)}
               </p>
             </header>
 

@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { parseSubjectKind, type SubjectKind } from "@/lib/subject-kind";
 import { isWebNfcReadSupported, readNfcTagUidOnce } from "@/lib/web-nfc-read-uid";
 import { normalizeTagUid } from "@/lib/tag-uid-format";
+import { notifyDashboardLinkedTagsChanged } from "@/lib/dashboard-nfc-nav-label";
 import { normalizeAppBaseUrl } from "@/lib/nfc-app-origin-guard";
 import { isWebNfcWriteSupported, writeNfcUrlRecord } from "@/lib/web-nfc-write-url";
 
@@ -252,6 +253,7 @@ export function DashboardNfcQuickRegisterCard({
           return;
         }
         onTagLinkSessionSuccess?.();
+        notifyDashboardLinkedTagsChanged();
         setTagId(normalizeTagUid(uid));
         router.refresh();
       } catch (e: unknown) {

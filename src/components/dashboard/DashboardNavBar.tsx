@@ -28,6 +28,8 @@ import {
   isDashboardPets,
   isDashboardScans,
 } from "@/lib/dashboard-nav-active";
+import { getDashboardNfcNavLabel } from "@/lib/dashboard-nfc-nav-label";
+import { useDashboardLinkedTagCount } from "@/hooks/use-dashboard-linked-tag-count";
 
 type DashboardNavBarProps = {
   session: FlowTopNavSession;
@@ -57,6 +59,9 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
   const dashAlbums = isDashboardAlbums(pathnameSafe);
   const dashNfc = isDashboardNfc(pathnameSafe);
   const dashStore = pathnameSafe === "/shop" || pathnameSafe.startsWith("/shop/");
+  const onKindDashboard = Boolean(pathKind);
+  const linkedTagCount = useDashboardLinkedTagCount(kind, tenant, onKindDashboard);
+  const nfcNavLabel = getDashboardNfcNavLabel(linkedTagCount ?? 0);
 
   const navItems = [
     {
@@ -73,9 +78,10 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
     },
     {
       href: `/dashboard/${kind}/nfc${tenantQs}`,
-      label: "NFC 읽기",
+      label: nfcNavLabel,
       active: dashNfc,
       Icon: NotebookPen,
+      badge: linkedTagCount != null && linkedTagCount > 0 ? linkedTagCount : undefined,
     },
     {
       href: `/dashboard/${kind}/scans${tenantQs}`,
@@ -101,7 +107,7 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
       active: dashStore,
       Icon: Store,
     },
-  ] as const;
+  ];
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200/90 bg-white/90 backdrop-blur-md">
@@ -146,6 +152,11 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
               >
                 <item.Icon className="h-4 w-4 shrink-0" />
                 {item.label}
+                {"badge" in item && item.badge != null ? (
+                  <span className="ml-0.5 inline-flex min-w-[1.125rem] items-center justify-center rounded-full bg-teal-600 px-1 text-[10px] font-black leading-none text-white">
+                    {item.badge > 99 ? "99+" : item.badge}
+                  </span>
+                ) : null}
               </a>
             ))}
           </nav>
@@ -164,7 +175,14 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
                       : "border-slate-100 bg-white text-slate-600 hover:bg-slate-50 active:scale-95"
                   )}
                 >
-                  <item.Icon className="h-4 w-4 shrink-0" />
+                  <span className="relative inline-flex">
+                    <item.Icon className="h-4 w-4 shrink-0" />
+                    {"badge" in item && item.badge != null ? (
+                      <span className="absolute -right-1.5 -top-1 min-w-[0.875rem] rounded-full bg-teal-600 px-0.5 text-center text-[8px] font-black leading-tight text-white">
+                        {item.badge > 9 ? "9+" : item.badge}
+                      </span>
+                    ) : null}
+                  </span>
                   <span className="text-[10px] font-black leading-tight tracking-tighter">{item.label}</span>
                 </a>
               ))}

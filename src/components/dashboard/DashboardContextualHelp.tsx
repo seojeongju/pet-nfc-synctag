@@ -76,7 +76,7 @@ function helpCopy(parsed: Parsed, meta: (typeof subjectKindMeta)[SubjectKind]): 
             <p>
               현재 모드(<strong>{meta.label}</strong>)의 요약 화면입니다. 상단 &quot;모드 선택&quot;에서 다른 시나리오로 바꿀 수 있어요.
             </p>
-            <p>가로 탭(또는 모바일 메뉴)에서 관리 대상·NFC 읽기·스캔 기록·안심 구역으로 이동합니다.</p>
+            <p>가로 탭(또는 모바일 메뉴)에서 관리 대상·태그 연결(연결 후에는 태그 관리)·스캔 기록·안심 구역으로 이동합니다.</p>
           </>
         ),
       };
@@ -125,12 +125,12 @@ function helpCopy(parsed: Parsed, meta: (typeof subjectKindMeta)[SubjectKind]): 
       };
     case "nfc_diary":
       return {
-        title: "NFC 읽기",
+        title: "태그 연결·관리",
         body: (
           <>
             <p>
-              태그 UID를 NFC로 읽거나 직접 입력해 관리 대상 프로필에 연결합니다. 연결 후 앱에서 저장까지 마치면 발견 시 공개
-              프로필로 이어집니다.
+              태그 UID를 NFC로 읽거나 직접 입력해 관리 대상 프로필에 연결합니다. 이미 연결된 태그가 있으면 상단 메뉴가 「태그
+              관리」로 표시됩니다. 연결 후 앱에서 저장까지 마치면 발견 시 공개 프로필로 이어집니다.
             </p>
             <p className="text-slate-500">{meta.nfcHelper}</p>
           </>
