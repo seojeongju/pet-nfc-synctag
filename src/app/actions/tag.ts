@@ -16,7 +16,7 @@ import { isPlatformAdminRole } from "@/lib/platform-admin";
 import type { SubjectKind } from "@/lib/subject-kind";
 
 export type TagActionResult =
-    | { ok: true; relinkedFromPetId?: string }
+    | { ok: true; relinkedFromPetId?: string; relinkedFromOtherGuardian?: boolean }
     | { ok: false; error: string };
 
 async function requireActor(): Promise<{ userId: string; email: string | null }> {
@@ -54,7 +54,7 @@ async function resolveActorModePermission(
 export async function linkTag(
     petId: string,
     tagId: string
-): Promise<{ relinkedFromPetId?: string }> {
+): Promise<{ relinkedFromPetId?: string; relinkedFromOtherGuardian?: boolean }> {
     const db = getDB();
     await assertMigration0008Applied(db);
     type ExistingTag = { id: string; status: string; pet_id?: string | null; tenant_id?: string | null };
@@ -108,8 +108,12 @@ export async function linkTag(
         throw new Error("현재 모드에서는 태그 연결 기능을 사용할 수 없습니다.");
     }
 
-    /** 다른 관리 대상에 연결된 태그 → 권한 있으면 기존 연결을 덮어씁니다(재연결). */
+    /**
+     * 다른 관리 대상(또는 다른 보호자)에 연결된 태그 → 새 대상으로 덮어씁니다.
+     * 물리 태그 재등록·양도를 막지 않되, 서로 다른 조직(tenant) 간 태그 이동만 차단합니다.
+     */
     let relinkedFromPetId: string | null = null;
+    let relinkedFromOtherGuardian = false;
     if (existingTag.status === "active" && blockingPetId && blockingPetId !== petId) {
         relinkedFromPetId = blockingPetId;
         const oldPet = await db
@@ -119,24 +123,24 @@ export async function linkTag(
         if (!oldPet) {
             relinkedFromPetId = null;
         } else {
-            if (oldPet.tenant_id) {
-                await assertTenantActive(db, oldPet.tenant_id);
-                await assertTenantRole(db, userId, oldPet.tenant_id, "admin");
-                const newTenantId = (petScope.tenant_id ?? "").trim();
-                if (newTenantId && oldPet.tenant_id !== newTenantId) {
-                    throw new Error(
-                        "다른 조직에 연결된 태그는 이 관리 대상으로 옮길 수 없습니다. 먼저 연결을 해제해 주세요."
-                    );
-                }
-            } else if (oldPet.owner_id !== userId) {
+            const oldTenantId = (oldPet.tenant_id ?? "").trim();
+            const newTenantId = (petScope.tenant_id ?? "").trim();
+            if (oldTenantId && newTenantId && oldTenantId !== newTenantId) {
                 throw new Error(
-                    "다른 보호자에게 연결된 태그입니다. 연결을 옮기려면 해당 보호자가 먼저 연결을 해제해 주세요."
+                    "다른 조직에 연결된 태그는 이 관리 대상으로 옮길 수 없습니다."
                 );
             }
-            const oldKind = parseSubjectKind(oldPet.subject_kind);
-            const mayChangeOld = await resolveActorModePermission(userId, oldKind, oldPet.tenant_id);
-            if (!mayChangeOld) {
-                throw new Error("현재 모드에서는 다른 관리 대상에 연결된 태그를 변경할 수 없습니다.");
+            if (oldTenantId) {
+                await assertTenantActive(db, oldTenantId);
+            }
+            if (oldPet.owner_id !== userId) {
+                relinkedFromOtherGuardian = true;
+            } else {
+                const oldKind = parseSubjectKind(oldPet.subject_kind);
+                const mayChangeOld = await resolveActorModePermission(userId, oldKind, oldPet.tenant_id);
+                if (!mayChangeOld) {
+                    throw new Error("현재 모드에서는 다른 관리 대상에 연결된 태그를 변경할 수 없습니다.");
+                }
             }
         }
     }
@@ -208,7 +212,12 @@ export async function linkTag(
             JSON.stringify({
                 tagId: normalizedTagId,
                 petId,
-                ...(relinkedFromPetId ? { previousPetId: relinkedFromPetId } : {}),
+                ...(relinkedFromPetId
+                    ? {
+                          previousPetId: relinkedFromPetId,
+                          relinkedFromOtherGuardian,
+                      }
+                    : {}),
             })
         )
         .run();
@@ -233,13 +242,23 @@ export async function linkTag(
     revalidatePath(`/admin/tags`);
     revalidatePath(`/admin/nfc-tags`);
 
-    return relinkedFromPetId ? { relinkedFromPetId } : {};
+    if (!relinkedFromPetId) {
+        return {};
+    }
+    return {
+        relinkedFromPetId,
+        ...(relinkedFromOtherGuardian ? { relinkedFromOtherGuardian: true } : {}),
+    };
 }
 
 export async function linkTagSafe(petId: string, tagId: string): Promise<TagActionResult> {
     try {
-        const { relinkedFromPetId } = await linkTag(petId, tagId);
-        return { ok: true, ...(relinkedFromPetId ? { relinkedFromPetId } : {}) };
+        const { relinkedFromPetId, relinkedFromOtherGuardian } = await linkTag(petId, tagId);
+        return {
+            ok: true,
+            ...(relinkedFromPetId ? { relinkedFromPetId } : {}),
+            ...(relinkedFromOtherGuardian ? { relinkedFromOtherGuardian: true } : {}),
+        };
     } catch (error: unknown) {
         const message =
             error instanceof Error && error.message
