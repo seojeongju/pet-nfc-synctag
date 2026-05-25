@@ -82,6 +82,9 @@ export function DashboardNfcQuickRegisterCard({
   const [guideExpanded, setGuideExpanded] = useState(false);
   /** 프로필 상세 NFC로 이동하는 메뉴(목록·해제·추가) */
   const [tagActionsOpen, setTagActionsOpen] = useState(false);
+  /** NFC 읽기·연결 저장 단계 완료(버튼 색·문구 피드백) */
+  const [nfcReadDone, setNfcReadDone] = useState(false);
+  const [nfcSaveDone, setNfcSaveDone] = useState(false);
   const tagActionsRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const pathname = usePathname();
@@ -229,6 +232,7 @@ export function DashboardNfcQuickRegisterCard({
   const registerTagToSubject = (uid: string) => {
     if (!selectedSubjectId) return;
     setTagMessage(null);
+    setNfcSaveDone(false);
     startTransition(async () => {
       try {
         const result = await linkTagSafe(selectedSubjectId, uid.trim());
@@ -257,6 +261,7 @@ export function DashboardNfcQuickRegisterCard({
         onTagLinkSessionSuccess?.();
         notifyDashboardLinkedTagsChanged();
         setTagId(normalizeTagUid(uid));
+        setNfcSaveDone(true);
         router.refresh();
       } catch (e: unknown) {
         if (isStaleServerActionError(e)) {
@@ -291,6 +296,7 @@ export function DashboardNfcQuickRegisterCard({
                 type: "success",
                 text: "태그가 성공적으로 연결 및 기록되었습니다!",
               });
+              setNfcSaveDone(true);
               setIsNfcWriting(false);
               return;
             }
@@ -326,6 +332,7 @@ export function DashboardNfcQuickRegisterCard({
       return;
     }
     setTagMessage(null);
+    setNfcReadDone(false);
     setIsNfcScanning(true);
     try {
       const result = await readNfcTagUidOnce({ timeoutMs: 30_000 });
@@ -334,9 +341,11 @@ export function DashboardNfcQuickRegisterCard({
         return;
       }
       setTagId(result.uid);
+      setNfcReadDone(true);
+      setNfcSaveDone(false);
       setTagMessage({
         type: "success",
-        text: "태그 UID를 읽었습니다. 아래 「연결하고 앱에서 저장」을 누르면 서버에 연결한 뒤 앱(또는 설치 안내)이 열립니다.",
+        text: "읽기가 완료되었습니다. 아래 「연결하고 바로 저장」을 눌러 연결을 마치세요.",
       });
     } finally {
       setIsNfcScanning(false);
@@ -394,8 +403,20 @@ export function DashboardNfcQuickRegisterCard({
 
   const onChangeSubject = (id: string) => {
     setSelectedSubjectId(id);
+    setNfcReadDone(false);
+    setNfcSaveDone(false);
     onSelectedSubjectIdChange?.(id);
   };
+
+  const onChangeTagId = (raw: string) => {
+    setTagId(raw);
+    setNfcReadDone(false);
+    setNfcSaveDone(false);
+  };
+
+  const readStepComplete = nfcReadDone && !isNfcScanning;
+  const saveStepComplete =
+    nfcSaveDone && !isPending && !isNfcWriting && !isNativeWriteOpening;
 
   return (
     <Card
@@ -500,18 +521,35 @@ export function DashboardNfcQuickRegisterCard({
             <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
               <Input
                 value={tagId}
-                onChange={(e) => setTagId(e.target.value)}
+                onChange={(e) => onChangeTagId(e.target.value)}
                 disabled={tenantSuspended || isPending || isNfcScanning}
                 placeholder="NFC로 읽기 또는 옆/패키지 번호 입력"
-                className="h-12 min-w-0 flex-1 rounded-2xl border-slate-100 bg-slate-50 font-bold"
+                className={cn(
+                  "h-12 min-w-0 flex-1 rounded-2xl border-slate-100 bg-slate-50 font-bold",
+                  readStepComplete && "border-emerald-200 bg-emerald-50/60"
+                )}
               />
               <Button
                 type="button"
                 onClick={() => void handleReadNfcTag()}
                 disabled={tenantSuspended || isPending || isNfcScanning || isNativeWriteOpening || !selectedSubjectId || !webNfcSupported}
-                className="h-12 w-full shrink-0 rounded-2xl bg-teal-600 px-4 font-black text-white hover:bg-teal-500 sm:min-w-[7.5rem] sm:w-auto"
+                className={cn(
+                  "h-12 w-full shrink-0 rounded-2xl px-4 font-black text-white sm:min-w-[7.5rem] sm:w-auto",
+                  readStepComplete
+                    ? "bg-emerald-600 hover:bg-emerald-500 shadow-sm shadow-emerald-200/80"
+                    : "bg-teal-600 hover:bg-teal-500"
+                )}
               >
-                {isNfcScanning ? "읽는 중…" : "NFC로 읽기"}
+                {isNfcScanning ? (
+                  "읽는 중…"
+                ) : readStepComplete ? (
+                  <span className="inline-flex items-center justify-center gap-1.5">
+                    <CheckCircle className="h-4 w-4 shrink-0" aria-hidden />
+                    읽기완료
+                  </span>
+                ) : (
+                  "NFC로 읽기"
+                )}
               </Button>
             </div>
             {!webNfcSupported ? (
@@ -536,18 +574,29 @@ export function DashboardNfcQuickRegisterCard({
               }
               className={cn(
                 "h-12 w-full rounded-2xl font-black text-white transition-all",
-                webNfcWriteSupported ? "bg-teal-600 hover:bg-teal-500" : "bg-indigo-600 hover:bg-indigo-500"
+                saveStepComplete
+                  ? "bg-emerald-600 hover:bg-emerald-500 shadow-sm shadow-emerald-200/80"
+                  : webNfcWriteSupported
+                    ? "bg-teal-600 hover:bg-teal-500"
+                    : "bg-indigo-600 hover:bg-indigo-500"
               )}
             >
-              {isNfcWriting
-                ? "태그에 기록 중 (뒷면에 대주세요)…"
-                : isPending
-                ? "서버에 연결하는 중…"
-                : isNativeWriteOpening
-                ? "앱을 여는 중…"
-                : webNfcWriteSupported
-                ? "연결하고 바로 저장"
-                : "연결하고 앱에서 저장"}
+              {isNfcWriting ? (
+                "태그에 기록 중 (뒷면에 대주세요)…"
+              ) : isPending ? (
+                "서버에 연결하는 중…"
+              ) : isNativeWriteOpening ? (
+                "앱을 여는 중…"
+              ) : saveStepComplete ? (
+                <span className="inline-flex items-center justify-center gap-1.5">
+                  <CheckCircle className="h-4 w-4 shrink-0" aria-hidden />
+                  저장완료
+                </span>
+              ) : webNfcWriteSupported ? (
+                "연결하고 바로 저장"
+              ) : (
+                "연결하고 앱에서 저장"
+              )}
             </Button>
             <p className="text-center text-[10px] font-bold text-slate-500 leading-relaxed">
               {webNfcWriteSupported
