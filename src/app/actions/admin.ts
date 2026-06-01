@@ -90,7 +90,12 @@ async function getActorEmailSafe() {
 
 export type RegisterBulkTagsOptions = {
     batchId?: string;
-    /** 등록 시점에 태그에 부여할 할당 모드 (허브 자동 진입 등에 사용) */
+    /** 입고 배치 메모(선택). batchId 미지정 시 BATCH-generic-{slug}-{timestamp} 에 반영 */
+    batchLabel?: string | null;
+    /**
+     * 등록 시점 할당 모드. 범용 제품 NFC는 생략(null).
+     * 링크유-동행·스팟 연결 시 서버가 wayfinder kind 로 설정.
+     */
     assignedSubjectKind?: SubjectKind | null;
     /** 링크유-동행 스팟 연결 시: NDEF URL은 /wayfinder?from=nfc&tag=UID (GPS·근처 역 메인) */
     wayfinderSpotId?: string | null;
@@ -160,9 +165,17 @@ export async function registerBulkTags(uids: string[], options?: RegisterBulkTag
                 : kindOpt && (SUBJECT_KINDS as readonly string[]).includes(kindOpt)
                   ? kindOpt
                   : "generic";
+        const batchLabelSlug = (options?.batchLabel ?? "")
+            .trim()
+            .replace(/[^\w\u3131-\uD79D-]+/g, "-")
+            .replace(/-+/g, "-")
+            .replace(/^-|-$/g, "")
+            .slice(0, 40);
         let currentBatch = options?.batchId || `BATCH-${kindSlug}-${Date.now()}`;
         if (!options?.batchId && (wayfinderSpotIdOpt || linkuWayfinderInventory)) {
             currentBatch = `BATCH-wf-${Date.now()}`;
+        } else if (!options?.batchId && batchLabelSlug && kindSlug === "generic") {
+            currentBatch = `BATCH-generic-${batchLabelSlug}-${Date.now()}`;
         }
 
         const chunks = chunkArray(validUids, 200);

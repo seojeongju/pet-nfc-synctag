@@ -10,11 +10,13 @@ export const metadata = buildModeMetadata("gold");
 export default async function GoldModeLandingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string }>;
+  searchParams: Promise<{ from?: string; tag?: string; action?: string }>;
 }) {
   const { session, isAdmin } = await getLandingSessionState();
   const orgManageHref = await getOrgManageHrefForUser(session?.user?.id);
   const sp = await searchParams;
+  const activateTagId =
+    (sp.action === "activate" || sp.from === "home") && sp.tag?.trim() ? sp.tag.trim() : null;
   return (
     <>
       <JsonLd data={buildModePageJsonLd("gold")} />
@@ -24,6 +26,7 @@ export default async function GoldModeLandingPage({
         isAdmin={isAdmin}
         fromHome={sp.from === "home"}
         orgManageHref={orgManageHref}
+        activateTagId={activateTagId}
       />
     </>
   );

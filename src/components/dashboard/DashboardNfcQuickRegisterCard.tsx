@@ -21,7 +21,7 @@ import {
 import { cn } from "@/lib/utils";
 import { parseSubjectKind, type SubjectKind } from "@/lib/subject-kind";
 import { isWebNfcReadSupported, readNfcTagUidOnce } from "@/lib/web-nfc-read-uid";
-import { normalizeTagUid } from "@/lib/tag-uid-format";
+import { isValidTagUidFormat, normalizeTagUid } from "@/lib/tag-uid-format";
 import { notifyDashboardLinkedTagsChanged } from "@/lib/dashboard-nfc-nav-label";
 import { normalizeAppBaseUrl } from "@/lib/nfc-app-origin-guard";
 import { isWebNfcWriteSupported, writeNfcUrlRecord } from "@/lib/web-nfc-write-url";
@@ -90,6 +90,7 @@ export function DashboardNfcQuickRegisterCard({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const onboardingNfcHandledRef = useRef(false);
+  const activateTagHandledRef = useRef(false);
   const tenantQs = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : "";
   const kindQs = tenantQs;
   const webNfcSupported = isWebNfcReadSupported();
@@ -375,12 +376,37 @@ export function DashboardNfcQuickRegisterCard({
     if (searchParams.get("onboarding") !== "nfc") {
       onboardingNfcHandledRef.current = false;
     }
+    const tagParam = (searchParams.get("tag") ?? "").trim();
+    if (!tagParam) {
+      activateTagHandledRef.current = false;
+    }
   }, [searchParams]);
 
   useEffect(() => {
-    if (searchParams.get("onboarding") !== "nfc") return;
-    if (onboardingNfcHandledRef.current) return;
-    onboardingNfcHandledRef.current = true;
+    const tagParam = normalizeTagUid((searchParams.get("tag") ?? "").trim());
+    const shouldFocusNfc =
+      searchParams.get("onboarding") === "nfc" || Boolean(tagParam);
+    if (!shouldFocusNfc) return;
+
+    if (tagParam && isValidTagUidFormat(tagParam)) {
+      setTagId(tagParam);
+      setNfcReadDone(true);
+      setTagMessage({
+        type: "success",
+        text: "스캔한 태그 UID가 입력됐습니다. 연결할 대상을 고른 뒤 「연결하고 바로 저장」을 눌러 주세요.",
+      });
+    }
+
+    if (searchParams.get("onboarding") === "nfc") {
+      if (onboardingNfcHandledRef.current) return;
+      onboardingNfcHandledRef.current = true;
+    } else if (tagParam) {
+      if (activateTagHandledRef.current) return;
+      activateTagHandledRef.current = true;
+    } else {
+      return;
+    }
+
     const scrollT = window.setTimeout(() => {
       document.getElementById("quick-nfc-register")?.scrollIntoView({
         behavior: "smooth",
@@ -393,6 +419,7 @@ export function DashboardNfcQuickRegisterCard({
     const p = new URLSearchParams(searchParams.toString());
     p.delete("onboarding");
     p.delete("pet");
+    p.delete("tag");
     const next = p.toString();
     router.replace(`${pathname}${next ? `?${next}` : ""}`, { scroll: false });
     return () => {

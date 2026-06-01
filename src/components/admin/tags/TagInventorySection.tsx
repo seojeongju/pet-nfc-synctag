@@ -230,7 +230,7 @@ export function TagInventorySection({
               className={cn(adminUi.input, "min-h-[44px] w-full rounded-xl text-sm font-bold sm:min-h-10 sm:text-xs")}
             >
               <option value="">전체</option>
-              <option value="__unset__">모드 미지정</option>
+              <option value="__unset__">범용(모드 미지정)</option>
               {SUBJECT_KINDS.map((k) => (
                 <option key={k} value={k}>
                   {subjectKindMeta[k].label}

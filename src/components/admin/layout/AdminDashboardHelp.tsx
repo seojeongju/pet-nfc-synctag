@@ -58,11 +58,12 @@ function helpContentForPath(p: string): { title: string; body: ReactNode } {
       body: (
         <>
           <p>
-            <strong>등록 유형:</strong> 「제품 NFC」는 모드 탭으로 할당 모드를 고릅니다. 「링크유-동행」은 동행 스팟을 고른 뒤 UID를
-            넣으며, 할당 모드는 스팟의 대상 종류에 맞춰 저장됩니다.
+            <strong>등록 유형:</strong> 「범용 제품 NFC」는 UID만 등록하며 할당 모드는 비워 둡니다(보호자가 연결 시 선택). 「링크유-동행」은
+            스팟·동행 URL 규칙에 맞게 별도 등록합니다.
           </p>
           <p>
-            <strong>동행 + NFC 스캔:</strong> 동행 등록 화면에서는 칩에 <code className="rounded bg-slate-100 px-1 font-mono text-[11px]">/t/UID</code>를 자동으로 쓰지 않습니다. 스팟을 발행한 뒤「URL 기록」에서 기록하세요.
+            <strong>제품 + NFC 스캔:</strong> 범용 제품 등록 시 칩에 <code className="rounded bg-slate-100 px-1 font-mono text-[11px]">/t/UID</code> URL을 자동 기록합니다. 동행은{" "}
+            <code className="rounded bg-slate-100 px-1 font-mono text-[11px]">/wayfinder?from=nfc&amp;tag=UID</code> 입니다.
           </p>
           <p>
             <strong>입력 형식:</strong> 한 줄에 하나, 또는 쉼표로 구분합니다. <code className="rounded bg-slate-100 px-1 font-mono text-[11px]">AA:BB:CC:DD:EE:FF</code> 등 허용 형식을 따르세요. DB에 이미 있는 UID는 건너뜁니다.

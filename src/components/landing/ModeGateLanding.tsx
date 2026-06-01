@@ -21,6 +21,7 @@ import type { SubjectKind } from "@/lib/subject-kind";
 import { SUBJECT_KINDS, subjectKindMeta } from "@/lib/subject-kind";
 import { modeLandingCopy, modeLandingVisual } from "@/lib/mode-landing-content";
 import { FlowTopNav } from "@/components/layout/FlowTopNav";
+import { TagActivateBanner } from "@/components/landing/TagActivateBanner";
 
 const modePath: Record<SubjectKind, string> = {
   pet: "/pet",
@@ -44,6 +45,8 @@ interface ModeGateLandingProps {
   isAdmin: boolean;
   fromHome?: boolean;
   orgManageHref?: string | null;
+  /** NFC 미연결 태그 스캔 후 모드 게이트 진입 시 UID */
+  activateTagId?: string | null;
 }
 
 export default function ModeGateLanding({
@@ -52,13 +55,19 @@ export default function ModeGateLanding({
   isAdmin,
   fromHome = false,
   orgManageHref = null,
+  activateTagId = null,
 }: ModeGateLandingProps) {
   const visual = modeLandingVisual[kind];
   const copy = modeLandingCopy[kind];
   const meta = subjectKindMeta[kind];
   const Icon = visual.Icon;
 
-  const dashboardUrl = `/dashboard/${encodeURIComponent(kind)}`;
+  const tagQs = new URLSearchParams();
+  if (activateTagId?.trim()) {
+    tagQs.set("tag", activateTagId.trim());
+    tagQs.set("onboarding", "nfc");
+  }
+  const dashboardUrl = `/dashboard/${encodeURIComponent(kind)}${tagQs.toString() ? `?${tagQs}` : ""}`;
   const loginUrl = `/login?kind=${encodeURIComponent(kind)}&callbackUrl=${encodeURIComponent(dashboardUrl)}`;
 
   const guardianEntryLink = session ? (isAdmin ? "/admin" : dashboardUrl) : loginUrl;
@@ -94,6 +103,11 @@ export default function ModeGateLanding({
       />
 
       <main className="flex-1 flex flex-col w-full max-w-none lg:max-w-screen-sm mx-auto relative z-10">
+        {activateTagId ? (
+          <div className="px-4 min-[430px]:px-5 pt-4">
+            <TagActivateBanner tagId={activateTagId} compact />
+          </div>
+        ) : null}
         <section className="relative px-4 min-[430px]:px-5 pt-6 pb-4">
           <motion.div
             initial={{ opacity: 0, y: fromHome ? 8 : 30, scale: fromHome ? 0.97 : 1 }}

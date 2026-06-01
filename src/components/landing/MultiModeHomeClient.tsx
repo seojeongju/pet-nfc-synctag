@@ -21,10 +21,9 @@ import {
   ShieldCheck,
   Sparkles,
   UserRound,
-  Tag,
   Navigation2,
-  X,
 } from "lucide-react";
+import { TagActivateBanner } from "@/components/landing/TagActivateBanner";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
@@ -72,6 +71,7 @@ export default function MultiModeHomeClient({
   const [openGuardianStepId, setOpenGuardianStepId] = useState<string | null>(null);
   const [openFinderStepId, setOpenFinderStepId] = useState<string | null>(null);
   const showActivateBanner = Boolean(activateTagId) && !bannerDismissed;
+  const activateModeSectionHighlight = showActivateBanner;
   const heroTitle = "당신의 일상을 지키는 가장 스마트한 선택,\nLink-U";
   const heroBody =
     "반려동물·어르신·아이·수하물·주얼리·시설 동행 안내까지.\n링크유는 스캔 이후의 안내와 연결 흐름을 쉽고 다정하게 이어줍니다.";
@@ -163,7 +163,10 @@ export default function MultiModeHomeClient({
     window.setTimeout(() => {
       // 활성화 태그가 있으면 모드 선택 후 해당 태그 파라미터를 함께 전달
       const qs = new URLSearchParams({ from: "home" });
-      if (activateTagId) qs.set("tag", activateTagId);
+      if (activateTagId) {
+        qs.set("tag", activateTagId);
+        qs.set("action", "activate");
+      }
       router.push(`/${kind}?${qs.toString()}`);
     }, 260);
   };
@@ -192,45 +195,14 @@ export default function MultiModeHomeClient({
       <div className="pointer-events-none absolute top-[35%] -left-20 h-64 w-64 rounded-full bg-amber-200/35 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-16 right-[15%] h-64 w-64 rounded-full bg-teal-200/30 blur-3xl" />
 
-      {/* 신규 태그 활성화 안내 배너 */}
-      <AnimatePresence>
-        {showActivateBanner && (
-          <motion.div
-            key="activate-banner"
-            initial={{ opacity: 0, y: -16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -16 }}
-            transition={{ type: "spring", damping: 24, stiffness: 300 }}
-            className="relative z-50 mx-auto w-full max-w-screen-sm px-4 pt-3 min-[430px]:px-5"
-          >
-            <div className="flex items-start gap-3 rounded-[22px] border border-teal-200 bg-gradient-to-r from-teal-50 to-cyan-50 px-4 py-4 shadow-lg shadow-teal-500/10">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-teal-500 text-white shadow-md shadow-teal-500/30">
-                <Tag className="h-5 w-5" />
-              </div>
-              <div className="min-w-0 flex-1 space-y-1.5">
-                <p className="text-[13px] font-black text-teal-900 leading-tight">
-                  새 링크유 태그가 감지됐어요! 🎉
-                </p>
-                <p className="text-[11px] font-semibold text-teal-700 leading-snug">
-                  아래에서 모드를 선택한 뒤 대상을 등록하고 태그를 연결해 주세요.
-                </p>
-                <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-black text-teal-600 ring-1 ring-teal-200">
-                  <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />
-                  TAG: {activateTagId!.slice(0, 16)}{activateTagId!.length > 16 ? "…" : ""}
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setBannerDismissed(true)}
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/70 text-teal-500 hover:bg-white hover:text-teal-700 transition-colors"
-                aria-label="닫기"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {showActivateBanner && activateTagId ? (
+        <div className="relative z-50 mx-auto w-full max-w-screen-sm px-4 pt-3 min-[430px]:px-5">
+          <TagActivateBanner
+            tagId={activateTagId}
+            onDismiss={() => setBannerDismissed(true)}
+          />
+        </div>
+      ) : null}
 
       <main className="relative z-10 mx-auto flex w-full max-w-screen-sm flex-col gap-5 px-4 pb-9 pt-7 min-[390px]:gap-6 min-[390px]:pb-10 min-[390px]:pt-8 min-[430px]:px-5">
         <motion.section
@@ -328,11 +300,19 @@ export default function MultiModeHomeClient({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05, duration: 0.5 }}
-          className="rounded-[30px] border border-slate-200/80 bg-white/90 p-3.5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] backdrop-blur min-[390px]:rounded-[32px] min-[390px]:p-4"
+          className={cn(
+            "rounded-[30px] border bg-white/90 p-3.5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] backdrop-blur min-[390px]:rounded-[32px] min-[390px]:p-4 transition-shadow",
+            activateModeSectionHighlight
+              ? "border-teal-300 ring-2 ring-teal-400/40 shadow-teal-500/15"
+              : "border-slate-200/80"
+          )}
+          id={activateModeSectionHighlight ? "activate-mode-picker" : undefined}
         >
           <LayoutGroup id="mode-cards">
           <div className="mb-2.5 flex items-center justify-between px-1 min-[390px]:mb-3">
-            <p className="text-[11px] font-black tracking-wider text-teal-600">태그 스캔 후 모드 선택</p>
+            <p className="text-[11px] font-black tracking-wider text-teal-600">
+              {activateModeSectionHighlight ? "① 사용 목적(모드) 선택" : "태그 스캔 후 모드 선택"}
+            </p>
             <p className="text-[11px] font-bold text-slate-400">5가지 모드 + 링크유-동행</p>
           </div>
           <div className="pointer-events-none relative mb-2.5 h-16 overflow-hidden rounded-2xl border border-teal-100/80 bg-gradient-to-r from-teal-50/70 via-white to-cyan-50/70">
