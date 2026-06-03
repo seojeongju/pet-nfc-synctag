@@ -50,7 +50,9 @@ export default async function ConsentPage({
 
   const consent = await getUserConsentStatus(userId);
   if (consent.hasRequired) {
-    redirect(next);
+    // 이미 동의 완료된 유저 → 서버 302로 바로 이동하면 viewport가 다시 오염됨.
+    // /auth/complete 브리지를 경유해 viewport를 강제 재설정한 뒤 목적지로 이동.
+    redirect(`/auth/complete?next=${encodeURIComponent(next)}`);
   }
 
   return (
