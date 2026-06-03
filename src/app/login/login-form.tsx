@@ -169,7 +169,8 @@ export function LoginForm() {
       );
       fetch("/api/diag", { cache: "no-store" })
         .then((r) => r.json())
-        .then((d: { environment?: { GOOGLE_CLIENT_ID_TAIL?: string | null } }) => {
+        .then((raw: unknown) => {
+          const d = raw as { environment?: { GOOGLE_CLIENT_ID_TAIL?: string | null } };
           const tail = d.environment?.GOOGLE_CLIENT_ID_TAIL;
           if (!tail || tail === expectedTail) return;
           setLoginError(
