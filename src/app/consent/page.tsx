@@ -5,6 +5,7 @@ import { getCfRequestContext } from "@/lib/cf-request-context";
 import { getUserConsentStatus } from "@/lib/privacy-consent";
 import { SUBJECT_KINDS } from "@/lib/subject-kind";
 import { ConsentForm } from "./ConsentForm";
+import { ConsentViewportFix } from "@/components/auth/ConsentViewportFix";
 import { buildNoIndexMetadata } from "@/lib/seo";
 import { loginRedirectPath } from "@/lib/login-redirect-path";
 
@@ -63,7 +64,9 @@ export default async function ConsentPage({
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-10 sm:py-16">
+    <>
+      <ConsentViewportFix />
+      <div className="mx-auto max-w-2xl px-4 py-10 sm:py-16">
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
         <h1 className="text-2xl font-black text-slate-900">개인정보·위치 정보 동의</h1>
         <p className="mt-2 text-sm font-semibold text-slate-600">
@@ -73,6 +76,7 @@ export default async function ConsentPage({
         <ConsentForm next={next} err={err} />
       </div>
     </div>
+    </>
   );
 }
 

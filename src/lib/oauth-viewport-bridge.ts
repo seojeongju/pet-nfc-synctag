@@ -5,8 +5,10 @@ export function buildOAuthViewportResetUrl(nextPath: string): string {
   return `${OAUTH_VIEWPORT_RESET_PATH}?next=${encodeURIComponent(nextPath)}`;
 }
 
-/** 소셜 로그인 callbackURL: OAuth → 정적 브리지 → consent → 최종 목적지 */
+/**
+ * 소셜 로그인 callbackURL — OAuth state에 넣는 경로는 짧게 유지(PKCE·state 쿠키 안정).
+ * viewport 복구는 /consent·레이아웃 ViewportFix에서 처리합니다.
+ */
 export function buildSocialLoginCallbackUrl(destinationPath: string): string {
-  const consentNext = `/consent?next=${encodeURIComponent(destinationPath)}`;
-  return buildOAuthViewportResetUrl(consentNext);
+  return `/consent?next=${encodeURIComponent(destinationPath)}`;
 }

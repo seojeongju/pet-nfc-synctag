@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import MultiModeHomeClient from "@/components/landing/MultiModeHomeClient";
+import { OAuthHomeErrorRedirect } from "@/components/auth/OAuthHomeErrorRedirect";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { getLandingSessionState } from "@/lib/landing-session";
 import { getOrgManageHrefForUser } from "@/lib/org-manage-href";
@@ -53,6 +55,9 @@ export default async function Home({
   return (
     <>
       <JsonLd data={buildHomePageJsonLd()} />
+      <Suspense fallback={null}>
+        <OAuthHomeErrorRedirect />
+      </Suspense>
       <MultiModeHomeClient
         session={session}
         isAdmin={isAdmin}

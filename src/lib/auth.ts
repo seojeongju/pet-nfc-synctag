@@ -18,9 +18,16 @@ export const getAuth = (env: AuthEnv) => {
     }
 
     const baseURL = env.BETTER_AUTH_URL?.trim().replace(/\/+$/, "");
+    const trustedOrigins = [
+        ...(baseURL ? [baseURL] : []),
+        "https://wow-linku.co.kr",
+        "https://www.wow-linku.co.kr",
+        "http://localhost:3000",
+    ];
 
     return betterAuth({
         ...(baseURL ? { baseURL } : {}),
+        trustedOrigins,
         database: env.DB, // D1 네이티브 드라이버 자동 감지 및 배치 처리 지원
         secret: env.BETTER_AUTH_SECRET,
         trustHost: true, // Edge Runtime 호스트 인식을 위해 최상위 옵션으로 이동
@@ -40,6 +47,9 @@ export const getAuth = (env: AuthEnv) => {
             google: {
                 clientId: env.GOOGLE_CLIENT_ID || "",
                 clientSecret: env.GOOGLE_CLIENT_SECRET || "",
+                ...(baseURL
+                    ? { redirectURI: `${baseURL}/api/auth/callback/google` }
+                    : {}),
                 /**
                  * Google OAuth: `display=touch` — 모바일/터치에 맞는 계정 UI(전체 폭)로 유도.
                  * 미지정 시 일부 WebView/UA에서 데스크톱용(가운데 작은 카드) 화면이 노출될 수 있음.

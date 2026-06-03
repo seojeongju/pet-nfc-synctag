@@ -53,7 +53,6 @@ function augmentGoogleAuthorizationUrl(authUrl: string): string {
     }
 
     u.searchParams.set("display", "touch");
-    u.searchParams.set("btmpl", "mobile");
     return u.toString();
   } catch {
     return authUrl;
@@ -227,6 +226,10 @@ export function LoginForm() {
       setLoginError(
         "로그인은 완료됐지만 이 브라우저에 세션이 연결되지 않았았습니다. 같은 브라우저/탭에서 다시 시도해 주세요. (카카오톡·다른 앱 로그인 후 돌아오면 자주 발생합니다.)"
       );
+    } else if (oauthError === "invalid_code") {
+      setLoginError(
+        "Google 로그인 인증 코드가 만료되었거나 이미 사용되었습니다. 시크릿/일반 탭을 닫고, 같은 탭에서 「Google로 계속하기」를 한 번만 다시 눌러 주세요."
+      );
     }
   }, [searchParams]);
 
@@ -237,18 +240,23 @@ export function LoginForm() {
   };
 
   /**
-   * 소셜 로그인: OAuth 콜백 → /oauth-viewport-reset.html(정적) → consent → 목적지
-   * Next.js /auth/complete 대신 정적 HTML로 viewport를 먼저 고정합니다.
+   * 소셜 로그인: OAuth 콜백 → /consent → 목적지
+   * Google은 fetch(credentials:include)로 PKCE 쿠키를 확실히 심은 뒤 이동합니다.
    */
   const handleLogin = async (provider: "google" | "kakao") => {
     setLoginError("");
     const resolvedCallbackURL = buildSocialLoginCallbackUrl(callbackURL);
 
     try {
+      if (provider === "google") {
+        const google = await redirectToGoogleOAuth(resolvedCallbackURL);
+        if (!google.ok) setLoginError(google.error);
+        return;
+      }
+
       const result = await signIn.social({
-        provider,
+        provider: "kakao",
         callbackURL: resolvedCallbackURL,
-        disableRedirect: true,
       });
       const signInError =
         result && typeof result === "object" && "error" in result
@@ -258,24 +266,7 @@ export function LoginForm() {
         setLoginError(
           signInError.message?.trim() || "소셜 로그인을 시작할 수 없습니다. 잠시 후 다시 시도해 주세요."
         );
-        return;
       }
-
-      let oauthUrl = extractSocialOAuthUrl(result);
-      if (!oauthUrl && provider === "google") {
-        const fallback = await redirectToGoogleOAuth(resolvedCallbackURL);
-        if (!fallback.ok) setLoginError(fallback.error);
-        return;
-      }
-      if (!oauthUrl) {
-        setLoginError("소셜 로그인 URL을 받지 못했습니다. 잠시 후 다시 시도해 주세요.");
-        return;
-      }
-
-      if (provider === "google") {
-        oauthUrl = augmentGoogleAuthorizationUrl(oauthUrl);
-      }
-      window.location.assign(oauthUrl);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "소셜 로그인 중 오류가 발생했습니다.";
       setLoginError(message);
