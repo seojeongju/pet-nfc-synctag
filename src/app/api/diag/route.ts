@@ -5,7 +5,7 @@ import { getMigration0008Status } from "@/lib/db-migration-0008";
 
 export const runtime = "edge";
 
-function kakaoClientIdHint(clientId: string | undefined): string | null {
+function clientIdHint(clientId: string | undefined): string | null {
   const t = clientId?.trim();
   if (!t) return null;
   if (t.length <= 8) return "set(short)";
@@ -30,11 +30,18 @@ export async function GET() {
     environment: {
       BETTER_AUTH_SECRET: !!env.BETTER_AUTH_SECRET ? "SET" : "MISSING",
       BETTER_AUTH_URL: !!env.BETTER_AUTH_URL ? "SET" : "MISSING",
+      /** OAuth redirect_uri 기준 — 반드시 https://wow-linku.co.kr (pages.dev 아님) */
+      BETTER_AUTH_URL_VALUE: env.BETTER_AUTH_URL?.trim().replace(/\/+$/, "") || null,
       NEXT_PUBLIC_APP_URL: !!env.NEXT_PUBLIC_APP_URL ? "SET" : "MISSING",
       GOOGLE_CLIENT_ID: !!env.GOOGLE_CLIENT_ID ? "SET" : "MISSING",
+      /** Google 콘솔 클라이언트 ID 앞·뒤 4자 (예: 1306…l6g3) */
+      GOOGLE_CLIENT_ID_HINT: clientIdHint(env.GOOGLE_CLIENT_ID),
       KAKAO_CLIENT_ID: !!env.KAKAO_CLIENT_ID ? "SET" : "MISSING",
-      /** REST 키 앞·뒤 4자 — Pet-ID Connect 키와 Cloudflare 값 일치 여부 확인용 */
-      KAKAO_CLIENT_ID_HINT: kakaoClientIdHint(env.KAKAO_CLIENT_ID),
+      KAKAO_CLIENT_ID_HINT: clientIdHint(env.KAKAO_CLIENT_ID),
+      /** Google OAuth 콜백 — 콘솔「승인된 리디렉션 URI」와 일치해야 함 */
+      GOOGLE_OAUTH_CALLBACK_EXPECTED: env.BETTER_AUTH_URL?.trim()
+        ? `${env.BETTER_AUTH_URL.trim().replace(/\/+$/, "")}/api/auth/callback/google`
+        : null,
     },
     database: {
       isBound: !!env.DB,
