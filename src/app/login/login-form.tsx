@@ -21,79 +21,15 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { SUBJECT_KINDS, type SubjectKind, parseSubjectKind } from "@/lib/subject-kind";
-import { extractSocialOAuthUrl } from "@/lib/viewport-meta";
 import { buildSocialLoginCallbackUrl } from "@/lib/oauth-viewport-bridge";
 
 const DEFAULT_CALLBACK = "/hub";
 
-/** better-auth OAuth 라우트 베이스 */
-const AUTH_HTTP_BASE = "/api/auth";
-
-/**
- * Google 인가 URL 보강 — 모바일에서 PC형(가운데 작은 카드) 계정 선택 UI 완화.
- * auth.ts `display: "touch"`만으로는 authorization URL에 반영되지 않는 경우가 있어 클라이언트에서 보강합니다.
- */
-function augmentGoogleAuthorizationUrl(authUrl: string): string {
-  try {
-    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
-    const u = new URL(authUrl);
-
-    const isAndroid = /Android/i.test(ua);
-    const isIos = /iPhone|iPad|iPod/i.test(ua);
-    const coarse =
-      typeof window !== "undefined" && typeof window.matchMedia === "function"
-        ? window.matchMedia("(pointer: coarse)").matches
-        : false;
-    const narrowViewport =
-      typeof window !== "undefined" && typeof window.innerWidth === "number" && window.innerWidth < 1024;
-
-    const preferMobileChrome = isAndroid || isIos || coarse || narrowViewport;
-    if (!preferMobileChrome) {
-      return authUrl;
-    }
-
-    u.searchParams.set("display", "touch");
-    return u.toString();
-  } catch {
-    return authUrl;
-  }
-}
-
-async function redirectToGoogleOAuth(resolvedCallbackURL: string): Promise<{ ok: true } | { ok: false; error: string }> {
-  const res = await fetch(`${AUTH_HTTP_BASE}/sign-in/social`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    credentials: "include",
-    body: JSON.stringify({
-      provider: "google",
-      callbackURL: resolvedCallbackURL,
-      disableRedirect: true,
-    }),
-  });
-
-  const text = await res.text();
-  if (!res.ok) {
-    return { ok: false, error: "Google 로그인을 시작할 수 없습니다. 잠시 후 다시 시도해 주세요." };
-  }
-
-  let parsed: unknown;
-  try {
-    parsed = text ? JSON.parse(text) : null;
-  } catch {
-    return { ok: false, error: "Google 로그인 응답을 처리하지 못했습니다." };
-  }
-
-  const url = extractSocialOAuthUrl(parsed);
-
-  if (!url) {
-    return { ok: false, error: "Google 로그인 URL을 받지 못했습니다." };
-  }
-
-  window.location.assign(augmentGoogleAuthorizationUrl(url));
-  return { ok: true };
+function buildGoogleStartUrl(resolvedCallbackURL: string, kind: SubjectKind): string {
+  const u = new URL("/api/auth/google-start", window.location.origin);
+  u.searchParams.set("callbackURL", resolvedCallbackURL);
+  u.searchParams.set("kind", kind);
+  return u.pathname + u.search;
 }
 
 function safeCallbackUrl(raw: string | null): string {
@@ -241,7 +177,7 @@ export function LoginForm() {
 
   /**
    * 소셜 로그인: OAuth 콜백 → /consent → 목적지
-   * Google은 fetch(credentials:include)로 PKCE 쿠키를 확실히 심은 뒤 이동합니다.
+   * Google은 /api/auth/google-start 전체 페이지 이동으로 PKCE 쿠키를 안정화합니다.
    */
   const handleLogin = async (provider: "google" | "kakao") => {
     setLoginError("");
@@ -249,8 +185,7 @@ export function LoginForm() {
 
     try {
       if (provider === "google") {
-        const google = await redirectToGoogleOAuth(resolvedCallbackURL);
-        if (!google.ok) setLoginError(google.error);
+        window.location.assign(buildGoogleStartUrl(resolvedCallbackURL, kind));
         return;
       }
 

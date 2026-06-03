@@ -47,12 +47,9 @@ export const getAuth = (env: AuthEnv) => {
             google: {
                 clientId: env.GOOGLE_CLIENT_ID || "",
                 clientSecret: env.GOOGLE_CLIENT_SECRET || "",
-                ...(baseURL
-                    ? { redirectURI: `${baseURL}/api/auth/callback/google` }
-                    : {}),
                 /**
                  * Google OAuth: `display=touch` — 모바일/터치에 맞는 계정 UI(전체 폭)로 유도.
-                 * 미지정 시 일부 WebView/UA에서 데스크톱용(가운데 작은 카드) 화면이 노출될 수 있음.
+                 * redirect URI는 baseURL(BETTER_AUTH_URL)로 자동 구성 — Google 콘솔과 동일해야 함.
                  * @see https://developers.google.com/identity/protocols/oauth2/web-server#creatingclient
                  */
                 display: "touch",
