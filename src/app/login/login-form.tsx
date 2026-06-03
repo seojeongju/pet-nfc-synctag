@@ -22,15 +22,9 @@ import {
 import Link from "next/link";
 import { SUBJECT_KINDS, type SubjectKind, parseSubjectKind } from "@/lib/subject-kind";
 import { buildSocialLoginCallbackUrl } from "@/lib/oauth-viewport-bridge";
+import { loginRedirectPath } from "@/lib/login-redirect-path";
 
 const DEFAULT_CALLBACK = "/hub";
-
-function buildGoogleStartUrl(resolvedCallbackURL: string, kind: SubjectKind): string {
-  const u = new URL("/api/auth/google-start", window.location.origin);
-  u.searchParams.set("callbackURL", resolvedCallbackURL);
-  u.searchParams.set("kind", kind);
-  return u.pathname + u.search;
-}
 
 function safeCallbackUrl(raw: string | null): string {
   if (!raw || typeof raw !== "string") return DEFAULT_CALLBACK;
@@ -164,20 +158,32 @@ export function LoginForm() {
       );
     } else if (oauthError === "invalid_code") {
       const expectedTail = "uu8scdsfl6g3";
-      setLoginError(
-        `Google OAuth 인증 코드 교환에 실패했습니다. Cloudflare의 GOOGLE_CLIENT_ID·SECRET이 Google 콘솔(all-print) 웹 클라이언트와 같아야 합니다. (ID 끝 12자: ${expectedTail})`
-      );
       fetch("/api/diag", { cache: "no-store" })
         .then((r) => r.json())
         .then((raw: unknown) => {
           const d = raw as { environment?: { GOOGLE_CLIENT_ID_TAIL?: string | null } };
           const tail = d.environment?.GOOGLE_CLIENT_ID_TAIL;
-          if (!tail || tail === expectedTail) return;
+          if (tail === expectedTail) {
+            setLoginError(
+              "Google Client ID는 서버에 맞게 설정되어 있습니다. GOOGLE_CLIENT_SECRET이 Google 콘솔(all-print) 웹 클라이언트의 현재 비밀번호와 같은지 확인해 주세요. 콘솔에서 비밀번호를 새로 발급 → Cloudflare Production에 붙여넣기 → 재배포 후, 시크릿 탭에서 다시 시도하세요."
+            );
+            return;
+          }
+          if (tail && tail !== expectedTail) {
+            setLoginError(
+              `Cloudflare GOOGLE_CLIENT_ID가 콘솔과 다릅니다. 현재 …${tail} / 필요 …${expectedTail}. ID·SECRET을 같은 클라이언트에서 복사한 뒤 재배포하세요.`
+            );
+            return;
+          }
           setLoginError(
-            `Cloudflare GOOGLE_CLIENT_ID가 콘솔과 다릅니다. 현재 서버: …${tail} / 필요: …${expectedTail}. Pages Production 환경 변수에서 ID·비밀번호를 콘솔과 동일하게 붙여넣은 뒤 재배포하세요.`
+            "Google OAuth 인증에 실패했습니다. 시크릿 탭에서 다시 시도하거나, Cloudflare GOOGLE_CLIENT_ID·SECRET을 확인해 주세요."
           );
         })
-        .catch(() => {});
+        .catch(() => {
+          setLoginError(
+            "Google OAuth 인증에 실패했습니다. Cloudflare GOOGLE_CLIENT_SECRET을 Google 콘솔과 동일한 값으로 맞춘 뒤 재배포해 주세요."
+          );
+        });
     }
   }, [searchParams]);
 
@@ -189,21 +195,22 @@ export function LoginForm() {
 
   /**
    * 소셜 로그인: OAuth 콜백 → /consent → 목적지
-   * Google은 /api/auth/google-start 전체 페이지 이동으로 PKCE 쿠키를 안정화합니다.
+   * Google·카카오 동일하게 better-auth signIn.social(브라우저 리다이렉트) 사용.
    */
   const handleLogin = async (provider: "google" | "kakao") => {
     setLoginError("");
     const resolvedCallbackURL = buildSocialLoginCallbackUrl(callbackURL);
+    const errorCallbackURL = loginRedirectPath({
+      kind,
+      oauthError: "invalid_code",
+      callbackUrl: callbackURL,
+    });
 
     try {
-      if (provider === "google") {
-        window.location.assign(buildGoogleStartUrl(resolvedCallbackURL, kind));
-        return;
-      }
-
       const result = await signIn.social({
-        provider: "kakao",
+        provider,
         callbackURL: resolvedCallbackURL,
+        errorCallbackURL,
       });
       const signInError =
         result && typeof result === "object" && "error" in result

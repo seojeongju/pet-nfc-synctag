@@ -18,6 +18,8 @@ export const getAuth = (env: AuthEnv) => {
     }
 
     const baseURL = env.BETTER_AUTH_URL?.trim().replace(/\/+$/, "");
+    const googleClientId = env.GOOGLE_CLIENT_ID?.trim() ?? "";
+    const googleClientSecret = env.GOOGLE_CLIENT_SECRET?.trim() ?? "";
     const trustedOrigins = [
         ...(baseURL ? [baseURL] : []),
         "https://wow-linku.co.kr",
@@ -29,7 +31,7 @@ export const getAuth = (env: AuthEnv) => {
         ...(baseURL ? { baseURL } : {}),
         trustedOrigins,
         database: env.DB, // D1 네이티브 드라이버 자동 감지 및 배치 처리 지원
-        secret: env.BETTER_AUTH_SECRET,
+        secret: env.BETTER_AUTH_SECRET.trim(),
         trustHost: true, // Edge Runtime 호스트 인식을 위해 최상위 옵션으로 이동
         advanced: {
             trustedProxyHeaders: true,
@@ -45,8 +47,8 @@ export const getAuth = (env: AuthEnv) => {
         },
         socialProviders: {
             google: {
-                clientId: env.GOOGLE_CLIENT_ID || "",
-                clientSecret: env.GOOGLE_CLIENT_SECRET || "",
+                clientId: googleClientId,
+                clientSecret: googleClientSecret,
                 /**
                  * Google OAuth: `display=touch` — 모바일/터치에 맞는 계정 UI(전체 폭)로 유도.
                  * redirect URI는 baseURL(BETTER_AUTH_URL)로 자동 구성 — Google 콘솔과 동일해야 함.
