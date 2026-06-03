@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getAuth } from "@/lib/auth";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { getUserConsentStatus } from "@/lib/privacy-consent";
+import { SUBJECT_KINDS } from "@/lib/subject-kind";
 import { ConsentForm } from "./ConsentForm";
 import { buildNoIndexMetadata } from "@/lib/seo";
 import { AuthCompleteBridge } from "@/app/auth/complete/auth-complete-bridge";
@@ -46,6 +47,10 @@ export default async function ConsentPage({
       callbackUrl: next,
       oauthError: "session",
     });
+    const kindMatch = next.match(/^\/dashboard\/([^/?]+)/);
+    if (kindMatch?.[1] && (SUBJECT_KINDS as readonly string[]).includes(kindMatch[1])) {
+      loginQs.set("kind", kindMatch[1]);
+    }
     redirect(`/login?${loginQs.toString()}`);
   }
 
