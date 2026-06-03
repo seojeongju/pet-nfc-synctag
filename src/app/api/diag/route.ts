@@ -9,8 +9,23 @@ function clientIdHint(clientId: string | undefined): string | null {
   const t = clientId?.trim();
   if (!t) return null;
   if (t.length <= 8) return "set(short)";
+  return `${t.slice(0, 4)}…${t.slice(-4)}`;
+}
+
+function googleClientIdHint(clientId: string | undefined): string | null {
+  const t = clientId?.trim();
+  if (!t) return null;
   const core = t.replace(/\.apps\.googleusercontent\.com$/i, "");
+  if (core.length <= 8) return "set(short)";
   return `${core.slice(0, 4)}…${core.slice(-4)}`;
+}
+
+/** Google 콘솔 Client ID 끝 12자와 대조 (예: uu8scdsfl6g3) */
+function googleClientIdTail(clientId: string | undefined): string | null {
+  const t = clientId?.trim();
+  if (!t) return null;
+  const core = t.replace(/\.apps\.googleusercontent\.com$/i, "");
+  return core.length >= 12 ? core.slice(-12) : core;
 }
 
 type DiagEnv = CloudflareEnv & {
@@ -35,8 +50,10 @@ export async function GET() {
       BETTER_AUTH_URL_VALUE: env.BETTER_AUTH_URL?.trim().replace(/\/+$/, "") || null,
       NEXT_PUBLIC_APP_URL: !!env.NEXT_PUBLIC_APP_URL ? "SET" : "MISSING",
       GOOGLE_CLIENT_ID: !!env.GOOGLE_CLIENT_ID ? "SET" : "MISSING",
-      /** Google 콘솔 클라이언트 ID 앞·뒤 4자 (예: 1306…l6g3) */
-      GOOGLE_CLIENT_ID_HINT: clientIdHint(env.GOOGLE_CLIENT_ID),
+      GOOGLE_CLIENT_ID_HINT: googleClientIdHint(env.GOOGLE_CLIENT_ID),
+      /** 콘솔 Client ID 끝 12자 — all-print 웹 클라이언트: uu8scdsfl6g3 */
+      GOOGLE_CLIENT_ID_TAIL: googleClientIdTail(env.GOOGLE_CLIENT_ID),
+      GOOGLE_CLIENT_SECRET: !!env.GOOGLE_CLIENT_SECRET ? "SET" : "MISSING",
       KAKAO_CLIENT_ID: !!env.KAKAO_CLIENT_ID ? "SET" : "MISSING",
       KAKAO_CLIENT_ID_HINT: clientIdHint(env.KAKAO_CLIENT_ID),
       /** Google OAuth 콜백 — 콘솔「승인된 리디렉션 URI」와 일치해야 함 */

@@ -164,7 +164,7 @@ export function LoginForm() {
       );
     } else if (oauthError === "invalid_code") {
       setLoginError(
-        "Google 로그인 인증 코드가 만료되었거나 이미 사용되었습니다. 시크릿/일반 탭을 닫고, 같은 탭에서 「Google로 계속하기」를 한 번만 다시 눌러 주세요."
+        "Google OAuth 인증 코드 교환에 실패했습니다. Cloudflare Pages의 GOOGLE_CLIENT_ID·GOOGLE_CLIENT_SECRET이 Google 콘솔(all-print)의 「웹 애플리케이션」 클라이언트와 같은 쌍인지 확인해 주세요. (/api/diag 의 GOOGLE_CLIENT_ID_TAIL이 uu8scdsfl6g3 이어야 합니다.)"
       );
     }
   }, [searchParams]);
