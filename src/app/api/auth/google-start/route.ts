@@ -1,4 +1,5 @@
 import { getAuth } from "@/lib/auth";
+import { forwardAuthHandlerResponse } from "@/lib/auth-forward-response";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { loginRedirectPath } from "@/lib/login-redirect-path";
 import { SUBJECT_KINDS } from "@/lib/subject-kind";
@@ -19,10 +20,19 @@ function sanitizeCallbackPath(raw: string | null): string | null {
   }
 }
 
+function extractDestinationFromConsentCallback(callbackURL: string): string {
+  if (!callbackURL.startsWith("/consent?")) return callbackURL;
+  try {
+    const u = new URL(callbackURL, "https://example.invalid");
+    return u.searchParams.get("next") ?? "/hub";
+  } catch {
+    return "/hub";
+  }
+}
+
 /**
- * Google OAuth 시작 — 브라우저 전체 네비게이션으로 better-auth에 POST하여
- * PKCE/state Set-Cookie가 확실히 심어진 뒤 Google로 302 이동합니다.
- * (fetch + disableRedirect는 Cloudflare/모바일에서 invalid_code가 날 수 있음)
+ * Google OAuth 시작 — 브라우저 GET → 서버에서 sign-in/social POST 프록시 →
+ * PKCE/state Set-Cookie(복수)를 빠짐없이 전달한 뒤 Google로 302.
  */
 export async function GET(req: Request) {
   const reqUrl = new URL(req.url);
@@ -36,16 +46,7 @@ export async function GET(req: Request) {
   const errorCallbackURL = loginRedirectPath({
     kind,
     oauthError: "invalid_code",
-    callbackUrl: callbackURL.startsWith("/consent?")
-      ? (() => {
-          try {
-            const u = new URL(callbackURL, "https://example.invalid");
-            return u.searchParams.get("next") ?? "/hub";
-          } catch {
-            return "/hub";
-          }
-        })()
-      : callbackURL,
+    callbackUrl: extractDestinationFromConsentCallback(callbackURL),
   });
 
   try {
@@ -69,12 +70,7 @@ export async function GET(req: Request) {
     const res = await auth.handler(socialReq);
 
     if (res.status >= 300 && res.status < 400) {
-      const headers = new Headers(res.headers);
-      return new Response(res.body, {
-        status: res.status,
-        statusText: res.statusText,
-        headers,
-      });
+      return forwardAuthHandlerResponse(res);
     }
 
     const text = await res.text();
@@ -94,8 +90,7 @@ export async function GET(req: Request) {
     }
 
     if (oauthUrl) {
-      const headers = new Headers(res.headers);
-      return NextResponse.redirect(oauthUrl, { headers });
+      return forwardAuthHandlerResponse(res, { location: oauthUrl, status: 302 });
     }
 
     console.error("[google-start] unexpected response", res.status, text.slice(0, 200));

@@ -9,7 +9,8 @@ function clientIdHint(clientId: string | undefined): string | null {
   const t = clientId?.trim();
   if (!t) return null;
   if (t.length <= 8) return "set(short)";
-  return `${t.slice(0, 4)}…${t.slice(-4)}`;
+  const core = t.replace(/\.apps\.googleusercontent\.com$/i, "");
+  return `${core.slice(0, 4)}…${core.slice(-4)}`;
 }
 
 type DiagEnv = CloudflareEnv & {
