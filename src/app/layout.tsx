@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { PwaInstallProvider } from "@/components/pwa-install-context";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { ViewportFix } from "@/components/viewport-fix";
+import { VIEWPORT_BOOTSTRAP_SCRIPT } from "@/lib/viewport-meta";
 import { SiteLegalFooter } from "@/components/layout/SiteLegalFooter";
 import { JsonLd } from "@/components/seo/JsonLd";
 import {
@@ -62,6 +63,8 @@ export default function RootLayout({
   return (
     <html lang="ko" className={cn("font-outfit h-full")}>
       <head>
+        {/* OAuth 복귀·BFCache 직후 첫 paint 전 viewport 강제 (Next viewport export 보조) */}
+        <script dangerouslySetInnerHTML={{ __html: VIEWPORT_BOOTSTRAP_SCRIPT }} />
         <meta name="mobile-web-app-capable" content="yes" />
         {/* Cloudflare Edge에서 next/font Google 로더 이슈 회피 — 루트에서 전역 링크 */}
         {/* eslint-disable @next/next/no-page-custom-font -- root layout; applies site-wide */}

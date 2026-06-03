@@ -24,6 +24,83 @@ import { SUBJECT_KINDS, type SubjectKind, parseSubjectKind } from "@/lib/subject
 
 const DEFAULT_CALLBACK = "/hub";
 
+/** better-auth OAuth 라우트 베이스 */
+const AUTH_HTTP_BASE = "/api/auth";
+
+/**
+ * Google 인가 URL 보강 — 모바일에서 PC형(가운데 작은 카드) 계정 선택 UI 완화.
+ * auth.ts `display: "touch"`만으로는 authorization URL에 반영되지 않는 경우가 있어 클라이언트에서 보강합니다.
+ */
+function augmentGoogleAuthorizationUrl(authUrl: string): string {
+  try {
+    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+    const u = new URL(authUrl);
+
+    const isAndroid = /Android/i.test(ua);
+    const isIos = /iPhone|iPad|iPod/i.test(ua);
+    const coarse =
+      typeof window !== "undefined" && typeof window.matchMedia === "function"
+        ? window.matchMedia("(pointer: coarse)").matches
+        : false;
+    const narrowViewport =
+      typeof window !== "undefined" && typeof window.innerWidth === "number" && window.innerWidth < 1024;
+
+    const preferMobileChrome = isAndroid || isIos || coarse || narrowViewport;
+    if (!preferMobileChrome) {
+      return authUrl;
+    }
+
+    u.searchParams.set("display", "touch");
+    u.searchParams.set("btmpl", "mobile");
+    return u.toString();
+  } catch {
+    return authUrl;
+  }
+}
+
+async function redirectToGoogleOAuth(resolvedCallbackURL: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const res = await fetch(`${AUTH_HTTP_BASE}/sign-in/social`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    credentials: "include",
+    body: JSON.stringify({
+      provider: "google",
+      callbackURL: resolvedCallbackURL,
+      disableRedirect: true,
+    }),
+  });
+
+  const text = await res.text();
+  if (!res.ok) {
+    return { ok: false, error: "Google 로그인을 시작할 수 없습니다. 잠시 후 다시 시도해 주세요." };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = text ? JSON.parse(text) : null;
+  } catch {
+    return { ok: false, error: "Google 로그인 응답을 처리하지 못했습니다." };
+  }
+
+  const url =
+    typeof parsed === "object" &&
+    parsed !== null &&
+    "url" in parsed &&
+    typeof (parsed as { url: unknown }).url === "string"
+      ? (parsed as { url: string }).url
+      : null;
+
+  if (!url?.trim()) {
+    return { ok: false, error: "Google 로그인 URL을 받지 못했습니다." };
+  }
+
+  window.location.assign(augmentGoogleAuthorizationUrl(url));
+  return { ok: true };
+}
+
 function safeCallbackUrl(raw: string | null): string {
   if (!raw || typeof raw !== "string") return DEFAULT_CALLBACK;
   try {
@@ -178,11 +255,18 @@ export function LoginForm() {
    */
   const handleLogin = async (provider: "google" | "kakao") => {
     setLoginError("");
-    // 로그인 직후 /consent에서 계정 동의 상태를 확인하고(최초 1회만 폼 노출) 분기합니다.
     const consentNext = `/consent?next=${encodeURIComponent(callbackURL)}`;
     const resolvedCallbackURL = `/auth/complete?next=${encodeURIComponent(consentNext)}`;
 
     try {
+      if (provider === "google") {
+        const google = await redirectToGoogleOAuth(resolvedCallbackURL);
+        if (!google.ok) {
+          setLoginError(google.error);
+        }
+        return;
+      }
+
       const result = await signIn.social({
         provider,
         callbackURL: resolvedCallbackURL,
