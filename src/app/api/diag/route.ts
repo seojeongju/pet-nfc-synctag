@@ -33,6 +33,7 @@ type DiagEnv = CloudflareEnv & {
   BETTER_AUTH_URL?: string;
   NEXT_PUBLIC_APP_URL?: string;
   GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
   KAKAO_CLIENT_ID?: string;
   MAP_TELEMETRY_WEBHOOK_URL?: string;
 };
