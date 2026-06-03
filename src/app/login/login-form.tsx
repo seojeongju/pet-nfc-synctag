@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { SUBJECT_KINDS, type SubjectKind, parseSubjectKind } from "@/lib/subject-kind";
+import { extractSocialOAuthUrl } from "@/lib/viewport-meta";
 
 const DEFAULT_CALLBACK = "/hub";
 
@@ -85,15 +86,9 @@ async function redirectToGoogleOAuth(resolvedCallbackURL: string): Promise<{ ok:
     return { ok: false, error: "Google 로그인 응답을 처리하지 못했습니다." };
   }
 
-  const url =
-    typeof parsed === "object" &&
-    parsed !== null &&
-    "url" in parsed &&
-    typeof (parsed as { url: unknown }).url === "string"
-      ? (parsed as { url: string }).url
-      : null;
+  const url = extractSocialOAuthUrl(parsed);
 
-  if (!url?.trim()) {
+  if (!url) {
     return { ok: false, error: "Google 로그인 URL을 받지 못했습니다." };
   }
 
@@ -276,10 +271,7 @@ export function LoginForm() {
         setLoginError(signInError.message?.trim() || "소셜 로그인을 시작할 수 없습니다. 잠시 후 다시 시도해 주세요.");
         return;
       }
-      const oauthUrl =
-        result && typeof result === "object" && "data" in result
-          ? (result as { data?: { url?: string } }).data?.url
-          : undefined;
+      const oauthUrl = extractSocialOAuthUrl(result);
       if (oauthUrl) {
         window.location.assign(oauthUrl);
       }

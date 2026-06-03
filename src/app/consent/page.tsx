@@ -5,6 +5,7 @@ import { getCfRequestContext } from "@/lib/cf-request-context";
 import { getUserConsentStatus } from "@/lib/privacy-consent";
 import { ConsentForm } from "./ConsentForm";
 import { buildNoIndexMetadata } from "@/lib/seo";
+import { AuthCompleteBridge } from "@/app/auth/complete/auth-complete-bridge";
 
 export const runtime = "edge";
 export const metadata = buildNoIndexMetadata("링크유 약관 및 동의");
@@ -50,9 +51,8 @@ export default async function ConsentPage({
 
   const consent = await getUserConsentStatus(userId);
   if (consent.hasRequired) {
-    // 이미 동의 완료된 유저 → 서버 302로 바로 이동하면 viewport가 다시 오염됨.
-    // /auth/complete 브리지를 경유해 viewport를 강제 재설정한 뒤 목적지로 이동.
-    redirect(`/auth/complete?next=${encodeURIComponent(next)}`);
+    // 서버 302는 HTML paint 없이 연속 리다이렉트되어 viewport 오염이 남을 수 있음 → 클라이언트 브리지
+    return <AuthCompleteBridge next={next} />;
   }
 
   return (

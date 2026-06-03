@@ -2,12 +2,12 @@
 
 /**
  * OAuth 콜백 후 뷰포트를 강제 재설정한 뒤 최종 목적지로 이동합니다.
- * requestAnimationFrame 한 번만으로는 paint·재계산이 끝나기 전에 이탈하는 기기가 있어
- * 짧은 burst + 최소 대기 후 location.replace 합니다.
+ * 목적지 URL에 `_linku_vr=1`을 붙여 layout 인라인 스크립트가 1회 hard reload 하도록 합니다.
  */
 
 import { useEffect } from "react";
 import {
+  appendOAuthViewportReloadParam,
   forceViewportRecalc,
   resetViewportMeta,
   runViewportFixBurst,
@@ -17,8 +17,7 @@ interface Props {
   next: string;
 }
 
-/** 브라우저가 viewport를 재적용할 최소 시간(ms) */
-const MIN_BRIDGE_MS = 380;
+const MIN_BRIDGE_MS = 520;
 
 export function AuthCompleteBridge({ next }: Props) {
   useEffect(() => {
@@ -27,10 +26,12 @@ export function AuthCompleteBridge({ next }: Props) {
     const cancelBurst = runViewportFixBurst();
     window.scrollTo(0, 0);
 
+    const destination = appendOAuthViewportReloadParam(next);
+
     const timer = window.setTimeout(() => {
       resetViewportMeta();
       forceViewportRecalc();
-      window.location.replace(next);
+      window.location.replace(destination);
     }, MIN_BRIDGE_MS);
 
     return () => {
