@@ -6,7 +6,7 @@ import { getUserConsentStatus } from "@/lib/privacy-consent";
 import { SUBJECT_KINDS } from "@/lib/subject-kind";
 import { ConsentForm } from "./ConsentForm";
 import { buildNoIndexMetadata } from "@/lib/seo";
-import { AuthCompleteBridge } from "@/app/auth/complete/auth-complete-bridge";
+import { loginRedirectPath } from "@/lib/login-redirect-path";
 
 export const runtime = "edge";
 export const metadata = buildNoIndexMetadata("링크유 약관 및 동의");
@@ -43,21 +43,23 @@ export default async function ConsentPage({
   const session = await auth.api.getSession({ headers: await headers() });
   const userId = session?.user?.id;
   if (!userId) {
-    const loginQs = new URLSearchParams({
-      callbackUrl: next,
-      oauthError: "session",
-    });
     const kindMatch = next.match(/^\/dashboard\/([^/?]+)/);
-    if (kindMatch?.[1] && (SUBJECT_KINDS as readonly string[]).includes(kindMatch[1])) {
-      loginQs.set("kind", kindMatch[1]);
-    }
-    redirect(`/login?${loginQs.toString()}`);
+    const kind =
+      kindMatch?.[1] && (SUBJECT_KINDS as readonly string[]).includes(kindMatch[1])
+        ? kindMatch[1]
+        : null;
+    redirect(
+      loginRedirectPath({
+        callbackUrl: next,
+        oauthError: "session",
+        kind,
+      })
+    );
   }
 
   const consent = await getUserConsentStatus(userId);
   if (consent.hasRequired) {
-    // 서버 302는 HTML paint 없이 연속 리다이렉트되어 viewport 오염이 남을 수 있음 → 클라이언트 브리지
-    return <AuthCompleteBridge next={next} />;
+    redirect(next);
   }
 
   return (

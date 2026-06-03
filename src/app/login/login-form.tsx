@@ -22,6 +22,7 @@ import {
 import Link from "next/link";
 import { SUBJECT_KINDS, type SubjectKind, parseSubjectKind } from "@/lib/subject-kind";
 import { extractSocialOAuthUrl } from "@/lib/viewport-meta";
+import { buildSocialLoginCallbackUrl } from "@/lib/oauth-viewport-bridge";
 
 const DEFAULT_CALLBACK = "/hub";
 
@@ -224,7 +225,7 @@ export function LoginForm() {
     const oauthError = searchParams.get("oauthError");
     if (oauthError === "session") {
       setLoginError(
-        "카카오 로그인은 완료됐지만 이 브라우저에 로그인 세션이 연결되지 않았습니다. 카카오 동의 직후 돌아온 브라우저/탭에서 다시 「카카오로 계속하기」를 눌러 주세요. (카카오톡 앱 로그인 후 다른 브라우저로 돌아오면 자주 발생합니다.)"
+        "로그인은 완료됐지만 이 브라우저에 세션이 연결되지 않았았습니다. 같은 브라우저/탭에서 다시 시도해 주세요. (카카오톡·다른 앱 로그인 후 돌아오면 자주 발생합니다.)"
       );
     }
   }, [searchParams]);
@@ -236,45 +237,45 @@ export function LoginForm() {
   };
 
   /**
-   * 통합 소셜 로그인 핸들러.
-   *
-   * [구글]
-   *   accounts.google.com → /api/auth/callback/google(302) → /auth/complete → 최종 목적지
-   *   중간 /auth/complete 페이지를 거쳐 viewport 메타를 재설정한 뒤 이동합니다.
-   *   이유: 외부 도메인(Google)에서 연속 302로 복귀 시 일부 모바일 브라우저가
-   *         viewport 컨텍스트를 외부 도메인 값으로 승계하는 버그가 존재하기 때문입니다.
-   *
-   * [카카오]
-   *   Google과 동일하게 /auth/complete를 거칩니다. 모바일에서 카카오 OAuth 후 연속 302·
-   *   카카오톡 인앱 브라우저 복귀 시 세션 쿠키·viewport가 끊기는 경우를 줄입니다.
+   * 소셜 로그인: OAuth 콜백 → /oauth-viewport-reset.html(정적) → consent → 목적지
+   * Next.js /auth/complete 대신 정적 HTML로 viewport를 먼저 고정합니다.
    */
   const handleLogin = async (provider: "google" | "kakao") => {
     setLoginError("");
-    const consentNext = `/consent?next=${encodeURIComponent(callbackURL)}`;
-    const resolvedCallbackURL = `/auth/complete?next=${encodeURIComponent(consentNext)}`;
+    const resolvedCallbackURL = buildSocialLoginCallbackUrl(callbackURL);
 
     try {
-      if (provider === "google") {
-        const google = await redirectToGoogleOAuth(resolvedCallbackURL);
-        if (!google.ok) {
-          setLoginError(google.error);
-        }
-        return;
-      }
-
       const result = await signIn.social({
         provider,
         callbackURL: resolvedCallbackURL,
+        disableRedirect: true,
       });
-      const signInError = result && typeof result === "object" && "error" in result ? (result as { error?: { message?: string } }).error : undefined;
+      const signInError =
+        result && typeof result === "object" && "error" in result
+          ? (result as { error?: { message?: string } }).error
+          : undefined;
       if (signInError) {
-        setLoginError(signInError.message?.trim() || "소셜 로그인을 시작할 수 없습니다. 잠시 후 다시 시도해 주세요.");
+        setLoginError(
+          signInError.message?.trim() || "소셜 로그인을 시작할 수 없습니다. 잠시 후 다시 시도해 주세요."
+        );
         return;
       }
-      const oauthUrl = extractSocialOAuthUrl(result);
-      if (oauthUrl) {
-        window.location.assign(oauthUrl);
+
+      let oauthUrl = extractSocialOAuthUrl(result);
+      if (!oauthUrl && provider === "google") {
+        const fallback = await redirectToGoogleOAuth(resolvedCallbackURL);
+        if (!fallback.ok) setLoginError(fallback.error);
+        return;
       }
+      if (!oauthUrl) {
+        setLoginError("소셜 로그인 URL을 받지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        return;
+      }
+
+      if (provider === "google") {
+        oauthUrl = augmentGoogleAuthorizationUrl(oauthUrl);
+      }
+      window.location.assign(oauthUrl);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "소셜 로그인 중 오류가 발생했습니다.";
       setLoginError(message);

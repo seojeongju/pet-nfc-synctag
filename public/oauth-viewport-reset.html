@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <title>링크유 로그인 처리</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #f0fdfa 0%, #ffffff 50%, #eef2ff 100%);
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        color: #0f766e;
+      }
+      .box {
+        text-align: center;
+        padding: 1.5rem;
+      }
+      .spinner {
+        width: 40px;
+        height: 40px;
+        margin: 0 auto 1rem;
+        border: 3px solid #e2e8f0;
+        border-top-color: #14b8a6;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      p {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="box">
+      <div class="spinner" aria-hidden="true"></div>
+      <p id="status">로그인 완료 중…</p>
+    </div>
+    <script>
+      (function () {
+        var VIEWPORT =
+          "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover";
+        var meta = document.querySelector('meta[name="viewport"]');
+        if (meta) {
+          meta.setAttribute("content", "width=1");
+          requestAnimationFrame(function () {
+            meta.setAttribute("content", VIEWPORT);
+          });
+        }
+
+        var params = new URLSearchParams(location.search);
+        var next = params.get("next") || "/hub";
+        try {
+          next = decodeURIComponent(next);
+        } catch (e) {}
+
+        if (!next.startsWith("/") || next.startsWith("//") || next.indexOf("://") !== -1) {
+          next = "/hub";
+        }
+        if (next.length > 2048) next = "/hub";
+
+        var statusEl = document.getElementById("status");
+        var attempt = 0;
+        var maxAttempts = 12;
+
+        function hasSession(payload) {
+          if (!payload || typeof payload !== "object") return false;
+          if (payload.user && payload.user.id) return true;
+          if (payload.session && payload.session.userId) return true;
+          if (payload.data && payload.data.user && payload.data.user.id) return true;
+          if (payload.data && payload.data.session) return true;
+          return false;
+        }
+
+        function resolveFinalDestination(path) {
+          if (path.indexOf("/consent?") !== 0) return path;
+          try {
+            var u = new URL(path, location.origin);
+            return u.searchParams.get("next") || "/hub";
+          } catch (e) {
+            return "/hub";
+          }
+        }
+
+        function goLoginSessionError() {
+          var finalDest = resolveFinalDestination(next);
+          var qs = new URLSearchParams();
+          qs.set("callbackUrl", finalDest);
+          qs.set("oauthError", "session");
+          var kindMatch = finalDest.match(/^\/dashboard\/([^/?]+)/);
+          if (kindMatch && kindMatch[1]) qs.set("kind", kindMatch[1]);
+          location.replace("/login?" + qs.toString());
+        }
+
+        function trySessionThenContinue() {
+          fetch("/api/auth/get-session", {
+            method: "GET",
+            credentials: "include",
+            cache: "no-store",
+            headers: { Accept: "application/json" },
+          })
+            .then(function (res) {
+              return res.json().catch(function () {
+                return null;
+              });
+            })
+            .then(function (payload) {
+              if (hasSession(payload)) {
+                if (statusEl) statusEl.textContent = "화면을 맞추는 중…";
+                meta = document.querySelector('meta[name="viewport"]');
+                if (meta) meta.setAttribute("content", VIEWPORT);
+                location.replace(next);
+                return;
+              }
+              attempt += 1;
+              if (attempt >= maxAttempts) {
+                goLoginSessionError();
+                return;
+              }
+              if (statusEl) statusEl.textContent = "세션 확인 중… (" + attempt + "/" + maxAttempts + ")";
+              window.setTimeout(trySessionThenContinue, 180);
+            })
+            .catch(function () {
+              attempt += 1;
+              if (attempt >= maxAttempts) {
+                goLoginSessionError();
+                return;
+              }
+              window.setTimeout(trySessionThenContinue, 180);
+            });
+        }
+
+        window.setTimeout(trySessionThenContinue, 320);
+      })();
+    </script>
+  </body>
+</html>

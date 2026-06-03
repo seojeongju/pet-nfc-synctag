@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { LoginForm } from "./login-form";
-import { parseSubjectKind } from "@/lib/subject-kind";
+import { SUBJECT_KINDS } from "@/lib/subject-kind";
 import { redirect } from "next/navigation";
 import { buildNoIndexMetadata } from "@/lib/seo";
 
@@ -18,10 +18,15 @@ function LoginFallback() {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ kind?: string }>;
+  searchParams: Promise<{ kind?: string; callbackUrl?: string; oauthError?: string }>;
 }) {
   const sp = await searchParams;
-  if (!parseSubjectKind(sp.kind)) {
+  const hasKind = Boolean(sp.kind && (SUBJECT_KINDS as readonly string[]).includes(sp.kind));
+  const hasCallback = Boolean(sp.callbackUrl?.trim());
+  const hasOauthError = Boolean(sp.oauthError?.trim());
+
+  // 모드 게이트를 거치지 않은 직접 /login 접근만 홈으로 돌림 (OAuth 오류·callbackUrl 복구는 허용)
+  if (!hasKind && !hasCallback && !hasOauthError) {
     redirect("/");
   }
 

@@ -26,6 +26,12 @@ export const getAuth = (env: AuthEnv) => {
         trustHost: true, // Edge Runtime 호스트 인식을 위해 최상위 옵션으로 이동
         advanced: {
             trustedProxyHeaders: true,
+            useSecureCookies: true,
+            defaultCookieAttributes: {
+                sameSite: "lax",
+                secure: true,
+                path: "/",
+            },
         },
         emailAndPassword: {
             enabled: true

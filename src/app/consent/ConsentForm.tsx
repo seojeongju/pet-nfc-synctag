@@ -34,9 +34,7 @@ export function ConsentForm({ next, err }: { next: string; err: string }) {
         setPending(true);
         try {
           await submitRequiredPrivacyConsent(form);
-          // 동의 완료 후 직접 이동하면 viewport가 오염된 상태가 유지됩니다.
-          // /auth/complete 브리지를 경유해 viewport를 강제 재설정한 뒤 이동합니다.
-          window.location.replace(`/auth/complete?next=${encodeURIComponent(next)}`);
+          window.location.replace(next);
         } catch (error) {
           setLocalErr(error instanceof Error ? error.message : "동의 저장에 실패했습니다.");
         } finally {

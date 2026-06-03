@@ -1,43 +1,26 @@
 "use client";
 
 /**
- * OAuth 콜백 후 뷰포트를 강제 재설정한 뒤 최종 목적지로 이동합니다.
- * 목적지 URL에 `_linku_vr=1`을 붙여 layout 인라인 스크립트가 1회 hard reload 하도록 합니다.
+ * 레거시 /auth/complete 진입 시 정적 OAuth viewport 브리지로 위임합니다.
  */
 
 import { useEffect } from "react";
-import {
-  appendOAuthViewportReloadParam,
-  forceViewportRecalc,
-  resetViewportMeta,
-  runViewportFixBurst,
-} from "@/lib/viewport-meta";
+import { buildOAuthViewportResetUrl } from "@/lib/oauth-viewport-bridge";
+import { forceViewportRecalc, resetViewportMeta } from "@/lib/viewport-meta";
 
 interface Props {
   next: string;
 }
 
-const MIN_BRIDGE_MS = 520;
-
 export function AuthCompleteBridge({ next }: Props) {
   useEffect(() => {
     resetViewportMeta();
     forceViewportRecalc();
-    const cancelBurst = runViewportFixBurst();
     window.scrollTo(0, 0);
-
-    const destination = appendOAuthViewportReloadParam(next);
-
     const timer = window.setTimeout(() => {
-      resetViewportMeta();
-      forceViewportRecalc();
-      window.location.replace(destination);
-    }, MIN_BRIDGE_MS);
-
-    return () => {
-      cancelBurst();
-      window.clearTimeout(timer);
-    };
+      window.location.replace(buildOAuthViewportResetUrl(next));
+    }, 200);
+    return () => window.clearTimeout(timer);
   }, [next]);
 
   return (

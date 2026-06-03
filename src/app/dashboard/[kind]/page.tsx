@@ -14,6 +14,7 @@ import { rethrowNextControlFlowErrors } from "@/lib/next-redirect-guard";
 import { getScanLogsCountWithDb } from "@/lib/scan-logs-db";
 import { canUseModeFeature } from "@/lib/mode-visibility";
 import { getLinkedTagCountByScope } from "@/lib/dashboard-linked-tag-count";
+import { loginRedirectForDashboardKind } from "@/lib/login-redirect-path";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -39,7 +40,8 @@ export default async function DashboardKindPage({
     });
 
     if (!session) {
-      redirect("/login");
+      const tenantQs = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : "";
+      redirect(loginRedirectForDashboardKind(subjectKind, tenantQs));
     }
 
     try {
