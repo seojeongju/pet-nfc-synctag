@@ -163,9 +163,20 @@ export function LoginForm() {
         "로그인은 완료됐지만 이 브라우저에 세션이 연결되지 않았았습니다. 같은 브라우저/탭에서 다시 시도해 주세요. (카카오톡·다른 앱 로그인 후 돌아오면 자주 발생합니다.)"
       );
     } else if (oauthError === "invalid_code") {
+      const expectedTail = "uu8scdsfl6g3";
       setLoginError(
-        "Google OAuth 인증 코드 교환에 실패했습니다. Cloudflare Pages의 GOOGLE_CLIENT_ID·GOOGLE_CLIENT_SECRET이 Google 콘솔(all-print)의 「웹 애플리케이션」 클라이언트와 같은 쌍인지 확인해 주세요. (/api/diag 의 GOOGLE_CLIENT_ID_TAIL이 uu8scdsfl6g3 이어야 합니다.)"
+        `Google OAuth 인증 코드 교환에 실패했습니다. Cloudflare의 GOOGLE_CLIENT_ID·SECRET이 Google 콘솔(all-print) 웹 클라이언트와 같아야 합니다. (ID 끝 12자: ${expectedTail})`
       );
+      fetch("/api/diag", { cache: "no-store" })
+        .then((r) => r.json())
+        .then((d: { environment?: { GOOGLE_CLIENT_ID_TAIL?: string | null } }) => {
+          const tail = d.environment?.GOOGLE_CLIENT_ID_TAIL;
+          if (!tail || tail === expectedTail) return;
+          setLoginError(
+            `Cloudflare GOOGLE_CLIENT_ID가 콘솔과 다릅니다. 현재 서버: …${tail} / 필요: …${expectedTail}. Pages Production 환경 변수에서 ID·비밀번호를 콘솔과 동일하게 붙여넣은 뒤 재배포하세요.`
+          );
+        })
+        .catch(() => {});
     }
   }, [searchParams]);
 
