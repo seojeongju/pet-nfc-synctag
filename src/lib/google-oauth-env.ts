@@ -125,3 +125,55 @@ export function googleClientIdProjectNumber(clientId: string | undefined): strin
   const m = t.match(/^([0-9]+)-/);
   return m?.[1] ?? null;
 }
+
+export const EXPECTED_GOOGLE_CLIENT_ID_TAIL = "uu8scdsfi6g3";
+
+export type GoogleOAuthDiagSlice = {
+  GOOGLE_CLIENT_ID_TAIL?: string | null;
+  GOOGLE_CLIENT_ID_FORMAT_OK?: boolean;
+  GOOGLE_CLIENT_ID_FORMAT_REASON?: string | null;
+  GOOGLE_CLIENT_ID_AUTHORIZE_PROBE?: string;
+  GOOGLE_OAUTH_PROBE?: string;
+  GOOGLE_CLIENT_ID_HINT?: string | null;
+};
+
+/** /api/diag 결과로 Google 로그인 실패 안내 문구 결정 */
+export function resolveGoogleOAuthLoginErrorMessage(
+  env: GoogleOAuthDiagSlice | undefined
+): string {
+  if (!env) {
+    return "Google OAuth 인증에 실패했습니다. 시크릿 탭에서 다시 시도하거나, Cloudflare GOOGLE_CLIENT_ID·SECRET을 확인해 주세요.";
+  }
+
+  if (env.GOOGLE_CLIENT_ID_FORMAT_OK === false) {
+    if (env.GOOGLE_CLIENT_ID_FORMAT_REASON === "secret_in_id_field") {
+      return "Cloudflare GOOGLE_CLIENT_ID에 클라이언트 Secret(GOCSPX-…)이 들어가 있습니다. Google 콘솔의 클라이언트 ID(…apps.googleusercontent.com)를 넣어 주세요.";
+    }
+    return "Cloudflare GOOGLE_CLIENT_ID 형식이 올바르지 않습니다. Google 콘솔에서 클라이언트 ID 전체를 복사해 붙여넣은 뒤 재배포하세요.";
+  }
+
+  if (env.GOOGLE_CLIENT_ID_TAIL === "uu8scdsfl6g3") {
+    return "Cloudflare GOOGLE_CLIENT_ID 끝이 …fl6g3(소문자 L)입니다. Google 콘솔(NFC-TAG)은 …fi6g3(소문자 i)입니다. 콘솔에서 클라이언트 ID 전체를 다시 복사 → Cloudflare GOOGLE_CLIENT_ID 교체 → 재배포하세요.";
+  }
+
+  if (env.GOOGLE_CLIENT_ID_AUTHORIZE_PROBE === "invalid_client") {
+    return `Cloudflare GOOGLE_CLIENT_ID(힌트 ${env.GOOGLE_CLIENT_ID_HINT ?? "—"})가 Google에 등록되어 있지 않습니다. Google 콘솔(NFC-TAG)에서 **현재** 클라이언트 ID 전체(…fi6g3.apps.googleusercontent.com)를 복사 → Cloudflare Production GOOGLE_CLIENT_ID에 붙여넣기 → Secret도 함께 갱신 → 재배포하세요.`;
+  }
+
+  if (env.GOOGLE_OAUTH_PROBE === "invalid_client") {
+    return "Google Client ID는 인식되지만 GOOGLE_CLIENT_SECRET이 콘솔과 다릅니다. Google 콘솔에서 클라이언트 보안 비밀번호를 새로 발급 → Cloudflare GOOGLE_CLIENT_SECRET에 붙여넣기 → 재배포 후 다시 시도하세요.";
+  }
+
+  if (
+    env.GOOGLE_OAUTH_PROBE === "ok" &&
+    env.GOOGLE_CLIENT_ID_TAIL === EXPECTED_GOOGLE_CLIENT_ID_TAIL
+  ) {
+    return "Google 연동 설정(ID·Secret)은 서버에서 정상입니다. OAuth 보안 쿠키(PKCE)가 브라우저에 저장되지 않았을 수 있습니다. 시크릿(비공개) 창에서 다시 시도하고, wow-linku.co.kr 사이트 데이터를 삭제한 뒤 재시도해 주세요. 카카오톡·인앱 브라우저가 아닌 Chrome·Safari에서 시도해 주세요.";
+  }
+
+  if (env.GOOGLE_CLIENT_ID_TAIL && env.GOOGLE_CLIENT_ID_TAIL !== EXPECTED_GOOGLE_CLIENT_ID_TAIL) {
+    return `Cloudflare GOOGLE_CLIENT_ID가 콘솔(NFC-TAG)과 다릅니다. 현재 …${env.GOOGLE_CLIENT_ID_TAIL} / 필요 …${EXPECTED_GOOGLE_CLIENT_ID_TAIL}. ID·SECRET을 같은 클라이언트에서 복사한 뒤 재배포하세요.`;
+  }
+
+  return "Google OAuth 인증에 실패했습니다. 시크릿 탭에서 다시 시도하거나, Cloudflare GOOGLE_CLIENT_ID·SECRET을 확인해 주세요.";
+}

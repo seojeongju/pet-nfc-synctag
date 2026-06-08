@@ -1,4 +1,5 @@
 import { getAuth } from "@/lib/auth";
+import { collectSetCookies } from "@/lib/auth-forward-response";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { SUBJECT_KINDS } from "@/lib/subject-kind";
 import { parseSelectedMode, SELECTED_MODE_COOKIE_NAME } from "@/lib/selected-mode";
@@ -33,9 +34,8 @@ async function performLogout(req: NextRequest) {
     const response = NextResponse.redirect(afterLogout);
 
     // better-auth가 반환한 Set-Cookie를 redirect 응답으로 전달해 세션을 확실히 제거한다.
-    const setCookie = signOutResponse.headers.get("set-cookie");
-    if (setCookie) {
-        response.headers.append("set-cookie", setCookie);
+    for (const cookie of collectSetCookies(signOutResponse)) {
+        response.headers.append("set-cookie", cookie);
     }
     return response;
 }

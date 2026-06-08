@@ -1,4 +1,5 @@
 import { getAuth } from "@/lib/auth";
+import { forwardAuthHandlerResponse } from "@/lib/auth-forward-response";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { NextResponse } from "next/server";
 
@@ -9,7 +10,8 @@ export async function GET(req: Request) {
     try {
         const context = getCfRequestContext();
         const auth = getAuth(context.env);
-        return await auth.handler(req);
+        const res = await auth.handler(req);
+        return forwardAuthHandlerResponse(res);
     } catch (e: unknown) {
         const err = toError(e);
         console.error("Auth GET error:", {
@@ -31,7 +33,8 @@ export async function POST(req: Request) {
     try {
         const context = getCfRequestContext();
         const auth = getAuth(context.env);
-        return await auth.handler(req);
+        const res = await auth.handler(req);
+        return forwardAuthHandlerResponse(res);
     } catch (e: unknown) {
         const err = toError(e);
         console.error("Auth POST error:", {

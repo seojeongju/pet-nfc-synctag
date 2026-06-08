@@ -1,8 +1,13 @@
 import { getAuth } from "@/lib/auth";
-import { forwardAuthHandlerResponse } from "@/lib/auth-forward-response";
+import { collectSetCookies, forwardAuthHandlerResponse } from "@/lib/auth-forward-response";
+import {
+  buildAuthSocialProxyHeaders,
+  resolveAuthBaseUrl,
+} from "@/lib/auth-social-proxy";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { loginRedirectPath } from "@/lib/login-redirect-path";
 import { SUBJECT_KINDS } from "@/lib/subject-kind";
+import { extractSocialOAuthUrl } from "@/lib/viewport-meta";
 import { NextResponse } from "next/server";
 
 export const runtime = "edge";
@@ -52,14 +57,14 @@ export async function GET(req: Request) {
   try {
     const context = getCfRequestContext();
     const auth = getAuth(context.env);
+    const authBase = resolveAuthBaseUrl(
+      context.env as { BETTER_AUTH_URL?: string },
+      reqUrl
+    );
 
-    const socialReq = new Request(`${reqUrl.origin}/api/auth/sign-in/social`, {
+    const socialReq = new Request(`${authBase}/api/auth/sign-in/social`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        cookie: req.headers.get("cookie") ?? "",
-      },
+      headers: buildAuthSocialProxyHeaders(req, authBase),
       body: JSON.stringify({
         provider: "google",
         callbackURL,
@@ -68,28 +73,29 @@ export async function GET(req: Request) {
     });
 
     const res = await auth.handler(socialReq);
+    const setCookieCount = collectSetCookies(res).length;
 
     if (res.status >= 300 && res.status < 400) {
+      if (setCookieCount === 0) {
+        console.warn("[google-start] redirect without set-cookie — PKCE may fail");
+      }
       return forwardAuthHandlerResponse(res);
     }
 
     const text = await res.text();
     let oauthUrl: string | null = null;
     try {
-      const parsed = text ? JSON.parse(text) : null;
-      if (parsed && typeof parsed === "object") {
-        const root = parsed as Record<string, unknown>;
-        if (typeof root.url === "string") oauthUrl = root.url;
-        else if (root.data && typeof root.data === "object") {
-          const data = root.data as Record<string, unknown>;
-          if (typeof data.url === "string") oauthUrl = data.url;
-        }
-      }
+      oauthUrl = extractSocialOAuthUrl(text ? JSON.parse(text) : null);
     } catch {
       /* ignore */
     }
 
     if (oauthUrl) {
+      if (setCookieCount === 0) {
+        console.warn("[google-start] oauth url without set-cookie — PKCE may fail");
+      } else {
+        console.info("[google-start] set-cookie count", setCookieCount);
+      }
       return forwardAuthHandlerResponse(res, { location: oauthUrl, status: 302 });
     }
 
