@@ -55,7 +55,35 @@ export function validateGoogleClientIdFormat(clientId: string): {
   return { ok: true, reason: null };
 }
 
-/** Google token 엔드포인트로 클라이언트 존재 여부 확인 (더미 code → invalid_grant면 ID·Secret 인식됨) */
+/** Google authorize URL — client_id만으로 클라이언트 존재 여부 확인 (Secret 무관) */
+export async function probeGoogleAuthorizeClient(
+  clientId: string,
+  redirectUri: string
+): Promise<"ok" | "invalid_client" | "skipped"> {
+  if (!clientId || !redirectUri) return "skipped";
+
+  const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+  url.searchParams.set("response_type", "code");
+  url.searchParams.set("client_id", clientId);
+  url.searchParams.set("redirect_uri", redirectUri);
+  url.searchParams.set("scope", "openid email profile");
+
+  try {
+    const res = await fetch(url.toString(), { method: "HEAD", redirect: "manual" });
+    const location = res.headers.get("location") ?? "";
+    if (location.includes("/oauth/error") || location.includes("invalid_client")) {
+      return "invalid_client";
+    }
+    if (res.status >= 300 && res.status < 400 && location.includes("accounts.google.com")) {
+      return "ok";
+    }
+    return "skipped";
+  } catch {
+    return "skipped";
+  }
+}
+
+/** Google token 엔드포인트로 ID·Secret 쌍 확인 (더미 code → invalid_grant면 인식됨) */
 export async function probeGoogleOAuthClient(options: {
   clientId: string;
   clientSecret: string;

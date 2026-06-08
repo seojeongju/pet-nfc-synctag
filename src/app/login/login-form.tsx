@@ -220,6 +220,7 @@ export function LoginForm() {
           environment?: {
             GOOGLE_CLIENT_ID_FORMAT_OK?: boolean;
             GOOGLE_CLIENT_ID_FORMAT_REASON?: string | null;
+            GOOGLE_CLIENT_ID_AUTHORIZE_PROBE?: string;
             GOOGLE_OAUTH_PROBE?: string;
             GOOGLE_CLIENT_ID_HINT?: string | null;
           };
@@ -237,9 +238,15 @@ export function LoginForm() {
           );
           return;
         }
+        if (envDiag?.GOOGLE_CLIENT_ID_AUTHORIZE_PROBE === "invalid_client") {
+          setLoginError(
+            `Cloudflare GOOGLE_CLIENT_ID(힌트 ${envDiag.GOOGLE_CLIENT_ID_HINT ?? "—"})가 Google에 등록되어 있지 않습니다. Google 콘솔(all-print)에서 웹 OAuth 클라이언트를 열어 **현재** 클라이언트 ID 전체(…apps.googleusercontent.com)를 복사 → Cloudflare Production GOOGLE_CLIENT_ID에 붙여넣기 → 같은 클라이언트 Secret도 함께 갱신 → 재배포하세요.`
+          );
+          return;
+        }
         if (envDiag?.GOOGLE_OAUTH_PROBE === "invalid_client") {
           setLoginError(
-            `Google이 이 OAuth 클라이언트를 찾지 못합니다(401 invalid_client). Cloudflare GOOGLE_CLIENT_ID·SECRET을 Google 콘솔(all-print, 힌트 ${envDiag.GOOGLE_CLIENT_ID_HINT ?? "—"})과 동일한 웹 클라이언트에서 다시 복사·재배포하세요.`
+            "Google Client ID는 인식되지만 GOOGLE_CLIENT_SECRET이 콘솔과 다릅니다. Google 콘솔에서 클라이언트 보안 비밀번호를 새로 발급 → Cloudflare GOOGLE_CLIENT_SECRET에 붙여넣기 → 재배포 후 다시 시도하세요."
           );
           return;
         }

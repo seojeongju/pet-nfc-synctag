@@ -6,6 +6,7 @@ import {
   googleClientIdProjectNumber,
   normalizeGoogleClientId,
   normalizeGoogleClientSecret,
+  probeGoogleAuthorizeClient,
   probeGoogleOAuthClient,
   validateGoogleClientIdFormat,
 } from "@/lib/google-oauth-env";
@@ -58,12 +59,16 @@ export async function GET() {
     : null;
 
   let googleOAuthProbe: "ok" | "invalid_client" | "invalid_secret" | "skipped" = "skipped";
-  if (googleIdFormat.ok && googleClientSecret && googleOAuthCallback) {
-    googleOAuthProbe = await probeGoogleOAuthClient({
-      clientId: googleClientId,
-      clientSecret: googleClientSecret,
-      redirectUri: googleOAuthCallback,
-    });
+  let googleAuthorizeProbe: "ok" | "invalid_client" | "skipped" = "skipped";
+  if (googleIdFormat.ok && googleOAuthCallback) {
+    googleAuthorizeProbe = await probeGoogleAuthorizeClient(googleClientId, googleOAuthCallback);
+    if (googleClientSecret) {
+      googleOAuthProbe = await probeGoogleOAuthClient({
+        clientId: googleClientId,
+        clientSecret: googleClientSecret,
+        redirectUri: googleOAuthCallback,
+      });
+    }
   }
 
   const diagnostics = {
@@ -82,7 +87,9 @@ export async function GET() {
       /** 콘솔 Client ID 끝 12자 — all-print 웹 클라이언트: uu8scdsfl6g3 */
       GOOGLE_CLIENT_ID_TAIL: googleClientIdTail(env.GOOGLE_CLIENT_ID),
       GOOGLE_CLIENT_SECRET: !!googleClientSecret ? "SET" : "MISSING",
-      /** token probe: ok=Google이 클라이언트 인식, invalid_client=ID·Secret 불일치 또는 삭제된 클라이언트 */
+      /** authorize URL — invalid_client면 ID가 Google에 없음(삭제·오타) */
+      GOOGLE_CLIENT_ID_AUTHORIZE_PROBE: googleAuthorizeProbe,
+      /** token probe — authorize ok인데 invalid_client면 Secret 불일치 */
       GOOGLE_OAUTH_PROBE: googleOAuthProbe,
       KAKAO_CLIENT_ID: !!env.KAKAO_CLIENT_ID ? "SET" : "MISSING",
       KAKAO_CLIENT_ID_HINT: clientIdHint(env.KAKAO_CLIENT_ID),
