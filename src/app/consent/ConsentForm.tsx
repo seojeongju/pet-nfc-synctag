@@ -35,7 +35,7 @@ export function ConsentForm({ next, err }: { next: string; err: string }) {
         setPending(true);
         try {
           await submitRequiredPrivacyConsent(form);
-          window.location.replace(buildOAuthViewportResetUrl(next));
+          window.location.replace(buildOAuthViewportResetUrl(next, { silent: true }));
         } catch (error) {
           setLocalErr(error instanceof Error ? error.message : "동의 저장에 실패했습니다.");
         } finally {

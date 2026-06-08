@@ -6,21 +6,30 @@
       name="viewport"
       content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
     />
-    <title>링크유 로그인 처리</title>
+    <title>링크유</title>
     <style>
+      html,
       body {
         margin: 0;
         min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: linear-gradient(135deg, #f0fdfa 0%, #ffffff 50%, #eef2ff 100%);
-        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-        color: #0f766e;
+        background: #f8fafc;
+      }
+      body.silent {
+        background: #f8fafc;
       }
       .box {
-        text-align: center;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
         padding: 1.5rem;
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        color: #0f766e;
+        text-align: center;
+      }
+      body.silent .box {
+        display: none;
       }
       .spinner {
         width: 40px;
@@ -44,8 +53,8 @@
     </style>
   </head>
   <body>
-    <div class="box">
-      <div class="spinner" aria-hidden="true"></div>
+    <div class="box" aria-hidden="true">
+      <div class="spinner"></div>
       <p id="status">로그인 완료 중…</p>
     </div>
     <script>
@@ -53,15 +62,14 @@
         var VIEWPORT =
           "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover";
         var meta = document.querySelector('meta[name="viewport"]');
-        if (meta) {
-          meta.setAttribute("content", "width=1");
-          requestAnimationFrame(function () {
-            meta.setAttribute("content", VIEWPORT);
-          });
+        var params = new URLSearchParams(location.search);
+        var silent = params.get("silent") === "1";
+        var next = params.get("next") || "/hub";
+
+        if (silent) {
+          document.body.classList.add("silent");
         }
 
-        var params = new URLSearchParams(location.search);
-        var next = params.get("next") || "/hub";
         try {
           next = decodeURIComponent(next);
         } catch (e) {}
@@ -73,7 +81,7 @@
 
         var statusEl = document.getElementById("status");
         var attempt = 0;
-        var maxAttempts = 12;
+        var maxAttempts = silent ? 4 : 12;
 
         function hasSession(payload) {
           if (!payload || typeof payload !== "object") return false;
@@ -120,10 +128,11 @@
 
         function navigateWithViewportReset(url) {
           applyViewportReset();
+          var delay = silent ? 40 : 120;
           window.setTimeout(function () {
             applyViewportReset();
             location.replace(url);
-          }, 120);
+          }, delay);
         }
 
         function goLoginSessionError() {
@@ -150,7 +159,6 @@
             })
             .then(function (payload) {
               if (hasSession(payload)) {
-                if (statusEl) statusEl.textContent = "화면을 맞추는 중…";
                 navigateWithViewportReset(next);
                 return;
               }
@@ -159,8 +167,10 @@
                 goLoginSessionError();
                 return;
               }
-              if (statusEl) statusEl.textContent = "세션 확인 중… (" + attempt + "/" + maxAttempts + ")";
-              window.setTimeout(trySessionThenContinue, 180);
+              if (!silent && statusEl) {
+                statusEl.textContent = "세션 확인 중… (" + attempt + "/" + maxAttempts + ")";
+              }
+              window.setTimeout(trySessionThenContinue, silent ? 80 : 180);
             })
             .catch(function () {
               attempt += 1;
@@ -168,11 +178,12 @@
                 goLoginSessionError();
                 return;
               }
-              window.setTimeout(trySessionThenContinue, 180);
+              window.setTimeout(trySessionThenContinue, silent ? 80 : 180);
             });
         }
 
-        window.setTimeout(trySessionThenContinue, 320);
+        applyViewportReset();
+        window.setTimeout(trySessionThenContinue, silent ? 0 : 320);
       })();
     </script>
   </body>

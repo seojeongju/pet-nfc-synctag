@@ -1,8 +1,13 @@
 /** Google OAuth 복귀 직후 viewport 재설정용 정적 HTML (Next.js/React 우회) */
 export const OAUTH_VIEWPORT_RESET_PATH = "/oauth-viewport-reset.html";
 
-export function buildOAuthViewportResetUrl(nextPath: string): string {
-  return `${OAUTH_VIEWPORT_RESET_PATH}?next=${encodeURIComponent(nextPath)}`;
+export function buildOAuthViewportResetUrl(
+  nextPath: string,
+  options?: { silent?: boolean }
+): string {
+  const params = new URLSearchParams({ next: nextPath });
+  if (options?.silent) params.set("silent", "1");
+  return `${OAUTH_VIEWPORT_RESET_PATH}?${params.toString()}`;
 }
 
 export function buildConsentWithNextUrl(destinationPath: string): string {
