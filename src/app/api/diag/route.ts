@@ -28,7 +28,7 @@ function googleClientIdHint(clientId: string | undefined): string | null {
   return `${core.slice(0, 4)}…${core.slice(-4)}`;
 }
 
-/** Google 콘솔 Client ID 끝 12자와 대조 (예: uu8scdsfl6g3) */
+/** Google 콘솔 Client ID 끝 12자와 대조 (NFC-TAG 웹 클라이언트: uu8scdsfi6g3) */
 function googleClientIdTail(clientId: string | undefined): string | null {
   const t = normalizeGoogleClientId(clientId);
   if (!t) return null;
@@ -84,8 +84,9 @@ export async function GET() {
       GOOGLE_CLIENT_ID_FORMAT_OK: googleIdFormat.ok,
       GOOGLE_CLIENT_ID_FORMAT_REASON: googleIdFormat.reason,
       GOOGLE_CLIENT_ID_PROJECT_NUMBER: googleClientIdProjectNumber(env.GOOGLE_CLIENT_ID),
-      /** 콘솔 Client ID 끝 12자 — all-print 웹 클라이언트: uu8scdsfl6g3 */
+      /** 콘솔 Client ID 끝 12자 — NFC-TAG 웹 클라이언트: uu8scdsfi6g3 (i, 엘 l 아님) */
       GOOGLE_CLIENT_ID_TAIL: googleClientIdTail(env.GOOGLE_CLIENT_ID),
+      GOOGLE_CLIENT_ID_EXPECTED_TAIL: "uu8scdsfi6g3",
       GOOGLE_CLIENT_SECRET: !!googleClientSecret ? "SET" : "MISSING",
       /** authorize URL — invalid_client면 ID가 Google에 없음(삭제·오타) */
       GOOGLE_CLIENT_ID_AUTHORIZE_PROBE: googleAuthorizeProbe,

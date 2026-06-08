@@ -164,21 +164,27 @@ export function LoginForm() {
         "로그인은 완료됐지만 이 브라우저에 세션이 연결되지 않았았습니다. 같은 브라우저/탭에서 다시 시도해 주세요. (카카오톡·다른 앱 로그인 후 돌아오면 자주 발생합니다.)"
       );
     } else if (oauthError === "invalid_code") {
-      const expectedTail = "uu8scdsfl6g3";
+      const expectedTail = "uu8scdsfi6g3";
       fetch("/api/diag", { cache: "no-store" })
         .then((r) => r.json())
         .then((raw: unknown) => {
           const d = raw as { environment?: { GOOGLE_CLIENT_ID_TAIL?: string | null } };
           const tail = d.environment?.GOOGLE_CLIENT_ID_TAIL;
+          if (tail === "uu8scdsfl6g3") {
+            setLoginError(
+              "Cloudflare GOOGLE_CLIENT_ID 끝이 …fl6g3(소문자 L)로 되어 있습니다. Google 콘솔(NFC-TAG)은 …fi6g3(소문자 i)입니다. 콘솔에서 클라이언트 ID 전체를 다시 복사해 Cloudflare에 붙여넣은 뒤 재배포하세요."
+            );
+            return;
+          }
           if (tail === expectedTail) {
             setLoginError(
-              "Google Client ID는 서버에 맞게 설정되어 있습니다. GOOGLE_CLIENT_SECRET이 Google 콘솔(all-print) 웹 클라이언트의 현재 비밀번호와 같은지 확인해 주세요. 콘솔에서 비밀번호를 새로 발급 → Cloudflare Production에 붙여넣기 → 재배포 후, 시크릿 탭에서 다시 시도하세요."
+              "Google Client ID는 서버에 맞게 설정되어 있습니다. GOOGLE_CLIENT_SECRET이 Google 콘솔(NFC-TAG) 웹 클라이언트의 현재 비밀번호와 같은지 확인해 주세요. 콘솔에서 비밀번호를 새로 발급 → Cloudflare Production에 붙여넣기 → 재배포 후, 시크릿 탭에서 다시 시도하세요."
             );
             return;
           }
           if (tail && tail !== expectedTail) {
             setLoginError(
-              `Cloudflare GOOGLE_CLIENT_ID가 콘솔과 다릅니다. 현재 …${tail} / 필요 …${expectedTail}. ID·SECRET을 같은 클라이언트에서 복사한 뒤 재배포하세요.`
+              `Cloudflare GOOGLE_CLIENT_ID가 콘솔(NFC-TAG)과 다릅니다. 현재 …${tail} / 필요 …${expectedTail}. ID·SECRET을 같은 클라이언트에서 복사한 뒤 재배포하세요.`
             );
             return;
           }
@@ -223,6 +229,7 @@ export function LoginForm() {
             GOOGLE_CLIENT_ID_AUTHORIZE_PROBE?: string;
             GOOGLE_OAUTH_PROBE?: string;
             GOOGLE_CLIENT_ID_HINT?: string | null;
+            GOOGLE_CLIENT_ID_TAIL?: string | null;
           };
         };
         const envDiag = diag.environment;
@@ -238,9 +245,15 @@ export function LoginForm() {
           );
           return;
         }
+        if (envDiag?.GOOGLE_CLIENT_ID_TAIL === "uu8scdsfl6g3") {
+          setLoginError(
+            "Cloudflare GOOGLE_CLIENT_ID 끝이 …fl6g3(소문자 L)입니다. Google 콘솔(NFC-TAG)은 …fi6g3(소문자 i)입니다. 콘솔에서 클라이언트 ID 전체를 다시 복사 → Cloudflare GOOGLE_CLIENT_ID 교체 → 재배포하세요."
+          );
+          return;
+        }
         if (envDiag?.GOOGLE_CLIENT_ID_AUTHORIZE_PROBE === "invalid_client") {
           setLoginError(
-            `Cloudflare GOOGLE_CLIENT_ID(힌트 ${envDiag.GOOGLE_CLIENT_ID_HINT ?? "—"})가 Google에 등록되어 있지 않습니다. Google 콘솔(all-print)에서 웹 OAuth 클라이언트를 열어 **현재** 클라이언트 ID 전체(…apps.googleusercontent.com)를 복사 → Cloudflare Production GOOGLE_CLIENT_ID에 붙여넣기 → 같은 클라이언트 Secret도 함께 갱신 → 재배포하세요.`
+            `Cloudflare GOOGLE_CLIENT_ID(힌트 ${envDiag.GOOGLE_CLIENT_ID_HINT ?? "—"})가 Google에 등록되어 있지 않습니다. Google 콘솔(NFC-TAG)에서 **현재** 클라이언트 ID 전체(…fi6g3.apps.googleusercontent.com)를 복사 → Cloudflare Production GOOGLE_CLIENT_ID에 붙여넣기 → Secret도 함께 갱신 → 재배포하세요.`
           );
           return;
         }
