@@ -7,7 +7,7 @@ import {
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { loginRedirectPath } from "@/lib/login-redirect-path";
 import {
-  buildSocialLoginCallbackUrl,
+  buildConsentWithNextUrl,
   resolveOAuthFlowDestination,
 } from "@/lib/oauth-viewport-bridge";
 import { SUBJECT_KINDS } from "@/lib/subject-kind";
@@ -38,7 +38,7 @@ export async function GET(req: Request) {
   const reqUrl = new URL(req.url);
   const callbackURL =
     sanitizeCallbackPath(reqUrl.searchParams.get("callbackURL")) ??
-    buildSocialLoginCallbackUrl("/hub");
+    buildConsentWithNextUrl("/hub");
 
   const kindParam = reqUrl.searchParams.get("kind");
   const kind =

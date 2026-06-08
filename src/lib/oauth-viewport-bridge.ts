@@ -10,11 +10,11 @@ export function buildConsentWithNextUrl(destinationPath: string): string {
 }
 
 /**
- * 소셜 로그인 callbackURL — better-auth state에 넣는 경로.
- * OAuth 직후 정적 브리지 → consent → (동의 완료 시) 목적지 순으로 viewport 오염을 방지합니다.
+ * 소셜 로그인 callbackURL — better-auth OAuth state에 넣는 경로.
+ * 짧은 `/consent?next=` 유지(PKCE·state 쿠키 안정). viewport 복구는 consent 이후 정적 브리지에서 처리.
  */
 export function buildSocialLoginCallbackUrl(destinationPath: string): string {
-  return buildOAuthViewportResetUrl(buildConsentWithNextUrl(destinationPath));
+  return buildConsentWithNextUrl(destinationPath);
 }
 
 /** oauth-viewport-reset / consent 래핑 URL에서 최종 목적지 추출 */
