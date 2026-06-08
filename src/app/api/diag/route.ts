@@ -2,6 +2,13 @@
 import { NextResponse } from "next/server";
 import { getAuth } from "@/lib/auth";
 import { getMigration0008Status } from "@/lib/db-migration-0008";
+import {
+  googleClientIdProjectNumber,
+  normalizeGoogleClientId,
+  normalizeGoogleClientSecret,
+  probeGoogleOAuthClient,
+  validateGoogleClientIdFormat,
+} from "@/lib/google-oauth-env";
 
 export const runtime = "edge";
 
@@ -13,7 +20,7 @@ function clientIdHint(clientId: string | undefined): string | null {
 }
 
 function googleClientIdHint(clientId: string | undefined): string | null {
-  const t = clientId?.trim();
+  const t = normalizeGoogleClientId(clientId);
   if (!t) return null;
   const core = t.replace(/\.apps\.googleusercontent\.com$/i, "");
   if (core.length <= 8) return "set(short)";
@@ -22,7 +29,7 @@ function googleClientIdHint(clientId: string | undefined): string | null {
 
 /** Google 콘솔 Client ID 끝 12자와 대조 (예: uu8scdsfl6g3) */
 function googleClientIdTail(clientId: string | undefined): string | null {
-  const t = clientId?.trim();
+  const t = normalizeGoogleClientId(clientId);
   if (!t) return null;
   const core = t.replace(/\.apps\.googleusercontent\.com$/i, "");
   return core.length >= 12 ? core.slice(-12) : core;
@@ -42,25 +49,45 @@ export async function GET() {
   const context = getCfRequestContext();
   const env = context.env as DiagEnv;
 
+  const googleClientId = normalizeGoogleClientId(env.GOOGLE_CLIENT_ID);
+  const googleClientSecret = normalizeGoogleClientSecret(env.GOOGLE_CLIENT_SECRET);
+  const authBaseUrl = env.BETTER_AUTH_URL?.trim().replace(/\/+$/, "") || null;
+  const googleIdFormat = validateGoogleClientIdFormat(googleClientId);
+  const googleOAuthCallback = authBaseUrl
+    ? `${authBaseUrl}/api/auth/callback/google`
+    : null;
+
+  let googleOAuthProbe: "ok" | "invalid_client" | "invalid_secret" | "skipped" = "skipped";
+  if (googleIdFormat.ok && googleClientSecret && googleOAuthCallback) {
+    googleOAuthProbe = await probeGoogleOAuthClient({
+      clientId: googleClientId,
+      clientSecret: googleClientSecret,
+      redirectUri: googleOAuthCallback,
+    });
+  }
+
   const diagnostics = {
     timestamp: new Date().toISOString(),
     environment: {
       BETTER_AUTH_SECRET: !!env.BETTER_AUTH_SECRET ? "SET" : "MISSING",
       BETTER_AUTH_URL: !!env.BETTER_AUTH_URL ? "SET" : "MISSING",
       /** OAuth redirect_uri 기준 — 반드시 https://wow-linku.co.kr (pages.dev 아님) */
-      BETTER_AUTH_URL_VALUE: env.BETTER_AUTH_URL?.trim().replace(/\/+$/, "") || null,
+      BETTER_AUTH_URL_VALUE: authBaseUrl,
       NEXT_PUBLIC_APP_URL: !!env.NEXT_PUBLIC_APP_URL ? "SET" : "MISSING",
-      GOOGLE_CLIENT_ID: !!env.GOOGLE_CLIENT_ID ? "SET" : "MISSING",
+      GOOGLE_CLIENT_ID: !!googleClientId ? "SET" : "MISSING",
       GOOGLE_CLIENT_ID_HINT: googleClientIdHint(env.GOOGLE_CLIENT_ID),
+      GOOGLE_CLIENT_ID_FORMAT_OK: googleIdFormat.ok,
+      GOOGLE_CLIENT_ID_FORMAT_REASON: googleIdFormat.reason,
+      GOOGLE_CLIENT_ID_PROJECT_NUMBER: googleClientIdProjectNumber(env.GOOGLE_CLIENT_ID),
       /** 콘솔 Client ID 끝 12자 — all-print 웹 클라이언트: uu8scdsfl6g3 */
       GOOGLE_CLIENT_ID_TAIL: googleClientIdTail(env.GOOGLE_CLIENT_ID),
-      GOOGLE_CLIENT_SECRET: !!env.GOOGLE_CLIENT_SECRET ? "SET" : "MISSING",
+      GOOGLE_CLIENT_SECRET: !!googleClientSecret ? "SET" : "MISSING",
+      /** token probe: ok=Google이 클라이언트 인식, invalid_client=ID·Secret 불일치 또는 삭제된 클라이언트 */
+      GOOGLE_OAUTH_PROBE: googleOAuthProbe,
       KAKAO_CLIENT_ID: !!env.KAKAO_CLIENT_ID ? "SET" : "MISSING",
       KAKAO_CLIENT_ID_HINT: clientIdHint(env.KAKAO_CLIENT_ID),
       /** Google OAuth 콜백 — 콘솔「승인된 리디렉션 URI」와 일치해야 함 */
-      GOOGLE_OAUTH_CALLBACK_EXPECTED: env.BETTER_AUTH_URL?.trim()
-        ? `${env.BETTER_AUTH_URL.trim().replace(/\/+$/, "")}/api/auth/callback/google`
-        : null,
+      GOOGLE_OAUTH_CALLBACK_EXPECTED: googleOAuthCallback,
     },
     database: {
       isBound: !!env.DB,

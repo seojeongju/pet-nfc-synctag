@@ -26,6 +26,13 @@ import { loginRedirectPath } from "@/lib/login-redirect-path";
 
 const DEFAULT_CALLBACK = "/hub";
 
+function buildGoogleStartUrl(resolvedCallbackURL: string, kind: SubjectKind): string {
+  const u = new URL("/api/auth/google-start", window.location.origin);
+  u.searchParams.set("callbackURL", resolvedCallbackURL);
+  u.searchParams.set("kind", kind);
+  return u.pathname + u.search;
+}
+
 function safeCallbackUrl(raw: string | null): string {
   if (!raw || typeof raw !== "string") return DEFAULT_CALLBACK;
   try {
@@ -195,7 +202,7 @@ export function LoginForm() {
 
   /**
    * 소셜 로그인: OAuth 콜백 → /consent → 목적지
-   * Google·카카오 동일하게 better-auth signIn.social(브라우저 리다이렉트) 사용.
+   * Google은 /api/auth/google-start 전체 페이지 이동(PKCE Set-Cookie 안정화).
    */
   const handleLogin = async (provider: "google" | "kakao") => {
     setLoginError("");
@@ -206,9 +213,46 @@ export function LoginForm() {
       callbackUrl: callbackURL,
     });
 
+    if (provider === "google") {
+      try {
+        const diagRes = await fetch("/api/diag", { cache: "no-store" });
+        const diag = (await diagRes.json()) as {
+          environment?: {
+            GOOGLE_CLIENT_ID_FORMAT_OK?: boolean;
+            GOOGLE_CLIENT_ID_FORMAT_REASON?: string | null;
+            GOOGLE_OAUTH_PROBE?: string;
+            GOOGLE_CLIENT_ID_HINT?: string | null;
+          };
+        };
+        const envDiag = diag.environment;
+        if (envDiag?.GOOGLE_CLIENT_ID_FORMAT_OK === false) {
+          if (envDiag.GOOGLE_CLIENT_ID_FORMAT_REASON === "secret_in_id_field") {
+            setLoginError(
+              "Cloudflare GOOGLE_CLIENT_ID에 클라이언트 Secret(GOCSPX-…)이 들어가 있습니다. Google 콘솔의 클라이언트 ID(…apps.googleusercontent.com)를 넣어 주세요."
+            );
+            return;
+          }
+          setLoginError(
+            "Cloudflare GOOGLE_CLIENT_ID 형식이 올바르지 않습니다. Google 콘솔에서 클라이언트 ID 전체를 복사해 붙여넣은 뒤 재배포하세요."
+          );
+          return;
+        }
+        if (envDiag?.GOOGLE_OAUTH_PROBE === "invalid_client") {
+          setLoginError(
+            `Google이 이 OAuth 클라이언트를 찾지 못합니다(401 invalid_client). Cloudflare GOOGLE_CLIENT_ID·SECRET을 Google 콘솔(all-print, 힌트 ${envDiag.GOOGLE_CLIENT_ID_HINT ?? "—"})과 동일한 웹 클라이언트에서 다시 복사·재배포하세요.`
+          );
+          return;
+        }
+      } catch {
+        /* diag 실패 시에도 google-start 시도 */
+      }
+      window.location.assign(buildGoogleStartUrl(resolvedCallbackURL, kind));
+      return;
+    }
+
     try {
       const result = await signIn.social({
-        provider,
+        provider: "kakao",
         callbackURL: resolvedCallbackURL,
         errorCallbackURL,
       });

@@ -1,5 +1,9 @@
 import { betterAuth } from "better-auth";
 import { fetchKakaoUserInfoForAuth } from "@/lib/kakao-auth-user-info";
+import {
+    normalizeGoogleClientId,
+    normalizeGoogleClientSecret,
+} from "@/lib/google-oauth-env";
 
 type AuthEnv = CloudflareEnv & {
     BETTER_AUTH_SECRET?: string;
@@ -18,8 +22,8 @@ export const getAuth = (env: AuthEnv) => {
     }
 
     const baseURL = env.BETTER_AUTH_URL?.trim().replace(/\/+$/, "");
-    const googleClientId = env.GOOGLE_CLIENT_ID?.trim() ?? "";
-    const googleClientSecret = env.GOOGLE_CLIENT_SECRET?.trim() ?? "";
+    const googleClientId = normalizeGoogleClientId(env.GOOGLE_CLIENT_ID);
+    const googleClientSecret = normalizeGoogleClientSecret(env.GOOGLE_CLIENT_SECRET);
     const trustedOrigins = [
         ...(baseURL ? [baseURL] : []),
         "https://wow-linku.co.kr",
@@ -49,6 +53,9 @@ export const getAuth = (env: AuthEnv) => {
             google: {
                 clientId: googleClientId,
                 clientSecret: googleClientSecret,
+                ...(baseURL
+                    ? { redirectURI: `${baseURL}/api/auth/callback/google` }
+                    : {}),
                 /**
                  * Google OAuth: `display=touch` — 모바일/터치에 맞는 계정 UI(전체 폭)로 유도.
                  * redirect URI는 baseURL(BETTER_AUTH_URL)로 자동 구성 — Google 콘솔과 동일해야 함.
