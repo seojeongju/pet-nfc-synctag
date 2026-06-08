@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { submitRequiredPrivacyConsent } from "@/app/actions/privacy-consent";
+import { buildOAuthViewportResetUrl } from "@/lib/oauth-viewport-bridge";
 
 export function ConsentForm({ next, err }: { next: string; err: string }) {
   const [agreeTerms, setAgreeTerms] = useState(false);
@@ -34,7 +35,7 @@ export function ConsentForm({ next, err }: { next: string; err: string }) {
         setPending(true);
         try {
           await submitRequiredPrivacyConsent(form);
-          window.location.replace(next);
+          window.location.replace(buildOAuthViewportResetUrl(next));
         } catch (error) {
           setLocalErr(error instanceof Error ? error.message : "동의 저장에 실패했습니다.");
         } finally {

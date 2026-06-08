@@ -8,6 +8,7 @@ import { ConsentForm } from "./ConsentForm";
 import { ConsentViewportFix } from "@/components/auth/ConsentViewportFix";
 import { buildNoIndexMetadata } from "@/lib/seo";
 import { loginRedirectPath } from "@/lib/login-redirect-path";
+import { buildOAuthViewportResetUrl } from "@/lib/oauth-viewport-bridge";
 
 export const runtime = "edge";
 export const metadata = buildNoIndexMetadata("링크유 약관 및 동의");
@@ -60,7 +61,8 @@ export default async function ConsentPage({
 
   const consent = await getUserConsentStatus(userId);
   if (consent.hasRequired) {
-    redirect(next);
+    // 서버 302만으로 대시보드에 가면 모바일 viewport 오염이 남을 수 있음 → 정적 브리지 경유
+    redirect(buildOAuthViewportResetUrl(next));
   }
 
   return (

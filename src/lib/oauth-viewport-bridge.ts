@@ -5,10 +5,39 @@ export function buildOAuthViewportResetUrl(nextPath: string): string {
   return `${OAUTH_VIEWPORT_RESET_PATH}?next=${encodeURIComponent(nextPath)}`;
 }
 
+export function buildConsentWithNextUrl(destinationPath: string): string {
+  return `/consent?next=${encodeURIComponent(destinationPath)}`;
+}
+
 /**
- * 소셜 로그인 callbackURL — OAuth state에 넣는 경로는 짧게 유지(PKCE·state 쿠키 안정).
- * viewport 복구는 /consent·레이아웃 ViewportFix에서 처리합니다.
+ * 소셜 로그인 callbackURL — better-auth state에 넣는 경로.
+ * OAuth 직후 정적 브리지 → consent → (동의 완료 시) 목적지 순으로 viewport 오염을 방지합니다.
  */
 export function buildSocialLoginCallbackUrl(destinationPath: string): string {
-  return `/consent?next=${encodeURIComponent(destinationPath)}`;
+  return buildOAuthViewportResetUrl(buildConsentWithNextUrl(destinationPath));
+}
+
+/** oauth-viewport-reset / consent 래핑 URL에서 최종 목적지 추출 */
+export function resolveOAuthFlowDestination(callbackURL: string): string {
+  if (
+    callbackURL.startsWith(`${OAUTH_VIEWPORT_RESET_PATH}?`) ||
+    callbackURL.startsWith("/oauth-viewport-reset.html?")
+  ) {
+    try {
+      const u = new URL(callbackURL, "https://example.invalid");
+      const inner = u.searchParams.get("next");
+      if (inner) return resolveOAuthFlowDestination(inner);
+    } catch {
+      /* ignore */
+    }
+  }
+  if (callbackURL.startsWith("/consent?")) {
+    try {
+      const u = new URL(callbackURL, "https://example.invalid");
+      return u.searchParams.get("next") ?? "/hub";
+    } catch {
+      return "/hub";
+    }
+  }
+  return callbackURL;
 }

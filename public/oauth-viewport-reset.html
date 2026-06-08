@@ -85,13 +85,45 @@
         }
 
         function resolveFinalDestination(path) {
-          if (path.indexOf("/consent?") !== 0) return path;
-          try {
-            var u = new URL(path, location.origin);
-            return u.searchParams.get("next") || "/hub";
-          } catch (e) {
-            return "/hub";
+          if (path.indexOf("/oauth-viewport-reset.html?") === 0) {
+            try {
+              var wrapped = new URL(path, location.origin);
+              var inner = wrapped.searchParams.get("next");
+              if (inner) return resolveFinalDestination(inner);
+            } catch (e) {}
           }
+          if (path.indexOf("/consent?") === 0) {
+            try {
+              var u = new URL(path, location.origin);
+              return u.searchParams.get("next") || "/hub";
+            } catch (e) {
+              return "/hub";
+            }
+          }
+          return path;
+        }
+
+        function applyViewportReset() {
+          meta = document.querySelector('meta[name="viewport"]');
+          if (meta) {
+            meta.setAttribute("content", "width=1");
+            requestAnimationFrame(function () {
+              meta.setAttribute("content", VIEWPORT);
+            });
+          }
+          try {
+            document.documentElement.style.zoom = "1";
+            document.body.style.zoom = "1";
+          } catch (e) {}
+          window.scrollTo(0, 0);
+        }
+
+        function navigateWithViewportReset(url) {
+          applyViewportReset();
+          window.setTimeout(function () {
+            applyViewportReset();
+            location.replace(url);
+          }, 120);
         }
 
         function goLoginSessionError() {
@@ -119,9 +151,7 @@
             .then(function (payload) {
               if (hasSession(payload)) {
                 if (statusEl) statusEl.textContent = "화면을 맞추는 중…";
-                meta = document.querySelector('meta[name="viewport"]');
-                if (meta) meta.setAttribute("content", VIEWPORT);
-                location.replace(next);
+                navigateWithViewportReset(next);
                 return;
               }
               attempt += 1;
