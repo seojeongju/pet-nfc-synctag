@@ -7,15 +7,9 @@ import { useMemo, useState } from "react";
 import {
   ArrowRight,
   Baby,
+  BookOpen,
   Briefcase,
   Gem,
-  HeartHandshake,
-  Link2,
-  MessageCircleWarning,
-  PhoneCall,
-  ScanLine,
-  ShieldAlert,
-  UserPlus,
   type LucideIcon,
   PawPrint,
   ShieldCheck,
@@ -67,9 +61,6 @@ export default function MultiModeHomeClient({
   const [isRouting, setIsRouting] = useState(false);
   const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
-  /** 단계 카드는 1×3 고정, 설명은 행 아래 전체 너비 패널에만 표시 */
-  const [openGuardianStepId, setOpenGuardianStepId] = useState<string | null>(null);
-  const [openFinderStepId, setOpenFinderStepId] = useState<string | null>(null);
   const showActivateBanner = Boolean(activateTagId) && !bannerDismissed;
   const activateModeSectionHighlight = showActivateBanner;
   const heroTitle = "당신의 일상을 지키는 가장 스마트한 선택,\nLink-U";
@@ -77,52 +68,6 @@ export default function MultiModeHomeClient({
     "반려동물·어르신·아이·수하물·주얼리·시설 동행 안내까지.\n링크유는 스캔 이후의 안내와 연결 흐름을 쉽고 다정하게 이어줍니다.";
   const selectedMeta =
     pendingNav && pendingNav !== "companion" ? subjectKindMeta[pendingNav] : null;
-  const guardianSteps = [
-    {
-      id: "mode",
-      title: "모드 선택",
-      summary: "사용 목적에 맞는 링크유 모드를 선택합니다.",
-      detail: "반려동물·어르신·아이·수하물·주얼리 중 현재 관리할 대상에 맞는 모드를 고르거나, 시설·동행 안내는 링크유-동행을 선택하세요.",
-      Icon: ScanLine,
-    },
-    {
-      id: "register",
-      title: "대상 등록",
-      summary: "보호자 정보와 대상을 등록합니다.",
-      detail: "선택한 모드 대시보드에서 대상 정보와 연락처를 등록해, 발견 시 즉시 안내될 수 있게 준비합니다.",
-      Icon: UserPlus,
-    },
-    {
-      id: "connect",
-      title: "태그 연결",
-      summary: "태그와 대상을 연결해 사용을 시작합니다.",
-      detail: "등록된 대상과 태그를 연결하면 스캔 즉시 안내·연결 흐름이 동작하며 실제 사용이 시작됩니다.",
-      Icon: Link2,
-    },
-  ] as const;
-  const finderSteps = [
-    {
-      id: "scan-open",
-      title: "태그 화면 열기",
-      summary: "스캔 후 열린 URL 화면을 그대로 확인합니다.",
-      detail: "별도 앱 설치 없이 열린 안내 화면에서 기본 정보를 확인하고 필요한 동작을 바로 진행할 수 있습니다.",
-      Icon: ScanLine,
-    },
-    {
-      id: "contact",
-      title: "보호자 빠른 연락",
-      summary: "표시된 연락 수단으로 즉시 연결합니다.",
-      detail: "전화/문자 등 제공된 버튼을 눌러 보호자에게 빠르게 알리고, 상황을 간단히 전달해 주세요.",
-      Icon: PhoneCall,
-    },
-    {
-      id: "safe-help",
-      title: "안전 안내 전달",
-      summary: "현재 위치나 상태를 함께 알려줍니다.",
-      detail: "가능하면 발견 위치와 대상 상태를 함께 전달하면 보호자가 더 빠르고 정확하게 대응할 수 있습니다.",
-      Icon: ShieldAlert,
-    },
-  ] as const;
   const networkNodes = useMemo(
     () => [
       { id: "n1", x: 8, y: 18 },
@@ -178,14 +123,6 @@ export default function MultiModeHomeClient({
     window.setTimeout(() => {
       router.push(companionHref);
     }, 260);
-  };
-
-  const toggleGuardianStep = (id: string) => {
-    setOpenGuardianStepId((prev) => (prev === id ? null : id));
-  };
-
-  const toggleFinderStep = (id: string) => {
-    setOpenFinderStepId((prev) => (prev === id ? null : id));
   };
 
   return (
@@ -463,162 +400,30 @@ export default function MultiModeHomeClient({
           transition={{ delay: 0.06, duration: 0.45 }}
           className="rounded-[26px] border border-teal-100/90 bg-gradient-to-br from-teal-50/95 to-white p-[18px] shadow-[0_12px_30px_rgba(15,23,42,0.05)] min-[390px]:rounded-[28px] min-[390px]:p-5"
         >
-          <p className="mb-3 text-[11px] font-black uppercase tracking-[0.18em] text-teal-600">보호자 이용 순서</p>
-          <div className="grid grid-cols-3 gap-1.5 min-[390px]:gap-2.5 sm:gap-3">
-            {guardianSteps.map((step, index) => {
-              const selected = openGuardianStepId === step.id;
-              return (
-                <article
-                  key={step.id}
-                  className={cn(
-                    "flex min-w-0 flex-col rounded-2xl border bg-white/90 px-1.5 py-2 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md min-[390px]:px-2.5 min-[390px]:py-3",
-                    selected
-                      ? "border-teal-400/70 ring-2 ring-teal-300/50 bg-teal-50/40"
-                      : "border-teal-100/90"
-                  )}
-                >
-                  <button
-                    type="button"
-                    onClick={() => toggleGuardianStep(step.id)}
-                    aria-expanded={selected}
-                    className="flex w-full min-w-0 flex-col items-center gap-1 rounded-xl px-0.5 py-1 text-center transition hover:bg-teal-50/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-300/70 min-[390px]:gap-1.5 min-[390px]:py-1.5"
-                  >
-                    <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600 min-[390px]:h-9 min-[390px]:w-9">
-                      <step.Icon className="h-3.5 w-3.5 min-[390px]:h-4 min-[390px]:w-4" />
-                    </span>
-                    <div className="min-w-0 w-full">
-                      <p className="text-[9px] font-black leading-snug text-slate-900 break-keep [word-break:keep-all] min-[390px]:text-[11px]">
-                        {step.title}
-                      </p>
-                      <p className="text-[8px] font-semibold text-slate-500 min-[390px]:text-[10px]">{index + 1}단계</p>
-                    </div>
-                  </button>
-                </article>
-              );
-            })}
+          <div className="flex items-start gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-teal-600 shadow-sm">
+              <BookOpen className="h-5 w-5" aria-hidden />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-teal-600">처음이신가요?</p>
+              <h2 className="mt-1 text-lg font-black leading-snug text-slate-900 break-keep [word-break:keep-all]">
+                사용 설명서에서 단계별로 안내해 드려요
+              </h2>
+              <p className="mt-2 text-[12px] font-semibold leading-relaxed text-slate-600 break-keep [word-break:keep-all]">
+                태그 등록·모드 선택·발견자 안내·FAQ까지 한곳에서 확인하고, PDF로 저장할 수 있습니다.
+              </p>
+            </div>
           </div>
-          <AnimatePresence initial={false}>
-            {openGuardianStepId ? (
-              <motion.div
-                key={openGuardianStepId}
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.2 }}
-                className="mt-3 w-full rounded-2xl border border-teal-100 bg-teal-50/85 px-3.5 py-3 text-left shadow-sm min-[390px]:px-4 min-[390px]:py-3.5"
-              >
-                {guardianSteps
-                  .filter((s) => s.id === openGuardianStepId)
-                  .map((step) => {
-                    const stepIndex = guardianSteps.findIndex((s) => s.id === step.id);
-                    return (
-                    <div key={step.id} className="w-full min-w-0 space-y-2">
-                      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-teal-600">
-                          {stepIndex + 1}단계 · {step.title}
-                        </span>
-                      </div>
-                      <p className="text-[12px] font-semibold leading-relaxed text-slate-800 min-[390px]:text-[13px]">
-                        {step.summary}
-                      </p>
-                      <p className="text-[11px] font-semibold leading-relaxed text-teal-900/90 min-[390px]:text-[12px]">
-                        {step.detail}
-                      </p>
-                    </div>
-                    );
-                  })}
-              </motion.div>
-            ) : null}
-          </AnimatePresence>
-          <p className="mt-2 text-[10px] font-semibold text-slate-500 break-keep [word-break:keep-all]">
-            단계를 누르면 아래에 가로로 설명이 펼쳐지고, 같은 단계를 다시 누르면 접힙니다.
-          </p>
+          <Link href="/manual" className="mt-4 block">
+            <span className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-teal-600 px-5 text-sm font-black text-white shadow-sm transition hover:bg-teal-700 active:scale-[0.98]">
+              <BookOpen className="h-4 w-4" aria-hidden />
+              사용 설명서 보기
+              <ArrowRight className="h-4 w-4" aria-hidden />
+            </span>
+          </Link>
         </motion.section>
 
-        <section className="space-y-3.5 rounded-[26px] border border-indigo-100/80 bg-gradient-to-br from-indigo-50/55 via-white to-cyan-50/30 p-[18px] shadow-[0_12px_30px_rgba(15,23,42,0.05)] min-[390px]:space-y-4 min-[390px]:rounded-[28px] min-[390px]:p-5">
-          <div className="space-y-2 text-center">
-            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-indigo-400">FOR FINDER & OWNER</p>
-            <h2 className="whitespace-pre-line text-[22px] font-black leading-tight text-slate-900 break-keep [word-break:keep-all]">
-              {"태그를 스캔했다면\n이렇게 진행하세요"}
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-3 gap-1.5 min-[390px]:gap-2.5 sm:gap-3">
-            {finderSteps.map((step, index) => {
-              const selected = openFinderStepId === step.id;
-              return (
-                <article
-                  key={step.id}
-                  className={cn(
-                    "flex min-w-0 flex-col rounded-2xl border bg-white/90 px-1.5 py-2 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md min-[390px]:px-2.5 min-[390px]:py-3",
-                    selected
-                      ? "border-indigo-400/70 ring-2 ring-indigo-300/50 bg-indigo-50/35"
-                      : "border-indigo-100/90"
-                  )}
-                >
-                  <button
-                    type="button"
-                    onClick={() => toggleFinderStep(step.id)}
-                    aria-expanded={selected}
-                    className="flex w-full min-w-0 flex-col items-center gap-1 rounded-xl px-0.5 py-1 text-center transition hover:bg-indigo-50/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300/70 min-[390px]:gap-1.5 min-[390px]:py-1.5"
-                  >
-                    <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 min-[390px]:h-9 min-[390px]:w-9">
-                      <step.Icon className="h-3.5 w-3.5 min-[390px]:h-4 min-[390px]:w-4" />
-                    </span>
-                    <div className="min-w-0 w-full">
-                      <p className="text-[9px] font-black leading-snug text-slate-900 break-keep [word-break:keep-all] min-[390px]:text-[11px]">
-                        {step.title}
-                      </p>
-                      <p className="text-[8px] font-semibold text-slate-500 min-[390px]:text-[10px]">{index + 1}단계</p>
-                    </div>
-                  </button>
-                </article>
-              );
-            })}
-          </div>
-          <AnimatePresence initial={false}>
-            {openFinderStepId ? (
-              <motion.div
-                key={openFinderStepId}
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.2 }}
-                className="mt-3 w-full rounded-2xl border border-indigo-100 bg-indigo-50/85 px-3.5 py-3 text-left shadow-sm min-[390px]:px-4 min-[390px]:py-3.5"
-              >
-                {finderSteps
-                  .filter((s) => s.id === openFinderStepId)
-                  .map((step) => {
-                    const stepIndex = finderSteps.findIndex((s) => s.id === step.id);
-                    return (
-                    <div key={step.id} className="w-full min-w-0 space-y-2">
-                      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600">
-                          {stepIndex + 1}단계 · {step.title}
-                        </span>
-                      </div>
-                      <p className="text-[12px] font-semibold leading-relaxed text-slate-800 min-[390px]:text-[13px]">
-                        {step.summary}
-                      </p>
-                      <p className="text-[11px] font-semibold leading-relaxed text-indigo-900/90 min-[390px]:text-[12px]">
-                        {step.detail}
-                      </p>
-                    </div>
-                    );
-                  })}
-              </motion.div>
-            ) : null}
-          </AnimatePresence>
-          <p className="mt-2 text-[10px] font-semibold text-slate-500 break-keep [word-break:keep-all]">
-            단계를 누르면 아래에 가로로 설명이 펼쳐지고, 같은 단계를 다시 누르면 접힙니다.
-          </p>
-          {!session ? (
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-100 bg-white px-3 py-1.5 text-[10px] font-semibold text-slate-600">
-              <MessageCircleWarning className="h-3.5 w-3.5 text-indigo-600" />
-              로그인 없이도 태그 URL을 그대로 열어 안내를 확인할 수 있어요.
-            </div>
-          ) : null}
-
+        <section className="space-y-3 rounded-[26px] border border-slate-200/80 bg-white/90 p-[18px] shadow-sm min-[390px]:rounded-[28px] min-[390px]:p-5">
           <div className="flex flex-col items-center gap-3">
             <Link href={adminEntryLink} className="group inline-flex w-full">
               <button

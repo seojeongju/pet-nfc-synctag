@@ -34,6 +34,15 @@ export function SiteLegalFooter() {
           aria-label="법률 및 약관"
         >
           <Link
+            href="/manual"
+            className="text-slate-600 underline decoration-slate-300 underline-offset-2 transition hover:text-teal-700 hover:decoration-teal-400"
+          >
+            사용 설명서
+          </Link>
+          <span className="text-slate-300" aria-hidden>
+            |
+          </span>
+          <Link
             href="/legal/privacy"
             className="text-slate-600 underline decoration-slate-300 underline-offset-2 transition hover:text-teal-700 hover:decoration-teal-400"
           >

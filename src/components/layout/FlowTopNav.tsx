@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Home, LayoutDashboard, LayoutGrid, LogOut, Shield, Building2 } from "lucide-react";
+import { BookOpen, Home, LayoutDashboard, LayoutGrid, LogOut, Shield, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SubjectKind } from "@/lib/subject-kind";
 
@@ -113,6 +113,26 @@ export function FlowTopNavContent({
         )}
         aria-label="전역 이동"
       >
+        {useHardNav ? (
+          <a
+            href="/manual"
+            className="inline-flex items-center gap-1 rounded-full px-2 py-1 font-black text-slate-700 hover:bg-slate-100 min-[390px]:px-2.5"
+          >
+            <BookOpen className="h-3.5 w-3.5 shrink-0 text-teal-600" aria-hidden />
+            <span className={cn(isDashboard && "hidden min-[430px]:inline")}>사용 설명서</span>
+            <span className={cn("min-[430px]:hidden", !isDashboard && "hidden")}>설명서</span>
+          </a>
+        ) : (
+          <Link
+            href="/manual"
+            prefetch={false}
+            className="inline-flex items-center gap-1 rounded-full px-2 py-1 font-black text-slate-700 hover:bg-slate-100 min-[390px]:px-2.5"
+          >
+            <BookOpen className="h-3.5 w-3.5 shrink-0 text-teal-600" aria-hidden />
+            사용 설명서
+          </Link>
+        )}
+
         {session && !useHardNav ? (
           <Link
             href="/hub"

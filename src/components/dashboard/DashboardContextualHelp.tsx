@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { AdminHelpDialog } from "@/components/admin/layout/AdminHelpDialog";
 import { parseSubjectKind, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
@@ -62,6 +63,11 @@ export function DashboardContextualHelp() {
       triggerClassName="shadow-none"
     >
       {body}
+      <p className="border-t border-slate-100 pt-3">
+        <Link href="/manual" className="font-black text-teal-700 underline decoration-teal-200 underline-offset-2">
+          전체 사용 설명서 보기
+        </Link>
+      </p>
     </AdminHelpDialog>
   );
 }
