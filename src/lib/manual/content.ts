@@ -1,19 +1,52 @@
 export const MANUAL_PDF_PATH = "/manual/link-u-nfc-manual.pdf";
 export const MANUAL_PDF_FILENAME = "링크유 스마트 NFC 태그 사용설명서.pdf";
 
+export const MANUAL_INFOGRAPHIC_IMAGE = {
+  src: "/manual/infographic-guardian.png",
+  alt: "링크유 사용자(보호자) 사용법 인포그래픽 — 태그 준비부터 등록·연결까지 4단계 안내",
+};
+
 export type ManualTocItem = {
   id: string;
   label: string;
 };
 
-export type ManualSection = {
+export type ManualInfographicStep = {
   id: string;
+  step: number;
   title: string;
-  subtitle?: string;
-  paragraphs?: string[];
-  bullets?: string[];
-  numbered?: string[];
-  tips?: { title: string; body: string }[];
+  summary: string;
+  checklist?: string[];
+  visual: "prep" | "app-home" | "register" | "nfc-connect";
+};
+
+export type ManualCategory = {
+  id: string;
+  label: string;
+  emoji: string;
+};
+
+export type ManualAppMenu = {
+  label: string;
+  highlight?: boolean;
+};
+
+export type ManualFinderFeature = {
+  title: string;
+  body: string;
+  emoji: string;
+};
+
+export type ManualUsageTip = {
+  title: string;
+  body: string;
+  emoji: string;
+};
+
+export type ManualNfcCheck = {
+  title: string;
+  body: string;
+  emoji: string;
 };
 
 export type ManualFaqItem = {
@@ -22,75 +55,129 @@ export type ManualFaqItem = {
 };
 
 export const MANUAL_TOC: ManualTocItem[] = [
-  { id: "nfc-check", label: "시작 전 체크" },
-  { id: "register", label: "등록 가이드" },
-  { id: "finder", label: "발견자 화면" },
-  { id: "tips", label: "기능 팁" },
+  { id: "overview", label: "한눈에 보기" },
+  { id: "nfc-check", label: "NFC 체크" },
+  { id: "steps", label: "4단계 가이드" },
+  { id: "finder", label: "발견자" },
+  { id: "tips", label: "사용 팁" },
   { id: "faq", label: "FAQ" },
   { id: "support", label: "고객 지원" },
 ];
 
 export const MANUAL_INTRO = {
-  title: "링크유 스마트 NFC 태그 사용 설명서",
-  lead: "소중한 가족과 소지품의 안전을 위해 링크유(Link-U)를 선택해 주셔서 감사합니다. 배터리 교체 없이 스마트폰 태그만으로 정보를 확인하고 연결할 수 있는 스마트 보호 시스템입니다.",
+  title: "Link-U 사용자(보호자) 사용법",
+  lead: "태그 구매 후 관리대상 설정부터 태그 등록까지, 그림으로 쉽게 따라 할 수 있습니다.",
 };
 
-export const MANUAL_SECTIONS: ManualSection[] = [
+export const MANUAL_NFC_CHECKS: ManualNfcCheck[] = [
   {
-    id: "nfc-check",
-    title: "시작하기 전에 체크하세요",
-    bullets: [
-      "스마트폰 설정에서 NFC 기능을 '기본 모드' 또는 '카드 모드'로 켜 주세요.",
-      "아이폰: 상단 카메라 근처에서 인식합니다. 화면이 켜진 상태에서만 인식됩니다.",
-      "안드로이드: 휴대폰 뒷면 중앙 또는 상단(기종마다 다름)에 태그를 대 보세요.",
-      "두꺼운 카드 케이스나 금속 재질 케이스는 인식을 방해할 수 있습니다.",
-    ],
+    emoji: "📶",
+    title: "NFC 켜기",
+    body: "설정에서 NFC를 '기본 모드' 또는 '카드 모드'로 켜 주세요.",
   },
   {
-    id: "register",
-    title: "단계별 등록 가이드",
-    subtitle: "보호자(사용자)가 태그를 처음 설정할 때 따라 할 순서입니다.",
-    numbered: [
-      "태그 스캔하기 — 구매하신 링크유 태그에 스마트폰 뒷면을 가까이 대세요. 알림창을 누르면 등록 페이지로 이동합니다.",
-      "모드 선택하기 — 반려동물·어르신·아이·수하물·주얼리 등 사용 용도에 맞는 모드를 고릅니다.",
-      "계정 생성 및 로그인 — 카카오·구글 간편 로그인으로 가입합니다. 로그인 후 어디서든 정보를 수정할 수 있습니다.",
-      "프로필 정보 입력 — 이름·보호자 연락처(필수)와 사진·건강 상태·특징 등을 입력합니다.",
-      "태그 활성화 완료 — '등록 완료' 후 태그와 프로필이 연결되면 스캔 시 입력한 정보가 표시됩니다.",
-    ],
-    paragraphs: [
-      "홈 화면에서 모드를 고른 뒤 대시보드의 「관리대상」에서 프로필을 만들고, 「NFC 읽기」 또는 태그 연결 메뉴에서 태그를 연결하세요.",
-      "브라우저를 홈 화면에 추가(PWA)하면 알림을 더 편하게 받을 수 있습니다. 설치 안내는 「설치 안내」 페이지를 참고하세요.",
-    ],
+    emoji: "📱",
+    title: "인식 위치",
+    body: "아이폰은 상단 카메라 근처, 안드로이드는 뒷면 중앙·상단(기종마다 다름)에 태그를 대 보세요.",
   },
   {
-    id: "finder",
-    title: "발견자가 보는 화면",
-    subtitle: "길을 잃은 반려동물이나 소지품을 발견한 분이 태그를 스캔했을 때의 기능입니다.",
-    bullets: [
-      "보호자에게 즉시 전화 — 번호 노출 없이 앱 내 버튼으로 통화 연결이 가능합니다.",
-      "보호자에게 메시지 — 발견자가 현재 상황을 텍스트로 남길 수 있습니다.",
-      "위치 공유 — 발견자가 동의하면 보호자에게 스캔된 위치가 전송됩니다.",
-    ],
-    paragraphs: ["발견자는 별도 앱 설치 없이 태그 스캔 후 열리는 웹 화면만으로 안내를 확인할 수 있습니다."],
+    emoji: "🛡️",
+    title: "케이스 확인",
+    body: "두꺼운 카드 케이스·금속 케이스는 인식을 방해할 수 있습니다.",
+  },
+];
+
+export const MANUAL_INFOGRAPHIC_STEPS: ManualInfographicStep[] = [
+  {
+    id: "step-prep",
+    step: 1,
+    title: "태그 구매 및 준비",
+    summary: "링크유 NFC 태그를 준비하고 스마트폰 NFC 기능을 켜 주세요.",
+    checklist: ["NFC 태그 준비", "스마트폰 NFC 켜기"],
+    visual: "prep",
   },
   {
-    id: "tips",
-    title: "유용한 기능 팁",
-    tips: [
-      {
-        title: "실시간 스캔 알림",
-        body: "누군가 태그를 스캔하면 보호자 스마트폰으로 알림이 전송되며, 어디서 스캔되었는지 지도로 확인할 수 있습니다.",
-      },
-      {
-        title: "정보 업데이트",
-        body: "이사·연락처 변경 시 태그를 새로 살 필요 없이 로그인 후 정보 수정 메뉴에서 즉시 업데이트하세요.",
-      },
-      {
-        title: "멀티 태그 관리",
-        body: "하나의 계정으로 여러 개의 태그를 관리할 수 있습니다. 다견 가정이나 여러 가방도 문제없습니다.",
-      },
-    ],
+    id: "step-app",
+    step: 2,
+    title: "링크유 앱 접속",
+    summary: "링크유에 로그인한 뒤 홈 화면에서 원하는 메뉴를 선택하세요.",
+    visual: "app-home",
   },
+  {
+    id: "step-profile",
+    step: 3,
+    title: "관리대상 설정",
+    summary: "「관리대상」 메뉴에서 반려동물·어르신·아이·수하물 등 대상을 등록합니다.",
+    checklist: ["이름·별명 입력", "보호자 연락처 등록", "필요한 안내 문구 입력"],
+    visual: "register",
+  },
+  {
+    id: "step-connect",
+    step: 4,
+    title: "태그 등록 및 연결",
+    summary: "「NFC 읽기」를 누른 뒤 태그를 스마트폰에 가까이 대면 관리대상과 연결됩니다.",
+    visual: "nfc-connect",
+  },
+];
+
+export const MANUAL_CATEGORIES: ManualCategory[] = [
+  { id: "pet", label: "반려동물", emoji: "🐾" },
+  { id: "elder", label: "어르신", emoji: "👴" },
+  { id: "child", label: "어린이", emoji: "🎒" },
+  { id: "luggage", label: "수하물", emoji: "🧳" },
+];
+
+export const MANUAL_APP_MENUS: ManualAppMenu[] = [
+  { label: "관리대상", highlight: true },
+  { label: "NFC 읽기", highlight: true },
+  { label: "스캔기록" },
+  { label: "전자앨범" },
+  { label: "안심구역" },
+  { label: "스토어" },
+];
+
+export const MANUAL_FINDER_FEATURES: ManualFinderFeature[] = [
+  {
+    emoji: "📞",
+    title: "보호자에게 즉시 전화",
+    body: "번호 노출 없이 버튼 한 번으로 통화 연결이 가능합니다.",
+  },
+  {
+    emoji: "💬",
+    title: "보호자에게 메시지",
+    body: "발견자가 현재 상황을 텍스트로 남길 수 있습니다.",
+  },
+  {
+    emoji: "📍",
+    title: "위치 공유",
+    body: "발견자가 동의하면 스캔된 위치가 보호자에게 전송됩니다.",
+  },
+];
+
+export const MANUAL_USAGE_TIPS: ManualUsageTip[] = [
+  {
+    emoji: "🏷️",
+    title: "어디에나 부착",
+    body: "목걸이·가방·캐리어 등에 쉽게 부착해 사용할 수 있습니다.",
+  },
+  {
+    emoji: "📲",
+    title: "스캔 즉시 연결",
+    body: "태그를 스캔하면 보호자 연락 화면으로 바로 이어집니다.",
+  },
+  {
+    emoji: "🔒",
+    title: "필요한 정보만",
+    body: "개인정보는 꼭 필요한 범위 안에서만 입력해 주세요.",
+  },
+];
+
+export const MANUAL_PRODUCT_LINES = [
+  "링크유-펫",
+  "링크유-메모리",
+  "링크유-키즈",
+  "링크유-러기지",
+  "링크유-골드",
 ];
 
 export const MANUAL_FAQ: ManualFaqItem[] = [
