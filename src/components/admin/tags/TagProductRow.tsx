@@ -41,27 +41,27 @@ function WayfinderInventorySpotSelect({
   return (
     <div className={cn("space-y-1", compact ? "" : "mt-1")}>
       <select value={value} onChange={(e) => onChange(e.target.value)} className={selectClass}>
-        <option value="">동행 연결 없음</option>
+        <option value="">동행 없음</option>
         {orphan ? (
           <option value={orphan.id}>
-            {orphan.label} (목록 밖)
+            {orphan.label} (외)
           </option>
         ) : null}
         {wayfinderSpotOptions.map((s) => (
           <option key={s.id} value={s.id}>
-            {(s.title || s.slug).trim()} · {s.slug}
-            {Number(s.is_published) !== 1 ? " (미발행)" : ""}
+            {(s.title || s.slug).trim()}
+            {Number(s.is_published) !== 1 ? " · 미발행" : ""}
           </option>
         ))}
       </select>
       {previewSlug ? (
         <Link
           href={`/wayfinder/s/${encodeURIComponent(previewSlug)}`}
-          className="inline-block truncate text-[10px] font-black text-teal-700 underline-offset-2 hover:underline"
+          className="inline-block truncate text-[10px] font-black text-teal-700 hover:underline"
           target="_blank"
           rel="noreferrer"
         >
-          /wayfinder/s/{previewSlug}
+          미리보기
         </Link>
       ) : null}
     </div>
@@ -131,11 +131,7 @@ export function TagProductRow({
 
   const removeFromInventory = () => {
     if (linkedToPet) return;
-    if (
-      !confirm(
-        `인벤토리에서 이 UID를 삭제합니다.\n${tag.id}\n삭제 후 동일 UID는 대량 등록으로 다시 넣을 수 있습니다. 계속할까요?`
-      )
-    ) {
+    if (!confirm(`삭제할까요?\n${tag.id}`)) {
       return;
     }
     startTransition(async () => {
@@ -169,32 +165,17 @@ export function TagProductRow({
                       tag.pet_name ?? null,
                       formatOwnerPrimaryLine(null, tag.owner_email) || null,
                     ].filter(Boolean).join(" · ") || null
-                  : "연결 프로필 없음",
+                  : "미연결",
               ]}
             />
             {tag.batch_id && (
-              <p className="text-[9px] font-black uppercase tracking-tight text-slate-500">배치: {tag.batch_id}</p>
+              <p className="text-[9px] font-black text-slate-500">{tag.batch_id}</p>
             )}
             {!mobileOpen && (
-              <p className="line-clamp-2 text-[10px] font-semibold text-slate-600">
-                {productName.trim() ? productName : "제품명 없음"} · {modeLabel} ·{" "}
-                <span
-                  className={cn(
-                    tag.status === "active"
-                      ? "text-teal-700"
-                      : tag.status === "unsold"
-                        ? "text-amber-800"
-                        : "text-slate-600"
-                  )}
-                >
-                  {getStatusLabel(tag.status)}
-                </span>
-                {wfSummaryLabel ? ` · 동행 ${wfSummaryLabel}` : ""}
-                {tag.pet_name ? ` · ${tag.pet_name}` : ""}
+              <p className="line-clamp-1 text-[10px] font-semibold text-slate-600">
+                {productName.trim() || "—"} · {modeLabel} · {getStatusLabel(tag.status)}
+                {wfSummaryLabel ? ` · ${wfSummaryLabel}` : ""}
               </p>
-            )}
-            {!mobileOpen && (
-              <p className="text-[9px] font-bold text-teal-700">탭하여 편집 폼 펼치기</p>
             )}
           </div>
           <ChevronDown
@@ -205,25 +186,22 @@ export function TagProductRow({
 
         {mobileOpen && (
           <div className="space-y-3 border-t border-slate-100 p-3">
-            <div className="rounded-lg border border-teal-100 bg-teal-50/50 px-3 py-2 text-[10px] font-bold text-teal-900">
-              <span className="font-black uppercase tracking-tight text-teal-700">동행 스팟</span>
-              <WayfinderInventorySpotSelect
-                value={wayfinderSpotId}
-                onChange={setWayfinderSpotId}
-                wayfinderSpotOptions={wayfinderSpotOptions}
-                orphan={
-                  wfMissingFromList
-                    ? {
-                        id: linkedWfId,
-                        label:
-                          (tag.wayfinder_spot_title ?? tag.wayfinder_spot_slug ?? linkedWfId).trim() ||
-                          linkedWfId,
-                      }
-                    : null
-                }
-                previewSlug={previewSlug}
-              />
-            </div>
+            <WayfinderInventorySpotSelect
+              value={wayfinderSpotId}
+              onChange={setWayfinderSpotId}
+              wayfinderSpotOptions={wayfinderSpotOptions}
+              orphan={
+                wfMissingFromList
+                  ? {
+                      id: linkedWfId,
+                      label:
+                        (tag.wayfinder_spot_title ?? tag.wayfinder_spot_slug ?? linkedWfId).trim() ||
+                        linkedWfId,
+                    }
+                  : null
+              }
+              previewSlug={previewSlug}
+            />
             <div className="grid grid-cols-1 gap-2">
               <input
                 value={productName}
@@ -236,7 +214,7 @@ export function TagProductRow({
                 onChange={(e) => setMode(e.target.value)}
                 className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold"
               >
-                <option value="">미지정 (허브 선택)</option>
+                <option value="">모드 미지정</option>
                 {SUBJECT_KINDS.map((k) => (
                   <option key={k} value={k}>
                     {subjectKindMeta[k].label}
@@ -247,14 +225,14 @@ export function TagProductRow({
                 value={ble}
                 onChange={(e) => setBle(e.target.value)}
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 font-mono text-[11px]"
-                placeholder="AA:BB:…"
+                placeholder="BLE MAC"
               />
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span
                 className={cn(
-                  "inline-flex rounded-lg border px-2.5 py-1 text-[10px] font-black tracking-wide",
+                  "inline-flex rounded-lg border px-2.5 py-1 text-[10px] font-black",
                   tag.status === "active"
                     ? adminUi.successBadge
                     : tag.status === "unsold"
@@ -264,7 +242,7 @@ export function TagProductRow({
               >
                 {getStatusLabel(tag.status)}
               </span>
-              <div className="flex flex-wrap justify-end gap-2">
+              <div className="flex gap-2">
                 <Button
                   type="button"
                   size="sm"
@@ -281,15 +259,10 @@ export function TagProductRow({
                   variant="outline"
                   className="h-9 border-rose-200 px-3 text-[11px] font-black text-rose-700 hover:bg-rose-50"
                   disabled={pending || linkedToPet}
-                  title={
-                    linkedToPet
-                      ? "관리 대상에 연결된 태그는 삭제할 수 없습니다. 먼저 연결 해제 후 삭제하세요."
-                      : "인벤토리에서 UID 행 삭제"
-                  }
+                  title={linkedToPet ? "연결 해제 후 삭제" : "삭제"}
                   onClick={removeFromInventory}
                 >
-                  <Trash2 className="mr-1 inline h-3.5 w-3.5" aria-hidden />
-                  삭제
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden />
                 </Button>
               </div>
             </div>
@@ -316,13 +289,11 @@ export function TagProductRow({
                       .map((s) => (s ?? "").trim())
                       .filter(Boolean)
                       .join(" · ") || null
-                  : "연결 프로필 없음",
+                  : "미연결",
               ]}
             />
             {tag.batch_id && (
-              <p className="text-[9px] text-slate-600 font-black mt-1 uppercase tracking-tighter">
-                배치: {tag.batch_id}
-              </p>
+              <p className="mt-1 text-[9px] font-black text-slate-500">{tag.batch_id}</p>
             )}
           </div>
         </div>
@@ -341,7 +312,7 @@ export function TagProductRow({
           onChange={(e) => setMode(e.target.value)}
           className="w-full max-w-[160px] rounded-lg border border-slate-200 px-2 py-1.5 text-[10px] font-bold bg-white"
         >
-          <option value="">미지정 (허브 선택)</option>
+          <option value="">미지정</option>
           {SUBJECT_KINDS.map((k) => (
             <option key={k} value={k}>
               {subjectKindMeta[k].label}
@@ -372,13 +343,13 @@ export function TagProductRow({
           value={ble}
           onChange={(e) => setBle(e.target.value)}
           className="w-full min-w-[100px] font-mono rounded-lg border border-slate-200 px-2 py-1.5 text-[9px]"
-          placeholder="AA:BB:…"
+          placeholder="BLE MAC"
         />
       </td>
       <td className="py-4 px-2">
         <span
           className={cn(
-            "inline-flex px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border",
+            "inline-flex rounded-lg border px-2 py-1 text-[9px] font-black",
             tag.status === "active"
               ? adminUi.successBadge
               : tag.status === "unsold"
@@ -391,24 +362,24 @@ export function TagProductRow({
       </td>
       <td className="py-4 px-2">
         {tag.pet_name ? (
-          <div className="space-y-0.5 max-w-[120px]">
-            <p className={cn(adminUi.tableBodyCellStrong, "p-0 text-[11px] truncate")}>{tag.pet_name}</p>
-            <p className="text-[9px] text-slate-500 font-bold truncate">{tag.owner_email}</p>
+          <div className="max-w-[120px] space-y-0.5">
+            <p className={cn(adminUi.tableBodyCellStrong, "truncate p-0 text-[11px]")}>{tag.pet_name}</p>
+            <p className="truncate text-[9px] font-bold text-slate-500">{tag.owner_email}</p>
           </div>
         ) : (
-          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">미할당</span>
+          <span className="text-[10px] font-black text-slate-400">—</span>
         )}
       </td>
-      <td className={cn(adminUi.tableBodyCell, "py-4 px-2 text-[10px] font-black uppercase tabular-nums whitespace-nowrap")}>
+      <td className={cn(adminUi.tableBodyCell, "whitespace-nowrap px-2 py-4 text-[10px] font-bold tabular-nums")}>
         {new Date(tag.created_at).toLocaleDateString()}
       </td>
-      <td className="py-4 px-2">
+      <td className="px-2 py-4">
         <div className="flex flex-col gap-1.5">
           <Button
             type="button"
             size="sm"
             variant="secondary"
-            className="h-8 text-[9px] font-black uppercase px-2"
+            className="h-8 px-2 text-[10px] font-black"
             disabled={pending}
             onClick={save}
           >
@@ -418,13 +389,9 @@ export function TagProductRow({
             type="button"
             size="sm"
             variant="outline"
-            className="h-8 border-rose-200 px-2 text-[9px] font-black uppercase text-rose-700 hover:bg-rose-50"
+            className="h-8 border-rose-200 px-2 text-rose-700 hover:bg-rose-50"
             disabled={pending || linkedToPet}
-            title={
-              linkedToPet
-                ? "연결된 태그는 삭제 불가"
-                : "인벤토리에서 삭제"
-            }
+            title={linkedToPet ? "연결됨" : "삭제"}
             onClick={removeFromInventory}
           >
             <Trash2 className="mx-auto h-3.5 w-3.5" aria-hidden />

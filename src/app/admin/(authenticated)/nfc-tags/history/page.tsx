@@ -56,14 +56,13 @@ export default async function AdminNfcTagsHistoryPage({
     <Suspense fallback={<div className="min-h-[40vh] bg-[#F8FAFC]" />}>
       <div className={cn("relative space-y-8 sm:space-y-10", adminUi.pageBottomSafe)}>
         <div className={adminUi.nfcTagsPageBody}>
-          <div className="mb-8 space-y-6">
+          <div className="mb-5">
             <AdminPageIntro
-              title="④ 연결·감사 이력"
-              subtitle="위(연결/해제)는 lpage·lps, 아래(감사)는 page·필터·days로 URL이 달리며 각각 독립 페이징됩니다."
+              title="연결·감사"
               crumbs={[
                 { label: "관리자", href: "/admin" },
-                { label: "Pet-ID NFC", href: "/admin/nfc-tags" },
-                { label: "연결·감사" },
+                { label: "태그", href: "/admin/nfc-tags" },
+                { label: "감사" },
               ]}
             />
           </div>

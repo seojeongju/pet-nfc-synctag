@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Link-U BLE</string>
+    <string name="login_title">로그인</string>
+    <string name="scan_channel_name">BLE 동행</string>
+    <string name="scan_channel_desc">등록 태그 근접·이탈 감지</string>
+    <string name="scan_notification_title">동행 모드</string>
+    <string name="scan_notification_text">태그 근처 감지 중</string>
+</resources>

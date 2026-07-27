@@ -55,3 +55,12 @@ event_type은 정규화된 값. raw_meta는 raw_payload가 JSON일 때만 채움
 ## BLE 장치에 URL 저장 (웹과의 관계)
 
 브라우저에서 GATT로 URL을 직접 쓰려면 펌웨어와 UUID·페이로드 계약이 필요합니다. **웹앱에서는 Web Bluetooth URL 기록을 하지 않고**, 동행 앱·nRF가 단일 경로로 설정하는 것을 권장합니다. 상세 범위·브라우저 매트릭스는 `docs/NFC_BLE_WEB_WRITING.md`를 참고하세요.
+
+## 구현 로드맵·웹 준비
+
+- 마스터 계획: [BLE_IMPLEMENTATION_PLAN.md](./BLE_IMPLEMENTATION_PLAN.md)
+- 동행 앱: [BLE_COMPANION_APP_SPEC.md](./BLE_COMPANION_APP_SPEC.md)
+- 펌웨어: [BLE_FIRMWARE_SPEC.md](./BLE_FIRMWARE_SPEC.md)
+- 딥링크: [BLE_APP_DEEPLINK_SPEC.md](./BLE_APP_DEEPLINK_SPEC.md)
+- E2E: [BLE_E2E_CHECKLIST.md](./BLE_E2E_CHECKLIST.md)
+- 웹 온보딩: `NEXT_PUBLIC_BLE_COMPANION_ENABLED=true` → `/dashboard/[kind]/ble`

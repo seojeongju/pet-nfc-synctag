@@ -6,6 +6,7 @@ import { getAuth } from "@/lib/auth";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { parseSubjectKind, SUBJECT_KINDS, type SubjectKind } from "@/lib/subject-kind";
 import { normalizeBleMac } from "@/lib/device-mode";
+import { isValidBleMac } from "@/lib/ble-mac-format";
 import { isValidTagUidFormat, normalizeTagUid } from "@/lib/tag-uid-format";
 import {
     computeNdefWriteUrlForInventoryTag,
@@ -24,6 +25,7 @@ import type {
     TagBatchSummaryRow,
     TagLinkLogRow,
     TagLinkLogsPageResult,
+    TagsInventoryBleFilter,
     TagsInventoryLinkFilter,
     TagsInventoryPageParams,
     TagsInventoryPageResult,
@@ -107,6 +109,8 @@ export type RegisterBulkTagsOptions = {
     existingUidBehavior?: "skip" | "update_meta";
     /** 관리자 링크유-동행 대량 등록 플로우(스팟 없이도 인벤토리 등록 가능) */
     linkuWayfinderInventory?: boolean;
+    /** UID → BLE MAC (출고 시 쌍 등록). 키는 정규화된 UID */
+    bleMacByUid?: Record<string, string>;
 };
 
 /**
@@ -126,6 +130,21 @@ export async function registerBulkTags(uids: string[], options?: RegisterBulkTag
     const duplicateInRequest = normalized.length - uniqueNormalized.length;
     let duplicateExisting = 0;
     let updatedExistingMeta = 0;
+    let invalidBleMacCount = 0;
+    let skippedBleMacDuplicate = 0;
+
+    const bleMacByUidInput = options?.bleMacByUid ?? {};
+    const resolvedBleMacByUid = new Map<string, string>();
+    for (const [rawUid, rawMac] of Object.entries(bleMacByUidInput)) {
+        const uid = normalizeTagUid(rawUid);
+        if (!uid || !isValidTagUidFormat(uid)) continue;
+        if (!rawMac?.trim()) continue;
+        if (!isValidBleMac(rawMac)) {
+            invalidBleMacCount += 1;
+            continue;
+        }
+        resolvedBleMacByUid.set(uid, normalizeBleMac(rawMac));
+    }
 
     try {
         type TableInfoRow = { name?: string | null };
@@ -143,6 +162,7 @@ export async function registerBulkTags(uids: string[], options?: RegisterBulkTag
         const hasAssignedKindColumn = tagColumns.has("assigned_subject_kind");
         const hasTenantIdColumn = tagColumns.has("tenant_id");
         const hasWayfinderSpotColumn = tagColumns.has("wayfinder_spot_id");
+        const hasBleMacColumn = tagColumns.has("ble_mac");
 
         const wayfinderSpotIdOpt = (options?.wayfinderSpotId ?? "").trim() || null;
         const linkuWayfinderInventory = Boolean(options?.linkuWayfinderInventory);
@@ -202,6 +222,25 @@ export async function registerBulkTags(uids: string[], options?: RegisterBulkTag
         const toInsert = validUids.filter((uid) => !existingSet.has(uid));
         const existingUidBehavior = options?.existingUidBehavior ?? "skip";
 
+        const macConflictSet = new Set<string>();
+        if (hasBleMacColumn && resolvedBleMacByUid.size > 0) {
+            const macs = Array.from(new Set(resolvedBleMacByUid.values()));
+            const macChunks = chunkArray(macs, 200);
+            for (const macChunk of macChunks) {
+                if (macChunk.length === 0) continue;
+                const ph = macChunk.map(() => "?").join(",");
+                const { results } = await db
+                    .prepare(
+                        `SELECT id, ble_mac FROM tags WHERE ble_mac IS NOT NULL AND ble_mac IN (${ph})`
+                    )
+                    .bind(...macChunk)
+                    .all<{ id: string; ble_mac: string | null }>();
+                for (const row of results) {
+                    if (row.ble_mac) macConflictSet.add(row.ble_mac);
+                }
+            }
+        }
+
         if (existingUidBehavior === "update_meta" && hasAssignedKindColumn) {
             const toUpdateMeta = validUids.filter((uid) => existingSet.has(uid));
             const setParts: string[] = ["updated_at = CURRENT_TIMESTAMP"];
@@ -218,7 +257,6 @@ export async function registerBulkTags(uids: string[], options?: RegisterBulkTag
             } else if (hasWayfinderSpotColumn && linkuWayfinderInventory && !wayfinderSpotIdOpt) {
                 setParts.push("wayfinder_spot_id = NULL");
             }
-            const setSql = setParts.join(", ");
 
             let tenantWhere = "";
             const tenantBinds: unknown[] = [];
@@ -232,28 +270,42 @@ export async function registerBulkTags(uids: string[], options?: RegisterBulkTag
                 }
             }
 
-            const updateChunks = chunkArray(toUpdateMeta, 200);
+            const updateChunks = chunkArray(toUpdateMeta, 50);
             for (const chunk of updateChunks) {
                 if (chunk.length === 0) continue;
-                const ph = chunk.map(() => "?").join(",");
-                const countRow = await db
-                    .prepare(
-                        `SELECT COUNT(*) AS c FROM tags WHERE id IN (${ph})${tenantWhere}`
-                    )
-                    .bind(...chunk, ...tenantBinds)
-                    .first<{ c: number }>();
-                updatedExistingMeta += Number(countRow?.c ?? 0);
-                if (Number(countRow?.c ?? 0) === 0) continue;
-                await db
-                    .prepare(
-                        `UPDATE tags SET ${setSql} WHERE id IN (${ph})${tenantWhere}`
-                    )
-                    .bind(...setBinds, ...chunk, ...tenantBinds)
-                    .run();
+                for (const uid of chunk) {
+                    const rowSetParts = [...setParts];
+                    const rowSetBinds = [...setBinds];
+                    const mac = resolvedBleMacByUid.get(uid);
+                    if (hasBleMacColumn && mac) {
+                        const conflict = await db
+                            .prepare("SELECT id FROM tags WHERE ble_mac = ? AND id != ? LIMIT 1")
+                            .bind(mac, uid)
+                            .first<{ id: string }>();
+                        if (conflict) {
+                            skippedBleMacDuplicate += 1;
+                        } else {
+                            rowSetParts.push("ble_mac = ?");
+                            rowSetBinds.push(mac);
+                        }
+                    }
+                    const setSql = rowSetParts.join(", ");
+                    const countRow = await db
+                        .prepare(`SELECT COUNT(*) AS c FROM tags WHERE id = ?${tenantWhere}`)
+                        .bind(uid, ...tenantBinds)
+                        .first<{ c: number }>();
+                    if (Number(countRow?.c ?? 0) === 0) continue;
+                    updatedExistingMeta += 1;
+                    await db
+                        .prepare(`UPDATE tags SET ${setSql} WHERE id = ?${tenantWhere}`)
+                        .bind(...rowSetBinds, uid, ...tenantBinds)
+                        .run();
+                }
             }
         }
 
         // 중복 제거 및 트랜잭션 처리 (D1 배치는 순차 처리 권장)
+        const insertedMacs = new Set<string>();
         const queries = toInsert.map((uid) => {
             const columns = ["id"];
             const values = ["?"];
@@ -284,6 +336,17 @@ export async function registerBulkTags(uids: string[], options?: RegisterBulkTag
                 values.push("?");
                 binds.push(forcedTenantId);
             }
+            if (hasBleMacColumn) {
+                const mac = resolvedBleMacByUid.get(uid);
+                if (mac && !macConflictSet.has(mac) && !insertedMacs.has(mac)) {
+                    insertedMacs.add(mac);
+                    columns.push("ble_mac");
+                    values.push("?");
+                    binds.push(mac);
+                } else if (mac) {
+                    skippedBleMacDuplicate += 1;
+                }
+            }
 
             return db
                 .prepare(
@@ -307,6 +370,8 @@ export async function registerBulkTags(uids: string[], options?: RegisterBulkTag
             duplicateExisting,
             updatedExistingMeta,
             existingUidBehavior,
+            invalidBleMacCount,
+            skippedBleMacDuplicate,
             failedCount: invalidCount + duplicateInRequest + duplicateExisting,
         };
 
@@ -364,6 +429,11 @@ function parseInventoryWayfinder(raw: string | undefined): TagsInventoryWayfinde
     return "all";
 }
 
+function parseInventoryBle(raw: string | undefined): TagsInventoryBleFilter {
+    if (raw === "set" || raw === "unset") return raw;
+    return "all";
+}
+
 function parseIsoDateDay(raw: string | undefined): string | null {
     const t = (raw ?? "").trim();
     return /^\d{4}-\d{2}-\d{2}$/.test(t) ? t : null;
@@ -399,6 +469,7 @@ export async function getTagsInventoryPage(
     const batchTrim = (params.batch ?? "").trim().slice(0, 200);
     const linkFilter = parseInventoryLink(params.link);
     const wfFilter = parseInventoryWayfinder(params.wf);
+    const bleFilter = parseInventoryBle(params.ble);
     const kindRaw = (params.kind ?? "").trim();
     let regFrom = parseIsoDateDay(params.regFrom);
     let regTo = parseIsoDateDay(params.regTo);
@@ -420,9 +491,9 @@ export async function getTagsInventoryPage(
     if (qRaw.length > 0) {
         const pat = `%${qRaw.toLowerCase()}%`;
         conditions.push(
-            `(LOWER(t.id) LIKE ? OR LOWER(COALESCE(p.name,'')) LIKE ? OR LOWER(COALESCE(t.product_name,'')) LIKE ? OR LOWER(COALESCE(u.email,'')) LIKE ? OR LOWER(COALESCE(wf.slug,'')) LIKE ? OR LOWER(COALESCE(wf.title,'')) LIKE ?)`
+            `(LOWER(t.id) LIKE ? OR LOWER(COALESCE(p.name,'')) LIKE ? OR LOWER(COALESCE(t.product_name,'')) LIKE ? OR LOWER(COALESCE(u.email,'')) LIKE ? OR LOWER(COALESCE(wf.slug,'')) LIKE ? OR LOWER(COALESCE(wf.title,'')) LIKE ? OR LOWER(COALESCE(t.ble_mac,'')) LIKE ?)`
         );
-        binds.push(pat, pat, pat, pat, pat, pat);
+        binds.push(pat, pat, pat, pat, pat, pat, pat);
     }
     if (status !== "all") {
         conditions.push(`t.status = ?`);
@@ -449,6 +520,11 @@ export async function getTagsInventoryPage(
         conditions.push(
             `(t.wayfinder_spot_id IS NULL OR trim(COALESCE(t.wayfinder_spot_id, '')) = '')`
         );
+    }
+    if (bleFilter === "set") {
+        conditions.push(`(t.ble_mac IS NOT NULL AND trim(COALESCE(t.ble_mac, '')) != '')`);
+    } else if (bleFilter === "unset") {
+        conditions.push(`(t.ble_mac IS NULL OR trim(COALESCE(t.ble_mac, '')) = '')`);
     }
     if (kindRaw === "__unset__") {
         conditions.push(

@@ -5,196 +5,149 @@ import {
   Database,
   History,
   ArrowRight,
-  BookOpenCheck,
-  ShieldCheck,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { AdminCard } from "@/components/admin/ui/AdminCard";
-import { CardContent } from "@/components/ui/card";
 
-const workflowSteps = [
+const STEPS = [
+  { n: "1", label: "등록", href: "/admin/nfc-tags/register" },
+  { n: "2", label: "기록", href: "/admin/nfc-tags/write-url" },
+  { n: "3", label: "인벤토리", href: "/admin/nfc-tags/inventory" },
+  { n: "4", label: "감사", href: "/admin/nfc-tags/history" },
+] as const;
+
+const ACTIONS = [
   {
+    href: "/admin/nfc-tags/register",
+    title: "태그 등록",
+    icon: ListPlus,
     step: "1",
-    title: "UID 등록",
-    href: "/admin/nfc-tags/register",
-    cta: "등록 화면",
-    icon: ListPlus,
-    accent: "from-teal-500/15 to-teal-500/5 border-teal-200/80",
-    iconClass: "text-teal-600 bg-teal-500/15",
+    tone: {
+      border: "border-teal-200/80 hover:border-teal-400",
+      bg: "bg-gradient-to-br from-teal-50 to-white",
+      icon: "bg-teal-600 text-white",
+      step: "bg-teal-600",
+    },
   },
   {
+    href: "/admin/nfc-tags/write-url",
+    title: "URL 기록",
+    icon: Smartphone,
     step: "2",
-    title: "URL 기록",
-    href: "/admin/nfc-tags/write-url",
-    cta: "기록 시작",
-    icon: Smartphone,
-    accent: "from-indigo-500/15 to-indigo-500/5 border-indigo-200/70",
-    iconClass: "text-indigo-600 bg-indigo-500/15",
-  },
-  {
-    step: "3",
-    title: "인벤토리 점검",
-    href: "/admin/nfc-tags/inventory",
-    cta: "목록 보기",
-    icon: Database,
-    accent: "from-amber-500/15 to-amber-500/5 border-amber-200/70",
-    iconClass: "text-amber-600 bg-amber-500/15",
-  },
-  {
-    step: "4",
-    title: "연결·감사",
-    href: "/admin/nfc-tags/history",
-    cta: "이력 열기",
-    icon: History,
-    accent: "from-slate-500/10 to-slate-500/5 border-slate-200/90",
-    iconClass: "text-slate-600 bg-slate-500/10",
-  },
-];
-
-const quickLinks = [
-  {
-    href: "/admin/nfc-tags/register",
-    title: "UID 등록",
-    icon: ListPlus,
-    chip: "입고",
-    color: "border-teal-100 bg-teal-50/80 hover:border-teal-200",
-    iconWrap: "text-teal-600 bg-white border-teal-100",
-  },
-  {
-    href: "/admin/nfc-tags/write-url",
-    title: "URL 기록",
-    icon: Smartphone,
-    chip: "현장",
-    color: "border-indigo-100 bg-indigo-50/80 hover:border-indigo-200",
-    iconWrap: "text-indigo-600 bg-white border-indigo-100",
+    tone: {
+      border: "border-indigo-200/80 hover:border-indigo-400",
+      bg: "bg-gradient-to-br from-indigo-50 to-white",
+      icon: "bg-indigo-600 text-white",
+      step: "bg-indigo-600",
+    },
   },
   {
     href: "/admin/nfc-tags/inventory",
     title: "인벤토리",
     icon: Database,
-    chip: "마스터",
-    color: "border-amber-100 bg-amber-50/80 hover:border-amber-200",
-    iconWrap: "text-amber-600 bg-white border-amber-100",
+    step: "3",
+    tone: {
+      border: "border-amber-200/80 hover:border-amber-400",
+      bg: "bg-gradient-to-br from-amber-50 to-white",
+      icon: "bg-amber-600 text-white",
+      step: "bg-amber-600",
+    },
   },
   {
     href: "/admin/nfc-tags/history",
-    title: "연결·감사 이력",
+    title: "연결·감사",
     icon: History,
-    chip: "추적",
-    color: "border-slate-200 bg-slate-50/90 hover:border-slate-300",
-    iconWrap: "text-slate-600 bg-white border-slate-100",
+    step: "4",
+    tone: {
+      border: "border-slate-200 hover:border-slate-400",
+      bg: "bg-gradient-to-br from-slate-50 to-white",
+      icon: "bg-slate-800 text-white",
+      step: "bg-slate-800",
+    },
   },
-];
+] as const;
 
-export function AdminNfcWorkflowColumn() {
+/** 상단 수평 스텝 (클릭 가능) */
+export function AdminNfcStepBar() {
   return (
-    <AdminCard variant="section" className="overflow-hidden rounded-[28px] border border-slate-100/80 bg-white shadow-xl">
-      <CardContent className="space-y-5 p-6 sm:p-8">
-        <div className="flex flex-wrap items-start gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg shadow-slate-900/20">
-            <BookOpenCheck className="h-5 w-5" aria-hidden />
-          </div>
-          <div className="min-w-0 flex-1 space-y-1">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-600">권장 순서</p>
-            <h3 className="text-lg font-black text-slate-900">운영 체크리스트</h3>
-            <p className="text-xs font-bold leading-relaxed text-slate-500">단계별 이동은 오른쪽 링크로, 설명은 상세에서 확인하세요.</p>
-          </div>
-        </div>
-        <ol className="space-y-3">
-          {workflowSteps.map((s) => {
-            const Icon = s.icon;
-            return (
-              <li key={s.step}>
-                <div
-                  className={cn(
-                    "rounded-2xl border bg-gradient-to-br p-4 shadow-sm transition-shadow hover:shadow-md",
-                    s.accent
-                  )}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-[11px] font-black text-white shadow-sm">
-                      {s.step}
-                    </div>
-                    <div className="min-w-0 flex-1 space-y-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Icon className={cn("h-5 w-5 rounded-lg border p-0.5", s.iconClass)} aria-hidden />
-                        <p className="text-sm font-black text-slate-900">{s.title}</p>
-                      </div>
-                      <Link
-                        href={s.href}
-                        prefetch={false}
-                        className="inline-flex items-center gap-1 text-[11px] font-black text-teal-700 hover:text-teal-900"
-                      >
-                        {s.cta}
-                        <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </li>
-            );
-          })}
-        </ol>
-      </CardContent>
-    </AdminCard>
+    <nav
+      aria-label="태그 운영 단계"
+      className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-slate-200/80 bg-white px-3 py-2.5 shadow-sm sm:gap-2 sm:px-4"
+    >
+      {STEPS.map((s, i) => (
+        <span key={s.href} className="flex items-center gap-1.5 sm:gap-2">
+          {i > 0 ? (
+            <ChevronRight className="hidden h-3.5 w-3.5 text-slate-300 sm:block" aria-hidden />
+          ) : null}
+          <Link
+            href={s.href}
+            prefetch={false}
+            className="inline-flex min-h-9 items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-black text-slate-700 transition hover:bg-teal-50 hover:text-teal-900"
+          >
+            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-slate-900 text-[10px] text-white">
+              {s.n}
+            </span>
+            {s.label}
+          </Link>
+        </span>
+      ))}
+    </nav>
   );
 }
 
+/** 큰 액션 타일 4개 — 제목·아이콘·단계만 */
 export function AdminNfcQuickLinkGrid() {
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
-        {quickLinks.map(({ href, title, icon: Icon, chip, color, iconWrap }) => (
-          <Link
-            key={href}
-            href={href}
-            prefetch={false}
-            className={cn(
-              "group flex min-h-[112px] flex-col rounded-3xl border p-6 shadow-sm transition-all active:scale-[0.99] sm:min-h-0 sm:p-5",
-              "hover:-translate-y-0.5 hover:shadow-lg",
-              color
-            )}
-          >
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <div className={cn("inline-flex h-11 w-11 items-center justify-center rounded-2xl border shadow-sm", iconWrap)}>
-                <Icon className="h-5 w-5" aria-hidden />
-              </div>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 text-[9px] font-black uppercase tracking-wide text-slate-500 shadow-sm ring-1 ring-slate-100">
-                {chip}
-              </span>
-            </div>
-            <h2 className="flex items-center gap-2 text-[1.125rem] font-black leading-snug text-slate-900 sm:text-lg">
-              {title}
-              <ArrowRight className="h-4 w-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-teal-600" />
-            </h2>
-          </Link>
-        ))}
-      </div>
+    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      {ACTIONS.map(({ href, title, icon: Icon, step, tone }) => (
+        <Link
+          key={href}
+          href={href}
+          prefetch={false}
+          className={cn(
+            "group relative flex min-h-[7.5rem] flex-col justify-between overflow-hidden rounded-3xl border p-4 shadow-sm transition-all active:scale-[0.98] sm:min-h-[8.5rem] sm:p-5",
+            "hover:-translate-y-0.5 hover:shadow-lg",
+            tone.border,
+            tone.bg
+          )}
+        >
+          <div className="flex items-start justify-between gap-2">
+            <span
+              className={cn(
+                "inline-flex h-11 w-11 items-center justify-center rounded-2xl shadow-sm sm:h-12 sm:w-12",
+                tone.icon
+              )}
+            >
+              <Icon className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden />
+            </span>
+            <span
+              className={cn(
+                "flex h-6 min-w-[1.5rem] items-center justify-center rounded-lg px-1.5 text-[11px] font-black text-white",
+                tone.step
+              )}
+            >
+              {step}
+            </span>
+          </div>
+          <div className="mt-4 flex items-center justify-between gap-2">
+            <h2 className="text-base font-black leading-tight text-slate-900 sm:text-lg">{title}</h2>
+            <ArrowRight
+              className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-teal-600"
+              aria-hidden
+            />
+          </div>
+        </Link>
+      ))}
+    </div>
   );
 }
 
+/** @deprecated 허브에서 스텝바·타일로 대체. 호환용 export 유지 */
+export function AdminNfcWorkflowColumn() {
+  return null;
+}
+
+/** @deprecated 설명 콜아웃 제거 — 도움말 다이얼로그 사용 */
 export function AdminNfcHelpCallout() {
-  return (
-    <AdminCard variant="subtle" className="border-teal-100 bg-teal-50/40">
-      <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-teal-600 shadow-sm ring-1 ring-teal-100">
-            <ShieldCheck className="h-5 w-5" aria-hidden />
-          </div>
-          <div className="min-w-0 space-y-1">
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-teal-700">보안·호환성</p>
-            <p className="text-sm font-black text-slate-900">Web NFC와 동일한 규칙</p>
-            <p className="text-xs font-bold text-slate-600">등록된 UID만 기록 · Web NFC/앱 쓰기 모두 동일 감사 로그 추적</p>
-          </div>
-        </div>
-        <Link
-          href="/admin/monitoring"
-          prefetch={false}
-          className="inline-flex min-h-[48px] w-full shrink-0 touch-manipulation items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-3.5 text-[13px] font-black text-white shadow-lg transition hover:bg-teal-600 active:scale-[0.99] sm:w-auto sm:text-xs"
-        >
-          모니터링
-          <ArrowRight className="h-4 w-4" aria-hidden />
-        </Link>
-      </CardContent>
-    </AdminCard>
-  );
+  return null;
 }

@@ -11,18 +11,18 @@ import type { AdminAuditLogRow } from "@/types/admin-tags";
 import { useAdminTagsAuditUrl } from "@/hooks/use-admin-tags-audit-url";
 
 const ACTION_LABELS: Record<string, string> = {
-  bulk_register: "대량 UID 등록",
-  tag_link: "태그 연결",
-  tag_unlink: "태그 해제",
-  nfc_web_read: "Web NFC UID 읽기",
-  nfc_web_write: "Web NFC URL 기록",
-  nfc_native_handoff: "네이티브 앱 연결",
-  nfc_native_write: "네이티브 앱 기록",
-  platform_user_role: "플랫폼 사용자 역할 변경",
-  platform_user_email: "플랫폼 사용자 이메일 변경",
-  platform_user_password_reset: "플랫폼 사용자 비밀번호 초기화",
-  platform_user_subscription: "플랫폼 사용자 개인 플랜 코드 변경",
-  platform_user_delete: "플랫폼 사용자 계정 삭제",
+  bulk_register: "대량 등록",
+  tag_link: "연결",
+  tag_unlink: "해제",
+  nfc_web_read: "Web 읽기",
+  nfc_web_write: "Web 기록",
+  nfc_native_handoff: "앱 연결",
+  nfc_native_write: "앱 기록",
+  platform_user_role: "역할 변경",
+  platform_user_email: "이메일 변경",
+  platform_user_password_reset: "비밀번호 초기화",
+  platform_user_subscription: "플랜 변경",
+  platform_user_delete: "계정 삭제",
 };
 
 function actionDisplayName(action: string) {
@@ -132,18 +132,17 @@ export function AdminAuditLogsPanel({
 
   const filterSummary = useMemo(() => {
     const chips: string[] = [];
-    if (auditSuccessFilter === "success") chips.push("성공만");
-    else if (auditSuccessFilter === "failed") chips.push("실패만");
-    else chips.push("결과 전체");
-    chips.push(`최근 ${auditDaysFilter}일`);
-    if (auditActorFilter.trim()) chips.push(`실행자: ${auditActorFilter.trim()}`);
-    if (auditActionFilter) chips.push(`액션: ${actionDisplayName(auditActionFilter)}`);
-    if (auditPlatformFilter !== "all") chips.push(`플랫폼: ${auditPlatformFilter}`);
-    if (auditModeFilter !== "all") chips.push(`모드: ${auditModeFilter}`);
-    if (auditAppVersionFilter.trim()) chips.push(`버전: ${auditAppVersionFilter.trim()}`);
+    if (auditSuccessFilter === "success") chips.push("성공");
+    else if (auditSuccessFilter === "failed") chips.push("실패");
+    chips.push(`${auditDaysFilter}일`);
+    if (auditActorFilter.trim()) chips.push(auditActorFilter.trim());
+    if (auditActionFilter) chips.push(actionDisplayName(auditActionFilter));
+    if (auditPlatformFilter !== "all") chips.push(auditPlatformFilter);
+    if (auditModeFilter !== "all") chips.push(auditModeFilter);
+    if (auditAppVersionFilter.trim()) chips.push(`v${auditAppVersionFilter.trim()}`);
     const sortLabel =
       auditSortBy === "created_at" ? "시각" : auditSortBy === "action" ? "액션" : "결과";
-    chips.push(`정렬 ${sortLabel} · ${auditSortOrder === "desc" ? "내림차순" : "오름차순"}`);
+    chips.push(`${sortLabel} ${auditSortOrder === "desc" ? "↓" : "↑"}`);
     return chips;
   }, [
     auditActionFilter,
@@ -233,12 +232,12 @@ export function AdminAuditLogsPanel({
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-500/10 text-violet-600">
                 <ShieldCheck className="h-5 w-5" aria-hidden />
               </div>
-              <div className="min-w-0 space-y-1">
+              <div className="min-w-0">
                 <h4 className="text-[1.05rem] font-black leading-snug tracking-tight text-slate-900 sm:text-sm">
-                  관리자 액션 로그 / 감사
+                  감사 로그
                 </h4>
-                <p className="text-[13px] font-medium leading-snug text-slate-500 sm:text-[11px] sm:font-bold">
-                  URL 쿼리와 동기화됩니다. 필터를 바꾸면 1페이지로 돌아갑니다.
+                <p className="mt-0.5 text-[10px] font-bold tabular-nums text-slate-500">
+                  {auditTotalCount.toLocaleString()}건
                 </p>
               </div>
             </div>
@@ -247,78 +246,78 @@ export function AdminAuditLogsPanel({
               disabled={auditLogs.length === 0}
               variant="outline"
               className={cn(
-                "min-h-12 w-full touch-manipulation rounded-2xl text-[14px] font-black sm:min-h-11 sm:w-auto sm:rounded-xl sm:text-[13px] sm:h-9 sm:text-xs",
+                "min-h-12 w-full touch-manipulation rounded-2xl text-[14px] font-black sm:h-9 sm:min-h-0 sm:w-auto sm:rounded-xl sm:text-xs",
                 adminUi.outlineButton
               )}
             >
               <Download className="mr-1.5 h-4 w-4 shrink-0" aria-hidden />
-              CSV 내보내기
+              CSV
             </Button>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            {filterSummary.map((label) => (
-              <span
-                key={label}
-                className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-bold text-slate-600"
-              >
-                {label}
-              </span>
-            ))}
-          </div>
-
-          <div className="rounded-[22px] border border-slate-100 bg-gradient-to-b from-slate-50/80 to-white p-4 sm:p-5">
-            <div className="mb-3 flex items-center gap-2 text-slate-600">
-              <SlidersHorizontal className="h-4 w-4 shrink-0 text-teal-600" aria-hidden />
-              <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">필터 · 정렬</span>
+          {filterSummary.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {filterSummary.map((label) => (
+                <span
+                  key={label}
+                  className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-[10px] font-bold text-slate-600"
+                >
+                  {label}
+                </span>
+              ))}
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <label className="space-y-1.5">
-                <span className="text-[11px] font-black uppercase tracking-wide text-slate-400 sm:text-[10px]">결과</span>
+          ) : null}
+
+          <div className="rounded-[22px] border border-slate-100 bg-gradient-to-b from-slate-50/80 to-white p-3 sm:p-4">
+            <div className="mb-2 flex items-center gap-2 text-slate-600">
+              <SlidersHorizontal className="h-3.5 w-3.5 shrink-0 text-teal-600" aria-hidden />
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">필터</span>
+            </div>
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              <label className="space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-wide text-slate-400">결과</span>
                 <select
                   value={auditSuccessFilter}
                   onChange={(e) => setAuditSuccessFilter(e.target.value as "all" | "success" | "failed")}
                   className={selectClass}
                 >
-                  <option value="all">전체 결과</option>
-                  <option value="success">성공만</option>
-                  <option value="failed">실패만</option>
+                  <option value="all">전체</option>
+                  <option value="success">성공</option>
+                  <option value="failed">실패</option>
                 </select>
               </label>
-              <label className="space-y-1.5">
-                <span className="text-[11px] font-black uppercase tracking-wide text-slate-400 sm:text-[10px]">기간</span>
+              <label className="space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-wide text-slate-400">기간</span>
                 <select
                   value={auditDaysFilter}
                   onChange={(e) => setAuditDaysFilter(Number(e.target.value) as 7 | 30 | 90)}
                   className={selectClass}
                 >
-                  <option value={7}>최근 7일</option>
-                  <option value={30}>최근 30일</option>
-                  <option value={90}>최근 90일</option>
+                  <option value={7}>7일</option>
+                  <option value={30}>30일</option>
+                  <option value={90}>90일</option>
                 </select>
               </label>
-              <label className="space-y-1.5 sm:col-span-2">
-                <span className="text-[11px] font-black uppercase tracking-wide text-slate-400 sm:text-[10px]">
-                  실행자 이메일
-                </span>
+              <label className="space-y-1 sm:col-span-2">
+                <span className="text-[10px] font-black uppercase tracking-wide text-slate-400">실행자</span>
                 <input
                   value={auditActorFilter}
                   onChange={(e) => setAuditActorFilter(e.target.value)}
-                  placeholder="비우면 전체"
+                  placeholder="이메일"
                   className={cn(
                     adminUi.input,
                     "min-h-[48px] w-full rounded-2xl text-base font-semibold shadow-inner shadow-slate-900/[0.02] placeholder:text-slate-400 focus:border-teal-400 focus:ring-2 focus:ring-teal-500/20 sm:min-h-[44px] sm:text-xs sm:font-bold"
                   )}
                 />
               </label>
-              <label className="space-y-1.5 sm:col-span-2">
-                <span className="text-[11px] font-black uppercase tracking-wide text-slate-400 sm:text-[10px]">액션</span>
+              <label className="space-y-1 sm:col-span-2">
+                <span className="text-[10px] font-black uppercase tracking-wide text-slate-400">액션</span>
                 <select
                   value={auditActionFilter}
                   onChange={(e) => setAuditActionFilter(e.target.value)}
                   className={selectClass}
                 >
-                  <option value="">전체 액션</option>
+                  <option value="">전체</option>
                   <option value="bulk_register">{ACTION_LABELS.bulk_register}</option>
                   <option value="tag_link">{ACTION_LABELS.tag_link}</option>
                   <option value="tag_unlink">{ACTION_LABELS.tag_unlink}</option>
@@ -333,46 +332,40 @@ export function AdminAuditLogsPanel({
                   <option value="platform_user_delete">{ACTION_LABELS.platform_user_delete}</option>
                 </select>
               </label>
-              <div className="grid grid-cols-2 gap-2 sm:col-span-2 sm:gap-3">
-                <label className="space-y-1.5">
-                  <span className="text-[11px] font-black uppercase tracking-wide text-slate-400 sm:text-[10px]">
-                    플랫폼
-                  </span>
+              <div className="grid grid-cols-2 gap-2 sm:col-span-2">
+                <label className="space-y-1">
+                  <span className="text-[10px] font-black uppercase tracking-wide text-slate-400">플랫폼</span>
                   <select
                     value={auditPlatformFilter}
                     onChange={(e) => setAuditPlatformFilter(e.target.value as "all" | "android" | "ios" | "unknown")}
                     className={selectClass}
                   >
-                    <option value="all">전체 플랫폼</option>
+                    <option value="all">전체</option>
                     <option value="android">Android</option>
                     <option value="ios">iOS</option>
                     <option value="unknown">unknown</option>
                   </select>
                 </label>
-                <label className="space-y-1.5">
-                  <span className="text-[11px] font-black uppercase tracking-wide text-slate-400 sm:text-[10px]">
-                    모드
-                  </span>
+                <label className="space-y-1">
+                  <span className="text-[10px] font-black uppercase tracking-wide text-slate-400">모드</span>
                   <select
                     value={auditModeFilter}
                     onChange={(e) => setAuditModeFilter(e.target.value as "all" | "linku" | "tools" | "unknown")}
                     className={selectClass}
                   >
-                    <option value="all">전체 모드</option>
+                    <option value="all">전체</option>
                     <option value="linku">Link-U</option>
                     <option value="tools">Tools</option>
                     <option value="unknown">unknown</option>
                   </select>
                 </label>
               </div>
-              <label className="space-y-1.5 sm:col-span-2">
-                <span className="text-[11px] font-black uppercase tracking-wide text-slate-400 sm:text-[10px]">
-                  앱 버전
-                </span>
+              <label className="space-y-1 sm:col-span-2">
+                <span className="text-[10px] font-black uppercase tracking-wide text-slate-400">버전</span>
                 <input
                   value={auditAppVersionFilter}
                   onChange={(e) => setAuditAppVersionFilter(e.target.value)}
-                  placeholder="예: 0.1 (부분 일치)"
+                  placeholder="앱 버전"
                   list="audit-app-version-options"
                   className={cn(
                     adminUi.input,
@@ -387,11 +380,9 @@ export function AdminAuditLogsPanel({
                   </datalist>
                 ) : null}
               </label>
-              <div className="grid grid-cols-2 gap-2 sm:col-span-2 sm:gap-3">
-                <label className="space-y-1.5">
-                  <span className="text-[11px] font-black uppercase tracking-wide text-slate-400 sm:text-[10px]">
-                    정렬 기준
-                  </span>
+              <div className="grid grid-cols-2 gap-2 sm:col-span-2">
+                <label className="space-y-1">
+                  <span className="text-[10px] font-black uppercase tracking-wide text-slate-400">정렬</span>
                   <select
                     value={auditSortBy}
                     onChange={(e) => setAuditSortBy(e.target.value as "created_at" | "action" | "success")}
@@ -402,17 +393,15 @@ export function AdminAuditLogsPanel({
                     <option value="success">결과</option>
                   </select>
                 </label>
-                <label className="space-y-1.5">
-                  <span className="text-[11px] font-black uppercase tracking-wide text-slate-400 sm:text-[10px]">
-                    순서
-                  </span>
+                <label className="space-y-1">
+                  <span className="text-[10px] font-black uppercase tracking-wide text-slate-400">순서</span>
                   <select
                     value={auditSortOrder}
                     onChange={(e) => setAuditSortOrder(e.target.value as "asc" | "desc")}
                     className={selectClass}
                   >
-                    <option value="desc">내림차순</option>
-                    <option value="asc">오름차순</option>
+                    <option value="desc">↓</option>
+                    <option value="asc">↑</option>
                   </select>
                 </label>
               </div>
@@ -460,10 +449,7 @@ export function AdminAuditLogsPanel({
             })
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-4 py-12 text-center">
-              <p className="text-[15px] font-semibold text-slate-500 sm:text-sm">
-                조건에 맞는 감사 로그가 없습니다.
-              </p>
-              <p className="mt-2 text-[13px] font-medium text-slate-400">필터를 완화하거나 기간을 늘려 보세요.</p>
+              <p className="text-[15px] font-semibold text-slate-500 sm:text-sm">로그 없음</p>
             </div>
           )}
         </div>
@@ -521,7 +507,7 @@ export function AdminAuditLogsPanel({
               ) : (
                 <tr>
                   <td colSpan={6} className="py-14 text-center text-sm font-bold text-slate-500">
-                    표시할 관리자 감사 로그가 없습니다.
+                    로그 없음
                   </td>
                 </tr>
               )}
@@ -530,10 +516,10 @@ export function AdminAuditLogsPanel({
         </div>
         <div className="flex flex-col gap-4 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-center text-[13px] font-bold tabular-nums text-slate-600 sm:text-left sm:text-xs">
-            전체 {auditTotalCount.toLocaleString()}건
+            {auditTotalCount.toLocaleString()}건
             {auditTotalCount === 0
               ? ""
-              : ` · 이번 페이지 ${(auditPage - 1) * auditPageSize + 1}–${Math.min(auditPage * auditPageSize, auditTotalCount)}`}
+              : ` · ${(auditPage - 1) * auditPageSize + 1}–${Math.min(auditPage * auditPageSize, auditTotalCount)}`}
           </p>
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:flex sm:gap-2">
             <Button

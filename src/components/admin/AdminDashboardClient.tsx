@@ -28,26 +28,26 @@ const NFC_QUICK_LINKS = [
   },
   {
     href: "/admin/nfc-tags/register",
-    label: "① UID 등록",
-    sub: "인벤토리 추가",
-    micro: "UID",
+    label: "등록",
+    sub: "UID·MAC",
+    micro: "등록",
     step: "1",
     icon: ListPlus,
     accent: "text-teal-600 bg-teal-500/10 border-teal-100",
   },
   {
     href: "/admin/nfc-tags/write-url",
-    label: "② URL 기록",
+    label: "기록",
     sub: "Web NFC",
-    micro: "URL",
+    micro: "기록",
     step: "2",
     icon: Smartphone,
     accent: "text-indigo-600 bg-indigo-500/10 border-indigo-100",
   },
   {
     href: "/admin/nfc-tags/inventory",
-    label: "③ 인벤토리",
-    sub: "마스터 데이터",
+    label: "인벤토리",
+    sub: "목록",
     micro: "재고",
     step: "3",
     icon: Database,
@@ -55,8 +55,8 @@ const NFC_QUICK_LINKS = [
   },
   {
     href: "/admin/nfc-tags/history",
-    label: "④ 연결·감사",
-    sub: "로그·추적",
+    label: "감사",
+    sub: "로그",
     micro: "감사",
     step: "4",
     icon: History,
@@ -185,39 +185,39 @@ export default function AdminDashboardClient({
     href: string;
   }> = [
     {
-      title: "전체 태그 수",
+      title: "전체 태그",
       value: stats.totalTags,
       icon: Database,
       color: "text-indigo-400",
       glowColor: "bg-indigo-500/20",
-      description: "인벤토리 기준 총 UID",
+      description: "인벤토리 UID",
       href: "/admin/nfc-tags",
     },
     {
-      title: "미판매 태그",
+      title: "미판매",
       value: stats.unsoldTags,
       icon: Package,
       color: "text-amber-400",
       glowColor: "bg-amber-500/20",
-      description: "status=unsold",
+      description: "unsold",
       href: "/admin/nfc-tags/inventory?status=unsold",
     },
     {
-      title: "활성 태그",
+      title: "활성",
       value: stats.activeTags,
       icon: Shield,
       color: "text-teal-400",
       glowColor: "bg-teal-500/20",
-      description: "status=active(연결됨)",
+      description: "active",
       href: "/admin/nfc-tags/inventory?status=active",
     },
     {
-      title: "전체 사용자",
+      title: "사용자",
       value: stats.totalUsers,
       icon: Users,
       color: "text-sky-400",
       glowColor: "bg-sky-500/20",
-      description: "better-auth user 행",
+      description: "가입자",
       href: "/admin/users",
     },
   ];
@@ -225,16 +225,16 @@ export default function AdminDashboardClient({
     () =>
       [
         ops.failedRegistrations7d >= failedThreshold
-          ? `최근 7일 등록 실패 ${ops.failedRegistrations7d}건 발생`
+          ? `등록 실패 ${ops.failedRegistrations7d}건 (7일)`
           : null,
         ops.webWriteFailures7d > 0 && ops.nativeRecoveryRate7d < 50
-          ? `웹 기록 실패 대비 네이티브 복구율 ${ops.nativeRecoveryRate7d}% (개선 필요)`
+          ? `네이티브 복구율 ${ops.nativeRecoveryRate7d}%`
           : null,
         stats.unsoldTags >= unsoldThreshold
-          ? `미판매 재고 ${stats.unsoldTags}개로 재고 과다 상태`
+          ? `미판매 ${stats.unsoldTags}개`
           : null,
         ops.activationRate <= activationThreshold
-          ? `활성화율 ${ops.activationRate}%로 전환율 점검 필요`
+          ? `활성률 ${ops.activationRate}%`
           : null,
       ].filter(Boolean) as string[],
     [
@@ -262,7 +262,7 @@ export default function AdminDashboardClient({
     const items: Array<{ label: string; href: string; icon: typeof Activity }> = [];
     if (ops.failedRegistrations7d >= failedThreshold) {
       items.push({
-        label: "UID 등록 실패 감사 로그",
+        label: "등록 실패 로그",
         href: "/admin/nfc-tags/history?action=bulk_register&success=failed&days=7",
         icon: AlertTriangle,
       });
@@ -422,60 +422,41 @@ export default function AdminDashboardClient({
         </motion.div>
 
         <motion.div variants={itemVariants}>
-          <AdminCard variant="section" className="rounded-[28px] border border-amber-100/80 bg-gradient-to-br from-amber-50/50 to-white">
-            <CardContent className="p-5 sm:p-6 space-y-4">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                <div className="space-y-1 min-w-0">
-                  <p className="text-[10px] font-black text-amber-600 uppercase tracking-[0.2em]">Pet-ID NFC</p>
-                  <h3 className="text-lg font-black text-slate-900">기능별 바로가기</h3>
-                  <p className="hidden text-xs font-bold text-slate-500 max-w-2xl md:block">
-                    사이드 메뉴와 동일한 단계입니다. 표준 순서는 <span className="text-slate-800 font-black">UID 등록 → URL 기록 → 인벤토리 → 감사</span> 입니다.
-                  </p>
-                  <p className="text-[11px] font-bold leading-snug text-slate-500 md:hidden">
-                    아이콘을 탭하면 해당 단계로 이동합니다.
-                  </p>
-                </div>
+          <AdminCard variant="section" className="rounded-[28px] border border-amber-100/80 bg-gradient-to-br from-amber-50/40 to-white">
+            <CardContent className="space-y-4 p-5 sm:p-6">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-lg font-black text-slate-900">태그</h3>
                 <Link
                   href="/admin/nfc-tags"
                   prefetch={false}
-                  className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-2xl border border-amber-200 bg-white px-3.5 py-2 text-[11px] font-black text-amber-800 shadow-sm transition hover:border-teal-200 hover:bg-teal-50 hover:text-teal-900"
+                  className="inline-flex items-center gap-1 rounded-xl border border-amber-200 bg-white px-3 py-1.5 text-[11px] font-black text-amber-800 hover:bg-teal-50 hover:text-teal-900"
                 >
-                  NFC 허브
+                  허브
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </div>
 
-              {/* 모바일: 아이콘 가로 스크롤 (한 화면에 밀집 최소화) */}
-              <nav className="md:hidden" aria-label="Pet-ID NFC 단계 바로가기">
-                <ul className="-mx-0.5 flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 pt-0.5 [scrollbar-width:none] sm:-mx-1 [&::-webkit-scrollbar]:hidden">
+              <nav className="md:hidden" aria-label="태그 바로가기">
+                <ul className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {NFC_QUICK_LINKS.map((item) => {
                     const Icon = item.icon;
                     return (
-                      <li key={item.href} className="snap-start shrink-0">
+                      <li key={item.href} className="shrink-0">
                         <Link
                           href={item.href}
                           prefetch={false}
-                          aria-label={`${item.label}, ${item.sub}`}
-                          className={cn(
-                            "flex w-[4.85rem] flex-col items-center gap-1 rounded-2xl border border-slate-100/90 bg-white px-2 py-2.5 text-center shadow-sm transition",
-                            "active:scale-[0.97] active:bg-slate-50",
-                            "hover:border-amber-200 hover:shadow-md"
-                          )}
+                          aria-label={item.label}
+                          className="flex w-[4.5rem] flex-col items-center gap-1 rounded-2xl border border-slate-100 bg-white px-2 py-2.5 shadow-sm active:scale-[0.97]"
                         >
                           {item.step ? (
-                            <span className="text-[8px] font-black uppercase tracking-wide text-teal-600">{item.step}</span>
+                            <span className="text-[8px] font-black text-teal-600">{item.step}</span>
                           ) : (
                             <span className="h-2.5" aria-hidden />
                           )}
-                          <div
-                            className={cn(
-                              "flex h-11 w-11 items-center justify-center rounded-xl border shadow-sm transition-transform",
-                              item.accent
-                            )}
-                          >
-                            <Icon className="h-5 w-5 shrink-0" aria-hidden />
+                          <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl border", item.accent)}>
+                            <Icon className="h-5 w-5" aria-hidden />
                           </div>
-                          <span className="line-clamp-2 min-h-[2rem] px-0.5 text-[9px] font-black leading-tight text-slate-800">{item.micro}</span>
+                          <span className="text-[10px] font-black text-slate-800">{item.micro}</span>
                         </Link>
                       </li>
                     );
@@ -483,7 +464,7 @@ export default function AdminDashboardClient({
                 </ul>
               </nav>
 
-              <div className="hidden gap-3 md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+              <div className="hidden gap-2 md:grid md:grid-cols-5">
                 {NFC_QUICK_LINKS.map((item) => {
                   const Icon = item.icon;
                   return (
@@ -491,16 +472,12 @@ export default function AdminDashboardClient({
                       key={item.href}
                       href={item.href}
                       prefetch={false}
-                      className="group rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-teal-100 hover:shadow-md"
+                      className="rounded-2xl border border-slate-100 bg-white p-3.5 shadow-sm transition hover:-translate-y-0.5 hover:border-teal-100 hover:shadow-md"
                     >
-                      <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl border ${item.accent}`}>
-                        <Icon className="h-5 w-5" aria-hidden />
+                      <div className={`mb-2 inline-flex h-9 w-9 items-center justify-center rounded-xl border ${item.accent}`}>
+                        <Icon className="h-4 w-4" aria-hidden />
                       </div>
                       <p className="text-xs font-black text-slate-900">{item.label}</p>
-                      <p className="mt-1 text-[10px] font-bold text-slate-400">{item.sub}</p>
-                      <span className="mt-3 inline-flex items-center gap-1 text-[10px] font-black text-teal-600 opacity-0 transition group-hover:opacity-100">
-                        이동 <ArrowRight className="h-3 w-3" />
-                      </span>
                     </Link>
                   );
                 })}
@@ -514,11 +491,11 @@ export default function AdminDashboardClient({
             <CardContent className="p-5 space-y-3">
               <div className="flex flex-wrap items-end justify-between gap-2">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  관리 대상 등록 (모드별)
+                  모드별 등록
                 </p>
                 <div className="flex flex-wrap items-center gap-2 text-xs">
                   <span className="font-black text-slate-600 tabular-nums">
-                    합계 {totalPetsCount.toLocaleString()} (pets)
+                    {totalPetsCount.toLocaleString()}
                   </span>
                   <Link
                     href="/admin/users"
@@ -555,14 +532,14 @@ export default function AdminDashboardClient({
               <CardContent className="p-5 space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    최근 입고 배치 (태그·batch_id)
+                    최근 배치
                   </p>
                   <Link
                     href="/admin/nfc-tags/inventory"
                     prefetch={false}
                     className="text-[10px] font-black text-teal-600 hover:text-teal-800"
                   >
-                    전체 인벤토리
+                    인벤토리
                     <ArrowRight className="inline h-3 w-3" />
                   </Link>
                 </div>
@@ -593,7 +570,7 @@ export default function AdminDashboardClient({
         <motion.div variants={itemVariants}>
           <AdminCard variant="subtle" className="rounded-3xl">
             <CardContent className="p-5">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">최근 이상 이벤트 (임계치·실데이터)</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">이상</p>
               {anomalies.length > 0 ? (
                 <ul className="space-y-2">
                   {anomalies.map((item) => (
@@ -601,7 +578,7 @@ export default function AdminDashboardClient({
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm font-bold text-teal-600">탐지된 이상 이벤트가 없습니다.</p>
+                <p className="text-sm font-bold text-teal-600">없음</p>
               )}
             </CardContent>
           </AdminCard>
@@ -610,10 +587,10 @@ export default function AdminDashboardClient({
         <motion.div variants={itemVariants}>
           <AdminCard variant="subtle">
             <CardContent className="p-5 space-y-4">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">이상 탐지 임계치 (이 브라우저에 저장)</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">임계치 (이 브라우저)</p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <label className="text-xs font-bold text-slate-500 space-y-1">
-                  미판매 재고 기준
+                  미판매
                   <input
                     type="number"
                     min={1}
@@ -625,7 +602,7 @@ export default function AdminDashboardClient({
                   />
                 </label>
                 <label className="text-xs font-bold text-slate-500 space-y-1">
-                  활성화율 기준(%)
+                  활성률(%)
                   <input
                     type="number"
                     min={1}
@@ -638,7 +615,7 @@ export default function AdminDashboardClient({
                   />
                 </label>
                 <label className="text-xs font-bold text-slate-500 space-y-1">
-                  실패 등록 기준
+                  등록 실패
                   <input
                     type="number"
                     min={1}
@@ -657,7 +634,7 @@ export default function AdminDashboardClient({
         <motion.div variants={itemVariants}>
           <AdminCard variant="subtle">
             <CardContent className="p-5 space-y-3">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">실패 이벤트 Top 5 (최근 7일)</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">실패 Top 5 (7일)</p>
               {failureTop.length > 0 ? (
                 <div className="space-y-2">
                   {failureTop.map((item) => (
@@ -678,7 +655,7 @@ export default function AdminDashboardClient({
                   ))}
                 </div>
               ) : (
-                <p className="text-sm font-bold text-teal-600">최근 7일 실패 이벤트가 없습니다.</p>
+                <p className="text-sm font-bold text-teal-600">없음</p>
               )}
             </CardContent>
           </AdminCard>
@@ -691,7 +668,7 @@ export default function AdminDashboardClient({
                 <div className="w-12 h-12 rounded-2xl bg-teal-500/10 flex items-center justify-center text-teal-400 border border-teal-500/20">
                   <Layers className="w-6 h-6" />
                 </div>
-                <h3 className="text-lg font-black text-white">빠른 운영 이동</h3>
+                <h3 className="text-lg font-black text-white">바로가기</h3>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Link href="/admin/nfc-tags/inventory" className="block">
@@ -706,7 +683,7 @@ export default function AdminDashboardClient({
                 </Link>
                 <Link href="/admin/nfc-tags/register" className="block">
                   <button className={cn("w-full h-12 text-sm rounded-xl", adminUi.darkButton)}>
-                    UID 등록
+                    태그 등록
                   </button>
                 </Link>
               </div>
@@ -716,7 +693,7 @@ export default function AdminDashboardClient({
         </motion.div>
 
         <p className="px-1 text-center text-[10px] font-bold text-slate-400" role="status">
-          서버 집계 기준 시각: {dataAsOfLabel} · 수치는 D1·감사 로그를 사용합니다
+          {dataAsOfLabel}
         </p>
       </motion.div>
     </div>

@@ -87,3 +87,11 @@ payload:
 - NFC 쓰기 완료 시 성공 토스트 + 웹 복귀 옵션 제공
 - `nfc/write`는 토큰 만료/서명오류 시 저장 비활성 + 재시도 안내
 
+## 7) BLE 동행 앱 (별도)
+
+BLE 스캔·근접 알림은 NFC Writer와 분리된 **Companion 앱**이 담당합니다.
+
+- 스펙: [BLE_APP_DEEPLINK_SPEC.md](./BLE_APP_DEEPLINK_SPEC.md)
+- 스킴: `petidconnect://ble/scan?...`
+- 프로젝트: `android-companion/`
+

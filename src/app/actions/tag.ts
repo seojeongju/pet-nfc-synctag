@@ -579,5 +579,77 @@ export async function verifyOwnerAndLoadPetTags(petId: string, tenantId?: string
     return { ok: true as const, tags: results ?? [] };
 }
 
+export type GuardianBleCompanionTarget = {
+    pet_id: string;
+    pet_name: string;
+    tag_id: string;
+    ble_mac: string | null;
+};
+
+/** 보호자에게 연결된 태그 + BLE MAC (동행 앱 온보딩용) */
+export async function listGuardianBleCompanionTargets(
+    subjectKind: SubjectKind,
+    tenantId?: string | null
+): Promise<GuardianBleCompanionTarget[]> {
+    const { userId } = await requireActor();
+    const db = getDB();
+    await assertMigration0008Applied(db);
+    const kind = parseSubjectKind(subjectKind);
+    const tenant = (tenantId ?? "").trim();
+
+    const baseSql = `
+        SELECT t.id AS tag_id, t.ble_mac AS ble_mac, p.id AS pet_id, p.name AS pet_name
+        FROM tags t
+        INNER JOIN pets p ON p.id = t.pet_id
+        WHERE p.owner_id = ? AND p.subject_kind = ?
+    `;
+    const stmt = tenant
+        ? db.prepare(`${baseSql} AND p.tenant_id = ? ORDER BY p.name ASC, t.id ASC`).bind(userId, kind, tenant)
+        : db
+              .prepare(`${baseSql} AND p.tenant_id IS NULL ORDER BY p.name ASC, t.id ASC`)
+              .bind(userId, kind);
+
+    const { results } = await stmt.all<GuardianBleCompanionTarget>();
+    return results ?? [];
+}
+
+export async function logGuardianBleAppEvent(input: {
+    event: "app_open_attempt" | "app_opened" | "store_fallback" | "install_page_fallback";
+    subjectKind: SubjectKind;
+    petId: string;
+    tenantId?: string | null;
+    tagId?: string | null;
+    bleMac?: string | null;
+}) {
+    const db = getDB();
+    const { userId, email } = await requireActor();
+    const tenant = (input.tenantId ?? "").trim() || null;
+    await db.prepare(`
+        CREATE TABLE IF NOT EXISTS admin_action_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            action TEXT NOT NULL,
+            actor_email TEXT,
+            success BOOLEAN NOT NULL DEFAULT 1,
+            payload TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `).run();
+    await db
+        .prepare("INSERT INTO admin_action_logs (action, actor_email, success, payload) VALUES (?, ?, 1, ?)")
+        .bind(
+            "guardian_ble_app_event",
+            email ?? "system",
+            JSON.stringify({
+                event: input.event,
+                subjectKind: input.subjectKind,
+                petId: input.petId,
+                tenantId: tenant,
+                userId,
+                tagId: (input.tagId ?? "").trim() || null,
+                bleMac: (input.bleMac ?? "").trim() || null,
+            })
+        )
+        .run();
+}
 
 

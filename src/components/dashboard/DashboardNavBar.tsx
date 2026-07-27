@@ -10,6 +10,7 @@ import {
   ScanLine,
   Images,
   Store,
+  Bluetooth,
 } from "lucide-react";
 import { parseSubjectKind } from "@/lib/subject-kind";
 import { subjectKindFromDashboardPathname } from "@/lib/dashboard-path-kind";
@@ -25,10 +26,13 @@ import {
   isDashboardGeofences,
   isDashboardHome,
   isDashboardNfc,
+  isDashboardBle,
   isDashboardPets,
   isDashboardScans,
 } from "@/lib/dashboard-nav-active";
 import { getDashboardNfcNavLabel } from "@/lib/dashboard-nfc-nav-label";
+import { getDashboardBleNavLabel } from "@/lib/dashboard-ble-nav-label";
+import { isBleCompanionEnabled } from "@/lib/ble-companion-feature";
 import { useDashboardLinkedTagCount } from "@/hooks/use-dashboard-linked-tag-count";
 
 type DashboardNavBarProps = {
@@ -58,6 +62,7 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
   const dashGeo = isDashboardGeofences(pathnameSafe);
   const dashAlbums = isDashboardAlbums(pathnameSafe);
   const dashNfc = isDashboardNfc(pathnameSafe);
+  const dashBle = isBleCompanionEnabled() && isDashboardBle(pathnameSafe);
   const dashStore = pathnameSafe === "/shop" || pathnameSafe.startsWith("/shop/");
   const onKindDashboard = Boolean(pathKind);
   const linkedTagCount = useDashboardLinkedTagCount(kind, tenant, onKindDashboard);
@@ -83,6 +88,16 @@ export function DashboardNavBar({ session, isAdmin, orgManageHref }: DashboardNa
       Icon: NotebookPen,
       badge: linkedTagCount != null && linkedTagCount > 0 ? linkedTagCount : undefined,
     },
+    ...(isBleCompanionEnabled()
+      ? [
+          {
+            href: `/dashboard/${kind}/ble${tenantQs}`,
+            label: getDashboardBleNavLabel(),
+            active: dashBle,
+            Icon: Bluetooth,
+          },
+        ]
+      : []),
     {
       href: `/dashboard/${kind}/scans${tenantQs}`,
       label: "스캔기록",

@@ -60,6 +60,12 @@ export function isDashboardNfc(pathname: string): boolean {
   return segments.length >= 3 && segments[0] === "dashboard" && segments[2] === "nfc";
 }
 
+/** /dashboard/[kind]/ble — BLE 동행 앱 온보딩 */
+export function isDashboardBle(pathname: string): boolean {
+  const segments = pathname.split("/").filter(Boolean);
+  return segments.length >= 3 && segments[0] === "dashboard" && segments[2] === "ble";
+}
+
 /** /dashboard/companion/wayfinder — 링크유-동행(교통약자 맞춤 이동·시설 안내) */
 export function isDashboardWayfinder(pathname: string): boolean {
   const segments = pathname.split("/").filter(Boolean);

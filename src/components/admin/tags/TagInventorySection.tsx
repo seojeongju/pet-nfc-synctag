@@ -15,6 +15,7 @@ import type {
   AdminWayfinderSpotPickRow,
   TagBatchesPageResult,
   TagBatchSummaryRow,
+  TagsInventoryBleFilter,
   TagsInventoryLinkFilter,
   TagsInventoryStatusFilter,
   TagsInventoryWayfinderFilter,
@@ -28,6 +29,7 @@ export type TagInventoryQueryState = {
   kind: string;
   link: TagsInventoryLinkFilter;
   wf: TagsInventoryWayfinderFilter;
+  ble: TagsInventoryBleFilter;
   regFrom: string;
   regTo: string;
   tenantId?: string | null;
@@ -50,6 +52,7 @@ export function buildInventorySearchHref(
   if (m.kind.trim()) p.set("kind", m.kind.trim());
   if (m.link !== "all") p.set("link", m.link);
   if (m.wf !== "all") p.set("wf", m.wf);
+  if (m.ble !== "all") p.set("ble", m.ble);
   if (m.regFrom.trim()) p.set("reg_from", m.regFrom.trim());
   if (m.regTo.trim()) p.set("reg_to", m.regTo.trim());
   if (m.tenantId) p.set("tenant", m.tenantId);
@@ -72,6 +75,7 @@ type TagInventorySectionProps = {
   initialKind: string;
   initialLink: TagsInventoryLinkFilter;
   initialWf: TagsInventoryWayfinderFilter;
+  initialBle: TagsInventoryBleFilter;
   initialRegFrom: string;
   initialRegTo: string;
   tenantId?: string | null;
@@ -93,6 +97,7 @@ export function TagInventorySection({
   initialKind,
   initialLink,
   initialWf,
+  initialBle,
   initialRegFrom,
   initialRegTo,
   tenantId = null,
@@ -120,6 +125,7 @@ export function TagInventorySection({
     kind: initialKind,
     link: initialLink,
     wf: initialWf,
+    ble: initialBle,
     regFrom: initialRegFrom,
     regTo: initialRegTo,
     tenantId,
@@ -143,17 +149,17 @@ export function TagInventorySection({
         <input type="hidden" name="bpageSize" value={String(bPageSize)} />
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end sm:gap-6">
           <div className="space-y-1">
-            <h3 className="flex items-center gap-2 text-xl font-black text-slate-900">
-              <Database className="h-5 w-5 text-teal-400" />
-              자산 목록
+            <h3 className="flex items-center gap-2 text-lg font-black text-slate-900">
+              <Database className="h-5 w-5 text-teal-500" />
+              인벤토리
             </h3>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-              검색·필터·페이지 (총 {total.toLocaleString()}건 · {rangeStart}–{rangeEnd}번째 표시)
+            <p className="text-[11px] font-bold tabular-nums text-slate-500">
+              {total.toLocaleString()}건 · {rangeStart}–{rangeEnd}
             </p>
           </div>
           <div className="flex flex-wrap items-end gap-2 sm:justify-end">
             <label className="flex min-w-[100px] flex-col gap-1">
-              <span className="text-[10px] font-black uppercase text-slate-400">자산·페이지당</span>
+              <span className="text-[10px] font-black uppercase text-slate-400">페이지당</span>
               <select
                 name="pageSize"
                 defaultValue={String(pageSize)}
@@ -181,7 +187,7 @@ export function TagInventorySection({
               type="search"
               name="q"
               defaultValue={initialQ}
-              placeholder="UID · 제품명 · 펫 · 이메일 · 동행 스팟(slug·제목)"
+              placeholder="UID · MAC · 제품 · 펫 · 이메일"
               maxLength={120}
               className={cn(
                 adminUi.searchInput,
@@ -190,7 +196,7 @@ export function TagInventorySection({
             />
           </label>
           <label className="space-y-1 lg:col-span-2">
-            <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">재고 상태</span>
+            <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">상태</span>
             <select
               name="status"
               defaultValue={initialStatus}
@@ -203,16 +209,16 @@ export function TagInventorySection({
             </select>
           </label>
           <label className="space-y-1 lg:col-span-3">
-            <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">배치 ID</span>
+            <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">배치</span>
             <select
               name="batch"
               defaultValue={initialBatch}
               className={cn(adminUi.input, "min-h-[44px] w-full rounded-xl text-sm font-bold sm:min-h-10 sm:text-xs")}
             >
-              <option value="">전체 배치</option>
+              <option value="">전체</option>
               {initialBatch && !batchOptions.includes(initialBatch) ? (
                 <option value={initialBatch}>
-                  {initialBatch} (목록 외)
+                  {initialBatch} (외)
                 </option>
               ) : null}
               {batchOptions.map((b) => (
@@ -223,14 +229,14 @@ export function TagInventorySection({
             </select>
           </label>
           <label className="space-y-1 lg:col-span-3">
-            <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">할당 모드</span>
+            <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">모드</span>
             <select
               name="kind"
               defaultValue={initialKind}
               className={cn(adminUi.input, "min-h-[44px] w-full rounded-xl text-sm font-bold sm:min-h-10 sm:text-xs")}
             >
               <option value="">전체</option>
-              <option value="__unset__">범용(모드 미지정)</option>
+              <option value="__unset__">미지정</option>
               {SUBJECT_KINDS.map((k) => (
                 <option key={k} value={k}>
                   {subjectKindMeta[k].label}
@@ -239,31 +245,43 @@ export function TagInventorySection({
             </select>
           </label>
           <label className="space-y-1 lg:col-span-3">
-            <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">펫 연결</span>
+            <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">펫</span>
             <select
               name="link"
               defaultValue={initialLink}
               className={cn(adminUi.input, "min-h-[44px] w-full rounded-xl text-sm font-bold sm:min-h-10 sm:text-xs")}
             >
               <option value="all">전체</option>
-              <option value="linked">연결됨</option>
+              <option value="linked">연결</option>
               <option value="unlinked">미연결</option>
             </select>
           </label>
           <label className="space-y-1 lg:col-span-3">
-            <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">동행 스팟</span>
+            <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">동행</span>
             <select
               name="wf"
               defaultValue={initialWf}
               className={cn(adminUi.input, "min-h-[44px] w-full rounded-xl text-sm font-bold sm:min-h-10 sm:text-xs")}
             >
               <option value="all">전체</option>
-              <option value="linked">연결됨</option>
+              <option value="linked">연결</option>
               <option value="unlinked">미연결</option>
             </select>
           </label>
           <label className="space-y-1 lg:col-span-3">
-            <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">등록일 시작</span>
+            <span className="text-[10px] font-black uppercase tracking-wide text-indigo-700">BLE</span>
+            <select
+              name="ble"
+              defaultValue={initialBle}
+              className={cn(adminUi.input, "min-h-[44px] w-full rounded-xl text-sm font-bold sm:min-h-10 sm:text-xs")}
+            >
+              <option value="all">전체</option>
+              <option value="set">MAC 있음</option>
+              <option value="unset">MAC 없음</option>
+            </select>
+          </label>
+          <label className="space-y-1 lg:col-span-3">
+            <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">등록 시작</span>
             <input
               type="date"
               name="reg_from"
@@ -272,7 +290,7 @@ export function TagInventorySection({
             />
           </label>
           <label className="space-y-1 lg:col-span-3">
-            <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">등록일 종료</span>
+            <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">등록 종료</span>
             <input
               type="date"
               name="reg_to"
@@ -296,7 +314,7 @@ export function TagInventorySection({
           ))
         ) : (
           <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-xs font-bold text-slate-500">
-            조건에 맞는 태그가 없습니다. 필터를 바꿔 보세요.
+            결과 없음
           </div>
         )}
       </div>
@@ -305,15 +323,15 @@ export function TagInventorySection({
         <table className="w-full text-left">
           <thead>
             <AdminTableHeadRow>
-              <AdminTableHeadCell className="min-w-[140px] px-4 py-5">태그 UID</AdminTableHeadCell>
-              <AdminTableHeadCell className="min-w-[100px] px-4 py-5">제품명</AdminTableHeadCell>
-              <AdminTableHeadCell className="min-w-[120px] px-4 py-5">할당 모드</AdminTableHeadCell>
-              <AdminTableHeadCell className="min-w-[140px] px-4 py-5">동행 스팟</AdminTableHeadCell>
-              <AdminTableHeadCell className="min-w-[120px] px-4 py-5">BLE MAC</AdminTableHeadCell>
+              <AdminTableHeadCell className="min-w-[140px] px-4 py-5">UID</AdminTableHeadCell>
+              <AdminTableHeadCell className="min-w-[100px] px-4 py-5">제품</AdminTableHeadCell>
+              <AdminTableHeadCell className="min-w-[120px] px-4 py-5">모드</AdminTableHeadCell>
+              <AdminTableHeadCell className="min-w-[140px] px-4 py-5">동행</AdminTableHeadCell>
+              <AdminTableHeadCell className="min-w-[120px] px-4 py-5">BLE</AdminTableHeadCell>
               <AdminTableHeadCell className="px-4 py-5">상태</AdminTableHeadCell>
               <AdminTableHeadCell className="px-4 py-5">연결</AdminTableHeadCell>
-              <AdminTableHeadCell className="px-4 py-5">등록일</AdminTableHeadCell>
-              <AdminTableHeadCell className="min-w-[88px] px-4 py-5">저장·삭제</AdminTableHeadCell>
+              <AdminTableHeadCell className="px-4 py-5">등록</AdminTableHeadCell>
+              <AdminTableHeadCell className="min-w-[72px] px-4 py-5" />
             </AdminTableHeadRow>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -332,7 +350,7 @@ export function TagInventorySection({
                   <div className="flex flex-col items-center gap-3 opacity-20">
                     <Database className="h-12 w-12 text-slate-400" />
                     <p className="text-xs font-black uppercase tracking-widest text-slate-400">
-                      조건에 맞는 태그가 없습니다
+                      결과 없음
                     </p>
                   </div>
                 </td>
@@ -347,7 +365,7 @@ export function TagInventorySection({
         data-section="tag-inventory-asset-pages"
       >
         <p className="order-2 text-center text-xs font-bold tabular-nums text-slate-500 sm:order-1 sm:text-left">
-          페이지 {page} / {totalPages} · {total.toLocaleString()}건 중 {rangeStart}–{rangeEnd}
+          {page}/{totalPages} · {rangeStart}–{rangeEnd}
         </p>
         <div className="order-1 sm:order-2 sm:flex-1 sm:justify-end">
           <AdminPagination
@@ -372,6 +390,8 @@ export function TagInventorySection({
           <input type="hidden" name="batch" value={initialBatch} />
           <input type="hidden" name="kind" value={initialKind} />
           <input type="hidden" name="link" value={initialLink} />
+          <input type="hidden" name="wf" value={initialWf} />
+          <input type="hidden" name="ble" value={initialBle} />
           <input type="hidden" name="reg_from" value={initialRegFrom} />
           <input type="hidden" name="reg_to" value={initialRegTo} />
           <input type="hidden" name="page" value={String(page)} />
@@ -379,11 +399,11 @@ export function TagInventorySection({
           <input type="hidden" name="bpage" value="1" />
           <div className="flex items-center gap-2 text-slate-700">
             <BarChart3 className="h-4 w-4 shrink-0 text-teal-400" />
-            <h4 className="text-sm font-black">최근 배치 등록 통계</h4>
+            <h4 className="text-sm font-black">배치 통계</h4>
           </div>
           <div className="flex flex-wrap items-end gap-2 sm:ml-auto">
             <label className="flex min-w-[100px] flex-col gap-1">
-              <span className="text-[10px] font-black uppercase text-slate-400">배치·페이지당</span>
+              <span className="text-[10px] font-black uppercase text-slate-400">페이지당</span>
               <select
                 name="bpageSize"
                 defaultValue={String(bPageSize)}
@@ -406,8 +426,8 @@ export function TagInventorySection({
           </div>
         </form>
 
-        <p className="text-[10px] font-bold text-slate-500">
-          배치 수 {bTotal.toLocaleString()}건 · {bRangeStart}–{bRangeEnd}번째 표시
+        <p className="text-[10px] font-bold tabular-nums text-slate-500">
+          {bTotal.toLocaleString()}건 · {bRangeStart}–{bRangeEnd}
         </p>
 
         <div className="space-y-2">
@@ -442,14 +462,14 @@ export function TagInventorySection({
                     prefetch={false}
                     className="rounded-lg border border-teal-200 bg-white px-2.5 py-1.5 text-teal-700 hover:bg-teal-50"
                   >
-                    이 배치만 보기
+                    이 배치
                   </Link>
                 </div>
               </div>
             ))
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-xs font-bold text-slate-500">
-              등록된 batch_id가 없습니다. UID를 일괄 등록해 보세요.
+              배치 없음
             </div>
           )}
         </div>
@@ -458,7 +478,7 @@ export function TagInventorySection({
           <div className="border-t border-slate-100 pt-4" data-section="tag-inventory-batch-pages">
             <div className="mb-2 flex flex-col items-center justify-between gap-2 sm:flex-row">
               <p className="text-center text-xs font-bold tabular-nums text-slate-500 sm:text-left">
-                배치 페이지 {bPage} / {bTotalPages}
+                {bPage}/{bTotalPages}
               </p>
             </div>
             <AdminPagination

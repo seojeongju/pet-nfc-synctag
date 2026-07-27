@@ -1,0 +1,5 @@
+# Copy to android-companion/local.properties (gitignored).
+# Injected into BuildConfig at build time.
+NATIVE_API_BASE_URL=https://wow-linku.co.kr
+# Optional: prefill pet_id when opening without deeplink
+COMPANION_DEBUG_PET_ID=

@@ -51,13 +51,13 @@ export const ADMIN_NAV_SECTIONS: NavSection[] = [
   },
   {
     id: "nfc",
-    title: "Pet-ID NFC",
+    title: "태그",
     items: [
-      { href: "/admin/nfc-tags", label: "허브·워크플로", icon: LayoutGrid, color: "text-amber-500" },
-      { href: "/admin/nfc-tags/register", label: "① UID 등록", icon: ListPlus, color: "text-teal-600" },
-      { href: "/admin/nfc-tags/write-url", label: "② URL 기록", icon: Smartphone, color: "text-indigo-600" },
-      { href: "/admin/nfc-tags/inventory", label: "③ 인벤토리", icon: Database, color: "text-amber-600" },
-      { href: "/admin/nfc-tags/history", label: "④ 연결·감사", icon: History, color: "text-slate-600" },
+      { href: "/admin/nfc-tags", label: "허브", icon: LayoutGrid, color: "text-amber-500" },
+      { href: "/admin/nfc-tags/register", label: "등록", icon: ListPlus, color: "text-teal-600" },
+      { href: "/admin/nfc-tags/write-url", label: "기록", icon: Smartphone, color: "text-indigo-600" },
+      { href: "/admin/nfc-tags/inventory", label: "인벤토리", icon: Database, color: "text-amber-600" },
+      { href: "/admin/nfc-tags/history", label: "감사", icon: History, color: "text-slate-600" },
       {
         href: "/admin/wayfinder",
         label: "동행 · 시설 동기화",

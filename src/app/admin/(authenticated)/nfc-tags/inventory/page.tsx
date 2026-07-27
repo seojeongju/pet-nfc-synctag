@@ -8,6 +8,7 @@ import { AdminPageIntro } from "@/components/admin/layout/AdminPageIntro";
 import { TagInventorySection } from "@/components/admin/tags/TagInventorySection";
 import { adminUi } from "@/styles/admin/ui";
 import type {
+  TagsInventoryBleFilter,
   TagsInventoryLinkFilter,
   TagsInventoryStatusFilter,
   TagsInventoryWayfinderFilter,
@@ -31,6 +32,8 @@ type Search = {
   link?: string;
   /** 동행 스팟 연결: wf=linked|unlinked */
   wf?: string;
+  /** BLE MAC: ble=set|unset */
+  ble?: string;
   reg_from?: string;
   reg_to?: string;
 };
@@ -50,6 +53,11 @@ function parseInventoryWayfinder(raw: string | undefined): TagsInventoryWayfinde
   return "all";
 }
 
+function parseInventoryBle(raw: string | undefined): TagsInventoryBleFilter {
+  if (raw === "set" || raw === "unset") return raw;
+  return "all";
+}
+
 export default async function AdminNfcTagsInventoryPage({
   searchParams,
 }: {
@@ -62,6 +70,7 @@ export default async function AdminNfcTagsInventoryPage({
   const kind = (sp.kind ?? "").trim().slice(0, 40);
   const link = parseInventoryLink(sp.link);
   const wf = parseInventoryWayfinder(sp.wf);
+  const ble = parseInventoryBle(sp.ble);
   const regFrom = (sp.reg_from ?? "").trim();
   const regTo = (sp.reg_to ?? "").trim();
   const tenantId = (sp.tenant ?? "").trim() || undefined;
@@ -86,6 +95,7 @@ export default async function AdminNfcTagsInventoryPage({
       kind: kind || undefined,
       link,
       wf,
+      ble,
       regFrom: regFrom || undefined,
       regTo: regTo || undefined,
     }),
@@ -99,11 +109,10 @@ export default async function AdminNfcTagsInventoryPage({
       <div className={adminUi.nfcTagsPageBody}>
         <div className="mb-8 space-y-6">
           <AdminPageIntro
-            title="③ 태그 인벤토리"
-            subtitle="UID·할당 모드·펫 연결·동행 연결·등록일·재고·배치로 필터. 쿼리: kind, link(펫), wf(동행), reg_from·reg_to. 자산=page·pageSize, 배치=bpage·bpageSize."
+            title="인벤토리"
             crumbs={[
               { label: "관리자", href: "/admin" },
-              { label: "Pet-ID NFC", href: "/admin/nfc-tags" },
+              { label: "태그", href: "/admin/nfc-tags" },
               { label: "인벤토리" },
             ]}
           />
@@ -119,6 +128,7 @@ export default async function AdminNfcTagsInventoryPage({
           initialKind={kind}
           initialLink={link}
           initialWf={wf}
+          initialBle={ble}
           initialRegFrom={regFrom}
           initialRegTo={regTo}
           tenantId={tenantId ?? null}

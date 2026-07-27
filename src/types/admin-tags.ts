@@ -7,6 +7,9 @@ export type TagsInventoryLinkFilter = "all" | "linked" | "unlinked";
 /** wayfinder_spot_id(링크유-동행) 연결 여부 */
 export type TagsInventoryWayfinderFilter = "all" | "linked" | "unlinked";
 
+/** tags.ble_mac 등록 여부 (동행 앱 출고 QA) */
+export type TagsInventoryBleFilter = "all" | "set" | "unset";
+
 export type TagsInventoryPageParams = {
   q?: string;
   status?: TagsInventoryStatusFilter;
@@ -25,6 +28,8 @@ export type TagsInventoryPageParams = {
   link?: TagsInventoryLinkFilter;
   /** 동행 스팟 연결: 전체 / 연결됨 / 미연결 */
   wf?: TagsInventoryWayfinderFilter;
+  /** BLE MAC: 전체 / 등록됨 / 미등록 */
+  ble?: TagsInventoryBleFilter;
   /** 등록일(태그 created_at) 시작 YYYY-MM-DD */
   regFrom?: string;
   /** 등록일 종료 YYYY-MM-DD */

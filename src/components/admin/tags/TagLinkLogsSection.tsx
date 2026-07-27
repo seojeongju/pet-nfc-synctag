@@ -40,21 +40,18 @@ export function TagLinkLogsSection({ linkPage }: { linkPage: TagLinkLogsPageResu
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-cyan-500/10 text-cyan-600">
             <History className="h-5 w-5" aria-hidden />
           </div>
-          <div className="min-w-0 space-y-1">
+          <div className="min-w-0">
             <h4 className="text-[1.05rem] font-black leading-snug tracking-tight text-slate-900 sm:text-sm">
-              태그 연결·해제 이력
+              연결·해제
             </h4>
-            <p className="text-[13px] font-medium leading-snug text-slate-500 sm:text-[11px] sm:font-bold">
-              펫과 태그 매핑이 바뀔 때 기록됩니다. 아래「관리자 감사 로그」와 페이지·페이지 크기는 서로 별도입니다.
-            </p>
-            <p className="text-[10px] font-bold tabular-nums text-slate-500">
-              총 {total.toLocaleString()}건 · {rangeStart}–{rangeEnd}번째 표시
+            <p className="mt-0.5 text-[10px] font-bold tabular-nums text-slate-500">
+              {total.toLocaleString()}건 · {rangeStart}–{rangeEnd}
             </p>
           </div>
         </div>
         <div className="flex flex-wrap items-end gap-2 sm:justify-end">
-          <label className="flex min-w-[120px] flex-col gap-1">
-            <span className="text-[10px] font-black uppercase text-slate-400">연결·해제 / 페이지당</span>
+          <label className="flex min-w-[100px] flex-col gap-1">
+            <span className="text-[10px] font-black uppercase text-slate-400">페이지당</span>
             <select
               value={String(pageSize)}
               onChange={(e) => applyLinkPageSize(Number(e.target.value) || 20)}
@@ -93,8 +90,8 @@ export function TagLinkLogsSection({ linkPage }: { linkPage: TagLinkLogsPageResu
                 <AdminInlineContextBlock
                   primary={log.tag_id}
                   sublines={[
-                    log.pet_name || "프로필명 없음",
-                    log.owner_email?.trim() ? log.owner_email.trim() : "소유자 이메일 없음",
+                    log.pet_name || "—",
+                    log.owner_email?.trim() ? log.owner_email.trim() : null,
                   ]}
                 />
               </div>
@@ -102,7 +99,7 @@ export function TagLinkLogsSection({ linkPage }: { linkPage: TagLinkLogsPageResu
           ))
         ) : (
           <p className="rounded-2xl border border-dashed border-slate-200 px-4 py-10 text-center text-[14px] font-semibold text-slate-500">
-            연결/해제 이력이 아직 없습니다.
+            이력 없음
           </p>
         )}
       </div>
@@ -113,8 +110,8 @@ export function TagLinkLogsSection({ linkPage }: { linkPage: TagLinkLogsPageResu
             <AdminTableHeadRow>
               <AdminTableHeadCell>시각</AdminTableHeadCell>
               <AdminTableHeadCell>액션</AdminTableHeadCell>
-              <AdminTableHeadCell>태그 UID</AdminTableHeadCell>
-              <AdminTableHeadCell>반려동물</AdminTableHeadCell>
+              <AdminTableHeadCell>UID</AdminTableHeadCell>
+              <AdminTableHeadCell>펫</AdminTableHeadCell>
               <AdminTableHeadCell>소유자</AdminTableHeadCell>
             </AdminTableHeadRow>
           </thead>
@@ -144,14 +141,14 @@ export function TagLinkLogsSection({ linkPage }: { linkPage: TagLinkLogsPageResu
                       ]}
                     />
                   </td>
-                  <td className={adminUi.tableBodyCellStrong}>{log.pet_name || "알 수 없음"}</td>
-                  <td className={cn(adminUi.tableBodyCell, "text-slate-400")}>{log.owner_email || "-"}</td>
+                  <td className={adminUi.tableBodyCellStrong}>{log.pet_name || "—"}</td>
+                  <td className={cn(adminUi.tableBodyCell, "text-slate-400")}>{log.owner_email || "—"}</td>
                 </AdminTableRow>
               ))
             ) : (
               <tr>
                 <td colSpan={5} className="py-14 text-center text-sm font-bold text-slate-500">
-                  연결/해제 이력이 아직 없습니다.
+                  이력 없음
                 </td>
               </tr>
             )}
