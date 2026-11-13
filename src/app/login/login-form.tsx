@@ -341,7 +341,7 @@ export function LoginForm() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-outfit items-center justify-center p-6 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-teal-50 via-white to-indigo-50">
-      <Link href="/" className="absolute top-8 left-8">
+      <Link href="/linku" className="absolute top-8 left-8">
         <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform text-slate-800">
           <ArrowLeft className="w-6 h-6" />
         </div>

@@ -48,7 +48,7 @@ export default function UnknownTagView({ tagId }: { tagId: string }) {
         transition={{ duration: 0.6, delay: 0.2 }}
         className="mt-10 flex w-full max-w-lg flex-col gap-4 px-2 sm:px-0"
       >
-        <Link href="/" className="w-full touch-manipulation" prefetch={false}>
+        <Link href="/linku" className="w-full touch-manipulation" prefetch={false}>
           <Button
             size="lg"
             className="min-h-[3.75rem] w-full rounded-[1.35rem] bg-teal-500 px-6 py-4 text-lg font-black tracking-tight text-white shadow-[0_20px_40px_-12px_rgba(20,184,166,0.45)] ring-2 ring-teal-400/30 transition-all hover:bg-teal-600 hover:shadow-[0_24px_48px_-12px_rgba(13,148,136,0.5)] hover:ring-teal-300/40 active:scale-[0.98] sm:min-h-[4rem] sm:rounded-3xl sm:text-xl sm:py-5"

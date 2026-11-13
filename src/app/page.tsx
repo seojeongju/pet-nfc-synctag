@@ -1,56 +1,46 @@
 import { Suspense } from "react";
-import MultiModeHomeClient from "@/components/landing/MultiModeHomeClient";
+import { redirect } from "next/navigation";
+import PlatformHomeClient from "@/components/platform/PlatformHomeClient";
 import { OAuthHomeErrorRedirect } from "@/components/auth/OAuthHomeErrorRedirect";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { getLandingSessionState } from "@/lib/landing-session";
-import { getOrgManageHrefForUser } from "@/lib/org-manage-href";
-import { SITE_DESCRIPTION, SITE_TITLE_DEFAULT, buildHomePageJsonLd, buildPublicMetadata } from "@/lib/seo";
-import { getCfRequestContext } from "@/lib/cf-request-context";
-import { listTenantsForUser } from "@/lib/tenant-membership";
-import { companionWayfinderPath } from "@/lib/companion/dashboard-paths";
+import { LINKU_HOME_PATH } from "@/lib/platform/services";
+import { SITE_DESCRIPTION, buildHomePageJsonLd, buildPublicMetadata } from "@/lib/seo";
 
 export const runtime = "edge";
 
-async function resolveHomeCompanionHref(userId: string | undefined): Promise<string> {
-  if (!userId) {
-    return `/login?callbackUrl=${encodeURIComponent("/hub")}`;
-  }
-  const context = getCfRequestContext();
-  const db = context.env.DB;
-  const tenants = await listTenantsForUser(db, userId).catch(() => []);
-  if (tenants.length > 0) {
-    return companionWayfinderPath(tenants[0]!.id);
-  }
-  return companionWayfinderPath(null);
-}
-
 export const metadata = buildPublicMetadata({
-  title: SITE_TITLE_DEFAULT,
+  title: "링크유 Link-U | NFC 태그 서비스·맞춤 제작 플랫폼",
   description: SITE_DESCRIPTION,
   path: "/",
   keywords: [
-    "NFC 보호자 연결",
-    "반려동물 안전 서비스",
-    "실종 예방 태그",
-    "스마트 인식표 플랫폼",
+    "NFC 통합 플랫폼",
+    "NFC 태그 제작",
+    "맞춤 NFC 태그",
+    "NFC 디지털 명함",
     "NFC 안심 플랫폼",
+    "3D 프린팅 NFC",
   ],
 });
+
+/** 기존 홈(현 /linku)이 받던 쿼리 — 이미 배포된 태그·앱 딥링크가 `/?...`로 들어온다 */
+const LEGACY_LINKU_QUERY_KEYS = ["uid", "ble", "mac", "device", "tag", "action"] as const;
 
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ uid?: string; ble?: string; mac?: string; device?: string; tag?: string; action?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
-  const activateTagId = sp.action === "activate" && sp.tag ? sp.tag : null;
-  const { session, isAdmin } = await getLandingSessionState();
+  if (LEGACY_LINKU_QUERY_KEYS.some((k) => sp[k] !== undefined)) {
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(sp)) {
+      if (typeof v === "string") qs.set(k, v);
+    }
+    redirect(`${LINKU_HOME_PATH}?${qs.toString()}`);
+  }
 
-  const orgManageHref = await getOrgManageHrefForUser(session?.user?.id).catch(() => null);
-  const companionHref = await resolveHomeCompanionHref(session?.user?.id);
-  /** 메인 랜딩 하단은 관리자 진입만 강조 (보호자는 상단 모드 타일 → 각 모드 페이지에서 로그인) */
-  const adminEntryLink = isAdmin ? "/admin" : "/admin/login";
-  const adminButtonLabel = isAdmin ? "관리자 센터" : "관리자 로그인";
+  const { session, isAdmin } = await getLandingSessionState();
 
   return (
     <>
@@ -58,15 +48,7 @@ export default async function Home({
       <Suspense fallback={null}>
         <OAuthHomeErrorRedirect />
       </Suspense>
-      <MultiModeHomeClient
-        session={session}
-        isAdmin={isAdmin}
-        adminEntryLink={adminEntryLink}
-        adminButtonLabel={adminButtonLabel}
-        orgManageHref={orgManageHref}
-        activateTagId={activateTagId}
-        companionHref={companionHref}
-      />
+      <PlatformHomeClient isLoggedIn={Boolean(session)} userName={session?.user?.name ?? null} isAdmin={isAdmin} />
     </>
   );
 }

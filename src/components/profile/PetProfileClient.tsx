@@ -238,7 +238,7 @@ export default function PetProfileClient({
           style={{ opacity: headerOpacity }}
           className="absolute top-8 left-6 right-6 z-30 flex items-center justify-between"
         >
-          <Link href={treatAsPublicVisitor ? "/" : `/dashboard/${subjectKind}${kindQs}`}>
+          <Link href={treatAsPublicVisitor ? "/linku" : `/dashboard/${subjectKind}${kindQs}`}>
              <div className="w-12 h-12 rounded-2xl glass-dark border-white/10 flex items-center justify-center shadow-2xl text-white active:scale-90 transition-transform">
                 <ArrowLeft className="w-6 h-6" />
              </div>
@@ -552,7 +552,7 @@ export default function PetProfileClient({
          {/** scale 제거: WebView에서 transform+가로 정렬이 어긋나는 사례 방지 */}
          <div className="grid grid-cols-3 w-full min-h-[5rem] items-end gap-0 px-2 sm:px-3 pb-2.5 pt-1">
          <div className="flex justify-center min-w-0">
-         <Link href="/" className="flex flex-col items-center gap-0.5 group w-full max-w-[5rem]">
+         <Link href="/linku" className="flex flex-col items-center gap-0.5 group w-full max-w-[5rem]">
             <div className="p-2 rounded-2xl text-slate-400 group-hover:text-white transition-all active:scale-90">
                <Home className="w-6 h-6" />
             </div>

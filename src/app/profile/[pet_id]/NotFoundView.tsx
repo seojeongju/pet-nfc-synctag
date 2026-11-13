@@ -42,7 +42,7 @@ export default function NotFoundView() {
         transition={{ duration: 0.6, delay: 0.2 }}
         className="mt-10 flex w-full max-w-xs flex-col gap-3"
       >
-        <Link href="/" className="w-full">
+        <Link href="/linku" className="w-full">
           <Button className="h-15 w-full rounded-2xl bg-teal-500 text-base font-black shadow-xl shadow-teal-500/20 hover:bg-teal-600 active:scale-[0.98] transition-all">
             <Home className="mr-2 h-5 w-5" />
             홈으로 돌아가기

@@ -32,7 +32,7 @@ export default function DashboardSegmentError({
         <Link href="/dashboard" className="rounded-full border border-slate-200 px-5 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">
           대시보드 홈
         </Link>
-        <Link href="/" className="rounded-full border border-slate-200 px-5 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">
+        <Link href="/linku" className="rounded-full border border-slate-200 px-5 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">
           홈
         </Link>
       </div>

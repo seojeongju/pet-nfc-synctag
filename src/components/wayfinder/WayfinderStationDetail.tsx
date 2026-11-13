@@ -119,7 +119,7 @@ export function WayfinderStationDetail({
           다른 역 찾기
         </Link>
         <Link
-          href="/"
+          href="/linku"
           className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-black text-slate-800 hover:bg-slate-50"
         >
           {linkuCompanionMenuTitle} 홈

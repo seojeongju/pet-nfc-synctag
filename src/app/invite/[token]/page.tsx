@@ -34,7 +34,7 @@ export default async function InviteAcceptPage({
           <ShieldAlert className="w-8 h-8 text-rose-500 mx-auto" />
           <h1 className="text-xl font-black text-slate-900">��ȿ���� ���� �ʴ� ��ũ</h1>
           <p className="text-sm font-semibold text-slate-500">��ũ�� ����Ǿ��ų� �������� �ʽ��ϴ�.</p>
-          <Link href="/" className="inline-flex h-10 items-center rounded-full bg-slate-900 px-5 text-sm font-black text-white">
+          <Link href="/linku" className="inline-flex h-10 items-center rounded-full bg-slate-900 px-5 text-sm font-black text-white">
             Ȩ���� �̵�
           </Link>
         </div>

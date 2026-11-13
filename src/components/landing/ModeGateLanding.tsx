@@ -318,7 +318,7 @@ export default function ModeGateLanding({
         <footer className="px-4 min-[390px]:px-7 min-[430px]:px-8 pb-10 pt-2 bg-white/50 flex flex-col items-center gap-4 w-full max-w-screen-sm mx-auto relative z-10">
           <nav className="flex flex-wrap justify-center gap-2 max-w-full px-1">
             <Link
-              href="/"
+              href="/linku"
               className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] min-[390px]:text-[11px] font-black text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-colors break-keep [word-break:keep-all]"
             >
               <Home className="h-3.5 w-3.5 shrink-0" />

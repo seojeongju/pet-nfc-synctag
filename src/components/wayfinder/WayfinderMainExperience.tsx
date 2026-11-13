@@ -42,7 +42,7 @@ export function WayfinderMainExperience({ entry }: Props) {
 
       <p className="text-center">
         <Link
-          href="/"
+          href="/linku"
           className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-4 text-xs font-black text-slate-700 shadow-sm hover:bg-white"
         >
           <Home className="h-4 w-4 shrink-0 text-indigo-600" aria-hidden />

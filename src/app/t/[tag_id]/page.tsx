@@ -127,7 +127,7 @@ export default async function TagResolvePage({ params }: { params: Promise<{ tag
    */
   if (!tag.pet_id) {
     const qs = new URLSearchParams({ tag: tag.id, action: "activate" });
-    redirect(`/?${qs.toString()}`);
+    redirect(`/linku?${qs.toString()}`);
   }
 
   /** 0 / false만 비활성. null·undefined(구 스키마)는 활성으로 간주 */

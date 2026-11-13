@@ -27,7 +27,7 @@ export default async function LoginPage({
 
   // 모드 게이트를 거치지 않은 직접 /login 접근만 홈으로 돌림 (OAuth 오류·callbackUrl 복구는 허용)
   if (!hasKind && !hasCallback && !hasOauthError) {
-    redirect("/");
+    redirect("/linku");
   }
 
   return (

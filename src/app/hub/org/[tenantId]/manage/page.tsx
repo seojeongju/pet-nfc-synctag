@@ -110,7 +110,7 @@ export default async function TenantOrgManagePage({
             <ChevronLeft className="h-4 w-4" />
             허브로
           </Link>
-          <Link href="/" className="inline-flex items-center gap-1 text-xs font-black text-slate-500 hover:text-teal-600">
+          <Link href="/linku" className="inline-flex items-center gap-1 text-xs font-black text-slate-500 hover:text-teal-600">
             모드 선택(랜딩)
           </Link>
         </div>

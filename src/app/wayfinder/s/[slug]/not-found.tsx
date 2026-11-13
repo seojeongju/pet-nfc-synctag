@@ -14,7 +14,7 @@ export default function WayfinderSpotNotFound() {
       <p className="text-sm font-medium leading-relaxed text-slate-600">
         링크가 만료되었거나 비공개 상태일 수 있습니다. 시설 안내 데스크에 문의해 주세요.
       </p>
-      <Link href="/" className="text-sm font-black text-indigo-600 underline-offset-4 hover:underline">
+      <Link href="/linku" className="text-sm font-black text-indigo-600 underline-offset-4 hover:underline">
         링크유 홈으로
       </Link>
     </main>

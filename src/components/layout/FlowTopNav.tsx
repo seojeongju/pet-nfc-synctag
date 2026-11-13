@@ -51,10 +51,10 @@ export function FlowTopNavContent({
     variant === "dashboard"
       ? "/hub"
       : variant === "landing"
-        ? "/"
+        ? "/linku"
         : session
           ? "/hub"
-          : "/";
+          : "/linku";
 
   const useHardNav = variant === "dashboard";
   const isDashboard = variant === "dashboard";

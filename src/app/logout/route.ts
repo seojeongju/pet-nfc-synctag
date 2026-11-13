@@ -18,7 +18,7 @@ function postLogoutLocation(req: NextRequest): URL {
     if (selectedMode) {
         return new URL(`/${encodeURIComponent(selectedMode)}`, base);
     }
-    return new URL("/", base);
+    return new URL("/linku", base);
 }
 
 async function performLogout(req: NextRequest) {

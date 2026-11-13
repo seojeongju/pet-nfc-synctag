@@ -67,7 +67,7 @@ export function ManualPageClient({ session, isAdmin, orgManageHref = null }: Pro
               PDF 다운로드
             </a>
             <Link
-              href="/"
+              href="/linku"
               className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-white/30 bg-white/10 px-5 text-sm font-black text-white transition hover:bg-white/20"
             >
               <Home className="h-4 w-4" aria-hidden />
