@@ -40,8 +40,8 @@ export default async function ServiceDetailPage({ params }: Props) {
       <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-rose-300/30 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-16 right-[15%] h-64 w-64 rounded-full bg-teal-200/30 blur-3xl" />
 
-      <main className="relative z-10 mx-auto flex w-full max-w-screen-sm flex-col gap-5 px-4 pb-10 pt-7 min-[430px]:px-5">
-        <section className="rounded-[32px] border border-rose-100/80 bg-white p-5 shadow-[0_24px_60px_rgba(15,23,42,0.10)] min-[390px]:p-6">
+      <main className="relative z-10 mx-auto flex w-full max-w-screen-sm flex-col gap-5 px-4 pb-10 pt-7 min-[430px]:px-5 lg:grid lg:max-w-6xl lg:grid-cols-[1.25fr_1fr] lg:items-start lg:gap-8 lg:px-8 lg:pb-16 lg:pt-12">
+        <section className="rounded-[32px] border border-rose-100/80 bg-white p-5 shadow-[0_24px_60px_rgba(15,23,42,0.10)] min-[390px]:p-6 lg:rounded-[40px] lg:p-10">
           <div className="flex items-center justify-between gap-3">
             <span
               className={cn(
@@ -61,7 +61,7 @@ export default async function ServiceDetailPage({ params }: Props) {
             </span>
           </div>
           <p className="mt-4 text-[11px] font-black uppercase tracking-[0.18em] text-teal-600">링크유 서비스</p>
-          <h1 className="mt-1 text-[26px] font-black leading-tight tracking-tight text-slate-900 break-keep [word-break:keep-all]">
+          <h1 className="mt-1 text-[26px] font-black leading-tight tracking-tight text-slate-900 break-keep [word-break:keep-all] lg:text-[40px]">
             {service.name}
           </h1>
           <p className="mt-1 text-sm font-black text-teal-600">{service.tagline}</p>
@@ -75,7 +75,7 @@ export default async function ServiceDetailPage({ params }: Props) {
               </li>
             ))}
           </ul>
-          <div className="mt-5 grid grid-cols-1 gap-2">
+          <div className="mt-5 grid grid-cols-1 gap-2 lg:mt-8 lg:flex lg:flex-wrap lg:gap-3">
             {service.entryPath ? (
               <Link
                 href={service.entryPath}
@@ -107,6 +107,7 @@ export default async function ServiceDetailPage({ params }: Props) {
           ) : null}
         </section>
 
+        <div className="flex flex-col gap-5 lg:sticky lg:top-24">
         {formFactors.length > 0 ? (
           <section className="rounded-[28px] border border-slate-200/80 bg-white/90 p-[18px] shadow-sm min-[390px]:p-5">
             <p className="text-[11px] font-black tracking-wider text-teal-600">제작 가능한 태그</p>
@@ -141,6 +142,7 @@ export default async function ServiceDetailPage({ params }: Props) {
             )}
           </ol>
         </section>
+        </div>
       </main>
     </div>
   );

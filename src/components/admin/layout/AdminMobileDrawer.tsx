@@ -52,7 +52,7 @@ export function AdminMobileDrawer({ open, onClose, isPlatformAdmin }: Props) {
               <span className="font-black tracking-tighter text-slate-900 text-lg leading-none italic uppercase block truncate">
                 Link-U
               </span>
-              <span className="text-[10px] font-black text-teal-500 tracking-[0.3em] uppercase mt-1 block">관리자 콘솔</span>
+              <span className="text-[10px] font-black text-teal-500 tracking-[0.3em] uppercase mt-1 block">통합 관리자</span>
             </div>
           </div>
           <button

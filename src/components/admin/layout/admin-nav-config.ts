@@ -16,6 +16,9 @@ import {
   ShoppingBag,
   ReceiptText,
   HandCoins,
+  Globe2,
+  Layers,
+  PenTool,
 } from "lucide-react";
 
 export type NavLeaf = { href: string; label: string; icon: LucideIcon; color: string };
@@ -24,6 +27,10 @@ export type NavSection = { id: string; title: string; items: NavLeaf[] };
 
 /** 조직(테넌트) 관리자 콘솔 접속 시 숨기는 항목 — 해당 라우트는 서버에서 플랫폼 관리자만 허용 */
 const PLATFORM_ADMIN_ONLY_HREFS = new Set<string>([
+  "/admin",
+  "/admin/linku",
+  "/admin/platform/services",
+  "/admin/platform/studio",
   "/admin/tenants",
   "/admin/privacy",
   "/admin/wayfinder",
@@ -34,36 +41,59 @@ export function getAdminNavSections(isPlatformAdmin: boolean): NavSection[] {
   return ADMIN_NAV_SECTIONS.map((section) => ({
     ...section,
     items: section.items.filter((item) => !PLATFORM_ADMIN_ONLY_HREFS.has(item.href)),
-  }));
+  })).filter((section) => section.items.length > 0);
 }
 
+/**
+ * 통합 관리자 메뉴: 플랫폼 공통 → 서비스(Link-U 안심 · 태그 스튜디오) → NFC 태그 공통 → 커머스 → 조직·계정.
+ * 새 서비스가 열리면 서비스별 섹션을 추가한다 (src/lib/platform/services.ts).
+ */
 export const ADMIN_NAV_SECTIONS: NavSection[] = [
   {
-    id: "ops",
-    title: "운영·현황",
+    id: "platform",
+    title: "통합 운영",
     items: [
-      { href: "/admin", label: "운영 대시보드", icon: LayoutDashboard, color: "text-teal-500" },
-      { href: "/admin/shop", label: "스토어 관리", icon: ShoppingBag, color: "text-cyan-600" },
-      { href: "/admin/shop/orders", label: "주문 관리", icon: ReceiptText, color: "text-violet-600" },
-      { href: "/admin/announcements", label: "모드·배치 공지", icon: Megaphone, color: "text-indigo-500" },
+      { href: "/admin", label: "통합 대시보드", icon: Globe2, color: "text-teal-500" },
+      { href: "/admin/platform/services", label: "서비스 관리", icon: Layers, color: "text-cyan-600" },
       { href: "/admin/monitoring", label: "NFC/BLE 모니터링", icon: Radio, color: "text-sky-500" },
     ],
   },
   {
-    id: "nfc",
-    title: "태그",
+    id: "linku",
+    title: "Link-U 안심",
     items: [
-      { href: "/admin/nfc-tags", label: "허브", icon: LayoutGrid, color: "text-amber-500" },
-      { href: "/admin/nfc-tags/register", label: "등록", icon: ListPlus, color: "text-teal-600" },
-      { href: "/admin/nfc-tags/write-url", label: "기록", icon: Smartphone, color: "text-indigo-600" },
-      { href: "/admin/nfc-tags/inventory", label: "인벤토리", icon: Database, color: "text-amber-600" },
-      { href: "/admin/nfc-tags/history", label: "감사", icon: History, color: "text-slate-600" },
+      { href: "/admin/linku", label: "안심 운영 대시보드", icon: LayoutDashboard, color: "text-teal-600" },
+      { href: "/admin/announcements", label: "모드·배치 공지", icon: Megaphone, color: "text-indigo-500" },
       {
         href: "/admin/wayfinder",
         label: "동행 · 시설 동기화",
         icon: Accessibility,
         color: "text-emerald-600",
       },
+    ],
+  },
+  {
+    id: "studio",
+    title: "태그 스튜디오",
+    items: [{ href: "/admin/platform/studio", label: "디자인·제작 요청", icon: PenTool, color: "text-rose-500" }],
+  },
+  {
+    id: "nfc",
+    title: "NFC 태그 공통",
+    items: [
+      { href: "/admin/nfc-tags", label: "허브", icon: LayoutGrid, color: "text-amber-500" },
+      { href: "/admin/nfc-tags/register", label: "등록", icon: ListPlus, color: "text-teal-600" },
+      { href: "/admin/nfc-tags/write-url", label: "기록", icon: Smartphone, color: "text-indigo-600" },
+      { href: "/admin/nfc-tags/inventory", label: "인벤토리", icon: Database, color: "text-amber-600" },
+      { href: "/admin/nfc-tags/history", label: "감사", icon: History, color: "text-slate-600" },
+    ],
+  },
+  {
+    id: "commerce",
+    title: "커머스",
+    items: [
+      { href: "/admin/shop", label: "스토어 관리", icon: ShoppingBag, color: "text-cyan-600" },
+      { href: "/admin/shop/orders", label: "주문 관리", icon: ReceiptText, color: "text-violet-600" },
     ],
   },
   {

@@ -123,8 +123,29 @@ function helpContentForPath(p: string): { title: string; body: ReactNode } {
 
   if (p === "/admin") {
     return {
-      title: "대시보드",
+      title: "통합 대시보드",
+      body: <p>서비스별 현황(사용자·태그·Link-U·주문·스튜디오). 각 카드를 누르면 해당 관리 화면으로 이동합니다.</p>,
+    };
+  }
+
+  if (p === "/admin/linku") {
+    return {
+      title: "Link-U 안심 운영",
       body: <p>KPI·태그 지표. NFC 작업은 태그 메뉴.</p>,
+    };
+  }
+
+  if (p.startsWith("/admin/platform/services")) {
+    return {
+      title: "서비스 관리",
+      body: <p>플랫폼 서비스 목록·상태·제작 가능한 태그 모양.</p>,
+    };
+  }
+
+  if (p.startsWith("/admin/platform/studio")) {
+    return {
+      title: "태그 스튜디오",
+      body: <p>고객 커스텀 태그 디자인. 상태 탭으로 필터링합니다.</p>,
     };
   }
 

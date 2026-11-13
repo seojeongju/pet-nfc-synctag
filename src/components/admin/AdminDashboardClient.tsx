@@ -311,10 +311,10 @@ export default function AdminDashboardClient({
                 시스템 관리 콘솔
              </div>
              <h1 className="text-[1.4rem] font-black leading-tight tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
-                관리자 대시보드
+                Link-U 안심 운영 대시보드
               </h1>
               <p className="text-[15px] font-semibold text-slate-600 sm:text-sm sm:font-bold sm:text-slate-500">
-                핵심 운영 지표 요약
+                펫·메모리·키즈·러기지·골드·동행 태그와 관리 대상 지표
               </p>
           </div>
           

@@ -43,7 +43,7 @@ export default async function StudioPage({
       <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-rose-300/30 blur-3xl" />
       <div className="pointer-events-none absolute -left-20 top-[40%] h-64 w-64 rounded-full bg-amber-200/35 blur-3xl" />
 
-      <main className="relative z-10 mx-auto flex w-full max-w-screen-sm flex-col gap-5 px-4 pb-10 pt-7 min-[430px]:px-5">
+      <main className="relative z-10 mx-auto flex w-full max-w-screen-sm flex-col gap-5 px-4 pb-10 pt-7 min-[430px]:px-5 lg:max-w-4xl lg:gap-6 lg:px-8 lg:pt-12">
         <header className="rounded-3xl border border-teal-100 bg-gradient-to-br from-white via-teal-50/45 to-white px-5 py-5 shadow-sm">
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-600">링크유 태그 스튜디오</p>
           <h1 className="mt-1 text-[28px] font-black leading-tight tracking-tight text-slate-900">
@@ -60,7 +60,7 @@ export default async function StudioPage({
         {/* ① 서비스 */}
         <section className="rounded-[30px] border border-slate-200/80 bg-white/90 p-3.5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] min-[390px]:p-4">
           <p className="mb-2.5 px-1 text-[11px] font-black tracking-wider text-teal-600">① 서비스 선택</p>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-3 lg:gap-3">
             {PLATFORM_SERVICES.filter((s) => s.customizable).map((s) => {
               const Icon = platformServiceIcons[s.id];
               const active = selectedService?.id === s.id;
