@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="300" viewBox="0 0 240 300">
+  <rect width="240" height="300" rx="24" fill="#E0F2FE"/>
+  <circle cx="120" cy="48" r="70" fill="none" stroke="#0284C7" stroke-width="10" opacity="0.18"/>
+              <circle cx="120" cy="48" r="48" fill="none" stroke="#0284C7" stroke-width="8" opacity="0.28"/>
+  
+  <g fill="none" stroke="#0284C7" stroke-width="4.32" stroke-linecap="round">
+    <path d="M 95.7 130 a 24.3 24.3 0 0 1 48.6 0" />
+    <path d="M 104.934 135.4 a 15.066 15.066 0 0 1 30.132 0" />
+    <path d="M 113.196 140.8 a 6.804000000000001 6.804000000000001 0 0 1 13.608000000000002 0" />
+  </g>
+  <circle cx="120" cy="148.9" r="4.7250000000000005" fill="#0284C7"/>
+  <text x="120" y="208" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="36" font-weight="900" fill="#0C4A6E">FREE Wi-Fi</text>
+  <text x="120" y="242" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="700" fill="#0369A1">NFC로 바로 연결</text>
+  <rect x="66" y="222" width="108" height="32" rx="16" fill="#0284C7"/>
+  <text x="120" y="244" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="800" fill="#FFFFFF">NFC · TAP</text>
+</svg>

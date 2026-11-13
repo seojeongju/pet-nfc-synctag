@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="500" viewBox="0 0 400 500">
+  <rect width="400" height="500" rx="24" fill="#1C1917"/>
+  <rect x="0" y="0" width="400" height="14" fill="#FBBF24"/>
+              <rect x="0" y="486" width="400" height="14" fill="#FBBF24"/>
+  
+  <g fill="none" stroke="#FBBF24" stroke-width="4.32" stroke-linecap="round">
+    <path d="M 175.7 130 a 24.3 24.3 0 0 1 48.6 0" />
+    <path d="M 184.934 135.4 a 15.066 15.066 0 0 1 30.132 0" />
+    <path d="M 193.196 140.8 a 6.804000000000001 6.804000000000001 0 0 1 13.608000000000002 0" />
+  </g>
+  <circle cx="200" cy="148.9" r="4.7250000000000005" fill="#FBBF24"/>
+  <text x="200" y="208" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="36" font-weight="900" fill="#FAFAF9">Hotel Wi-Fi</text>
+  <text x="200" y="242" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="700" fill="#D6D3D1">Tap your phone</text>
+  <rect x="146" y="422" width="108" height="32" rx="16" fill="#FBBF24"/>
+  <text x="200" y="444" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="800" fill="#FFFFFF">NFC · TAP</text>
+</svg>
