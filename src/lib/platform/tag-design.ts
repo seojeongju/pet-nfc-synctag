@@ -32,8 +32,14 @@ export const TAG_TEXT_COLORS: readonly { hex: string; name: string }[] = [
   { hex: "#FFFFFF", name: "화이트" },
   { hex: "#0F172A", name: "블랙" },
   { hex: "#00655A", name: "딥 틸" },
+  { hex: "#1E3A8A", name: "네이비" },
+  { hex: "#0891B2", name: "시안" },
+  { hex: "#CA8A04", name: "골드" },
   { hex: "#BE123C", name: "레드" },
 ] as const;
+
+/** 문구 색 "디자인 기본" — 명함 템플릿의 원래 글자색(슬롯별)을 그대로 쓴다 */
+export const TEXT_COLOR_DESIGN = "design";
 
 export const MAX_TEXT_LINE_LENGTH = 16;
 
@@ -128,7 +134,10 @@ export function normalizeTagDesign(
   while (lines.length < ff.maxTextLines) lines.push("");
 
   const bodyColor = typeof r.bodyColor === "string" && HEX_RE.test(r.bodyColor) ? r.bodyColor : base.bodyColor;
-  const textColor = typeof r.textColor === "string" && HEX_RE.test(r.textColor) ? r.textColor : base.textColor;
+  const textColor =
+    typeof r.textColor === "string" && (HEX_RE.test(r.textColor) || r.textColor === TEXT_COLOR_DESIGN)
+      ? r.textColor
+      : base.textColor;
   const materialId = TAG_MATERIALS.some((m) => m.id === r.materialId) ? (r.materialId as TagMaterialId) : base.materialId;
   const textStyle = r.textStyle === "engraved" ? "engraved" : "raised";
   const image = normalizeImage(r.image);

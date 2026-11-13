@@ -12,7 +12,7 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { FormFactor } from "@/lib/platform/form-factors";
-import { getTagMaterial, type TagDesignSpec } from "@/lib/platform/tag-design";
+import { TEXT_COLOR_DESIGN, getTagMaterial, type TagDesignSpec } from "@/lib/platform/tag-design";
 import { getCardFaceLayout } from "@/lib/platform/card-face-layouts";
 
 type Props = {
@@ -135,6 +135,13 @@ function useLoadedImage(src: string | null): HTMLImageElement | null {
   return img;
 }
 
+function isLightColor(hex: string): boolean {
+  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+  if (!m) return false;
+  const [r, g, b] = [m[1], m[2], m[3]].map((v) => parseInt(v!, 16));
+  return 0.299 * r! + 0.587 * g! + 0.114 * b! > 160;
+}
+
 /** 윗면 캔버스 텍스처: 템플릿 전면 아트 · 사용자 로고 · 문구 */
 function paintFaceTexture(
   spec: TagDesignSpec,
@@ -185,10 +192,11 @@ function paintFaceTexture(
       ctx.textAlign = slot.align;
       const x = slot.align === "center" ? sx + sw / 2 : sx;
       const y = sy + sh / 2;
-      // 원본 아트의 입체 글자 느낌: 아래쪽 옅은 그림자
-      ctx.fillStyle = slot.color === "#FFFFFF" ? "rgba(0,0,0,0.28)" : "rgba(15,23,42,0.18)";
+      const color = spec.textColor === TEXT_COLOR_DESIGN ? slot.color : spec.textColor;
+      // 원본 아트의 입체 글자 느낌: 아래쪽 옅은 그림자 (밝은 글자일수록 진하게)
+      ctx.fillStyle = isLightColor(color) ? "rgba(0,0,0,0.28)" : "rgba(15,23,42,0.18)";
       ctx.fillText(line, x + size * 0.02, y + size * 0.05);
-      ctx.fillStyle = slot.color;
+      ctx.fillStyle = color;
       ctx.fillText(line, x, y);
     });
   }
@@ -246,7 +254,7 @@ function paintFaceTexture(
         ctx.fillStyle = "rgba(0,0,0,0.22)";
         ctx.fillText(line, x + size * 0.03, y + size * 0.05);
       }
-      ctx.fillStyle = faceSrc ? "#0F172A" : spec.textColor;
+      ctx.fillStyle = faceSrc || spec.textColor === TEXT_COLOR_DESIGN ? "#0F172A" : spec.textColor;
       ctx.fillText(line, x, y);
     });
   }

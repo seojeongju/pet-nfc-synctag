@@ -5,7 +5,7 @@
  */
 import type { FormFactorId } from "@/lib/platform/form-factors";
 import type { PlatformServiceId } from "@/lib/platform/services";
-import type { TagDesignSpec } from "@/lib/platform/tag-design";
+import { TEXT_COLOR_DESIGN, type TagDesignSpec } from "@/lib/platform/tag-design";
 
 export type TagDesignTemplateSource = "builtin" | "custom";
 
@@ -49,7 +49,6 @@ function cardTemplate(
   hint: string,
   lines: [string, string],
   bodyColor: string,
-  textColor: string,
   sortOrder: number
 ): BuiltinSeed {
   const face = CARD_FACE[num];
@@ -64,7 +63,8 @@ function cardTemplate(
     defaultSpec: {
       lines,
       bodyColor,
-      textColor,
+      // 명함 아트마다 이름·부가 문구 색이 달라(예: 06 검정/흰색) 기본은 템플릿 원래 색
+      textColor: TEXT_COLOR_DESIGN,
       materialId: "pla_matte",
       textStyle: "raised",
       faceArtSrc: face,
@@ -125,16 +125,16 @@ const BUILTIN: readonly BuiltinSeed[] = [
     },
     sortOrder: 30,
   },
-  cardTemplate("01", "네이비 사이드바", "왼쪽 시안 바와 NFC 마크가 있는 클래식 명함.", "네이비 · 사이드", ["NAME", "SHORT TEXT"], "#0B1B3A", "#FFFFFF", 10),
-  cardTemplate("02", "화이트 대각 컷", "밝은 바탕과 대각 네이비 코너 디자인.", "화이트 · 대각", ["NAME", "SHORT TEXT"], "#F8FAFC", "#0F172A", 20),
-  cardTemplate("03", "센터 NFC 터치", "중앙 NFC 원과 TOUCH HERE 안내형.", "네이비 · 센터", ["NAME", "SHORT TEXT"], "#0B1B3A", "#FFFFFF", 30),
-  cardTemplate("04", "회로 프레임", "시안 회로 패턴과 상단 NFC 탭.", "화이트 · 회로", ["NAME", "SHORT TEXT"], "#FFFFFF", "#0F172A", 40),
-  cardTemplate("05", "웨이브 바텀", "하단 웨이브와 우측 NFC 아이콘.", "화이트 · 웨이브", ["NAME", "SHORT TEXT"], "#FFFFFF", "#0F172A", 50),
-  cardTemplate("06", "명함 템플릿 06", "디지털 명함 전면 아트 06번.", "카드 · 06", ["NAME", "SHORT TEXT"], "#0B1B3A", "#FFFFFF", 60),
-  cardTemplate("07", "명함 템플릿 07", "디지털 명함 전면 아트 07번.", "카드 · 07", ["NAME", "SHORT TEXT"], "#0B1B3A", "#FFFFFF", 70),
-  cardTemplate("08", "명함 템플릿 08", "디지털 명함 전면 아트 08번.", "카드 · 08", ["NAME", "SHORT TEXT"], "#F8FAFC", "#0F172A", 80),
-  cardTemplate("09", "명함 템플릿 09", "디지털 명함 전면 아트 09번.", "카드 · 09", ["NAME", "SHORT TEXT"], "#FFFFFF", "#0F172A", 90),
-  cardTemplate("10", "명함 템플릿 10", "디지털 명함 전면 아트 10번.", "카드 · 10", ["NAME", "SHORT TEXT"], "#0B1B3A", "#FFFFFF", 100),
+  cardTemplate("01", "네이비 사이드바", "왼쪽 시안 바와 NFC 마크가 있는 클래식 명함.", "네이비 · 사이드", ["NAME", "SHORT TEXT"], "#0B1B3A", 10),
+  cardTemplate("02", "화이트 대각 컷", "밝은 바탕과 대각 네이비 코너 디자인.", "화이트 · 대각", ["NAME", "SHORT TEXT"], "#F8FAFC", 20),
+  cardTemplate("03", "센터 NFC 터치", "중앙 NFC 원과 TOUCH HERE 안내형.", "네이비 · 센터", ["NAME", "SHORT TEXT"], "#0B1B3A", 30),
+  cardTemplate("04", "회로 프레임", "시안 회로 패턴과 상단 NFC 탭.", "화이트 · 회로", ["NAME", "SHORT TEXT"], "#FFFFFF", 40),
+  cardTemplate("05", "웨이브 바텀", "하단 웨이브와 우측 NFC 아이콘.", "화이트 · 웨이브", ["NAME", "SHORT TEXT"], "#FFFFFF", 50),
+  cardTemplate("06", "명함 템플릿 06", "디지털 명함 전면 아트 06번.", "카드 · 06", ["NAME", "SHORT TEXT"], "#0B1B3A", 60),
+  cardTemplate("07", "명함 템플릿 07", "디지털 명함 전면 아트 07번.", "카드 · 07", ["NAME", "SHORT TEXT"], "#0B1B3A", 70),
+  cardTemplate("08", "명함 템플릿 08", "디지털 명함 전면 아트 08번.", "카드 · 08", ["NAME", "SHORT TEXT"], "#F8FAFC", 80),
+  cardTemplate("09", "명함 템플릿 09", "디지털 명함 전면 아트 09번.", "카드 · 09", ["NAME", "SHORT TEXT"], "#FFFFFF", 90),
+  cardTemplate("10", "명함 템플릿 10", "디지털 명함 전면 아트 10번.", "카드 · 10", ["NAME", "SHORT TEXT"], "#0B1B3A", 100),
   {
     id: "tpl_wifi_stand",
     serviceId: "wifi",

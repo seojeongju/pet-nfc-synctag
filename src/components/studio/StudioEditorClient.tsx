@@ -12,10 +12,12 @@ import {
   TAG_BODY_COLORS,
   TAG_MATERIALS,
   TAG_TEXT_COLORS,
+  TEXT_COLOR_DESIGN,
   type TagDesignRecord,
   type TagDesignSpec,
   type TagDesignStatus,
 } from "@/lib/platform/tag-design";
+import { getCardFaceLayout } from "@/lib/platform/card-face-layouts";
 import { cn } from "@/lib/utils";
 
 const TagPreview3D = dynamic(() => import("@/components/studio/TagPreview3D"), {
@@ -279,8 +281,27 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
           <Swatches colors={TAG_BODY_COLORS} value={spec.bodyColor} disabled={locked} onChange={(hex) => update({ bodyColor: hex })} />
         </Panel>
 
-        <Panel label="문구 색상">
-          <Swatches colors={TAG_TEXT_COLORS} value={spec.textColor} disabled={locked} onChange={(hex) => update({ textColor: hex })} />
+        <Panel label="문구 색상" hint={getCardFaceLayout(spec.faceArtSrc) ? "디자인 기본 = 템플릿 원래 색" : undefined}>
+          <div className="flex flex-wrap items-center gap-2.5">
+            {getCardFaceLayout(spec.faceArtSrc) ? (
+              <button
+                type="button"
+                onClick={() => update({ textColor: TEXT_COLOR_DESIGN })}
+                disabled={locked}
+                aria-pressed={spec.textColor === TEXT_COLOR_DESIGN}
+                className={cn(
+                  "inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[12px] font-black transition disabled:opacity-60",
+                  spec.textColor === TEXT_COLOR_DESIGN
+                    ? "border-teal-300 bg-gradient-to-r from-teal-50 to-cyan-50 text-teal-800 ring-2 ring-teal-500 ring-offset-2"
+                    : "border-slate-200 bg-white text-slate-600 hover:border-teal-200"
+                )}
+              >
+                <span className="h-4 w-4 rounded-full bg-[conic-gradient(#0F172A_0_50%,#FFFFFF_50%_100%)] ring-1 ring-slate-300" aria-hidden />
+                디자인 기본
+              </button>
+            ) : null}
+            <Swatches colors={TAG_TEXT_COLORS} value={spec.textColor} disabled={locked} onChange={(hex) => update({ textColor: hex })} />
+          </div>
         </Panel>
 
         <Panel label="재질">
