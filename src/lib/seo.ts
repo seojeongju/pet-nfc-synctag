@@ -1,22 +1,37 @@
 import type { Metadata } from "next";
 import type { SubjectKind } from "@/lib/subject-kind";
 import { subjectKindMeta } from "@/lib/subject-kind";
+import { PLATFORM_SERVICES, getPlatformService, type PlatformServiceId } from "@/lib/platform/services";
+import {
+  BRAND_ENTITY,
+  PLATFORM_FAQS,
+  STUDIO_FAQS,
+  STUDIO_HOWTO_STEPS,
+  serviceFaqs,
+  type SeoFaqItem,
+} from "@/lib/seo-content";
 
 const FALLBACK_SITE_URL = "https://wow-linku.co.kr";
 
 export const SITE_NAME = "링크유 Link-U";
 export const SITE_NAME_EN = "Link-U";
-export const SITE_TITLE_DEFAULT = `${SITE_NAME} | NFC로 연결하는 안심 플랫폼`;
+export const SITE_TITLE_DEFAULT = `${SITE_NAME} | NFC 태그 서비스·맞춤 제작 플랫폼`;
 export const SITE_DESCRIPTION =
-  "반려동물, 어르신, 아이, 수하물, 주얼리까지 NFC 태그로 보호자와 빠르게 연결하는 링크유(Link-U) 안심 플랫폼입니다.";
+  "NFC 태그의 연결·관리·맞춤 제작을 한곳에서. Link-U 안심, 디지털 명함, Wi-Fi, 매장·자산 관리와 3D 태그 스튜디오를 제공하는 링크유(Link-U) 플랫폼입니다.";
 export const DEFAULT_OG_IMAGE_PATH = "/images/hero-bg.png";
+export const DEFAULT_OG_IMAGE_WIDTH = 1200;
+export const DEFAULT_OG_IMAGE_HEIGHT = 630;
 
 export const BRAND_KEYWORDS = [
   "링크유",
   "Link-U",
-  "Pet-ID Connect",
   "NFC",
   "NFC 태그",
+  "NFC 통합 플랫폼",
+  "NFC 태그 제작",
+  "맞춤 NFC 태그",
+  "태그 스튜디오",
+  "디지털 명함 NFC",
   "스마트 인식표",
   "보호자 연결",
   "반려동물 인식표",
@@ -24,6 +39,8 @@ export const BRAND_KEYWORDS = [
   "아이 안전 태그",
   "수하물 분실 방지",
   "주얼리 보증",
+  "3D 프린팅 NFC",
+  "WOW3D",
 ] as const;
 
 const MODE_SEO: Record<
@@ -72,6 +89,35 @@ const MODE_SEO: Record<
   },
 };
 
+const SERVICE_SEO_EXTRA: Partial<
+  Record<PlatformServiceId, { title: string; keywords: string[] }>
+> = {
+  linku: {
+    title: "Link-U 안심 | NFC 보호자 연결·위치 안심 서비스",
+    keywords: ["NFC 안심", "보호자 연결", "실종 예방 태그", "Link-U"],
+  },
+  card: {
+    title: "디지털 명함 NFC | 맞춤 명함 태그 제작",
+    keywords: ["디지털 명함", "NFC 명함", "명함 태그", "vCard NFC"],
+  },
+  wifi: {
+    title: "Wi-Fi NFC 태그 | 비밀번호 없이 바로 접속",
+    keywords: ["Wi-Fi NFC", "와이파이 태그", "손님 Wi-Fi"],
+  },
+  store: {
+    title: "매장·리뷰 NFC | 메뉴·SNS·예약 연결",
+    keywords: ["매장 NFC", "리뷰 스탠드", "테이블 NFC"],
+  },
+  asset: {
+    title: "장비·자산 NFC 관리 | 현장 이력·매뉴얼",
+    keywords: ["자산 관리 NFC", "설비 점검 태그", "B2B NFC"],
+  },
+  custom: {
+    title: "자유 링크 NFC 태그 | 원하는 URL을 태그에",
+    keywords: ["커스텀 NFC", "URL 태그", "이벤트 NFC"],
+  },
+};
+
 type PublicMetadataInput = {
   title: string;
   description: string;
@@ -79,6 +125,7 @@ type PublicMetadataInput = {
   keywords?: string[];
   type?: "website" | "article";
   noIndex?: boolean;
+  ogImagePath?: string;
 };
 
 function normalizeSiteUrl(raw?: string | null): string {
@@ -102,9 +149,10 @@ export function buildPublicMetadata({
   keywords = [],
   type = "website",
   noIndex = false,
+  ogImagePath = DEFAULT_OG_IMAGE_PATH,
 }: PublicMetadataInput): Metadata {
   const url = path ? absoluteUrl(path) : undefined;
-  const imageUrl = absoluteUrl(DEFAULT_OG_IMAGE_PATH);
+  const imageUrl = absoluteUrl(ogImagePath);
   const mergedKeywords = [...new Set([...BRAND_KEYWORDS, ...keywords])];
 
   return {
@@ -115,6 +163,10 @@ export function buildPublicMetadata({
       ? {
           alternates: {
             canonical: url,
+            languages: {
+              "ko-KR": url,
+              "x-default": url,
+            },
           },
         }
       : {}),
@@ -128,6 +180,8 @@ export function buildPublicMetadata({
       images: [
         {
           url: imageUrl,
+          width: DEFAULT_OG_IMAGE_WIDTH,
+          height: DEFAULT_OG_IMAGE_HEIGHT,
           alt: title,
         },
       ],
@@ -184,6 +238,28 @@ export function buildModeMetadata(kind: SubjectKind): Metadata {
   });
 }
 
+export function buildPlatformServiceMetadata(serviceId: string): Metadata | null {
+  const service = getPlatformService(serviceId);
+  if (!service) return null;
+  const extra = SERVICE_SEO_EXTRA[service.id];
+  return buildPublicMetadata({
+    title: extra?.title ?? `${service.name} | ${SITE_NAME}`,
+    description: service.description,
+    path: `/services/${service.id}`,
+    keywords: [...(extra?.keywords ?? []), ...service.examples, service.tagline],
+  });
+}
+
+export function buildStudioMetadata(): Metadata {
+  return buildPublicMetadata({
+    title: "태그 스튜디오 | NFC 태그 디자인·3D 미리보기·맞춤 제작",
+    description:
+      "서비스별 템플릿으로 NFC 태그를 디자인하세요. 문구·이미지·색·재질을 편집하고 3D로 확인한 뒤 제작으로 이어집니다.",
+    path: "/studio",
+    keywords: ["NFC 태그 스튜디오", "NFC 태그 디자인", "맞춤 NFC", "3D 태그 미리보기", "디지털 명함 제작"],
+  });
+}
+
 export type JsonLdNode = Record<string, unknown>;
 
 export function buildOrganizationJsonLd(): JsonLdNode {
@@ -192,11 +268,34 @@ export function buildOrganizationJsonLd(): JsonLdNode {
     "@type": "Organization",
     "@id": absoluteUrl("/#organization"),
     name: SITE_NAME,
-    alternateName: SITE_NAME_EN,
+    alternateName: [SITE_NAME_EN, BRAND_ENTITY.legalName],
+    legalName: BRAND_ENTITY.legalName,
     url: getSiteUrl(),
-    logo: absoluteUrl("/icons/icon-512x512.png"),
+    logo: {
+      "@type": "ImageObject",
+      url: absoluteUrl("/icons/icon-512x512.png"),
+    },
+    image: absoluteUrl(DEFAULT_OG_IMAGE_PATH),
     description: SITE_DESCRIPTION,
-    email: "wow3d16@naver.com",
+    email: BRAND_ENTITY.contactEmail,
+    telephone: BRAND_ENTITY.telephone[0],
+    areaServed: {
+      "@type": "Country",
+      name: BRAND_ENTITY.areaServed,
+    },
+    brand: {
+      "@type": "Brand",
+      name: BRAND_ENTITY.brand,
+    },
+    contactPoint: [
+      {
+        "@type": "ContactPoint",
+        telephone: BRAND_ENTITY.telephone[0],
+        contactType: "customer service",
+        areaServed: "KR",
+        availableLanguage: ["ko"],
+      },
+    ],
   };
 }
 
@@ -207,14 +306,99 @@ export function buildWebSiteJsonLd(): JsonLdNode {
     "@id": absoluteUrl("/#website"),
     url: getSiteUrl(),
     name: SITE_NAME,
+    alternateName: SITE_NAME_EN,
     inLanguage: "ko-KR",
     description: SITE_DESCRIPTION,
     publisher: {
       "@id": absoluteUrl("/#organization"),
     },
+    potentialAction: {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: absoluteUrl("/studio?service={search_term_string}"),
+      },
+      "query-input": "required name=search_term_string",
+    },
   };
 }
 
+export function buildBreadcrumbJsonLd(
+  items: Array<{ name: string; path: string }>
+): JsonLdNode {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: item.name,
+      item: absoluteUrl(item.path),
+    })),
+  };
+}
+
+export function buildFaqJsonLd(faqs: readonly SeoFaqItem[], pagePath: string): JsonLdNode {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "@id": `${absoluteUrl(pagePath)}#faq`,
+    mainEntity: faqs.map((f) => ({
+      "@type": "Question",
+      name: f.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: f.answer,
+      },
+    })),
+  };
+}
+
+export function buildHowToJsonLd(input: {
+  name: string;
+  description: string;
+  path: string;
+  steps: readonly { name: string; text: string }[];
+}): JsonLdNode {
+  return {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "@id": `${absoluteUrl(input.path)}#howto`,
+    name: input.name,
+    description: input.description,
+    inLanguage: "ko-KR",
+    step: input.steps.map((s, i) => ({
+      "@type": "HowToStep",
+      position: i + 1,
+      name: s.name,
+      text: s.text,
+      url: `${absoluteUrl(input.path)}#step-${i + 1}`,
+    })),
+  };
+}
+
+export function buildSoftwareApplicationJsonLd(): JsonLdNode {
+  return {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "@id": absoluteUrl("/#app"),
+    name: SITE_NAME,
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Web, Android",
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "KRW",
+      description: "웹 서비스 이용·태그 스튜디오 디자인 시작은 무료. 태그 제작은 별도 견적.",
+    },
+    description: SITE_DESCRIPTION,
+    url: getSiteUrl(),
+    publisher: { "@id": absoluteUrl("/#organization") },
+    inLanguage: "ko-KR",
+  };
+}
+
+/** 플랫폼 홈(/) — CollectionPage + ItemList + FAQ + SoftwareApplication */
 export function buildHomePageJsonLd(): JsonLdNode[] {
   return [
     {
@@ -225,22 +409,65 @@ export function buildHomePageJsonLd(): JsonLdNode[] {
       name: SITE_TITLE_DEFAULT,
       description: SITE_DESCRIPTION,
       inLanguage: "ko-KR",
-      isPartOf: {
-        "@id": absoluteUrl("/#website"),
-      },
+      isPartOf: { "@id": absoluteUrl("/#website") },
       about: [
-        { "@type": "Thing", name: "NFC 태그 보호자 연결" },
-        { "@type": "Thing", name: "반려동물 안전" },
-        { "@type": "Thing", name: "어르신 안심 케어" },
-        { "@type": "Thing", name: "아이 안전 연결" },
-        { "@type": "Thing", name: "수하물 분실 방지" },
-        { "@type": "Thing", name: "주얼리 인증 및 보증" },
+        { "@type": "Thing", name: "NFC 통합 플랫폼" },
+        { "@type": "Thing", name: "NFC 태그 맞춤 제작" },
+        { "@type": "Thing", name: "Link-U 안심 보호자 연결" },
+        { "@type": "Thing", name: "디지털 명함 NFC" },
+        { "@type": "Thing", name: "태그 스튜디오 3D 미리보기" },
       ],
+      speakable: {
+        "@type": "SpeakableSpecification",
+        cssSelector: ["h1", "[data-seo-summary]"],
+      },
+      mainEntity: {
+        "@id": absoluteUrl("/#app"),
+      },
     },
     {
       "@context": "https://schema.org",
       "@type": "ItemList",
-      name: "링크유 서비스 모드",
+      "@id": absoluteUrl("/#services"),
+      name: "링크유 NFC 서비스",
+      itemListOrder: "https://schema.org/ItemListOrderAscending",
+      numberOfItems: PLATFORM_SERVICES.length,
+      itemListElement: PLATFORM_SERVICES.map((s, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        name: s.name,
+        url: absoluteUrl(`/services/${s.id}`),
+        description: s.description,
+      })),
+    },
+    buildSoftwareApplicationJsonLd(),
+    buildFaqJsonLd(PLATFORM_FAQS, "/"),
+  ];
+}
+
+/** Link-U 안심 섹션 홈(/linku) — 기존 5모드 중심 */
+export function buildLinkuSectionJsonLd(): JsonLdNode[] {
+  return [
+    {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      "@id": absoluteUrl("/linku#webpage"),
+      url: absoluteUrl("/linku"),
+      name: "Link-U 안심 | NFC 보호자 연결",
+      description:
+        "반려동물·어르신·아이·수하물·주얼리 NFC 태그와 동행 안내로 발견자와 보호자를 앱 없이 연결합니다.",
+      inLanguage: "ko-KR",
+      isPartOf: { "@id": absoluteUrl("/#website") },
+      breadcrumb: { "@id": absoluteUrl("/linku#breadcrumb") },
+    },
+    buildBreadcrumbJsonLd([
+      { name: SITE_NAME, path: "/" },
+      { name: "Link-U 안심", path: "/linku" },
+    ]),
+    {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      name: "Link-U 안심 모드",
       itemListOrder: "https://schema.org/ItemListOrderAscending",
       numberOfItems: 5,
       itemListElement: (Object.keys(MODE_SEO) as SubjectKind[]).map((kind, index) => ({
@@ -251,6 +478,10 @@ export function buildHomePageJsonLd(): JsonLdNode[] {
         description: MODE_SEO[kind].description,
       })),
     },
+    buildFaqJsonLd(
+      PLATFORM_FAQS.filter((f) => /안심|앱|배터리|Link-U 안심/.test(f.question)),
+      "/linku"
+    ),
   ];
 }
 
@@ -265,12 +496,8 @@ export function buildModePageJsonLd(kind: SubjectKind): JsonLdNode[] {
       name: mode.title,
       description: mode.description,
       inLanguage: "ko-KR",
-      isPartOf: {
-        "@id": absoluteUrl("/#website"),
-      },
-      breadcrumb: {
-        "@id": `${absoluteUrl(mode.path)}#breadcrumb`,
-      },
+      isPartOf: { "@id": absoluteUrl("/#website") },
+      breadcrumb: { "@id": `${absoluteUrl(mode.path)}#breadcrumb` },
     },
     {
       "@context": "https://schema.org",
@@ -283,33 +510,195 @@ export function buildModePageJsonLd(kind: SubjectKind): JsonLdNode[] {
         "@type": "Audience",
         audienceType: mode.audience,
       },
-      provider: {
-        "@id": absoluteUrl("/#organization"),
-      },
-      areaServed: {
-        "@type": "Country",
-        name: "KR",
-      },
+      provider: { "@id": absoluteUrl("/#organization") },
+      areaServed: { "@type": "Country", name: "KR" },
       url: absoluteUrl(mode.path),
+      isRelatedTo: { "@id": absoluteUrl("/services/linku#service") },
     },
     {
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
       "@id": `${absoluteUrl(mode.path)}#breadcrumb`,
       itemListElement: [
+        { "@type": "ListItem", position: 1, name: SITE_NAME, item: absoluteUrl("/") },
+        { "@type": "ListItem", position: 2, name: "Link-U 안심", item: absoluteUrl("/linku") },
         {
           "@type": "ListItem",
-          position: 1,
-          name: SITE_NAME,
-          item: absoluteUrl("/"),
-        },
-        {
-          "@type": "ListItem",
-          position: 2,
+          position: 3,
           name: subjectKindMeta[kind].label,
           item: absoluteUrl(mode.path),
         },
       ],
     },
   ];
+}
+
+export function buildPlatformServiceJsonLd(serviceId: string): JsonLdNode[] | null {
+  const service = getPlatformService(serviceId);
+  if (!service) return null;
+  const path = `/services/${service.id}`;
+  const faqs = serviceFaqs(service.id);
+  return [
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "@id": `${absoluteUrl(path)}#webpage`,
+      url: absoluteUrl(path),
+      name: service.name,
+      description: service.description,
+      inLanguage: "ko-KR",
+      isPartOf: { "@id": absoluteUrl("/#website") },
+      breadcrumb: { "@id": `${absoluteUrl(path)}#breadcrumb` },
+      speakable: {
+        "@type": "SpeakableSpecification",
+        cssSelector: ["h1", "[data-seo-summary]"],
+      },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Service",
+      "@id": `${absoluteUrl(path)}#service`,
+      name: service.name,
+      serviceType: service.tagline,
+      description: service.description,
+      provider: { "@id": absoluteUrl("/#organization") },
+      areaServed: { "@type": "Country", name: "KR" },
+      url: absoluteUrl(path),
+      category: "NFC",
+      ...(service.customizable
+        ? {
+            hasOfferCatalog: {
+              "@type": "OfferCatalog",
+              name: `${service.name} 태그 제작`,
+              itemListElement: [
+                {
+                  "@type": "Offer",
+                  itemOffered: {
+                    "@type": "Product",
+                    name: `${service.name} 맞춤 NFC 태그`,
+                    url: absoluteUrl(`/studio?service=${service.id}`),
+                  },
+                },
+              ],
+            },
+          }
+        : {}),
+    },
+    buildBreadcrumbJsonLd([
+      { name: SITE_NAME, path: "/" },
+      { name: service.name, path },
+    ]),
+    ...(faqs.length ? [buildFaqJsonLd(faqs, path)] : []),
+  ];
+}
+
+export function buildStudioPageJsonLd(): JsonLdNode[] {
+  return [
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "@id": absoluteUrl("/studio#webpage"),
+      url: absoluteUrl("/studio"),
+      name: "태그 스튜디오",
+      description:
+        "서비스별 템플릿으로 NFC 태그를 디자인하고 3D로 미리 보는 링크유 태그 스튜디오입니다.",
+      inLanguage: "ko-KR",
+      isPartOf: { "@id": absoluteUrl("/#website") },
+      speakable: {
+        "@type": "SpeakableSpecification",
+        cssSelector: ["h1", "[data-seo-summary]"],
+      },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "@id": absoluteUrl("/studio#app"),
+      name: "링크유 태그 스튜디오",
+      applicationCategory: "DesignApplication",
+      operatingSystem: "Web",
+      url: absoluteUrl("/studio"),
+      description: "NFC 태그 템플릿 선택, 문구·이미지 편집, 3D 미리보기",
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "KRW",
+      },
+      provider: { "@id": absoluteUrl("/#organization") },
+    },
+    buildHowToJsonLd({
+      name: "NFC 태그 디자인하는 방법",
+      description: "링크유 태그 스튜디오에서 맞춤 NFC 태그를 만드는 단계입니다.",
+      path: "/studio",
+      steps: STUDIO_HOWTO_STEPS,
+    }),
+    buildBreadcrumbJsonLd([
+      { name: SITE_NAME, path: "/" },
+      { name: "태그 스튜디오", path: "/studio" },
+    ]),
+    buildFaqJsonLd(STUDIO_FAQS, "/studio"),
+  ];
+}
+
+/** 공개 인덱싱 URL 목록 (sitemap·llms.txt 공유) */
+export function listPublicIndexPaths(): Array<{
+  path: string;
+  changeFrequency: "weekly" | "monthly" | "yearly";
+  priority: number;
+}> {
+  const services = PLATFORM_SERVICES.map((s) => ({
+    path: `/services/${s.id}`,
+    changeFrequency: "weekly" as const,
+    priority: 0.8,
+  }));
+  const modes = (Object.keys(MODE_SEO) as SubjectKind[]).map((k) => ({
+    path: MODE_SEO[k].path,
+    changeFrequency: "monthly" as const,
+    priority: 0.7,
+  }));
+  return [
+    { path: "/", changeFrequency: "weekly", priority: 1 },
+    { path: "/linku", changeFrequency: "weekly", priority: 0.9 },
+    { path: "/studio", changeFrequency: "weekly", priority: 0.95 },
+    ...services,
+    ...modes,
+    { path: "/wayfinder", changeFrequency: "weekly", priority: 0.6 },
+    { path: "/install", changeFrequency: "monthly", priority: 0.4 },
+    { path: "/manual", changeFrequency: "monthly", priority: 0.5 },
+    { path: "/legal/privacy", changeFrequency: "yearly", priority: 0.2 },
+    { path: "/legal/terms", changeFrequency: "yearly", priority: 0.2 },
+  ];
+}
+
+export function buildLlmsTxt(): string {
+  const services = PLATFORM_SERVICES.map(
+    (s) => `- [${s.name}](${absoluteUrl(`/services/${s.id}`)}): ${s.description}`
+  ).join("\n");
+  const faqs = PLATFORM_FAQS.map((f) => `Q: ${f.question}\nA: ${f.answer}`).join("\n\n");
+
+  return `# ${SITE_NAME}
+
+> ${BRAND_ENTITY.summary}
+
+사이트: ${getSiteUrl()}
+운영: ${BRAND_ENTITY.legalName}
+문의: ${BRAND_ENTITY.contactEmail}
+전화: ${BRAND_ENTITY.telephone.join(" / ")}
+
+## 핵심 페이지
+- [플랫폼 홈](${absoluteUrl("/")})
+- [Link-U 안심](${absoluteUrl("/linku")})
+- [태그 스튜디오](${absoluteUrl("/studio")})
+- [사용 설명서](${absoluteUrl("/manual")})
+
+## NFC 서비스
+${services}
+
+## 사실 요약 (인용용)
+${faqs}
+
+## 크롤링
+- Sitemap: ${absoluteUrl("/sitemap.xml")}
+- Robots: ${absoluteUrl("/robots.txt")}
+- 비공개: /admin, /dashboard, /hub, /api/, /login, /t/
+`;
 }

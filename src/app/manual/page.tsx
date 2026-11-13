@@ -1,7 +1,9 @@
 import { ManualPageClient } from "@/components/manual/ManualPageClient";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { getLandingSessionState } from "@/lib/landing-session";
 import { getOrgManageHrefForUser } from "@/lib/org-manage-href";
-import { buildPublicMetadata } from "@/lib/seo";
+import { MANUAL_FAQ } from "@/lib/manual/content";
+import { buildBreadcrumbJsonLd, buildFaqJsonLd, buildPublicMetadata, SITE_NAME } from "@/lib/seo";
 
 export const runtime = "edge";
 
@@ -17,5 +19,18 @@ export default async function ManualPage() {
   const { session, isAdmin } = await getLandingSessionState();
   const orgManageHref = await getOrgManageHrefForUser(session?.user?.id).catch(() => null);
 
-  return <ManualPageClient session={session} isAdmin={isAdmin} orgManageHref={orgManageHref} />;
+  return (
+    <>
+      <JsonLd
+        data={[
+          buildBreadcrumbJsonLd([
+            { name: SITE_NAME, path: "/" },
+            { name: "사용 설명서", path: "/manual" },
+          ]),
+          buildFaqJsonLd(MANUAL_FAQ, "/manual"),
+        ]}
+      />
+      <ManualPageClient session={session} isAdmin={isAdmin} orgManageHref={orgManageHref} />
+    </>
+  );
 }

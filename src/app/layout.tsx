@@ -27,6 +27,9 @@ export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
   applicationName: SITE_NAME,
   keywords: [...BRAND_KEYWORDS],
+  category: "technology",
+  creator: "WOW3D PRO",
+  publisher: SITE_NAME,
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -42,8 +45,13 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png",
     shortcut: "/favicon.ico",
   },
+  ...(process.env.GOOGLE_SITE_VERIFICATION
+    ? { verification: { google: process.env.GOOGLE_SITE_VERIFICATION } }
+    : {}),
   other: {
-    "naver-site-verification": "ba44fdda87301268312e215cb8d0aa5c660bc40c",
+    "naver-site-verification":
+      process.env.NAVER_SITE_VERIFICATION ?? "ba44fdda87301268312e215cb8d0aa5c660bc40c",
+    "ai-content-declaration": "human-authored-platform-docs",
   },
 };
 

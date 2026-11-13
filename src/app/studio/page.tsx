@@ -8,17 +8,16 @@ import { getDB } from "@/lib/db";
 import { getFormFactor } from "@/lib/platform/form-factors";
 import { PLATFORM_SERVICES, getPlatformService } from "@/lib/platform/services";
 import { listTemplatesForService } from "@/lib/platform/tag-templates-store";
+import { SeoFaq } from "@/components/seo/SeoFaq";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { formatDateTimeKoSeoul } from "@/lib/format-datetime-ko-seoul";
-import { buildPublicMetadata } from "@/lib/seo";
+import { buildStudioMetadata, buildStudioPageJsonLd } from "@/lib/seo";
+import { STUDIO_FAQS } from "@/lib/seo-content";
 import { cn } from "@/lib/utils";
 
 export const runtime = "edge";
 
-export const metadata = buildPublicMetadata({
-  title: "태그 스튜디오 | 링크유 Link-U",
-  description: "서비스를 고르고 템플릿으로 나만의 NFC 태그를 디자인하세요. 문구·이미지·색을 바꾸며 3D로 확인합니다.",
-  path: "/studio",
-});
+export const metadata = buildStudioMetadata();
 
 const statusLabel: Record<string, string> = {
   draft: "작성 중",
@@ -41,6 +40,7 @@ export default async function StudioPage({
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-rose-50/45 via-amber-50/35 to-slate-50 font-outfit">
+      <JsonLd data={buildStudioPageJsonLd()} />
       <PlatformTopNav isLoggedIn={Boolean(session)} />
       <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-rose-300/30 blur-3xl" />
       <div className="pointer-events-none absolute -left-20 top-[40%] h-64 w-64 rounded-full bg-amber-200/35 blur-3xl" />
@@ -53,8 +53,11 @@ export default async function StudioPage({
             <br />
             <span className="text-teal-500">만들어 볼까요?</span>
           </h1>
-          <p className="mt-2 text-[13px] font-semibold leading-relaxed text-slate-600 break-keep [word-break:keep-all]">
-            서비스를 고르면 맞는 템플릿이 나옵니다. 템플릿을 고른 뒤 문구·이미지·색을 바꾸며 3D로 확인하세요.
+          <p
+            data-seo-summary
+            className="mt-2 text-[13px] font-semibold leading-relaxed text-slate-600 break-keep [word-break:keep-all]"
+          >
+            NFC 태그 스튜디오에서 서비스별 템플릿을 고른 뒤 문구·이미지·색을 편집하고 3D로 확인하세요. 디지털 명함·안심·Wi-Fi 등 용도에 맞는 디자인을 시작할 수 있습니다.
           </p>
           <StepIndicator step={step} />
         </header>
@@ -221,6 +224,8 @@ export default async function StudioPage({
             서비스를 고르면 맞는 템플릿이 나타납니다.
           </p>
         ) : null}
+
+        <SeoFaq items={STUDIO_FAQS} title="태그 스튜디오 FAQ" />
       </main>
     </div>
   );

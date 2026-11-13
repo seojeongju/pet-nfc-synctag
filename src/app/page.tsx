@@ -19,7 +19,9 @@ export const metadata = buildPublicMetadata({
     "맞춤 NFC 태그",
     "NFC 디지털 명함",
     "NFC 안심 플랫폼",
+    "태그 스튜디오",
     "3D 프린팅 NFC",
+    "Link-U",
   ],
 });
 

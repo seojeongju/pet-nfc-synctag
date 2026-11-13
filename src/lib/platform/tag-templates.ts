@@ -28,18 +28,18 @@ export type TagDesignTemplate = {
 
 type BuiltinSeed = Omit<TagDesignTemplate, "source" | "active">;
 
-/** 디지털 명함 전면 아트 (public/images/studio/card) */
+/** 디지털 명함 전면 아트 (public/images/studio/card, WebP 1200px). 목록 썸네일은 thumb/ 480px */
 const CARD_FACE = {
-  "01": "/images/studio/card/card-01.png",
-  "02": "/images/studio/card/card-02.png",
-  "03": "/images/studio/card/card-03.png",
-  "04": "/images/studio/card/card-04.png",
-  "05": "/images/studio/card/card-05.png",
-  "06": "/images/studio/card/card-06.png",
-  "07": "/images/studio/card/card-07.png",
-  "08": "/images/studio/card/card-08.png",
-  "09": "/images/studio/card/card-09.png",
-  "10": "/images/studio/card/card-10.png",
+  "01": "/images/studio/card/card-01.webp",
+  "02": "/images/studio/card/card-02.webp",
+  "03": "/images/studio/card/card-03.webp",
+  "04": "/images/studio/card/card-04.webp",
+  "05": "/images/studio/card/card-05.webp",
+  "06": "/images/studio/card/card-06.webp",
+  "07": "/images/studio/card/card-07.webp",
+  "08": "/images/studio/card/card-08.webp",
+  "09": "/images/studio/card/card-09.webp",
+  "10": "/images/studio/card/card-10.webp",
 } as const;
 
 function cardTemplate(
@@ -60,7 +60,7 @@ function cardTemplate(
     name,
     description,
     previewHint: hint,
-    previewImage: face,
+    previewImage: face.replace("/images/studio/card/", "/images/studio/card/thumb/"),
     defaultSpec: {
       lines,
       bodyColor,

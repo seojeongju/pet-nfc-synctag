@@ -1,0 +1,7 @@
+﻿# 링크유 Link-U
+
+> NFC 태그의 연결·관리·맞춤 제작 플랫폼. Link-U 안심, 디지털 명함, Wi-Fi, 매장·자산 관리와 3D 태그 스튜디오를 제공합니다.
+
+사이트: https://wow-linku.co.kr
+동적 최신본: https://wow-linku.co.kr/llms.txt
+Sitemap: https://wow-linku.co.kr/sitemap.xml

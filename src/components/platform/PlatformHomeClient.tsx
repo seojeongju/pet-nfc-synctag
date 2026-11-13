@@ -25,8 +25,10 @@ import { HowItWorksFlow } from "@/components/platform/landing/HowItWorksFlow";
 import { ServicesBento } from "@/components/platform/landing/ServicesBento";
 import { StudioShowcase } from "@/components/platform/landing/StudioShowcase";
 import { CountUp, Reveal, SectionHeading } from "@/components/platform/landing/motion-utils";
+import { SeoFaq } from "@/components/seo/SeoFaq";
 import { LINKU_HOME_PATH, PLATFORM_SERVICES } from "@/lib/platform/services";
 import { FORM_FACTORS } from "@/lib/platform/form-factors";
+import { PLATFORM_FAQS } from "@/lib/seo-content";
 import { SUBJECT_KINDS, subjectKindMeta, type SubjectKind } from "@/lib/subject-kind";
 import { linkuCompanionMenuTitle } from "@/lib/wayfinder/copy";
 
@@ -119,12 +121,13 @@ export default function PlatformHomeClient({ isLoggedIn, userName, isAdmin }: Pl
               <span className="bg-gradient-to-r from-teal-500 via-teal-600 to-emerald-500 bg-clip-text text-transparent">Link-U</span>
             </motion.h1>
             <motion.p
+              data-seo-summary
               initial={reduce ? false : { opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.18 }}
               className="mt-5 max-w-lg text-[14px] font-semibold leading-relaxed text-slate-500 break-keep [word-break:keep-all] lg:mt-7 lg:text-[18px]"
             >
-              위치·안심 서비스부터 디지털 명함, Wi-Fi, 매장 안내까지. 쓰임새를 고르고, 원하는 모양으로 디자인해 3D 프린팅으로 받아 보세요.
+              링크유(Link-U)는 NFC 태그의 연결·관리·맞춤 제작 플랫폼입니다. 위치·안심 서비스부터 디지털 명함, Wi-Fi, 매장 안내까지 쓰임새를 고르고, 원하는 모양으로 디자인해 3D로 미리 본 뒤 제작할 수 있습니다.
             </motion.p>
             <motion.div
               initial={reduce ? false : { opacity: 0, y: 14 }}
@@ -343,6 +346,11 @@ export default function PlatformHomeClient({ isLoggedIn, userName, isAdmin }: Pl
             </div>
           </Reveal>
         </section>
+
+        {/* ── FAQ (AEO) ─────────────────────────────────── */}
+        <Reveal>
+          <SeoFaq items={PLATFORM_FAQS} title="링크유에 대해 자주 묻는 질문" />
+        </Reveal>
 
         {/* ── CTA ─────────────────────────────────── */}
         <Reveal>
