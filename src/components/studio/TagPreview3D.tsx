@@ -13,14 +13,13 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { FormFactor } from "@/lib/platform/form-factors";
 import { getTagMaterial, type TagDesignSpec } from "@/lib/platform/tag-design";
+import { BEVEL_MM, buildBody } from "@/components/studio/tag-body-shapes";
 import {
   chipCenterMm,
-  faceGeometryFor,
   paintFaceCanvas,
   useFaceImages,
   useStudioFonts,
   type FaceArea,
-  type FaceGeometry,
 } from "@/components/studio/tag-face-paint";
 
 type Props = {
@@ -30,88 +29,6 @@ type Props = {
 };
 
 type TextArea = FaceArea;
-
-/** 돌출 모서리 둥글림. 윗면 실제 높이 = 두께 + BEVEL_MM 이므로 문구 면은 그 위에 둔다 */
-const BEVEL_MM = 0.4;
-type BodyPart = { shape: THREE.Shape; depth: number };
-
-function circleShape(cx: number, cy: number, r: number, holeR?: number): THREE.Shape {
-  const s = new THREE.Shape();
-  s.absarc(cx, cy, r, 0, Math.PI * 2, false);
-  if (holeR) {
-    const hole = new THREE.Path();
-    hole.absarc(cx, cy, holeR, 0, Math.PI * 2, true);
-    s.holes.push(hole);
-  }
-  return s;
-}
-
-function roundedRectShape(w: number, h: number, r: number, cx = 0, cy = 0): THREE.Shape {
-  const x = cx - w / 2;
-  const y = cy - h / 2;
-  const s = new THREE.Shape();
-  s.moveTo(x + r, y);
-  s.lineTo(x + w - r, y);
-  s.quadraticCurveTo(x + w, y, x + w, y + r);
-  s.lineTo(x + w, y + h - r);
-  s.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  s.lineTo(x + r, y + h);
-  s.quadraticCurveTo(x, y + h, x, y + h - r);
-  s.lineTo(x, y + r);
-  s.quadraticCurveTo(x, y, x + r, y);
-  return s;
-}
-
-function buildBody(ff: FormFactor): { parts: BodyPart[] } & FaceGeometry {
-  const t = ff.thicknessMm;
-  switch (ff.id) {
-    case "keyring_round": {
-      const r = ff.widthMm / 2;
-      const cy = -(ff.heightMm - ff.widthMm) / 2;
-      const tabY = cy + r + 2;
-      return {
-        ...faceGeometryFor(ff),
-        parts: [
-          { shape: circleShape(0, cy, r), depth: t },
-          { shape: circleShape(0, tabY, 6, 3), depth: t * 0.75 },
-        ],
-      };
-    }
-    case "pendant_bone": {
-      const w = ff.widthMm;
-      const h = ff.heightMm;
-      const knobR = h * 0.27;
-      const kx = w / 2 - knobR;
-      const ky = h / 2 - knobR;
-      return {
-        ...faceGeometryFor(ff),
-        parts: [
-          { shape: roundedRectShape(w - knobR * 2, h * 0.55, 2), depth: t },
-          { shape: circleShape(-kx, ky, knobR), depth: t },
-          { shape: circleShape(-kx, -ky, knobR), depth: t },
-          { shape: circleShape(kx, ky, knobR, 1.6), depth: t },
-          { shape: circleShape(kx, -ky, knobR), depth: t },
-        ],
-      };
-    }
-    case "stand_plate": {
-      const w = ff.widthMm;
-      const h = ff.heightMm;
-      return {
-        ...faceGeometryFor(ff),
-        parts: [{ shape: roundedRectShape(w, h, 8), depth: t }],
-      };
-    }
-    case "card_plate": {
-      const w = ff.widthMm;
-      const h = ff.heightMm;
-      return {
-        ...faceGeometryFor(ff),
-        parts: [{ shape: roundedRectShape(w, h, 4), depth: t }],
-      };
-    }
-  }
-}
 
 /** 공용 윗면 캔버스(2D 미리보기와 동일)를 3D 텍스처로 */
 function paintFaceTexture(

@@ -42,6 +42,20 @@ const CARD_FACE = {
   "10": "/images/studio/card/card-10.webp",
 } as const;
 
+/** Wi-Fi 스탠드 전면 아트 (public/images/studio/wifi). 목록 썸네일은 thumb/ */
+const WIFI_FACE = {
+  "01": "/images/studio/wifi/wifi-01.svg",
+  "02": "/images/studio/wifi/wifi-02.svg",
+  "03": "/images/studio/wifi/wifi-03.svg",
+  "04": "/images/studio/wifi/wifi-04.svg",
+  "05": "/images/studio/wifi/wifi-05.svg",
+  "06": "/images/studio/wifi/wifi-06.svg",
+  "07": "/images/studio/wifi/wifi-07.svg",
+  "08": "/images/studio/wifi/wifi-08.svg",
+  "09": "/images/studio/wifi/wifi-09.svg",
+  "10": "/images/studio/wifi/wifi-10.svg",
+} as const;
+
 function cardTemplate(
   num: keyof typeof CARD_FACE,
   name: string,
@@ -64,6 +78,36 @@ function cardTemplate(
       lines,
       bodyColor,
       // 명함 아트마다 이름·부가 문구 색이 달라(예: 06 검정/흰색) 기본은 템플릿 원래 색
+      textColor: TEXT_COLOR_DESIGN,
+      materialId: "pla_matte",
+      textStyle: "raised",
+      faceArtSrc: face,
+    },
+    sortOrder,
+  };
+}
+
+function wifiTemplate(
+  num: keyof typeof WIFI_FACE,
+  name: string,
+  description: string,
+  hint: string,
+  lines: [string, string, string],
+  bodyColor: string,
+  sortOrder: number
+): BuiltinSeed {
+  const face = WIFI_FACE[num];
+  return {
+    id: `tpl_wifi_face_${num}`,
+    serviceId: "wifi",
+    formFactorId: "stand_plate",
+    name,
+    description,
+    previewHint: hint,
+    previewImage: face.replace("/images/studio/wifi/", "/images/studio/wifi/thumb/"),
+    defaultSpec: {
+      lines,
+      bodyColor,
       textColor: TEXT_COLOR_DESIGN,
       materialId: "pla_matte",
       textStyle: "raised",
@@ -135,23 +179,16 @@ const BUILTIN: readonly BuiltinSeed[] = [
   cardTemplate("08", "명함 템플릿 08", "디지털 명함 전면 아트 08번.", "카드 · 08", ["NAME", "SHORT TEXT"], "#F8FAFC", 80),
   cardTemplate("09", "명함 템플릿 09", "디지털 명함 전면 아트 09번.", "카드 · 09", ["NAME", "SHORT TEXT"], "#FFFFFF", 90),
   cardTemplate("10", "명함 템플릿 10", "디지털 명함 전면 아트 10번.", "카드 · 10", ["NAME", "SHORT TEXT"], "#0B1B3A", 100),
-  {
-    id: "tpl_wifi_stand",
-    serviceId: "wifi",
-    formFactorId: "stand_plate",
-    name: "Wi-Fi 스탠드",
-    description: "손님용 Wi-Fi 접속 안내 스탠드 기본형입니다.",
-    previewHint: "스카이 · Wi-Fi",
-    previewImage: null,
-    defaultSpec: {
-      lines: ["FREE Wi-Fi", "태그로 연결", ""],
-      bodyColor: "#93C5FD",
-      textColor: "#0F172A",
-      materialId: "pla_matte",
-      textStyle: "raised",
-    },
-    sortOrder: 10,
-  },
+  wifiTemplate("01", "스카이 프리 Wi-Fi", "밝은 스카이 톤의 기본 무료 Wi-Fi 스탠드.", "스카이 · 프리", ["NAME", "SHORT TEXT", ""], "#E0F2FE", 10),
+  wifiTemplate("02", "나이트 커넥트", "다크 네이비 배경의 세련된 접속 안내.", "네이비 · 야간", ["NAME", "SHORT TEXT", ""], "#0B1B3A", 20),
+  wifiTemplate("03", "게스트 앰버", "손님용·로비용 따뜻한 앰버 안내판.", "앰버 · 게스트", ["NAME", "SHORT TEXT", ""], "#FFFBEB", 30),
+  wifiTemplate("04", "미니멀 프레임", "화이트 프레임과 틸 포인트의 심플형.", "화이트 · 프레임", ["NAME", "SHORT TEXT", ""], "#FFFFFF", 40),
+  wifiTemplate("05", "브랜드 틸", "LINK-U 틸 컬러의 브랜드형 스탠드.", "틸 · 브랜드", ["NAME", "SHORT TEXT", ""], "#CCEDEA", 50),
+  wifiTemplate("06", "호텔 골드", "호텔·숙박용 다크+골드 포인트.", "다크 · 골드", ["NAME", "SHORT TEXT", ""], "#1C1917", 60),
+  wifiTemplate("07", "시안 존", "FREE Wi-Fi ZONE 강조형 시안 스탠드.", "시안 · 존", ["NAME", "SHORT TEXT", ""], "#083344", 70),
+  wifiTemplate("08", "민트 안내", "한글 안내 문구가 잘 보이는 민트형.", "민트 · 안내", ["NAME", "SHORT TEXT", ""], "#F0FDFA", 80),
+  wifiTemplate("09", "오피스 슬레이트", "사무실·회의실용 미니멀 슬레이트.", "슬레이트 · 오피스", ["NAME", "SHORT TEXT", ""], "#F1F5F9", 90),
+  wifiTemplate("10", "카페 로즈", "카페·베이커리용 로즈 포인트 스탠드.", "로즈 · 카페", ["NAME", "SHORT TEXT", ""], "#FFF1F2", 100),
   {
     id: "tpl_store_stand",
     serviceId: "store",

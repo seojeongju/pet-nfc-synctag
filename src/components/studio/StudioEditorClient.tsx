@@ -21,6 +21,7 @@ import {
 import { getCardFaceLayout } from "@/lib/platform/card-face-layouts";
 import TagPreview2D, { type StudioCanvasApi, type StudioEditTarget } from "@/components/studio/TagPreview2D";
 import { LayoutToolbar } from "@/components/studio/LayoutToolbar";
+import { ProductionPanel } from "@/components/studio/ProductionPanel";
 import { cn } from "@/lib/utils";
 
 const TagPreview3D = dynamic(() => import("@/components/studio/TagPreview3D"), {
@@ -54,6 +55,8 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
   /** 정면 편집기에서 선택한 요소 (문구 줄 · 로고 · NFC 칩) */
   const [selected, setSelected] = useState<StudioEditTarget | null>(null);
   const canvasApiRef = useRef<StudioCanvasApi | null>(null);
+  /** 제작 검사 오류 수 — 0보다 크면 디자인 완료를 막는다 */
+  const [productionErrors, setProductionErrors] = useState(0);
   const [dirty, setDirty] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -184,6 +187,10 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
   }, []);
 
   const save = (markReady: boolean) => {
+    if (markReady && productionErrors > 0) {
+      setMessage({ kind: "error", text: "제작 검사에서 수정이 필요한 항목이 있습니다. 아래 제작 검사 목록을 확인해 주세요." });
+      return;
+    }
     startTransition(async () => {
       const res = await saveTagDesign({ designId: design.id, title, spec, markReady });
       if (res.ok) {
@@ -335,7 +342,11 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
           <Panel label="선택한 템플릿 아트">
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={spec.faceArtSrc!} alt="템플릿 전면" className="aspect-[86/54] w-full object-cover" />
+              <img
+                src={spec.faceArtSrc!}
+                alt="템플릿 전면"
+                className={`${formFactor.id === "stand_plate" ? "aspect-[4/5]" : "aspect-[86/54]"} w-full object-cover`}
+              />
             </div>
             <p className="mt-2 text-[11px] font-semibold leading-relaxed text-slate-500 break-keep [word-break:keep-all]">
               전면 디자인은 템플릿 이미지를 사용합니다. 아래 문구를 실제 이름·직함으로 바꾸면 미리보기에 바로 반영됩니다.
@@ -519,6 +530,19 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
             ))}
           </div>
         </Panel>
+
+        <ProductionPanel
+          formFactor={formFactor}
+          spec={spec}
+          title={title}
+          locked={locked}
+          onIssuesChange={setProductionErrors}
+          onFocusTarget={(t) => {
+            setView("design");
+            setSelected(t as StudioEditTarget);
+            if (t === "chip") setShowChip(true);
+          }}
+        />
 
         <section className="rounded-[26px] border border-teal-100/90 bg-gradient-to-br from-teal-50/95 to-white p-[18px]">
           <div className="flex items-start gap-3">

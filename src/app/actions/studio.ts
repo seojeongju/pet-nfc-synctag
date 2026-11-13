@@ -8,6 +8,7 @@ import { getAuth } from "@/lib/auth";
 import { getCfRequestContext } from "@/lib/cf-request-context";
 import { getDB } from "@/lib/db";
 import { getFormFactor, type FormFactorId } from "@/lib/platform/form-factors";
+import { checkChipMargin } from "@/lib/platform/production-check";
 import { getPlatformService, type PlatformServiceId } from "@/lib/platform/services";
 import {
   defaultTagDesign,
@@ -196,8 +197,13 @@ export async function saveTagDesign(input: {
     }
 
     const spec = normalizeTagDesign(input.spec, row.form_factor_id as FormFactorId, row.service_id as PlatformServiceId);
-    if (input.markReady && spec.lines.every((l) => !l.trim()) && !spec.image.src) {
-      return { ok: false, error: "태그에 넣을 문구 또는 이미지를 추가해 주세요." };
+    if (input.markReady) {
+      if (spec.lines.every((l) => !l.trim()) && !spec.image.src) {
+        return { ok: false, error: "태그에 넣을 문구 또는 이미지를 추가해 주세요." };
+      }
+      const ff = getFormFactor(row.form_factor_id);
+      const chipIssue = ff ? checkChipMargin(ff, spec) : null;
+      if (chipIssue) return { ok: false, error: chipIssue.message };
     }
     const title = input.title.trim().slice(0, MAX_TITLE_LENGTH) || "내 태그 디자인";
     const status: TagDesignStatus = input.markReady ? "ready" : "draft";
