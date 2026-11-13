@@ -13,6 +13,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { FormFactor } from "@/lib/platform/form-factors";
 import { getTagMaterial, type TagDesignSpec } from "@/lib/platform/tag-design";
+import { getCardFaceLayout } from "@/lib/platform/card-face-layouts";
 
 type Props = {
   formFactor: FormFactor;
@@ -150,12 +151,46 @@ function paintFaceTexture(
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
 
-  // 템플릿 전면 아트(명함 등) — cover
+  // 템플릿 전면 아트(명함 등) — cover. 명함 템플릿은 글자 없는 배경(blank)이 faceEl로 들어온다
+  const cardLayout = getCardFaceLayout(faceSrc);
+  let art: { x: number; y: number; w: number; h: number } | null = null;
   if (faceEl && faceSrc) {
     const ratio = Math.max(canvas.width / faceEl.width, canvas.height / faceEl.height);
     const dw = faceEl.width * ratio;
     const dh = faceEl.height * ratio;
-    ctx.drawImage(faceEl, (canvas.width - dw) / 2, (canvas.height - dh) / 2, dw, dh);
+    art = { x: (canvas.width - dw) / 2, y: (canvas.height - dh) / 2, w: dw, h: dh };
+    ctx.drawImage(faceEl, art.x, art.y, dw, dh);
+  }
+
+  // 명함 템플릿: 1·2번째 문구를 원래 NAME / SHORT TEXT 자리에 디자인 그대로(굵게·같은 색) 채운다
+  if (cardLayout && art) {
+    const frame = art;
+    spec.lines.slice(0, cardLayout.slots.length).forEach((raw, i) => {
+      const line = raw.trim();
+      const slot = cardLayout.slots[i];
+      if (!line || !slot) return;
+      const sx = frame.x + slot.x * frame.w;
+      const sy = frame.y + slot.y * frame.h;
+      const sw = slot.w * frame.w;
+      const sh = slot.h * frame.h;
+      let size = sh * 0.82;
+      const font = (px: number) => `900 ${px}px Outfit, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif`;
+      ctx.font = font(size);
+      const measured = ctx.measureText(line).width;
+      if (measured > sw) {
+        size *= sw / measured;
+        ctx.font = font(size);
+      }
+      ctx.textBaseline = "middle";
+      ctx.textAlign = slot.align;
+      const x = slot.align === "center" ? sx + sw / 2 : sx;
+      const y = sy + sh / 2;
+      // 원본 아트의 입체 글자 느낌: 아래쪽 옅은 그림자
+      ctx.fillStyle = slot.color === "#FFFFFF" ? "rgba(0,0,0,0.28)" : "rgba(15,23,42,0.18)";
+      ctx.fillText(line, x + size * 0.02, y + size * 0.05);
+      ctx.fillStyle = slot.color;
+      ctx.fillText(line, x, y);
+    });
   }
 
   // 사용자 로고
@@ -179,7 +214,7 @@ function paintFaceTexture(
   // 플레이스홀더(NAME 등)만 있으면 전면 아트에 이미 있으므로 겹쳐 그리지 않음
   const placeholderOnly =
     Boolean(faceSrc) && lines.length > 0 && lines.every((l) => /^(NAME|SHORT TEXT|HELLO|LINK-U)$/i.test(l));
-  if (lines.length > 0 && !placeholderOnly) {
+  if (!cardLayout && lines.length > 0 && !placeholderOnly) {
     const textTop = faceSrc ? canvas.height * 0.32 : logoEl && logoSrc ? canvas.height * 0.55 : 0;
     const usableH = faceSrc ? canvas.height * 0.36 : canvas.height - textTop;
     const lineH = usableH / Math.max(lines.length, 1);
@@ -326,7 +361,8 @@ export default function TagPreview3D({ formFactor, spec, showChip }: Props) {
   const stageRef = useRef<Stage | null>(null);
   const [stageVersion, setStageVersion] = useState(0);
   const [webglFailed, setWebglFailed] = useState(false);
-  const faceEl = useLoadedImage(spec.faceArtSrc ?? null);
+  // 명함 템플릿은 자리표시 글자를 지운 배경을 깔고 문구를 슬롯에 그린다
+  const faceEl = useLoadedImage(getCardFaceLayout(spec.faceArtSrc)?.blankSrc ?? spec.faceArtSrc ?? null);
   const logoEl = useLoadedImage(spec.image?.src ?? null);
 
   // 장면·카메라·조명·컨트롤 — 폼팩터가 바뀔 때만 다시 만든다
