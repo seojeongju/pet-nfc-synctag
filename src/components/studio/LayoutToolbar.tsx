@@ -4,7 +4,20 @@
  * 정면 편집기 도구 막대 — 편집할 요소 선택, 크기 슬라이더, 가운데 정렬, 위치 초기화.
  * 실제 배치 계산은 TagPreview2D가 apiRef로 제공한다(화면에 그려진 기본 위치를 알고 있으므로).
  */
-import { AlignCenterHorizontal, Box, CircleDot, ImageIcon, Move, Redo2, RotateCcw, RotateCw, Type, Undo2 } from "lucide-react";
+import {
+  AlignCenterHorizontal,
+  ArrowDownToLine,
+  ArrowUpToLine,
+  Box,
+  CircleDot,
+  ImageIcon,
+  Move,
+  Redo2,
+  RotateCcw,
+  RotateCw,
+  Type,
+  Undo2,
+} from "lucide-react";
 import type { MutableRefObject } from "react";
 import type { StudioCanvasApi, StudioEditTarget } from "@/components/studio/TagPreview2D";
 import {
@@ -12,8 +25,13 @@ import {
   IMAGE_SCALE_MIN,
   PLACEMENT_SCALE_MAX,
   PLACEMENT_SCALE_MIN,
+  TAG_FONTS,
+  TAG_TEXT_COLORS,
   emptyLayout,
+  layerOrderFor,
+  type LayerId,
   type TagDesignSpec,
+  type TagFontId,
 } from "@/lib/platform/tag-design";
 import { cn } from "@/lib/utils";
 
@@ -58,7 +76,11 @@ export function LayoutToolbar({
 
   const lineIdx = selected?.startsWith("line") ? Number(selected.slice(4)) : null;
   const hasCustomLayout =
-    spec.layout.lines.some(Boolean) || Boolean(spec.layout.image) || Boolean(spec.layout.chip);
+    spec.layout.lines.some(Boolean) ||
+    Boolean(spec.layout.image) ||
+    Boolean(spec.layout.chip) ||
+    spec.layout.styles.some(Boolean) ||
+    Boolean(spec.layout.order);
 
   const sizeValue =
     lineIdx !== null
@@ -88,6 +110,39 @@ export function LayoutToolbar({
   };
   const sliderEvents = { onPointerDown: onInteractionStart, onPointerUp: onInteractionEnd, onKeyDown: onInteractionStart, onKeyUp: onInteractionEnd };
 
+  // ── 겹침 순서 (아래 → 위)
+  const order = layerOrderFor(spec.lines.length, spec.layout.order);
+  const layerId = selected && selected !== "chip" ? (selected as LayerId) : null;
+  const layerPos = layerId ? order.indexOf(layerId) : -1;
+  const moveLayer = (dir: "front" | "back") => {
+    if (!layerId) return;
+    const rest = order.filter((id) => id !== layerId);
+    const next = dir === "front" ? [...rest, layerId] : [layerId, ...rest];
+    onInteractionStart();
+    onChange({ layout: { ...spec.layout, order: next } });
+    onInteractionEnd();
+  };
+
+  // ── 줄별 색·글꼴
+  const lineStyle = lineIdx !== null ? spec.layout.styles[lineIdx] ?? null : null;
+  const setLineStyle = (patch: { color?: string | null; font?: TagFontId | null }) => {
+    if (lineIdx === null) return;
+    const styles = [...spec.layout.styles];
+    const cur = { ...(styles[lineIdx] ?? {}) };
+    if (patch.color !== undefined) {
+      if (patch.color) cur.color = patch.color;
+      else delete cur.color;
+    }
+    if (patch.font !== undefined) {
+      if (patch.font && patch.font !== "outfit") cur.font = patch.font;
+      else delete cur.font;
+    }
+    styles[lineIdx] = Object.keys(cur).length ? cur : null;
+    onInteractionStart();
+    onChange({ layout: { ...spec.layout, styles } });
+    onInteractionEnd();
+  };
+
   const resetSelected = () => {
     if (!selected) return;
     if (selected === "chip") {
@@ -97,7 +152,9 @@ export function LayoutToolbar({
     } else if (lineIdx !== null) {
       const lines = [...spec.layout.lines];
       lines[lineIdx] = null;
-      onChange({ layout: { ...spec.layout, lines } });
+      const styles = [...spec.layout.styles];
+      styles[lineIdx] = null;
+      onChange({ layout: { ...spec.layout, lines, styles } });
     }
   };
 
@@ -210,6 +267,89 @@ export function LayoutToolbar({
                 className="mt-1 w-full accent-teal-600"
               />
             </label>
+          ) : null}
+          {lineIdx !== null ? (
+            <div className="space-y-2">
+              <div>
+                <span className="text-[11px] font-black text-slate-600">이 줄 색상</span>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setLineStyle({ color: null })}
+                    aria-pressed={!lineStyle?.color}
+                    className={cn(
+                      "inline-flex h-8 items-center rounded-full border px-2.5 text-[11px] font-black transition",
+                      !lineStyle?.color ? "border-teal-300 bg-teal-50 text-teal-800" : "border-slate-200 bg-white text-slate-600 hover:border-teal-200"
+                    )}
+                  >
+                    전체 색 따름
+                  </button>
+                  {TAG_TEXT_COLORS.map((c) => {
+                    const active = lineStyle?.color?.toLowerCase() === c.hex.toLowerCase();
+                    return (
+                      <button
+                        key={c.hex}
+                        type="button"
+                        onClick={() => setLineStyle({ color: c.hex })}
+                        aria-label={c.name}
+                        aria-pressed={active}
+                        title={c.name}
+                        className={cn("h-7 w-7 rounded-full ring-1 ring-slate-200 transition", active && "ring-2 ring-teal-500 ring-offset-2")}
+                        style={{ backgroundColor: c.hex }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <span className="text-[11px] font-black text-slate-600">이 줄 글꼴</span>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {TAG_FONTS.map((f) => {
+                    const active = (lineStyle?.font ?? "outfit") === f.id;
+                    return (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => setLineStyle({ font: f.id })}
+                        aria-pressed={active}
+                        style={{ fontFamily: f.family }}
+                        className={cn(
+                          "inline-flex h-8 items-center rounded-full border px-3 text-[12px] font-black transition",
+                          active ? "border-teal-300 bg-teal-50 text-teal-800" : "border-slate-200 bg-white text-slate-600 hover:border-teal-200"
+                        )}
+                      >
+                        {f.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          ) : null}
+          {layerId ? (
+            <div>
+              <span className="text-[11px] font-black text-slate-600">겹침 순서</span>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => moveLayer("front")}
+                  disabled={layerPos === order.length - 1}
+                  className="inline-flex h-8 items-center gap-1 rounded-full border border-slate-200 bg-white px-3 text-[11px] font-black text-slate-600 hover:border-teal-200 disabled:opacity-40"
+                >
+                  <ArrowUpToLine className="h-3.5 w-3.5" aria-hidden />
+                  맨 앞으로
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveLayer("back")}
+                  disabled={layerPos === 0}
+                  className="inline-flex h-8 items-center gap-1 rounded-full border border-slate-200 bg-white px-3 text-[11px] font-black text-slate-600 hover:border-teal-200 disabled:opacity-40"
+                >
+                  <ArrowDownToLine className="h-3.5 w-3.5" aria-hidden />
+                  맨 뒤로
+                </button>
+              </div>
+            </div>
           ) : null}
           <div className="flex flex-wrap gap-1.5">
             {rotValue ? (

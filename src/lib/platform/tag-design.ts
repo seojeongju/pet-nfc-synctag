@@ -58,6 +58,33 @@ export type TagDesignImageLayer = {
  */
 export type ElementPlacement = { x: number; y: number; s: number; /** 회전(도, -180..180) */ r?: number };
 
+/** 문구 글꼴 */
+export type TagFontId = "outfit" | "gothic" | "serif" | "round" | "display";
+
+export const TAG_FONTS: readonly {
+  id: TagFontId;
+  name: string;
+  family: string;
+  /** 캔버스에서 쓰기 전에 불러올 웹폰트(Google Fonts family) */
+  webFont?: string;
+}[] = [
+  { id: "outfit", name: "기본 (Outfit)", family: 'Outfit, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif' },
+  { id: "gothic", name: "고딕", family: '"Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
+  { id: "serif", name: "명조", family: '"Noto Serif KR", "Apple Myungjo", Batang, Georgia, serif', webFont: "Noto Serif KR" },
+  { id: "round", name: "둥근", family: 'Jua, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', webFont: "Jua" },
+  { id: "display", name: "굵은 제목", family: '"Black Han Sans", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', webFont: "Black Han Sans" },
+] as const;
+
+export function getTagFont(id: TagFontId | undefined | null) {
+  return TAG_FONTS.find((f) => f.id === id) ?? TAG_FONTS[0]!;
+}
+
+/** 줄별 스타일. 비어 있으면 전역 문구 색·기본 글꼴 */
+export type LineStyle = { color?: string; font?: TagFontId };
+
+/** 겹침 순서 대상 (뒤에 올수록 위에 그려짐) */
+export type LayerId = "image" | `line${number}`;
+
 export type TagDesignLayout = {
   /** 문구 줄별 배치 */
   lines: (ElementPlacement | null)[];
@@ -65,7 +92,14 @@ export type TagDesignLayout = {
   image: ElementPlacement | null;
   /** NFC 칩 중심 (크기는 칩 규격 고정) */
   chip: { x: number; y: number } | null;
+  /** 줄별 색·글꼴 */
+  styles: (LineStyle | null)[];
+  /** 겹침 순서. 없으면 로고 → 문구 순 */
+  order: LayerId[] | null;
 };
+
+/** 템플릿 기본 줄 수와 무관하게 추가할 수 있는 최대 문구 줄 수 */
+export const MAX_TEXT_LINES_TOTAL = 5;
 
 export const PLACEMENT_SCALE_MIN = 0.4;
 export const PLACEMENT_SCALE_MAX = 2.5;
@@ -73,7 +107,20 @@ export const IMAGE_SCALE_MIN = 0.1;
 export const IMAGE_SCALE_MAX = 2;
 
 export function emptyLayout(lineCount = 3): TagDesignLayout {
-  return { lines: Array.from({ length: lineCount }, () => null), image: null, chip: null };
+  return {
+    lines: Array.from({ length: lineCount }, () => null),
+    image: null,
+    chip: null,
+    styles: Array.from({ length: lineCount }, () => null),
+    order: null,
+  };
+}
+
+/** 그리기 순서(아래→위). order가 없거나 빠진 항목은 로고 → 문구 순으로 뒤에 붙인다 */
+export function layerOrderFor(lineCount: number, order: LayerId[] | null | undefined): LayerId[] {
+  const all: LayerId[] = ["image", ...Array.from({ length: lineCount }, (_, i) => `line${i}` as LayerId)];
+  const given = (order ?? []).filter((id) => all.includes(id));
+  return [...given, ...all.filter((id) => !given.includes(id))];
 }
 
 export type TagDesignSpec = {
@@ -158,19 +205,35 @@ function normalizePlacement(raw: unknown): ElementPlacement | null {
   return rot ? { x: clamp(r.x, 0, 1), y: clamp(r.y, 0, 1), s, r: rot } : { x: clamp(r.x, 0, 1), y: clamp(r.y, 0, 1), s };
 }
 
+function normalizeLineStyle(raw: unknown): LineStyle | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const out: LineStyle = {};
+  if (typeof r.color === "string" && HEX_RE.test(r.color)) out.color = r.color;
+  if (typeof r.font === "string" && r.font !== "outfit" && TAG_FONTS.some((f) => f.id === r.font)) out.font = r.font as TagFontId;
+  return Object.keys(out).length ? out : null;
+}
+
+const LAYER_ID_RE = /^(image|line\d)$/;
+
 function normalizeLayout(raw: unknown, lineCount: number): TagDesignLayout {
   const base = emptyLayout(lineCount);
   if (!raw || typeof raw !== "object") return base;
   const r = raw as Record<string, unknown>;
   const lines = Array.isArray(r.lines) ? r.lines.slice(0, lineCount).map(normalizePlacement) : base.lines;
   while (lines.length < lineCount) lines.push(null);
+  const styles = Array.isArray(r.styles) ? r.styles.slice(0, lineCount).map(normalizeLineStyle) : base.styles;
+  while (styles.length < lineCount) styles.push(null);
   const image = normalizePlacement(r.image);
   let chip: TagDesignLayout["chip"] = null;
   if (r.chip && typeof r.chip === "object") {
     const c = r.chip as Record<string, unknown>;
     if (finite(c.x) && finite(c.y)) chip = { x: clamp(c.x, 0, 1), y: clamp(c.y, 0, 1) };
   }
-  return { lines, image, chip };
+  const order = Array.isArray(r.order)
+    ? r.order.filter((id): id is LayerId => typeof id === "string" && LAYER_ID_RE.test(id))
+    : null;
+  return { lines, image, chip, styles, order: order && order.length ? order : null };
 }
 
 /** 신뢰할 수 없는 입력(JSON)을 폼팩터 제약에 맞게 정규화. 형식이 틀리면 기본값으로 채운다. */
@@ -188,12 +251,14 @@ export function normalizeTagDesign(
   }
   const r = raw as Record<string, unknown>;
 
+  // 템플릿 기본 줄(ff.maxTextLines)은 항상 두고, 그 뒤에 사용자가 추가한 줄(최대 MAX_TEXT_LINES_TOTAL)을 둔다
   const lines = Array.isArray(r.lines)
     ? r.lines
-        .slice(0, ff.maxTextLines)
+        .slice(0, MAX_TEXT_LINES_TOTAL)
         .map((l) => (typeof l === "string" ? l.replace(/[\r\n\t]/g, " ").slice(0, MAX_TEXT_LINE_LENGTH) : ""))
     : base.lines;
   while (lines.length < ff.maxTextLines) lines.push("");
+  while (lines.length > ff.maxTextLines && !lines[lines.length - 1]!.trim()) lines.pop();
 
   const bodyColor = typeof r.bodyColor === "string" && HEX_RE.test(r.bodyColor) ? r.bodyColor : base.bodyColor;
   const textColor =
@@ -212,7 +277,7 @@ export function normalizeTagDesign(
         ? r.templateId.trim().slice(0, 64)
         : null;
 
-  const layout = normalizeLayout(r.layout, ff.maxTextLines);
+  const layout = normalizeLayout(r.layout, lines.length);
 
   return { version: 2, lines, bodyColor, textColor, materialId, textStyle, image, faceArtSrc, templateId, layout };
 }

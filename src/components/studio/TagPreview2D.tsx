@@ -26,6 +26,7 @@ import {
   faceGeometryFor,
   paintFace,
   useFaceImages,
+  useStudioFonts,
   type FaceBox,
   type FaceElementId,
 } from "@/components/studio/tag-face-paint";
@@ -155,7 +156,7 @@ const NUDGE_BIG = 0.05;
 const SAFE = 0.06;
 const SNAP_PX = 6;
 const ROT_SNAP_DEG = 4;
-const LINE_TARGETS: FaceElementId[] = ["line0", "line1", "line2"];
+const LINE_TARGETS: FaceElementId[] = ["line0", "line1", "line2", "line3", "line4"];
 
 function clamp(n: number, min: number, max: number) {
   return Math.min(max, Math.max(min, n));
@@ -239,6 +240,7 @@ export default function TagPreview2D({
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [guides, setGuides] = useState<Guides | null>(null);
   const { faceEl, logoEl } = useFaceImages(spec);
+  const fontsVersion = useStudioFonts(spec);
   const chipVisible = showChip || selected === "chip";
 
   useEffect(() => {
@@ -416,7 +418,7 @@ export default function TagPreview2D({
       }
       ctx.restore();
     }
-  }, [size, formFactor, spec, chipVisible, faceEl, logoEl, editable, selected, guides]);
+  }, [size, formFactor, spec, chipVisible, faceEl, logoEl, editable, selected, guides, fontsVersion]);
 
   const pointFrom = (e: { clientX: number; clientY: number }) => {
     const rect = canvasRef.current!.getBoundingClientRect();

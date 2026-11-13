@@ -18,6 +18,7 @@ import {
   faceGeometryFor,
   paintFaceCanvas,
   useFaceImages,
+  useStudioFonts,
   type FaceArea,
   type FaceGeometry,
 } from "@/components/studio/tag-face-paint";
@@ -241,6 +242,7 @@ export default function TagPreview3D({ formFactor, spec, showChip }: Props) {
   const [stageVersion, setStageVersion] = useState(0);
   const [webglFailed, setWebglFailed] = useState(false);
   const { faceEl, logoEl } = useFaceImages(spec);
+  const fontsVersion = useStudioFonts(spec);
 
   // 장면·카메라·조명·컨트롤 — 폼팩터가 바뀔 때만 다시 만든다
   useEffect(() => {
@@ -343,7 +345,7 @@ export default function TagPreview3D({ formFactor, spec, showChip }: Props) {
     const model = buildTagGroup(formFactor, spec, showChip, faceEl, logoEl);
     stage.scene.add(model);
     stage.model = model;
-  }, [stageVersion, formFactor, spec, showChip, faceEl, logoEl]);
+  }, [stageVersion, formFactor, spec, showChip, faceEl, logoEl, fontsVersion]);
 
   if (webglFailed) {
     return (

@@ -6,7 +6,7 @@
  */
 import { useEffect, useState } from "react";
 import type { FormFactor } from "@/lib/platform/form-factors";
-import { TEXT_COLOR_DESIGN, type TagDesignSpec } from "@/lib/platform/tag-design";
+import { TEXT_COLOR_DESIGN, getTagFont, layerOrderFor, type TagDesignSpec, type TagFontId } from "@/lib/platform/tag-design";
 import { getCardFaceLayout } from "@/lib/platform/card-face-layouts";
 
 /** 윗면 그림 영역 (중심 x,y · 가로 · 세로, mm, y는 위쪽이 +) */
@@ -84,8 +84,8 @@ export function isLightColor(hex: string): boolean {
   return 0.299 * r! + 0.587 * g! + 0.114 * b! > 160;
 }
 
-/** 끌어서 편집할 수 있는 윗면 요소 */
-export type FaceElementId = "line0" | "line1" | "line2" | "image";
+/** 끌어서 편집할 수 있는 윗면 요소 (문구 줄은 최대 MAX_TEXT_LINES_TOTAL) */
+export type FaceElementId = "line0" | "line1" | "line2" | "line3" | "line4" | "image";
 
 /** 그려진 요소의 영역 (윗면 캔버스 픽셀, 왼쪽 위 기준). r이 있으면 박스 중심 기준으로 그만큼(도) 회전해 그려진 것 */
 export type FaceBox = { x: number; y: number; w: number; h: number; r?: number };
@@ -95,7 +95,46 @@ export type FacePaintResult = {
   boxes: Partial<Record<FaceElementId, FaceBox>>;
 };
 
-const FONT = (px: number) => `900 ${px}px Outfit, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif`;
+const fontCss = (px: number, fontId?: TagFontId | null) => `900 ${px}px ${getTagFont(fontId).family}`;
+
+/** 디자인에 쓰인 웹폰트가 준비됐는지. 글꼴을 쓰는 줄이 있으면 Google Fonts를 불러오고, 로드되면 값이 바뀌어 다시 그리게 한다 */
+export function useStudioFonts(spec: TagDesignSpec): number {
+  const [version, setVersion] = useState(0);
+  const needed = Array.from(
+    new Set(
+      (spec.layout?.styles ?? [])
+        .map((st) => getTagFont(st?.font).webFont)
+        .filter((f): f is string => Boolean(f))
+    )
+  )
+    .sort()
+    .join("|");
+  useEffect(() => {
+    if (!needed || typeof document === "undefined") return;
+    const families = needed.split("|");
+    const id = "studio-webfonts";
+    let link = document.getElementById(id) as HTMLLinkElement | null;
+    const href =
+      "https://fonts.googleapis.com/css2?" +
+      families.map((f) => `family=${encodeURIComponent(f).replace(/%20/g, "+")}:wght@400;700;900`).join("&") +
+      "&display=swap";
+    if (!link) {
+      link = document.createElement("link");
+      link.id = id;
+      link.rel = "stylesheet";
+      document.head.appendChild(link);
+    }
+    if (link.href !== href) link.href = href;
+    let cancelled = false;
+    void Promise.all(families.map((f) => document.fonts.load(`900 32px "${f}"`).catch(() => null))).then(() => {
+      if (!cancelled) setVersion((v) => v + 1);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [needed]);
+  return version;
+}
 
 /** 칩 중심(그림 영역 비율 0..1, 왼쪽 위 기준). layout.chip이 없으면 폼팩터 기본 위치 */
 export function chipPlacementFor(ff: FormFactor, spec: TagDesignSpec): { x: number; y: number } {
@@ -125,28 +164,31 @@ export function clampChipPlacement(ff: FormFactor, x: number, y: number): { x: n
   };
 }
 
-function drawLine(
-  ctx: CanvasRenderingContext2D,
-  line: string,
-  x: number,
-  y: number,
-  size: number,
-  align: CanvasTextAlign,
-  color: string,
-  style: "raised" | "engraved" | "card",
-  strip: boolean,
-  rotationDeg = 0
-): FaceBox {
-  if (rotationDeg) {
+type LineDraw = {
+  line: string;
+  x: number;
+  y: number;
+  size: number;
+  align: CanvasTextAlign;
+  color: string;
+  style: "raised" | "engraved" | "card";
+  strip: boolean;
+  rot: number;
+  font?: TagFontId;
+};
+
+function drawLine(ctx: CanvasRenderingContext2D, d: LineDraw): FaceBox {
+  const { line, x, y, size, align, color, style, strip, rot, font } = d;
+  if (rot) {
     // 회전: 중심(x,y) 기준으로 돌려 가운데 정렬로 그린다
     ctx.save();
     ctx.translate(x, y);
-    ctx.rotate((rotationDeg * Math.PI) / 180);
-    const b = drawLine(ctx, line, 0, 0, size, "center", color, style, strip, 0);
+    ctx.rotate((rot * Math.PI) / 180);
+    const b = drawLine(ctx, { ...d, x: 0, y: 0, align: "center", rot: 0 });
     ctx.restore();
-    return { x: x + b.x, y: y + b.y, w: b.w, h: b.h, r: rotationDeg };
+    return { x: x + b.x, y: y + b.y, w: b.w, h: b.h, r: rot };
   }
-  ctx.font = FONT(size);
+  ctx.font = fontCss(size, font);
   ctx.textAlign = align;
   ctx.textBaseline = "middle";
   const tw = ctx.measureText(line).width;
@@ -174,9 +216,16 @@ function drawLine(
   return { x: left, y: y - size * 0.6, w: tw, h: size * 1.2 };
 }
 
+/** 문구 폭이 maxW를 넘지 않도록 글자 크기를 줄인다 */
+function fitSize(ctx: CanvasRenderingContext2D, line: string, size: number, maxW: number, font?: TagFontId): number {
+  ctx.font = fontCss(size, font);
+  const measured = ctx.measureText(line).width;
+  return measured > maxW ? size * (maxW / measured) : size;
+}
+
 /**
  * 윗면 캔버스: 템플릿 전면 아트 · 사용자 로고 · 문구.
- * spec.layout의 배치(끌어서 옮긴 위치·크기)를 반영하고, 요소별 영역(boxes)을 함께 돌려준다.
+ * spec.layout의 배치(끌어서 옮긴 위치·크기·회전)·줄별 색/글꼴·겹침 순서를 반영하고, 요소별 영역(boxes)을 함께 돌려준다.
  */
 export function paintFace(
   spec: TagDesignSpec,
@@ -197,6 +246,7 @@ export function paintFace(
   const H = canvas.height;
   const boxes: FacePaintResult["boxes"] = {};
   const placements = spec.layout?.lines ?? [];
+  const styles = spec.layout?.styles ?? [];
 
   // 템플릿 전면 아트(명함 등) — cover. 명함 템플릿은 글자 없는 배경(blank)이 faceEl로 들어온다
   const cardLayout = getCardFaceLayout(faceSrc);
@@ -209,31 +259,83 @@ export function paintFace(
     ctx.drawImage(faceEl, art.x, art.y, dw, dh);
   }
 
-  // 명함 템플릿: 1·2번째 문구를 원래 NAME / SHORT TEXT 자리에 디자인 그대로(굵게·같은 색) 채운다
-  if (cardLayout && art) {
-    const frame = art;
-    spec.lines.slice(0, cardLayout.slots.length).forEach((raw, i) => {
-      const line = raw.trim();
-      const slot = cardLayout.slots[i];
-      if (!line || !slot) return;
-      const sx = frame.x + slot.x * frame.w;
-      const sy = frame.y + slot.y * frame.h;
-      const sw = slot.w * frame.w;
-      const sh = slot.h * frame.h;
-      let size = sh * 0.82;
-      ctx.font = FONT(size);
-      const measured = ctx.measureText(line).width;
-      if (measured > sw) size *= sw / measured;
-      const color = spec.textColor === TEXT_COLOR_DESIGN ? slot.color : spec.textColor;
-      const p = placements[i];
-      boxes[`line${i}` as FaceElementId] = p
-        ? drawLine(ctx, line, p.x * W, p.y * H, size * p.s, "center", color, "card", false, p.r ?? 0)
-        : drawLine(ctx, line, slot.align === "center" ? sx + sw / 2 : sx, sy + sh / 2, size, slot.align, color, "card", false);
-    });
-  }
+  const lines = spec.lines.map((l) => l.trim());
+  const filled = lines.filter(Boolean);
+  // 플레이스홀더(NAME 등)만 있으면 전면 아트에 이미 있으므로 겹쳐 그리지 않음
+  const placeholderOnly =
+    Boolean(faceSrc) && filled.length > 0 && filled.every((l) => /^(NAME|SHORT TEXT|HELLO|LINK-U)$/i.test(l));
+  const globalColor = faceSrc || spec.textColor === TEXT_COLOR_DESIGN ? "#0F172A" : spec.textColor;
+  const globalStyle: LineDraw["style"] = spec.textStyle === "engraved" ? "engraved" : "raised";
 
-  // 사용자 로고
-  if (logoEl && logoSrc) {
+  // 일반(비명함) 배치: 채워진 줄을 위에서부터 쌓는다
+  const stackTop = faceSrc ? H * 0.32 : logoEl && logoSrc && !spec.layout?.image ? H * 0.55 : 0;
+  const stackH = faceSrc ? H * 0.36 : H - stackTop;
+  const lineH = stackH / Math.max(filled.length, 1);
+  let stackRow = 0;
+
+  /** 줄 i의 기본 그리기 값 (템플릿 슬롯 → 명함 추가 줄 → 일반 쌓기) */
+  const lineDefaults = (i: number, line: string): LineDraw | null => {
+    const slot = cardLayout?.slots[i];
+    const st = styles[i];
+    const font = st?.font;
+    if (cardLayout && art) {
+      if (slot) {
+        const sx = art.x + slot.x * art.w;
+        const sy = art.y + slot.y * art.h;
+        const sw = slot.w * art.w;
+        const sh = slot.h * art.h;
+        const color = st?.color ?? (spec.textColor === TEXT_COLOR_DESIGN ? slot.color : spec.textColor);
+        return {
+          line,
+          x: slot.align === "center" ? sx + sw / 2 : sx,
+          y: sy + sh / 2,
+          size: fitSize(ctx, line, sh * 0.82, sw, font),
+          align: slot.align,
+          color,
+          style: "card",
+          strip: false,
+          rot: 0,
+          font,
+        };
+      }
+      // 명함 템플릿에 추가한 줄: 가운데 아래쪽에 차례로
+      const k = i - cardLayout.slots.length;
+      const color = st?.color ?? (spec.textColor === TEXT_COLOR_DESIGN ? "#0F172A" : spec.textColor);
+      return {
+        line,
+        x: W / 2,
+        y: H * (0.5 + 0.13 * k),
+        size: fitSize(ctx, line, H * 0.1, W * 0.8, font),
+        align: "center",
+        color,
+        style: "card",
+        strip: false,
+        rot: 0,
+        font,
+      };
+    }
+    if (placeholderOnly) return null;
+    const row = stackRow++;
+    const size0 = lineH * (row === 0 ? 0.72 : 0.55);
+    return {
+      line,
+      x: faceSrc ? W * 0.1 : W / 2,
+      y: stackTop + lineH * (row + 0.5),
+      size: fitSize(ctx, line, size0, W * (faceSrc ? 0.55 : 0.94), font),
+      align: faceSrc ? "left" : "center",
+      color: st?.color ?? globalColor,
+      style: globalStyle,
+      strip: Boolean(faceSrc),
+      rot: 0,
+      font,
+    };
+  };
+
+  // 쌓기 순서(stackRow)는 줄 번호 순이어야 하므로 기본값을 먼저 전부 계산한다
+  const defaults = lines.map((line, i) => (line ? lineDefaults(i, line) : null));
+
+  const drawLogo = () => {
+    if (!logoEl || !logoSrc) return;
     const scale = spec.image?.scale ?? 0.55;
     const opacity = spec.image?.opacity ?? 0.95;
     const maxW = W * scale * (faceSrc ? 0.28 : 1);
@@ -256,36 +358,22 @@ export function paintFace(
     }
     ctx.restore();
     boxes.image = rot ? { x: dx, y: dy, w: dw, h: dh, r: rot } : { x: dx, y: dy, w: dw, h: dh };
-  }
+  };
 
-  const lines = spec.lines.map((l) => l.trim());
-  const filled = lines.filter(Boolean);
-  // 플레이스홀더(NAME 등)만 있으면 전면 아트에 이미 있으므로 겹쳐 그리지 않음
-  const placeholderOnly =
-    Boolean(faceSrc) && filled.length > 0 && filled.every((l) => /^(NAME|SHORT TEXT|HELLO|LINK-U)$/i.test(l));
-  if (!cardLayout && filled.length > 0 && !placeholderOnly) {
-    const textTop = faceSrc ? H * 0.32 : logoEl && logoSrc && !spec.layout?.image ? H * 0.55 : 0;
-    const usableH = faceSrc ? H * 0.36 : H - textTop;
-    const lineH = usableH / Math.max(filled.length, 1);
-    const align: CanvasTextAlign = faceSrc ? "left" : "center";
-    const x = faceSrc ? W * 0.1 : W / 2;
-    const color = faceSrc || spec.textColor === TEXT_COLOR_DESIGN ? "#0F172A" : spec.textColor;
-    const style = spec.textStyle === "engraved" ? "engraved" : "raised";
-    let row = 0;
-    lines.forEach((line, i) => {
-      if (!line) return;
-      let size = lineH * (row === 0 ? 0.72 : 0.55);
-      ctx.font = FONT(size);
-      const maxW = W * (faceSrc ? 0.55 : 0.94);
-      const measured = ctx.measureText(line).width;
-      if (measured > maxW) size *= maxW / measured;
-      const y = textTop + lineH * (row + 0.5);
-      row += 1;
-      const p = placements[i];
-      boxes[`line${i}` as FaceElementId] = p
-        ? drawLine(ctx, line, p.x * W, p.y * H, size * p.s, "center", color, style, Boolean(faceSrc), p.r ?? 0)
-        : drawLine(ctx, line, x, y, size, align, color, style, Boolean(faceSrc));
-    });
+  const drawText = (i: number) => {
+    const d = defaults[i];
+    if (!d) return;
+    const p = placements[i];
+    const box = p
+      ? drawLine(ctx, { ...d, x: p.x * W, y: p.y * H, size: d.size * p.s, align: "center", rot: p.r ?? 0 })
+      : drawLine(ctx, d);
+    boxes[`line${i}` as FaceElementId] = box;
+  };
+
+  // 겹침 순서대로 (아래 → 위)
+  for (const id of layerOrderFor(lines.length, spec.layout?.order)) {
+    if (id === "image") drawLogo();
+    else drawText(Number(id.slice(4)));
   }
 
   return { canvas, boxes };

@@ -3,12 +3,13 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { ArrowLeft, Box, Calculator, Check, CircleDot, ImagePlus, Loader2, Lock, PenLine, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Box, Calculator, Check, CircleDot, ImagePlus, Loader2, Lock, PenLine, Plus, Save, Trash2 } from "lucide-react";
 import { saveTagDesign, uploadStudioImage } from "@/app/actions/studio";
 import type { FormFactor } from "@/lib/platform/form-factors";
 import {
   emptyImageLayer,
   MAX_TEXT_LINE_LENGTH,
+  MAX_TEXT_LINES_TOTAL,
   TAG_BODY_COLORS,
   TAG_MATERIALS,
   TAG_TEXT_COLORS,
@@ -115,6 +116,40 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
     setSpec((prev) => ({ ...prev, ...patch }));
     setDirty(true);
     setMessage(null);
+  };
+
+  /** 문구 줄 추가 — 배치·스타일 배열도 같은 길이로 */
+  const addLine = () => {
+    if (locked || spec.lines.length >= MAX_TEXT_LINES_TOTAL) return;
+    beginInteraction();
+    const idx = spec.lines.length;
+    update({
+      lines: [...spec.lines, ""],
+      layout: { ...spec.layout, lines: [...spec.layout.lines, null], styles: [...spec.layout.styles, null] },
+    });
+    endInteraction();
+    setSelected(`line${idx}` as StudioEditTarget);
+  };
+
+  /** 추가한 문구 줄 삭제 — 겹침 순서의 번호도 당겨 맞춘다 */
+  const removeLine = (i: number) => {
+    if (locked || i < formFactor.maxTextLines) return;
+    beginInteraction();
+    const drop = <T,>(arr: T[]) => arr.filter((_, k) => k !== i);
+    const order = spec.layout.order
+      ? spec.layout.order
+          .filter((id) => id !== `line${i}`)
+          .map((id) => {
+            const n = id.startsWith("line") ? Number(id.slice(4)) : -1;
+            return n > i ? (`line${n - 1}` as typeof id) : id;
+          })
+      : null;
+    update({
+      lines: drop(spec.lines),
+      layout: { ...spec.layout, lines: drop(spec.layout.lines), styles: drop(spec.layout.styles), order },
+    });
+    endInteraction();
+    setSelected(null);
   };
 
   const updateImage = (patch: Partial<TagDesignSpec["image"]>) => {
@@ -310,29 +345,58 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
 
         <Panel label="태그 문구" hint={`줄당 최대 ${MAX_TEXT_LINE_LENGTH}자`}>
           <div className="space-y-2">
-            {spec.lines.map((line, i) => (
-              <input
-                key={i}
-                value={line}
-                onChange={(e) => {
-                  const lines = [...spec.lines];
-                  lines[i] = e.target.value.slice(0, MAX_TEXT_LINE_LENGTH);
-                  update({ lines });
-                }}
-                placeholder={
-                  hasFaceArt
-                    ? i === 0
-                      ? "이름 (NAME 자리)"
-                      : "직함·한 줄 소개 (SHORT TEXT)"
-                    : i === 0
-                      ? "이름 또는 문구"
-                      : `${i + 1}번째 줄 (선택)`
-                }
-                disabled={locked}
-                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-900 outline-none placeholder:text-slate-300 focus:border-teal-300 focus:ring-2 focus:ring-teal-400/30"
-              />
-            ))}
+            {spec.lines.map((line, i) => {
+              const extra = i >= formFactor.maxTextLines;
+              return (
+                <div key={i} className="flex items-center gap-2">
+                  <input
+                    value={line}
+                    onChange={(e) => {
+                      const lines = [...spec.lines];
+                      lines[i] = e.target.value.slice(0, MAX_TEXT_LINE_LENGTH);
+                      update({ lines });
+                    }}
+                    placeholder={
+                      extra
+                        ? `추가 문구 ${i - formFactor.maxTextLines + 1}`
+                        : hasFaceArt
+                          ? i === 0
+                            ? "이름 (NAME 자리)"
+                            : "직함·한 줄 소개 (SHORT TEXT)"
+                          : i === 0
+                            ? "이름 또는 문구"
+                            : `${i + 1}번째 줄 (선택)`
+                    }
+                    disabled={locked}
+                    className="h-11 min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-900 outline-none placeholder:text-slate-300 focus:border-teal-300 focus:ring-2 focus:ring-teal-400/30"
+                  />
+                  {extra && !locked ? (
+                    <button
+                      type="button"
+                      onClick={() => removeLine(i)}
+                      aria-label={`추가 문구 ${i - formFactor.maxTextLines + 1} 삭제`}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                    >
+                      <Trash2 className="h-4 w-4" aria-hidden />
+                    </button>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
+          {!locked && spec.lines.length < MAX_TEXT_LINES_TOTAL ? (
+            <button
+              type="button"
+              onClick={addLine}
+              className="mt-2 inline-flex h-9 items-center gap-1.5 rounded-full border border-dashed border-teal-300 bg-teal-50/40 px-3.5 text-[12px] font-black text-teal-700 transition hover:bg-teal-50"
+            >
+              <Plus className="h-3.5 w-3.5" aria-hidden />
+              문구 줄 추가
+              <span className="text-[10px] font-bold text-teal-600/70">
+                {spec.lines.length}/{MAX_TEXT_LINES_TOTAL}
+              </span>
+            </button>
+          ) : null}
           <div className="mt-2 grid grid-cols-2 gap-2">
             {(["raised", "engraved"] as const).map((style) => (
               <ChoiceButton key={style} active={spec.textStyle === style} disabled={locked} onClick={() => update({ textStyle: style })}>
