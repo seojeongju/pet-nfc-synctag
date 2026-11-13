@@ -142,10 +142,17 @@ function helpContentForPath(p: string): { title: string; body: ReactNode } {
     };
   }
 
+  if (p.startsWith("/admin/platform/studio/templates")) {
+    return {
+      title: "스튜디오 템플릿",
+      body: <p>서비스별 기본·추가 템플릿을 관리합니다. 추가 템플릿은 /studio에 바로 노출됩니다.</p>,
+    };
+  }
+
   if (p.startsWith("/admin/platform/studio")) {
     return {
       title: "태그 스튜디오",
-      body: <p>고객 커스텀 태그 디자인. 상태 탭으로 필터링합니다.</p>,
+      body: <p>고객 커스텀 태그 디자인. 상태 탭으로 필터링합니다. 템플릿은 「템플릿 관리」에서 추가합니다.</p>,
     };
   }
 

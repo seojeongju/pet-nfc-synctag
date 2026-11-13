@@ -2,11 +2,12 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useState, useTransition } from "react";
-import { ArrowLeft, Calculator, Check, CircleDot, Loader2, Lock, Save } from "lucide-react";
-import { saveTagDesign } from "@/app/actions/studio";
+import { useRef, useState, useTransition } from "react";
+import { ArrowLeft, Calculator, Check, CircleDot, ImagePlus, Loader2, Lock, Save, Trash2 } from "lucide-react";
+import { saveTagDesign, uploadStudioImage } from "@/app/actions/studio";
 import type { FormFactor } from "@/lib/platform/form-factors";
 import {
+  emptyImageLayer,
   MAX_TEXT_LINE_LENGTH,
   TAG_BODY_COLORS,
   TAG_MATERIALS,
@@ -34,18 +35,32 @@ type Props = {
 };
 
 export default function StudioEditorClient({ design, formFactor, serviceName }: Props) {
-  const [spec, setSpec] = useState<TagDesignSpec>(design.spec);
+  const [spec, setSpec] = useState<TagDesignSpec>(() => ({
+    ...design.spec,
+    image: design.spec.image ?? emptyImageLayer(),
+    faceArtSrc: design.spec.faceArtSrc ?? null,
+  }));
+  const hasFaceArt = Boolean(spec.faceArtSrc);
   const [title, setTitle] = useState(design.title);
   const [status, setStatus] = useState<TagDesignStatus>(design.status);
   const [showChip, setShowChip] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const fileRef = useRef<HTMLInputElement>(null);
   const locked = status === "requested" || status === "locked";
 
   const update = (patch: Partial<TagDesignSpec>) => {
     if (locked) return;
     setSpec((prev) => ({ ...prev, ...patch }));
+    setDirty(true);
+    setMessage(null);
+  };
+
+  const updateImage = (patch: Partial<TagDesignSpec["image"]>) => {
+    if (locked) return;
+    setSpec((prev) => ({ ...prev, image: { ...(prev.image ?? emptyImageLayer()), ...patch } }));
     setDirty(true);
     setMessage(null);
   };
@@ -64,9 +79,28 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
     });
   };
 
+  const onPickImage = async (file: File | null) => {
+    if (!file || locked) return;
+    setUploading(true);
+    setMessage(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await uploadStudioImage(fd);
+      if (!res.ok) {
+        setMessage({ kind: "error", text: res.error });
+        return;
+      }
+      updateImage({ src: res.url });
+      setMessage({ kind: "ok", text: "이미지를 올렸습니다. 저장을 눌러 디자인을 보관하세요." });
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
   return (
     <main className="mx-auto flex w-full max-w-screen-sm flex-col gap-4 px-4 pb-28 pt-5 min-[430px]:px-5 lg:max-w-5xl lg:flex-row lg:items-start lg:gap-6">
-      {/* 미리보기 */}
       <section className="lg:sticky lg:top-20 lg:w-[55%]">
         <div className="mb-2 flex items-center justify-between">
           <Link href="/studio" className="inline-flex items-center gap-1 text-[12px] font-black text-slate-500 hover:text-teal-700">
@@ -98,7 +132,6 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
         <p className="mt-2 text-center text-[11px] font-semibold text-slate-400">드래그해서 돌려 보고, 두 손가락으로 확대할 수 있어요.</p>
       </section>
 
-      {/* 편집 */}
       <section className="flex flex-col gap-4 lg:flex-1">
         {locked ? (
           <div className="flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] font-bold text-amber-800">
@@ -120,6 +153,18 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
           />
         </Panel>
 
+        {hasFaceArt ? (
+          <Panel label="선택한 템플릿 아트">
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={spec.faceArtSrc!} alt="템플릿 전면" className="aspect-[86/54] w-full object-cover" />
+            </div>
+            <p className="mt-2 text-[11px] font-semibold leading-relaxed text-slate-500 break-keep [word-break:keep-all]">
+              전면 디자인은 템플릿 이미지를 사용합니다. 아래 문구를 실제 이름·직함으로 바꾸면 3D 미리보기에 반영됩니다.
+            </p>
+          </Panel>
+        ) : null}
+
         <Panel label="태그 문구" hint={`줄당 최대 ${MAX_TEXT_LINE_LENGTH}자`}>
           <div className="space-y-2">
             {spec.lines.map((line, i) => (
@@ -131,7 +176,15 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
                   lines[i] = e.target.value.slice(0, MAX_TEXT_LINE_LENGTH);
                   update({ lines });
                 }}
-                placeholder={i === 0 ? "이름 또는 문구" : `${i + 1}번째 줄 (선택)`}
+                placeholder={
+                  hasFaceArt
+                    ? i === 0
+                      ? "이름 (NAME 자리)"
+                      : "직함·한 줄 소개 (SHORT TEXT)"
+                    : i === 0
+                      ? "이름 또는 문구"
+                      : `${i + 1}번째 줄 (선택)`
+                }
                 disabled={locked}
                 className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-900 outline-none placeholder:text-slate-300 focus:border-teal-300 focus:ring-2 focus:ring-teal-400/30"
               />
@@ -144,6 +197,82 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
               </ChoiceButton>
             ))}
           </div>
+        </Panel>
+
+        <Panel label="이미지·로고" hint="PNG/JPG · 2MB 이하">
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            className="hidden"
+            disabled={locked || uploading}
+            onChange={(e) => void onPickImage(e.target.files?.[0] ?? null)}
+          />
+          {spec.image?.src ? (
+            <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={spec.image.src} alt="업로드한 로고" className="h-14 w-14 rounded-xl object-contain bg-white ring-1 ring-slate-200" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[12px] font-black text-slate-800">이미지가 적용되었습니다</p>
+                <p className="mt-0.5 text-[10px] font-semibold text-slate-400">크기·투명도를 조절한 뒤 저장하세요.</p>
+              </div>
+              <button
+                type="button"
+                disabled={locked}
+                onClick={() => updateImage({ src: null })}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                aria-label="이미지 제거"
+              >
+                <Trash2 className="h-4 w-4" aria-hidden />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              disabled={locked || uploading}
+              onClick={() => fileRef.current?.click()}
+              className="flex h-24 w-full flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-teal-200 bg-teal-50/40 text-teal-700 transition hover:bg-teal-50 disabled:opacity-60"
+            >
+              {uploading ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : <ImagePlus className="h-5 w-5" aria-hidden />}
+              <span className="text-[12px] font-black">{uploading ? "올리는 중…" : "이미지 추가"}</span>
+            </button>
+          )}
+          {spec.image?.src ? (
+            <div className="mt-3 space-y-3">
+              <label className="block">
+                <span className="text-[10px] font-black text-slate-500">크기</span>
+                <input
+                  type="range"
+                  min={25}
+                  max={100}
+                  value={Math.round((spec.image.scale ?? 0.55) * 100)}
+                  disabled={locked}
+                  onChange={(e) => updateImage({ scale: Number(e.target.value) / 100 })}
+                  className="mt-1 w-full accent-teal-600"
+                />
+              </label>
+              <label className="block">
+                <span className="text-[10px] font-black text-slate-500">투명도</span>
+                <input
+                  type="range"
+                  min={15}
+                  max={100}
+                  value={Math.round((spec.image.opacity ?? 0.95) * 100)}
+                  disabled={locked}
+                  onChange={(e) => updateImage({ opacity: Number(e.target.value) / 100 })}
+                  className="mt-1 w-full accent-teal-600"
+                />
+              </label>
+              <button
+                type="button"
+                disabled={locked || uploading}
+                onClick={() => fileRef.current?.click()}
+                className="text-[11px] font-black text-teal-700 hover:underline"
+              >
+                다른 이미지로 바꾸기
+              </button>
+            </div>
+          ) : null}
         </Panel>
 
         <Panel label="본체 색상">
@@ -183,14 +312,10 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
         </section>
       </section>
 
-      {/* 하단 고정 저장 바 */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200/90 bg-white/95 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-md">
         <div className="mx-auto flex w-full max-w-screen-sm flex-col gap-2 px-4 min-[430px]:px-5 lg:max-w-5xl">
           {message ? (
-            <p
-              role="status"
-              className={cn("text-center text-[12px] font-bold", message.kind === "ok" ? "text-teal-700" : "text-rose-600")}
-            >
+            <p role="status" className={cn("text-center text-[12px] font-bold", message.kind === "ok" ? "text-teal-700" : "text-rose-600")}>
               {message.text}
             </p>
           ) : null}
@@ -283,10 +408,7 @@ function Swatches({
             aria-label={c.name}
             aria-pressed={active}
             title={c.name}
-            className={cn(
-              "h-9 w-9 rounded-full ring-1 ring-slate-200 transition disabled:opacity-60",
-              active && "ring-2 ring-teal-500 ring-offset-2"
-            )}
+            className={cn("h-9 w-9 rounded-full ring-1 ring-slate-200 transition disabled:opacity-60", active && "ring-2 ring-teal-500 ring-offset-2")}
             style={{ backgroundColor: c.hex }}
           />
         );

@@ -4,7 +4,7 @@
  */
 import type { PlatformServiceId } from "@/lib/platform/services";
 
-export type FormFactorId = "keyring_round" | "pendant_bone" | "stand_plate";
+export type FormFactorId = "keyring_round" | "pendant_bone" | "stand_plate" | "card_plate";
 
 export type NfcChipType = "NTAG213" | "NTAG215" | "NTAG216";
 
@@ -61,6 +61,18 @@ export const FORM_FACTORS: readonly FormFactor[] = [
     maxTextLines: 3,
     allowedServices: ["wifi", "store", "card", "asset", "custom"],
     basePriceKrw: 19900,
+  },
+  {
+    id: "card_plate",
+    name: "디지털 명함 카드",
+    description: "표준 명함(CR80) 비율의 NFC 카드. 지갑·카드홀더에 넣기 좋습니다.",
+    widthMm: 86,
+    heightMm: 54,
+    thicknessMm: 3,
+    chip: { type: "NTAG213", diameterMm: 25, depthMm: 1.0 },
+    maxTextLines: 2,
+    allowedServices: ["card", "custom"],
+    basePriceKrw: 14900,
   },
 ] as const;
 

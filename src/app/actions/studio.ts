@@ -11,14 +11,17 @@ import { getFormFactor, type FormFactorId } from "@/lib/platform/form-factors";
 import { getPlatformService, type PlatformServiceId } from "@/lib/platform/services";
 import {
   defaultTagDesign,
+  isAllowedStudioImageSrc,
   normalizeTagDesign,
   type TagDesignRecord,
   type TagDesignSpec,
   type TagDesignStatus,
 } from "@/lib/platform/tag-design";
+import { resolveTemplate, templateToInitialSpec } from "@/lib/platform/tag-templates-store";
 
 const MAX_DESIGNS_PER_USER = 50;
 const MAX_TITLE_LENGTH = 40;
+const MAX_STUDIO_IMAGE_BYTES = 2 * 1024 * 1024;
 
 async function getActorId(): Promise<string | null> {
   const context = getCfRequestContext();
@@ -64,7 +67,54 @@ function rowToRecord(row: TagDesignRow): TagDesignRecord {
   };
 }
 
-/** 스튜디오 시작: 서비스·폼팩터로 새 초안을 만들고 에디터로 이동 (form action) */
+/**
+ * 템플릿으로 새 초안 생성 (권장 플로우).
+ * form: serviceId, templateId
+ */
+export async function createTagDesignFromTemplateAction(formData: FormData): Promise<void> {
+  const serviceId = String(formData.get("serviceId") ?? "");
+  const templateId = String(formData.get("templateId") ?? "");
+  const userId = await getActorId();
+  if (!userId) {
+    const back = `/studio?service=${encodeURIComponent(serviceId)}&template=${encodeURIComponent(templateId)}`;
+    redirect(`/login?callbackUrl=${encodeURIComponent(back)}`);
+  }
+
+  const service = getPlatformService(serviceId);
+  if (!service) throw new Error("서비스를 확인해 주세요.");
+
+  const db = getDB();
+  const template = await resolveTemplate(db, templateId);
+  if (!template || template.serviceId !== service.id) {
+    throw new Error("이 서비스에서 쓸 수 있는 템플릿이 아닙니다.");
+  }
+  const formFactor = getFormFactor(template.formFactorId);
+  if (!formFactor || !formFactor.allowedServices.includes(service.id)) {
+    throw new Error("서비스와 태그 모양 조합을 확인해 주세요.");
+  }
+
+  const count = await db
+    .prepare("SELECT COUNT(*) AS n FROM tag_designs WHERE user_id = ?")
+    .bind(userId)
+    .first<{ n: number }>();
+  if ((count?.n ?? 0) >= MAX_DESIGNS_PER_USER) {
+    throw new Error(`디자인은 최대 ${MAX_DESIGNS_PER_USER}개까지 저장할 수 있습니다. 사용하지 않는 디자인을 삭제해 주세요.`);
+  }
+
+  const id = `td_${nanoid(16)}`;
+  const spec = templateToInitialSpec(template);
+  await db
+    .prepare(
+      `INSERT INTO tag_designs (id, user_id, service_id, form_factor_id, title, design_json, status)
+       VALUES (?, ?, ?, ?, ?, ?, 'draft')`
+    )
+    .bind(id, userId, service.id, formFactor.id, template.name.slice(0, MAX_TITLE_LENGTH), JSON.stringify(spec))
+    .run();
+
+  redirect(`/studio/${id}`);
+}
+
+/** @deprecated 템플릿 플로우 권장. 폼팩터만으로 빈 초안 생성 (하위 호환) */
 export async function createTagDesignAction(formData: FormData): Promise<void> {
   const serviceId = String(formData.get("serviceId") ?? "");
   const formFactorId = String(formData.get("formFactorId") ?? "");
@@ -146,8 +196,8 @@ export async function saveTagDesign(input: {
     }
 
     const spec = normalizeTagDesign(input.spec, row.form_factor_id as FormFactorId, row.service_id as PlatformServiceId);
-    if (input.markReady && spec.lines.every((l) => !l.trim())) {
-      return { ok: false, error: "태그에 넣을 문구를 한 줄 이상 입력해 주세요." };
+    if (input.markReady && spec.lines.every((l) => !l.trim()) && !spec.image.src) {
+      return { ok: false, error: "태그에 넣을 문구 또는 이미지를 추가해 주세요." };
     }
     const title = input.title.trim().slice(0, MAX_TITLE_LENGTH) || "내 태그 디자인";
     const status: TagDesignStatus = input.markReady ? "ready" : "draft";
@@ -174,4 +224,38 @@ export async function deleteTagDesignAction(formData: FormData): Promise<void> {
     .bind(designId, userId)
     .run();
   revalidatePath("/studio");
+}
+
+/** 스튜디오 로고·사진 업로드 → R2 `/api/r2/studio/...` */
+export async function uploadStudioImage(
+  formData: FormData
+): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  try {
+    const userId = await requireActorId();
+    const file = formData.get("file");
+    if (!(file instanceof File) || !file.size) {
+      return { ok: false, error: "이미지 파일을 선택해 주세요." };
+    }
+    if (!file.type.startsWith("image/")) {
+      return { ok: false, error: "이미지 파일만 업로드할 수 있습니다." };
+    }
+    if (file.size > MAX_STUDIO_IMAGE_BYTES) {
+      return { ok: false, error: "이미지는 2MB 이하로 올려 주세요." };
+    }
+
+    const context = getCfRequestContext();
+    const r2 = context.env.R2;
+    const safeName = file.name.replace(/[^\w.\-]/g, "_").slice(0, 80) || "image";
+    const key = `studio/${userId}/${nanoid(12)}-${safeName}`;
+    await r2.put(key, await file.arrayBuffer(), {
+      httpMetadata: { contentType: file.type },
+    });
+    const url = `/api/r2/${key}`;
+    if (!isAllowedStudioImageSrc(url)) {
+      return { ok: false, error: "업로드 경로가 올바르지 않습니다." };
+    }
+    return { ok: true, url };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "업로드에 실패했습니다." };
+  }
 }

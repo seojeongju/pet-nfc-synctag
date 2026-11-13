@@ -20,7 +20,8 @@
     "d1:apply:wayfinder-sync-meta": "wrangler d1 execute pet-id-db --remote --file=migrations/0039_wayfinder_sync_meta.sql",
     "d1:apply:tags-wayfinder-station-anchor": "wrangler d1 execute pet-id-db --remote --file=migrations/0040_tags_wayfinder_station_anchor.sql",
     "d1:apply:wayfinder-spots-companion-scope": "wrangler d1 execute pet-id-db --remote --file=migrations/0041_wayfinder_spots_companion_scope.sql",
-    "d1:apply:tag-designs": "wrangler d1 execute pet-id-db --remote --file=migrations/0042_tag_designs.sql"
+    "d1:apply:tag-designs": "wrangler d1 execute pet-id-db --remote --file=migrations/0042_tag_designs.sql",
+    "d1:apply:tag-design-templates": "wrangler d1 execute pet-id-db --remote --file=migrations/0043_tag_design_templates.sql"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",

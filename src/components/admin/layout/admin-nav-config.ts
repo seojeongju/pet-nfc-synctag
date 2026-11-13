@@ -31,6 +31,7 @@ const PLATFORM_ADMIN_ONLY_HREFS = new Set<string>([
   "/admin/linku",
   "/admin/platform/services",
   "/admin/platform/studio",
+  "/admin/platform/studio/templates",
   "/admin/tenants",
   "/admin/privacy",
   "/admin/wayfinder",
@@ -75,7 +76,10 @@ export const ADMIN_NAV_SECTIONS: NavSection[] = [
   {
     id: "studio",
     title: "태그 스튜디오",
-    items: [{ href: "/admin/platform/studio", label: "디자인·제작 요청", icon: PenTool, color: "text-rose-500" }],
+    items: [
+      { href: "/admin/platform/studio", label: "디자인·제작 요청", icon: PenTool, color: "text-rose-500" },
+      { href: "/admin/platform/studio/templates", label: "템플릿 관리", icon: Layers, color: "text-fuchsia-500" },
+    ],
   },
   {
     id: "nfc",

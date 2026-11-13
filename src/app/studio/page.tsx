@@ -1,11 +1,13 @@
 import Link from "next/link";
-import { ArrowRight, Check, Nfc, PenTool, Trash2 } from "lucide-react";
+import { ArrowRight, Check, LayoutTemplate, PenTool, Trash2 } from "lucide-react";
 import { PlatformTopNav } from "@/components/platform/PlatformTopNav";
 import { platformServiceIcons } from "@/components/platform/service-icons";
-import { createTagDesignAction, deleteTagDesignAction, listMyTagDesigns } from "@/app/actions/studio";
+import { createTagDesignFromTemplateAction, deleteTagDesignAction, listMyTagDesigns } from "@/app/actions/studio";
 import { getLandingSessionState } from "@/lib/landing-session";
-import { formFactorsForService, getFormFactor } from "@/lib/platform/form-factors";
+import { getDB } from "@/lib/db";
+import { getFormFactor } from "@/lib/platform/form-factors";
 import { PLATFORM_SERVICES, getPlatformService } from "@/lib/platform/services";
+import { listTemplatesForService } from "@/lib/platform/tag-templates-store";
 import { formatDateTimeKoSeoul } from "@/lib/format-datetime-ko-seoul";
 import { buildPublicMetadata } from "@/lib/seo";
 import { cn } from "@/lib/utils";
@@ -14,7 +16,7 @@ export const runtime = "edge";
 
 export const metadata = buildPublicMetadata({
   title: "태그 스튜디오 | 링크유 Link-U",
-  description: "서비스를 고르고 원하는 모양으로 나만의 NFC 태그를 디자인하세요. 3D 미리보기와 자동견적까지 이어집니다.",
+  description: "서비스를 고르고 템플릿으로 나만의 NFC 태그를 디자인하세요. 문구·이미지·색을 바꾸며 3D로 확인합니다.",
   path: "/studio",
 });
 
@@ -28,14 +30,14 @@ const statusLabel: Record<string, string> = {
 export default async function StudioPage({
   searchParams,
 }: {
-  searchParams: Promise<{ service?: string; form?: string }>;
+  searchParams: Promise<{ service?: string; template?: string; form?: string }>;
 }) {
   const sp = await searchParams;
   const { session } = await getLandingSessionState();
   const selectedService = sp.service ? getPlatformService(sp.service) : null;
-  const formFactors = selectedService ? formFactorsForService(selectedService.id) : [];
-  const preselectedForm = sp.form ? getFormFactor(sp.form) : null;
+  const templates = selectedService ? await listTemplatesForService(getDB(), selectedService.id).catch(() => []) : [];
   const myDesigns = session ? await listMyTagDesigns().catch(() => []) : [];
+  const step: 1 | 2 | 3 | 4 = selectedService ? 2 : 1;
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-rose-50/45 via-amber-50/35 to-slate-50 font-outfit">
@@ -52,12 +54,11 @@ export default async function StudioPage({
             <span className="text-teal-500">만들어 볼까요?</span>
           </h1>
           <p className="mt-2 text-[13px] font-semibold leading-relaxed text-slate-600 break-keep [word-break:keep-all]">
-            서비스와 모양을 고르면 디자인 화면이 열립니다. 문구·색·재질을 바꾸며 3D로 확인하세요.
+            서비스를 고르면 맞는 템플릿이 나옵니다. 템플릿을 고른 뒤 문구·이미지·색을 바꾸며 3D로 확인하세요.
           </p>
-          <StepIndicator step={selectedService ? 2 : 1} />
+          <StepIndicator step={step} />
         </header>
 
-        {/* ① 서비스 */}
         <section className="rounded-[30px] border border-slate-200/80 bg-white/90 p-3.5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] min-[390px]:p-4">
           <p className="mb-2.5 px-1 text-[11px] font-black tracking-wider text-teal-600">① 서비스 선택</p>
           <div className="grid grid-cols-2 gap-2 lg:grid-cols-3 lg:gap-3">
@@ -91,53 +92,92 @@ export default async function StudioPage({
           </div>
         </section>
 
-        {/* ② 모양 */}
         {selectedService ? (
-          <section id="form" className="rounded-[30px] border border-slate-200/80 bg-white/90 p-3.5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] min-[390px]:p-4">
-            <p className="mb-2.5 px-1 text-[11px] font-black tracking-wider text-teal-600">② 태그 모양 선택 · {selectedService.name}</p>
-            <div className="grid grid-cols-1 gap-2">
-              {formFactors.map((f) => (
-                <form key={f.id} action={createTagDesignAction}>
-                  <input type="hidden" name="serviceId" value={selectedService.id} />
-                  <input type="hidden" name="formFactorId" value={f.id} />
-                  <button
-                    type="submit"
-                    className={cn(
-                      "group flex w-full items-center justify-between rounded-2xl border bg-white px-3.5 py-3 text-left transition hover:-translate-y-0.5 hover:border-teal-200 hover:shadow-md",
-                      preselectedForm?.id === f.id ? "border-teal-300 ring-2 ring-teal-400/30" : "border-slate-200"
-                    )}
-                  >
-                    <span className="flex min-w-0 items-center gap-3">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
-                        <Nfc className="h-4 w-4" aria-hidden />
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block text-[13px] font-black text-slate-900">{f.name}</span>
-                        <span className="mt-0.5 block text-[11px] font-semibold leading-snug text-slate-500 break-keep [word-break:keep-all]">
-                          {f.description}
-                        </span>
-                        <span className="mt-0.5 block text-[10px] font-bold text-slate-400">
-                          {f.widthMm}×{f.heightMm}×{f.thicknessMm}mm · {f.chip.type} · {f.basePriceKrw.toLocaleString("ko-KR")}원부터
-                        </span>
-                      </span>
-                    </span>
-                    <span className="inline-flex shrink-0 items-center gap-1 text-[12px] font-black text-teal-700">
-                      디자인
-                      <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" aria-hidden />
-                    </span>
-                  </button>
-                </form>
-              ))}
+          <section id="templates" className="rounded-[30px] border border-slate-200/80 bg-white/90 p-3.5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] min-[390px]:p-4">
+            <div className="mb-2.5 flex items-center justify-between px-1">
+              <p className="text-[11px] font-black tracking-wider text-teal-600">② 템플릿 선택 · {selectedService.name}</p>
+              <p className="text-[10px] font-bold text-slate-400">{templates.length}개</p>
             </div>
+            {templates.length === 0 ? (
+              <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-[12px] font-semibold text-slate-500">
+                이 서비스용 템플릿이 아직 없습니다. 관리자에서 템플릿을 추가해 주세요.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {templates.map((t) => {
+                  const ff = getFormFactor(t.formFactorId);
+                  const highlight = sp.template === t.id;
+                  const thumb = t.previewImage;
+                  return (
+                    <form key={t.id} action={createTagDesignFromTemplateAction}>
+                      <input type="hidden" name="serviceId" value={selectedService.id} />
+                      <input type="hidden" name="templateId" value={t.id} />
+                      <button
+                        type="submit"
+                        className={cn(
+                          "group flex w-full flex-col gap-2 overflow-hidden rounded-2xl border bg-white text-left transition hover:-translate-y-0.5 hover:border-teal-200 hover:shadow-md",
+                          highlight ? "border-teal-300 ring-2 ring-teal-400/30" : "border-slate-200"
+                        )}
+                      >
+                        {thumb ? (
+                          <span className="relative block aspect-[86/54] w-full bg-slate-100">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={thumb} alt="" className="h-full w-full object-cover" />
+                            <span className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[9px] font-black text-slate-600 shadow-sm">
+                              {t.source === "builtin" ? "기본" : "추가"}
+                            </span>
+                          </span>
+                        ) : null}
+                        <span className={cn("flex flex-col gap-2", thumb ? "px-3.5 pb-3" : "px-3.5 py-3")}>
+                          <span className="flex items-start justify-between gap-2">
+                            <span className="flex min-w-0 items-center gap-2.5">
+                              {!thumb ? (
+                                <span
+                                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 ring-slate-200"
+                                  style={{ backgroundColor: (t.defaultSpec.bodyColor as string) || "#00A896" }}
+                                  aria-hidden
+                                >
+                                  <LayoutTemplate className="h-4 w-4 text-white drop-shadow" />
+                                </span>
+                              ) : null}
+                              <span className="min-w-0">
+                                <span className="block text-[13px] font-black text-slate-900">{t.name}</span>
+                                <span className="mt-0.5 block text-[11px] font-semibold leading-snug text-slate-500 break-keep [word-break:keep-all]">
+                                  {t.description}
+                                </span>
+                              </span>
+                            </span>
+                            {!thumb ? (
+                              <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-black text-slate-500">
+                                {t.source === "builtin" ? "기본" : "추가"}
+                              </span>
+                            ) : null}
+                          </span>
+                          <span className="flex items-center justify-between gap-2 border-t border-slate-100 pt-2">
+                            <span className="text-[10px] font-bold text-slate-400">
+                              {ff?.name ?? t.formFactorId} · {t.previewHint}
+                              {ff ? ` · ${ff.basePriceKrw.toLocaleString("ko-KR")}원~` : ""}
+                            </span>
+                            <span className="inline-flex shrink-0 items-center gap-1 text-[12px] font-black text-teal-700">
+                              디자인
+                              <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" aria-hidden />
+                            </span>
+                          </span>
+                        </span>
+                      </button>
+                    </form>
+                  );
+                })}
+              </div>
+            )}
             {!session ? (
               <p className="mt-3 px-1 text-[11px] font-semibold text-slate-400 break-keep [word-break:keep-all]">
-                디자인을 저장하려면 로그인이 필요합니다. 모양을 고르면 로그인 화면으로 이동한 뒤 이어서 진행됩니다.
+                디자인을 저장하려면 로그인이 필요합니다. 템플릿을 고르면 로그인 화면으로 이동한 뒤 이어서 진행됩니다.
               </p>
             ) : null}
           </section>
         ) : null}
 
-        {/* 내 디자인 */}
         {myDesigns.length > 0 ? (
           <section className="rounded-[28px] border border-slate-200/80 bg-white/90 p-[18px] shadow-sm min-[390px]:p-5">
             <div className="flex items-center justify-between">
@@ -178,7 +218,7 @@ export default async function StudioPage({
         {!selectedService ? (
           <p className="flex items-center justify-center gap-1.5 text-center text-[11px] font-semibold text-slate-400">
             <PenTool className="h-3.5 w-3.5" aria-hidden />
-            서비스를 고르면 만들 수 있는 태그 모양이 나타납니다.
+            서비스를 고르면 맞는 템플릿이 나타납니다.
           </p>
         ) : null}
       </main>
@@ -187,7 +227,7 @@ export default async function StudioPage({
 }
 
 function StepIndicator({ step }: { step: 1 | 2 | 3 | 4 }) {
-  const steps = ["서비스", "모양", "디자인", "견적·제작"];
+  const steps = ["서비스", "템플릿", "디자인", "견적·제작"];
   return (
     <ol className="mt-4 grid grid-cols-4 gap-1.5" aria-label="제작 단계">
       {steps.map((label, i) => {

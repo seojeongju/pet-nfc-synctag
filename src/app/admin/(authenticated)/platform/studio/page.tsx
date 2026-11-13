@@ -58,6 +58,15 @@ export default async function AdminStudioDesignsPage({
         crumbs={[{ label: "통합 관리자", href: "/admin" }, { label: "태그 스튜디오" }]}
       />
 
+      <div className="mb-4">
+        <Link
+          href="/admin/platform/studio/templates"
+          className="inline-flex h-10 items-center rounded-2xl border border-slate-200 bg-white px-4 text-xs font-black text-slate-700 hover:bg-slate-50"
+        >
+          템플릿 관리
+        </Link>
+      </div>
+
       <nav className="flex flex-wrap gap-2" aria-label="상태 필터">
         {STATUS_TABS.map((t) => {
           const active = t.key === status;
