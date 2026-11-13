@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { ArrowLeft, Box, Calculator, Check, CircleDot, ImagePlus, Loader2, Lock, PenLine, Save, Trash2 } from "lucide-react";
 import { saveTagDesign, uploadStudioImage } from "@/app/actions/studio";
 import type { FormFactor } from "@/lib/platform/form-factors";
@@ -60,8 +60,58 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
   const fileRef = useRef<HTMLInputElement>(null);
   const locked = status === "requested" || status === "locked";
 
+  // ── 실행 취소 / 다시 실행 ──────────────────────────────
+  // 끌기·슬라이더 같은 연속 조작은 시작 시점 한 번만 기록하고, 그 밖의 변경은 0.5초 안의 연속 변경을 묶는다.
+  const specRef = useRef(spec);
+  specRef.current = spec;
+  const undoRef = useRef<TagDesignSpec[]>([]);
+  const redoRef = useRef<TagDesignSpec[]>([]);
+  const interactingRef = useRef(false);
+  const lastRecordRef = useRef(0);
+  const [, setHistoryVersion] = useState(0);
+  const HISTORY_LIMIT = 50;
+
+  const pushHistory = () => {
+    undoRef.current.push(specRef.current);
+    if (undoRef.current.length > HISTORY_LIMIT) undoRef.current.shift();
+    redoRef.current = [];
+    setHistoryVersion((v) => v + 1);
+  };
+
+  const recordChange = () => {
+    if (interactingRef.current) return;
+    const now = Date.now();
+    if (now - lastRecordRef.current > 500) pushHistory();
+    lastRecordRef.current = now;
+  };
+
+  const beginInteraction = () => {
+    if (locked || interactingRef.current) return;
+    pushHistory();
+    interactingRef.current = true;
+  };
+
+  const endInteraction = () => {
+    interactingRef.current = false;
+    lastRecordRef.current = 0;
+  };
+
+  const restore = (from: React.MutableRefObject<TagDesignSpec[]>, to: React.MutableRefObject<TagDesignSpec[]>) => {
+    const prev = from.current.pop();
+    if (!prev) return;
+    to.current.push(specRef.current);
+    setSpec(prev);
+    setDirty(true);
+    setMessage(null);
+    lastRecordRef.current = 0;
+    setHistoryVersion((v) => v + 1);
+  };
+  const undo = () => !locked && restore(undoRef, redoRef);
+  const redo = () => !locked && restore(redoRef, undoRef);
+
   const update = (patch: Partial<TagDesignSpec>) => {
     if (locked) return;
+    recordChange();
     setSpec((prev) => ({ ...prev, ...patch }));
     setDirty(true);
     setMessage(null);
@@ -69,10 +119,34 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
 
   const updateImage = (patch: Partial<TagDesignSpec["image"]>) => {
     if (locked) return;
+    recordChange();
     setSpec((prev) => ({ ...prev, image: { ...(prev.image ?? emptyImageLayer()), ...patch } }));
     setDirty(true);
     setMessage(null);
   };
+
+  // Ctrl/Cmd+Z 실행 취소, Ctrl/Cmd+Shift+Z · Ctrl+Y 다시 실행 (글자 입력칸에서는 브라우저 기본 동작)
+  const undoRedoRef = useRef({ undo, redo });
+  undoRedoRef.current = { undo, redo };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) {
+        if ((el as HTMLInputElement).type !== "range") return;
+      }
+      const key = e.key.toLowerCase();
+      if (key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undoRedoRef.current.undo();
+      } else if ((key === "z" && e.shiftKey) || key === "y") {
+        e.preventDefault();
+        undoRedoRef.current.redo();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const save = (markReady: boolean) => {
     startTransition(async () => {
@@ -156,6 +230,8 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
               selected={selected}
               onSelect={setSelected}
               onSpecChange={update}
+              onInteractionStart={beginInteraction}
+              onInteractionEnd={endInteraction}
               apiRef={canvasApiRef}
             />
           )}
@@ -189,6 +265,12 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
             }}
             onChange={update}
             onShow3d={() => setView("3d")}
+            canUndo={undoRef.current.length > 0}
+            canRedo={redoRef.current.length > 0}
+            onUndo={undo}
+            onRedo={redo}
+            onInteractionStart={beginInteraction}
+            onInteractionEnd={endInteraction}
           />
         )}
       </section>

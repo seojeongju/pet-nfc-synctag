@@ -56,7 +56,7 @@ export type TagDesignImageLayer = {
  * 사용자가 끌어서 옮긴 요소 배치. 좌표는 윗면 그림 영역 대비 비율(0..1, 왼쪽 위 기준), s는 크기 배율.
  * null이면 템플릿·기본 배치를 쓴다.
  */
-export type ElementPlacement = { x: number; y: number; s: number };
+export type ElementPlacement = { x: number; y: number; s: number; /** 회전(도, -180..180) */ r?: number };
 
 export type TagDesignLayout = {
   /** 문구 줄별 배치 */
@@ -143,12 +143,19 @@ function finite(n: unknown): n is number {
   return typeof n === "number" && Number.isFinite(n);
 }
 
+/** 각도를 -180..180(도)로 */
+export function normalizeAngle(deg: number): number {
+  const a = ((((deg + 180) % 360) + 360) % 360) - 180;
+  return Math.round(a * 10) / 10;
+}
+
 function normalizePlacement(raw: unknown): ElementPlacement | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
   if (!finite(r.x) || !finite(r.y)) return null;
   const s = finite(r.s) ? clamp(r.s, PLACEMENT_SCALE_MIN, PLACEMENT_SCALE_MAX) : 1;
-  return { x: clamp(r.x, 0, 1), y: clamp(r.y, 0, 1), s };
+  const rot = finite(r.r) ? normalizeAngle(r.r) : 0;
+  return rot ? { x: clamp(r.x, 0, 1), y: clamp(r.y, 0, 1), s, r: rot } : { x: clamp(r.x, 0, 1), y: clamp(r.y, 0, 1), s };
 }
 
 function normalizeLayout(raw: unknown, lineCount: number): TagDesignLayout {

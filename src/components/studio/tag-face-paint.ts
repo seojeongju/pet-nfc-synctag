@@ -87,8 +87,8 @@ export function isLightColor(hex: string): boolean {
 /** 끌어서 편집할 수 있는 윗면 요소 */
 export type FaceElementId = "line0" | "line1" | "line2" | "image";
 
-/** 그려진 요소의 영역 (윗면 캔버스 픽셀, 왼쪽 위 기준) */
-export type FaceBox = { x: number; y: number; w: number; h: number };
+/** 그려진 요소의 영역 (윗면 캔버스 픽셀, 왼쪽 위 기준). r이 있으면 박스 중심 기준으로 그만큼(도) 회전해 그려진 것 */
+export type FaceBox = { x: number; y: number; w: number; h: number; r?: number };
 
 export type FacePaintResult = {
   canvas: HTMLCanvasElement;
@@ -134,8 +134,18 @@ function drawLine(
   align: CanvasTextAlign,
   color: string,
   style: "raised" | "engraved" | "card",
-  strip: boolean
+  strip: boolean,
+  rotationDeg = 0
 ): FaceBox {
+  if (rotationDeg) {
+    // 회전: 중심(x,y) 기준으로 돌려 가운데 정렬로 그린다
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate((rotationDeg * Math.PI) / 180);
+    const b = drawLine(ctx, line, 0, 0, size, "center", color, style, strip, 0);
+    ctx.restore();
+    return { x: x + b.x, y: y + b.y, w: b.w, h: b.h, r: rotationDeg };
+  }
   ctx.font = FONT(size);
   ctx.textAlign = align;
   ctx.textBaseline = "middle";
@@ -217,7 +227,7 @@ export function paintFace(
       const color = spec.textColor === TEXT_COLOR_DESIGN ? slot.color : spec.textColor;
       const p = placements[i];
       boxes[`line${i}` as FaceElementId] = p
-        ? drawLine(ctx, line, p.x * W, p.y * H, size * p.s, "center", color, "card", false)
+        ? drawLine(ctx, line, p.x * W, p.y * H, size * p.s, "center", color, "card", false, p.r ?? 0)
         : drawLine(ctx, line, slot.align === "center" ? sx + sw / 2 : sx, sy + sh / 2, size, slot.align, color, "card", false);
     });
   }
@@ -234,11 +244,18 @@ export function paintFace(
     const p = spec.layout?.image;
     const dx = p ? p.x * W - dw / 2 : faceSrc ? W * 0.08 : (W - dw) / 2;
     const dy = p ? p.y * H - dh / 2 : faceSrc ? H * 0.12 : H * 0.08;
+    const rot = p?.r ?? 0;
     ctx.save();
     ctx.globalAlpha = opacity;
-    ctx.drawImage(logoEl, dx, dy, dw, dh);
+    if (rot) {
+      ctx.translate(dx + dw / 2, dy + dh / 2);
+      ctx.rotate((rot * Math.PI) / 180);
+      ctx.drawImage(logoEl, -dw / 2, -dh / 2, dw, dh);
+    } else {
+      ctx.drawImage(logoEl, dx, dy, dw, dh);
+    }
     ctx.restore();
-    boxes.image = { x: dx, y: dy, w: dw, h: dh };
+    boxes.image = rot ? { x: dx, y: dy, w: dw, h: dh, r: rot } : { x: dx, y: dy, w: dw, h: dh };
   }
 
   const lines = spec.lines.map((l) => l.trim());
@@ -266,7 +283,7 @@ export function paintFace(
       row += 1;
       const p = placements[i];
       boxes[`line${i}` as FaceElementId] = p
-        ? drawLine(ctx, line, p.x * W, p.y * H, size * p.s, "center", color, style, Boolean(faceSrc))
+        ? drawLine(ctx, line, p.x * W, p.y * H, size * p.s, "center", color, style, Boolean(faceSrc), p.r ?? 0)
         : drawLine(ctx, line, x, y, size, align, color, style, Boolean(faceSrc));
     });
   }

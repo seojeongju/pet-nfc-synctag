@@ -4,7 +4,7 @@
  * 정면 편집기 도구 막대 — 편집할 요소 선택, 크기 슬라이더, 가운데 정렬, 위치 초기화.
  * 실제 배치 계산은 TagPreview2D가 apiRef로 제공한다(화면에 그려진 기본 위치를 알고 있으므로).
  */
-import { AlignCenterHorizontal, Box, CircleDot, ImageIcon, Move, RotateCcw, Type } from "lucide-react";
+import { AlignCenterHorizontal, Box, CircleDot, ImageIcon, Move, Redo2, RotateCcw, RotateCw, Type, Undo2 } from "lucide-react";
 import type { MutableRefObject } from "react";
 import type { StudioCanvasApi, StudioEditTarget } from "@/components/studio/TagPreview2D";
 import {
@@ -25,9 +25,30 @@ type Props = {
   onSelect: (target: StudioEditTarget | null) => void;
   onChange: (patch: Partial<TagDesignSpec>) => void;
   onShow3d: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
+  /** 슬라이더처럼 연속 조작의 시작·끝 (실행 취소를 한 단계로 묶음) */
+  onInteractionStart: () => void;
+  onInteractionEnd: () => void;
 };
 
-export function LayoutToolbar({ spec, selected, locked, apiRef, onSelect, onChange, onShow3d }: Props) {
+export function LayoutToolbar({
+  spec,
+  selected,
+  locked,
+  apiRef,
+  onSelect,
+  onChange,
+  onShow3d,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
+  onInteractionStart,
+  onInteractionEnd,
+}: Props) {
   const targets: Array<{ id: StudioEditTarget; label: string; icon: typeof Type }> = [];
   spec.lines.forEach((line, i) => {
     if (line.trim()) targets.push({ id: `line${i}` as StudioEditTarget, label: `문구 ${i + 1}`, icon: Type });
@@ -48,19 +69,24 @@ export function LayoutToolbar({ spec, selected, locked, apiRef, onSelect, onChan
   const sizeMin = selected === "image" ? IMAGE_SCALE_MIN * 100 : PLACEMENT_SCALE_MIN * 100;
   const sizeMax = selected === "image" ? IMAGE_SCALE_MAX * 100 : PLACEMENT_SCALE_MAX * 100;
 
-  const setSize = (pct: number) => {
+  const rotValue =
+    lineIdx !== null ? spec.layout.lines[lineIdx]?.r ?? 0 : selected === "image" ? spec.layout.image?.r ?? 0 : null;
+
+  const patchPlacement = (patch: Partial<{ cx: number; cy: number; scale: number; rot: number }>) => {
     if (!selected) return;
     const p = apiRef.current?.getPlacement(selected);
     if (!p) return;
-    apiRef.current?.setPlacement(selected, p.cx, p.cy, pct / 100);
+    apiRef.current?.setPlacement(selected, { ...p, ...patch });
   };
 
+  const setSize = (pct: number) => patchPlacement({ scale: pct / 100 });
+  const setRotation = (deg: number) => patchPlacement({ rot: deg });
   const centerHorizontally = () => {
-    if (!selected) return;
-    const p = apiRef.current?.getPlacement(selected);
-    if (!p) return;
-    apiRef.current?.setPlacement(selected, 0.5, p.cy, p.scale);
+    onInteractionStart();
+    patchPlacement({ cx: 0.5 });
+    onInteractionEnd();
   };
+  const sliderEvents = { onPointerDown: onInteractionStart, onPointerUp: onInteractionEnd, onKeyDown: onInteractionStart, onKeyUp: onInteractionEnd };
 
   const resetSelected = () => {
     if (!selected) return;
@@ -82,17 +108,39 @@ export function LayoutToolbar({ spec, selected, locked, apiRef, onSelect, onChan
           <Move className="h-3.5 w-3.5" aria-hidden />
           요소 편집
         </p>
-        <button
-          type="button"
-          onClick={onShow3d}
-          className="inline-flex items-center gap-1 text-[11px] font-black text-teal-700 hover:underline"
-        >
-          <Box className="h-3.5 w-3.5" aria-hidden />
-          3D로 확인
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={onUndo}
+            disabled={locked || !canUndo}
+            title="실행 취소 (Ctrl+Z)"
+            aria-label="실행 취소"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 disabled:opacity-35"
+          >
+            <Undo2 className="h-4 w-4" aria-hidden />
+          </button>
+          <button
+            type="button"
+            onClick={onRedo}
+            disabled={locked || !canRedo}
+            title="다시 실행 (Ctrl+Shift+Z)"
+            aria-label="다시 실행"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 disabled:opacity-35"
+          >
+            <Redo2 className="h-4 w-4" aria-hidden />
+          </button>
+          <button
+            type="button"
+            onClick={onShow3d}
+            className="ml-1 inline-flex items-center gap-1 text-[11px] font-black text-teal-700 hover:underline"
+          >
+            <Box className="h-3.5 w-3.5" aria-hidden />
+            3D로 확인
+          </button>
+        </div>
       </div>
       <p className="mt-1 text-[11px] font-semibold leading-snug text-slate-400 break-keep [word-break:keep-all]">
-        미리보기에서 요소를 끌어 옮기고, 선택 상자 모서리 점을 끌어 크기를 바꾸세요. 방향키로 미세 이동(Shift: 크게).
+        요소를 끌어 옮기면 가운데·여백·다른 요소에 자동으로 맞춰져요(Alt: 끄기). 모서리 점은 크기, 위쪽 손잡이는 회전(Shift: 15°)입니다.
       </p>
 
       <div className="mt-2.5 flex flex-wrap gap-1.5" role="group" aria-label="편집할 요소">
@@ -133,6 +181,7 @@ export function LayoutToolbar({ spec, selected, locked, apiRef, onSelect, onChan
                 step={1}
                 value={sizeValue}
                 onChange={(e) => setSize(Number(e.target.value))}
+                {...sliderEvents}
                 className="mt-1 w-full accent-teal-600"
               />
             </label>
@@ -141,7 +190,42 @@ export function LayoutToolbar({ spec, selected, locked, apiRef, onSelect, onChan
               NFC 칩은 규격 크기가 정해져 있어 위치만 바꿀 수 있어요. 금속 부품·두꺼운 각인 아래는 인식이 약해질 수 있으니 여유를 두세요.
             </p>
           )}
+          {rotValue !== null ? (
+            <label className="block">
+              <span className="flex items-center justify-between text-[11px] font-black text-slate-600">
+                <span className="inline-flex items-center gap-1">
+                  <RotateCw className="h-3.5 w-3.5" aria-hidden />
+                  회전
+                </span>
+                <span className="tabular-nums text-slate-400">{Math.round(rotValue)}°</span>
+              </span>
+              <input
+                type="range"
+                min={-180}
+                max={180}
+                step={1}
+                value={Math.round(rotValue)}
+                onChange={(e) => setRotation(Number(e.target.value))}
+                {...sliderEvents}
+                className="mt-1 w-full accent-teal-600"
+              />
+            </label>
+          ) : null}
           <div className="flex flex-wrap gap-1.5">
+            {rotValue ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onInteractionStart();
+                  setRotation(0);
+                  onInteractionEnd();
+                }}
+                className="inline-flex h-8 items-center gap-1 rounded-full border border-slate-200 bg-white px-3 text-[11px] font-black text-slate-600 hover:border-teal-200"
+              >
+                <RotateCw className="h-3.5 w-3.5" aria-hidden />
+                회전 0°
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={centerHorizontally}
