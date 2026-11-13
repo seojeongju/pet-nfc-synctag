@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
-import { ArrowLeft, Calculator, Check, CircleDot, ImagePlus, Loader2, Lock, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Box, Calculator, Check, CircleDot, ImagePlus, Loader2, Lock, PenLine, Save, Trash2 } from "lucide-react";
 import { saveTagDesign, uploadStudioImage } from "@/app/actions/studio";
 import type { FormFactor } from "@/lib/platform/form-factors";
 import {
@@ -18,6 +18,7 @@ import {
   type TagDesignStatus,
 } from "@/lib/platform/tag-design";
 import { getCardFaceLayout } from "@/lib/platform/card-face-layouts";
+import TagPreview2D from "@/components/studio/TagPreview2D";
 import { cn } from "@/lib/utils";
 
 const TagPreview3D = dynamic(() => import("@/components/studio/TagPreview3D"), {
@@ -46,6 +47,8 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
   const [title, setTitle] = useState(design.title);
   const [status, setStatus] = useState<TagDesignStatus>(design.status);
   const [showChip, setShowChip] = useState(false);
+  /** 기본은 정면 디자인(2D). 3D는 탭을 열 때만 three.js를 불러온다 */
+  const [view, setView] = useState<"design" | "3d">("design");
   const [dirty, setDirty] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -74,7 +77,8 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
         setSpec(res.spec);
         setStatus(res.status);
         setDirty(false);
-        setMessage({ kind: "ok", text: markReady ? "디자인을 완료했습니다. 견적·제작 단계로 이어갈 수 있어요." : "저장했습니다." });
+        setMessage({ kind: "ok", text: markReady ? "디자인을 완료했습니다. 3D로 확인하고 견적·제작 단계로 이어가세요." : "저장했습니다." });
+        if (markReady) setView("3d");
       } else {
         setMessage({ kind: "error", text: res.error });
       }
@@ -113,8 +117,35 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
             {serviceName} · {formFactor.name}
           </span>
         </div>
+        <div className="mb-2 grid grid-cols-2 gap-1 rounded-full border border-slate-200 bg-white p-1 shadow-sm" role="tablist" aria-label="미리보기 방식">
+          {(
+            [
+              ["design", "디자인 (정면)"],
+              ["3d", "3D 보기"],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={view === key}
+              onClick={() => setView(key)}
+              className={cn(
+                "inline-flex h-9 items-center justify-center gap-1.5 rounded-full text-[12px] font-black transition",
+                view === key ? "bg-teal-600 text-white shadow-sm" : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+              )}
+            >
+              {key === "3d" ? <Box className="h-3.5 w-3.5" aria-hidden /> : <PenLine className="h-3.5 w-3.5" aria-hidden />}
+              {label}
+            </button>
+          ))}
+        </div>
         <div className="relative aspect-square w-full overflow-hidden rounded-[32px] border border-slate-200/80 bg-slate-50 shadow-[0_24px_60px_rgba(15,23,42,0.10)]">
-          <TagPreview3D formFactor={formFactor} spec={spec} showChip={showChip} />
+          {view === "3d" ? (
+            <TagPreview3D formFactor={formFactor} spec={spec} showChip={showChip} />
+          ) : (
+            <TagPreview2D formFactor={formFactor} spec={spec} showChip={showChip} />
+          )}
           <button
             type="button"
             onClick={() => setShowChip((v) => !v)}
@@ -131,7 +162,21 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
             {formFactor.widthMm}×{formFactor.heightMm}×{formFactor.thicknessMm}mm
           </span>
         </div>
-        <p className="mt-2 text-center text-[11px] font-semibold text-slate-400">드래그해서 돌려 보고, 두 손가락으로 확대할 수 있어요.</p>
+        {view === "3d" ? (
+          <p className="mt-2 text-center text-[11px] font-semibold text-slate-400">드래그해서 돌려 보고, 두 손가락으로 확대할 수 있어요.</p>
+        ) : (
+          <div className="mt-2 flex items-center justify-center gap-2">
+            <p className="text-[11px] font-semibold text-slate-400">문구·색을 바꾸면 바로 반영돼요.</p>
+            <button
+              type="button"
+              onClick={() => setView("3d")}
+              className="inline-flex items-center gap-1 text-[11px] font-black text-teal-700 hover:underline"
+            >
+              <Box className="h-3.5 w-3.5" aria-hidden />
+              3D로 확인
+            </button>
+          </div>
+        )}
       </section>
 
       <section className="flex flex-col gap-4 lg:flex-1">
@@ -162,7 +207,7 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
               <img src={spec.faceArtSrc!} alt="템플릿 전면" className="aspect-[86/54] w-full object-cover" />
             </div>
             <p className="mt-2 text-[11px] font-semibold leading-relaxed text-slate-500 break-keep [word-break:keep-all]">
-              전면 디자인은 템플릿 이미지를 사용합니다. 아래 문구를 실제 이름·직함으로 바꾸면 3D 미리보기에 반영됩니다.
+              전면 디자인은 템플릿 이미지를 사용합니다. 아래 문구를 실제 이름·직함으로 바꾸면 미리보기에 바로 반영됩니다.
             </p>
           </Panel>
         ) : null}
