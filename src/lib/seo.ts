@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { SubjectKind } from "@/lib/subject-kind";
 import { subjectKindMeta } from "@/lib/subject-kind";
 import { PLATFORM_SERVICES, getPlatformService, type PlatformServiceId } from "@/lib/platform/services";
+import { listSiteNavigationForJsonLd } from "@/lib/platform/nav";
 import {
   BRAND_ENTITY,
   PLATFORM_FAQS,
@@ -300,6 +301,7 @@ export function buildOrganizationJsonLd(): JsonLdNode {
 }
 
 export function buildWebSiteJsonLd(): JsonLdNode {
+  const nav = listSiteNavigationForJsonLd();
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
@@ -312,6 +314,13 @@ export function buildWebSiteJsonLd(): JsonLdNode {
     publisher: {
       "@id": absoluteUrl("/#organization"),
     },
+    hasPart: nav.map((item, index) => ({
+      "@type": "SiteNavigationElement",
+      "@id": absoluteUrl(`/#nav-${index + 1}`),
+      position: index + 1,
+      name: item.name,
+      url: item.url.startsWith("http") ? item.url : absoluteUrl(item.url),
+    })),
     potentialAction: {
       "@type": "SearchAction",
       target: {

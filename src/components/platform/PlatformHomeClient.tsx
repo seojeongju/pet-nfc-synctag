@@ -441,13 +441,17 @@ function PlatformFooter({ isAdmin, isLoggedIn, userName }: { isAdmin: boolean; i
             <p>사업자등록번호: 849-88-01659</p>
           </div>
         </div>
-        <FooterCol title="서비스" links={PLATFORM_SERVICES.slice(0, 4).map((s) => ({ href: `/services/${s.id}`, label: s.name }))} />
         <FooterCol
-          title="태그 제작"
+          title="NFC 서비스"
+          links={PLATFORM_SERVICES.map((s) => ({ href: `/services/${s.id}`, label: s.name }))}
+        />
+        <FooterCol
+          title="제작·가이드"
           links={[
-            { href: "/studio", label: "태그 스튜디오" },
-            { href: "/shop", label: "스토어" },
-            { href: "/manual", label: "사용 설명서" },
+            { href: "/studio", label: "NFC 태그 제작" },
+            { href: LINKU_HOME_PATH, label: "Link-U 안심" },
+            { href: "/manual", label: "사용 가이드" },
+            { href: "/#faq", label: "FAQ" },
           ]}
         />
         <div className="col-span-2 lg:col-span-1">
