@@ -83,7 +83,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -115,7 +114,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 
 /** 격자 타일·보호자 전용 입력 화면 등 공통 표기 — Link-U 보호자 NFC 전용 모드 */
-private const val GUARDIAN_LINK_MODE_LABEL = "보호자연동(Link-U 전용 모드)"
+private const val GUARDIAN_LINK_MODE_LABEL = "보호자 연동"
 
 /**
  * NFC(태그 쓰기) 꺼짐·미지원 시 [NfcOffForWriteDialog]로 안내
@@ -238,7 +237,18 @@ private fun GuardianDedicatedHandoffScreen(
                             tint = Color.White
                         )
                     }
-                    Column(Modifier.padding(start = 12.dp)) {
+                    Column(
+                        Modifier
+                            .padding(start = 12.dp)
+                            .weight(1f)
+                    ) {
+                        Text(
+                            "Link-U 연동",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White.copy(0.7f),
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp
+                        )
                         Text(
                             GUARDIAN_LINK_MODE_LABEL,
                             style = MaterialTheme.typography.titleMedium,
@@ -254,7 +264,6 @@ private fun GuardianDedicatedHandoffScreen(
                             fontWeight = FontWeight.Medium
                         )
                     }
-                    Spacer(Modifier.weight(1f))
                     TextButton(
                         onClick = onOpenFullNfcTools,
                         modifier = Modifier
@@ -262,7 +271,7 @@ private fun GuardianDedicatedHandoffScreen(
                             .background(Color.White.copy(0.12f))
                     ) {
                         Text(
-                            "다른 쓰기",
+                            "NFC 쓰기",
                             color = Color.White,
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Black
@@ -650,8 +659,8 @@ fun WriterAppScreen(
     appMode: String,
     entryFromDeepLink: Boolean,
     /**
-     * `true`는 웹 `nfc/write` | `nfc/pet` 딥링크로 열었을 때만(일반 랜딩→NFC 쓰기는 `false`).
-     * 전용 보호자연동(Link-U 전용 모드) 화면(격자·3단계 힌트 생략, [태그에 쓰기] 위로). [onOpenFullNfcTools]로 격자로 전환.
+     * `true`면 격자 [보호자 연동] 또는 웹 `nfc/write` | `nfc/pet` 딥링크로 연 보호자 전용 화면.
+     * 일반 앱 실행(NFC 쓰기 메인)은 `false`. [onOpenFullNfcTools]로 격자로 돌아간다.
      */
     guardianDedicatedPage: Boolean,
     onOpenFullNfcTools: () -> Unit,
@@ -745,19 +754,9 @@ fun WriterAppScreen(
     val tone = statusToneFor(status, awaitingTag, busy)
     var activeTemplateEditor by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(entryFromDeepLink, guardianDedicatedPage) {
-        if (entryFromDeepLink && !guardianDedicatedPage) {
-            activeTemplateEditor = "linku"
-        }
-    }
-
-    // 시스템 뒤로가기 버튼 처리
-    BackHandler(enabled = appMode != "Landing") {
-        if (activeTemplateEditor != null) {
-            activeTemplateEditor = null
-        } else {
-            onBackToLanding()
-        }
+    // 템플릿 입력 화면에서만 뒤로가기로 격자(메인)로 복귀. 격자에서는 시스템 기본(앱 종료).
+    BackHandler(enabled = activeTemplateEditor != null) {
+        activeTemplateEditor = null
     }
 
     val allReady = linkUWriteReady
@@ -992,7 +991,9 @@ fun WriterAppScreen(
                             SquareToolGrid(
                                 onTap = { key ->
                                     onApplyToolTemplate(key)
-                                    activeTemplateEditor = key
+                                    if (key != "linku") {
+                                        activeTemplateEditor = key
+                                    }
                                 },
                                 selectedKey = toolsTemplate
                             )
@@ -1263,7 +1264,7 @@ private data class TemplateDialogResult(
 )
 
 /**
- * NFC 도구 격자에서 보호자연동(Link-U 전용 모드) 선택 시 — 다른 템플릿과 동일하게 전체 입력 화면으로 표시.
+ * NFC 도구 격자에서 보호자 연동을 선택했을 때의 입력 화면(전용 페이지의 폴백).
  */
 @Composable
 private fun GuardianLinkTemplateInputPage(

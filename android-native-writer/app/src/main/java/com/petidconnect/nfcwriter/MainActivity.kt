@@ -64,9 +64,9 @@ private sealed class ServerReport {
 }
 
 class MainActivity : ComponentActivity() {
-    private var appMode by mutableStateOf(AppMode.Landing)
+    private var appMode by mutableStateOf(AppMode.Tools)
     private var entryFromDeepLink by mutableStateOf(false)
-    /** 웹 `nfc/write`·`nfc/pet` 딥링크로 들어올 때: 도구 격자·단계 힌트 대신 보호자연동(Link-U 전용 모드) 화면(태그 쓰기 CTA 상단) */
+    /** 격자에서 [보호자 연동]을 눌렀거나 웹 `nfc/write`·`nfc/pet` 딥링크로 들어올 때: 보호자 전용 화면 */
     private var guardianDedicatedPage by mutableStateOf(false)
     private var statusText by mutableStateOf("")
     private var draftUid by mutableStateOf("")
@@ -88,7 +88,8 @@ class MainActivity : ComponentActivity() {
     private var serverBaseInput by mutableStateOf("")
     private var serverKeyInput by mutableStateOf("")
     private var profileSiteInput by mutableStateOf("")
-    private var toolsTemplate by mutableStateOf("url")
+    /** 홈(NFC 쓰기 격자)에서는 비워 두어 어떤 타일도 미리 선택되지 않게 한다 */
+    private var toolsTemplate by mutableStateOf("")
     private var wifiSsid by mutableStateOf("")
     private var wifiPassword by mutableStateOf("")
     private var wifiSecurity by mutableStateOf("WPA")
@@ -154,26 +155,11 @@ class MainActivity : ComponentActivity() {
                         startActivity(Intent(Settings.ACTION_NFC_SETTINGS))
                     },
                     onSelectTools = {
-                        appMode = AppMode.Tools
-                        // 순수 앱·일반 NFC 사용자: 보호자 전용 화면 없이 기존 NFC 쓰기(도구 격자)로. 보호자 UI는 nfc/write·nfc/pet 딥링크로만.
-                        toolsTemplate = "url"
-                        guardianDedicatedPage = false
-                        draftUid = ""
-                        draftUrl = ""
-                        draftHandoff = ""
-                        handoffExpUnixSec = null
-                        pendingWrite = null
-                        awaitingTag = false
-                        busy = false
-                        tagWriteSuccess = false
-                        clearNfcOffDialogState()
-                        statusText = ""
+                        showNfcWriteHome(clearDrafts = true)
                     },
                     guardianDedicatedPage = guardianDedicatedPage,
                     onOpenFullNfcTools = {
-                        guardianDedicatedPage = false
-                        statusText =
-                            "일반 NFC 쓰기 화면이에요. 명함·Wi-Fi 등은 격자에서, 보호자(Link-U)는 [보호자연동(Link-U 전용 모드)] 타일을 눌러 이어가면 돼요."
+                        showNfcWriteHome(clearDrafts = false)
                     },
                     onBackToLanding = {
                         if (entryFromDeepLink) {
@@ -267,20 +253,7 @@ class MainActivity : ComponentActivity() {
                         onTagWriteSuccessGoToModeSelection = {
                             tagWriteSuccess = false
                             // 랜딩이 아니라 "일반 NFC 도구 모드" 대시보드(도구 격자)로 복귀
-                            appMode = AppMode.Tools
-                            guardianDedicatedPage = false
-                            entryFromDeepLink = false
-                            draftUid = ""
-                            draftUrl = ""
-                            draftHandoff = ""
-                            handoffExpUnixSec = null
-                            pendingWrite = null
-                            awaitingTag = false
-                            busy = false
-                            clearNfcOffDialogState()
-                            statusText = ""
-                            // 템플릿 시트(모바일 웹 링크 등) remember 상태를 버리고 격자로 돌아가게 함
-                            toolsScreenContentKey++
+                            showNfcWriteHome(clearDrafts = true)
                         },
                         nfcOffDialogKind = nfcOffDialogKind,
                         onDismissNfcOffDialog = { clearNfcOffDialogState() },
@@ -489,7 +462,7 @@ class MainActivity : ComponentActivity() {
             statusText = if (requireHandoff) {
                 "웹에서 보낸 ‘한번 쓰기(인증)’를 쓰는 중이에요. 태그·ID, 링크, 인증을 모두 채운 뒤 다시 시도해 주세요. 웹 ‘앱으로 기록’이면 대부분 자동으로 들어갑니다."
             } else {
-                "URL/정보를 먼저 채워 주세요. 위에서 도구를 고르거나, ‘보호자연동(Link-U 전용 모드)’ 화면에서 붙여 넣을 수 있어요."
+                "URL/정보를 먼저 채워 주세요. 격자에서 도구를 고르거나, [보호자 연동]에서 붙여 넣을 수 있어요."
             }
             return
         }
@@ -588,14 +561,46 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** NFC 쓰기 격자(메인). 보호자 화면은 격자 타일·웹 딥링크에서만 연다. */
+    private fun showNfcWriteHome(clearDrafts: Boolean) {
+        appMode = AppMode.Tools
+        guardianDedicatedPage = false
+        entryFromDeepLink = false
+        toolsTemplate = ""
+        statusText = ""
+        if (clearDrafts) {
+            draftUid = ""
+            draftUrl = ""
+            draftHandoff = ""
+            handoffExpUnixSec = null
+            pendingWrite = null
+            awaitingTag = false
+            busy = false
+            tagWriteSuccess = false
+            clearNfcOffDialogState()
+        }
+        toolsScreenContentKey++
+    }
+
+    private fun isNfcTagIntent(intent: Intent?): Boolean {
+        val action = intent?.action ?: return false
+        return action == NfcAdapter.ACTION_TAG_DISCOVERED ||
+            action == NfcAdapter.ACTION_NDEF_DISCOVERED ||
+            action == NfcAdapter.ACTION_TECH_DISCOVERED
+    }
+
+    /** 아이콘·최근 앱으로 연 경우. 예전 딥링크를 복원해 보호자 화면을 다시 띄우지 않는다. */
+    private fun shouldOpenNfcWriteHome(intent: Intent?): Boolean {
+        if (intent == null) return true
+        if (isNfcTagIntent(intent)) return false
+        if (intent.action == Intent.ACTION_MAIN && intent.data == null) return true
+        if (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return true
+        return false
+    }
+
     private fun handleIntent(intent: Intent?) {
-        // 런처에서 일반 실행 시(딥링크 아님) 이전 Link-U 상태가 남지 않도록 랜딩으로 복귀
-        if (intent?.action == Intent.ACTION_MAIN && intent.data == null) {
-            entryFromDeepLink = false
-            if (!busy && !awaitingTag) {
-                appMode = AppMode.Landing
-                statusText = "NFC 켜기(설정) 또는 [NFC 쓰기]로 쓰기를 시작해 주세요."
-            }
+        if (shouldOpenNfcWriteHome(intent)) {
+            showNfcWriteHome(clearDrafts = !busy && !awaitingTag)
             return
         }
 
@@ -767,7 +772,14 @@ class MainActivity : ComponentActivity() {
                 statusText = "블루투스 템플릿을 불러왔어요. MAC 주소를 채운 뒤 [태그에 쓰기]를 눌러 주세요."
             }
             "linku" -> {
-                // 도구 격자에서만 ‘연동’을 택한 경우 — 별도 안내 없이 아래 폼·상태로 충분
+                // 격자 [보호자 연동] → Link-U 보호자 전용 화면
+                guardianDedicatedPage = true
+                if (!entryFromDeepLink) {
+                    draftUid = ""
+                    draftUrl = ""
+                    draftHandoff = ""
+                    handoffExpUnixSec = null
+                }
                 statusText = ""
             }
         }
