@@ -7,7 +7,7 @@ import { JsonLd } from "@/components/seo/JsonLd";
 import { SeoFaq } from "@/components/seo/SeoFaq";
 import { getLandingSessionState } from "@/lib/landing-session";
 import { formFactorsForService } from "@/lib/platform/form-factors";
-import { PLATFORM_SERVICES, getPlatformService, platformServiceStatusLabel } from "@/lib/platform/services";
+import { getPlatformService, platformServiceStatusLabel } from "@/lib/platform/services";
 import { buildPlatformServiceJsonLd, buildPlatformServiceMetadata } from "@/lib/seo";
 import { serviceFaqs } from "@/lib/seo-content";
 import { cn } from "@/lib/utils";
@@ -15,10 +15,6 @@ import { cn } from "@/lib/utils";
 export const runtime = "edge";
 
 type Props = { params: Promise<{ id: string }> };
-
-export function generateStaticParams() {
-  return PLATFORM_SERVICES.map((s) => ({ id: s.id }));
-}
 
 export async function generateMetadata({ params }: Props) {
   const { id } = await params;
