@@ -21,6 +21,9 @@ type Props = {
 };
 
 type TextArea = { cx: number; cy: number; w: number; h: number };
+
+/** 돌출 모서리 둥글림. 윗면 실제 높이 = 두께 + BEVEL_MM 이므로 문구 면은 그 위에 둔다 */
+const BEVEL_MM = 0.4;
 type BodyPart = { shape: THREE.Shape; depth: number };
 
 function circleShape(cx: number, cy: number, r: number, holeR?: number): THREE.Shape {
@@ -261,8 +264,8 @@ function buildTagGroup(
       new THREE.ExtrudeGeometry(p.shape, {
         depth: p.depth,
         bevelEnabled: true,
-        bevelThickness: 0.4,
-        bevelSize: 0.4,
+        bevelThickness: BEVEL_MM,
+        bevelSize: BEVEL_MM,
         bevelSegments: 3,
         curveSegments: 48,
       }),
@@ -286,7 +289,7 @@ function buildTagGroup(
       new THREE.PlaneGeometry(textArea.w, textArea.h),
       new THREE.MeshStandardMaterial({ map: texture, transparent: true, roughness: 0.55, depthWrite: false })
     );
-    face.position.set(textArea.cx, textArea.cy, t + 0.35 + (spec.textStyle === "raised" ? 0.02 : 0));
+    face.position.set(textArea.cx, textArea.cy, t + BEVEL_MM + (spec.textStyle === "raised" ? 0.12 : 0.06));
     group.add(face);
   }
 
