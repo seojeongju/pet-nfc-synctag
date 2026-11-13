@@ -18,7 +18,8 @@ import {
   type TagDesignStatus,
 } from "@/lib/platform/tag-design";
 import { getCardFaceLayout } from "@/lib/platform/card-face-layouts";
-import TagPreview2D from "@/components/studio/TagPreview2D";
+import TagPreview2D, { type StudioCanvasApi, type StudioEditTarget } from "@/components/studio/TagPreview2D";
+import { LayoutToolbar } from "@/components/studio/LayoutToolbar";
 import { cn } from "@/lib/utils";
 
 const TagPreview3D = dynamic(() => import("@/components/studio/TagPreview3D"), {
@@ -49,6 +50,9 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
   const [showChip, setShowChip] = useState(false);
   /** 기본은 정면 디자인(2D). 3D는 탭을 열 때만 three.js를 불러온다 */
   const [view, setView] = useState<"design" | "3d">("design");
+  /** 정면 편집기에서 선택한 요소 (문구 줄 · 로고 · NFC 칩) */
+  const [selected, setSelected] = useState<StudioEditTarget | null>(null);
+  const canvasApiRef = useRef<StudioCanvasApi | null>(null);
   const [dirty, setDirty] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -144,7 +148,16 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
           {view === "3d" ? (
             <TagPreview3D formFactor={formFactor} spec={spec} showChip={showChip} />
           ) : (
-            <TagPreview2D formFactor={formFactor} spec={spec} showChip={showChip} />
+            <TagPreview2D
+              formFactor={formFactor}
+              spec={spec}
+              showChip={showChip}
+              editable={!locked}
+              selected={selected}
+              onSelect={setSelected}
+              onSpecChange={update}
+              apiRef={canvasApiRef}
+            />
           )}
           <button
             type="button"
@@ -165,17 +178,18 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
         {view === "3d" ? (
           <p className="mt-2 text-center text-[11px] font-semibold text-slate-400">드래그해서 돌려 보고, 두 손가락으로 확대할 수 있어요.</p>
         ) : (
-          <div className="mt-2 flex items-center justify-center gap-2">
-            <p className="text-[11px] font-semibold text-slate-400">문구·색을 바꾸면 바로 반영돼요.</p>
-            <button
-              type="button"
-              onClick={() => setView("3d")}
-              className="inline-flex items-center gap-1 text-[11px] font-black text-teal-700 hover:underline"
-            >
-              <Box className="h-3.5 w-3.5" aria-hidden />
-              3D로 확인
-            </button>
-          </div>
+          <LayoutToolbar
+            spec={spec}
+            selected={selected}
+            locked={locked}
+            apiRef={canvasApiRef}
+            onSelect={(t) => {
+              setSelected(t);
+              if (t === "chip") setShowChip(true);
+            }}
+            onChange={update}
+            onShow3d={() => setView("3d")}
+          />
         )}
       </section>
 

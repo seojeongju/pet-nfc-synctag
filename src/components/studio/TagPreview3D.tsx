@@ -14,6 +14,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { FormFactor } from "@/lib/platform/form-factors";
 import { getTagMaterial, type TagDesignSpec } from "@/lib/platform/tag-design";
 import {
+  chipCenterMm,
   faceGeometryFor,
   paintFaceCanvas,
   useFaceImages,
@@ -146,7 +147,9 @@ function buildTagGroup(
   faceEl: HTMLImageElement | null,
   logoEl: HTMLImageElement | null
 ): THREE.Group {
-  const { parts, textArea, chipCenter } = buildBody(formFactor);
+  const { parts, textArea } = buildBody(formFactor);
+  // 사용자가 옮긴 칩 위치(없으면 폼팩터 기본)
+  const chipCenter = chipCenterMm(formFactor, spec);
   const material = getTagMaterial(spec.materialId);
   const t = formFactor.thicknessMm;
   const bodyOpacity = showChip ? Math.min(material.opacity, 0.35) : material.opacity;
@@ -191,7 +194,14 @@ function buildTagGroup(
   if (texture) {
     const face = new THREE.Mesh(
       new THREE.PlaneGeometry(textArea.w, textArea.h),
-      new THREE.MeshStandardMaterial({ map: texture, transparent: true, roughness: 0.55, depthWrite: false })
+      new THREE.MeshStandardMaterial({
+        map: texture,
+        transparent: true,
+        // 칩 위치를 볼 때는 윗면 그림도 비쳐 보이게
+        opacity: showChip ? 0.35 : 1,
+        roughness: 0.55,
+        depthWrite: false,
+      })
     );
     face.position.set(textArea.cx, textArea.cy, t + BEVEL_MM + (spec.textStyle === "raised" ? 0.12 : 0.06));
     group.add(face);

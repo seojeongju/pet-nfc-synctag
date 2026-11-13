@@ -52,6 +52,30 @@ export type TagDesignImageLayer = {
   scale: number;
 };
 
+/**
+ * 사용자가 끌어서 옮긴 요소 배치. 좌표는 윗면 그림 영역 대비 비율(0..1, 왼쪽 위 기준), s는 크기 배율.
+ * null이면 템플릿·기본 배치를 쓴다.
+ */
+export type ElementPlacement = { x: number; y: number; s: number };
+
+export type TagDesignLayout = {
+  /** 문구 줄별 배치 */
+  lines: (ElementPlacement | null)[];
+  /** 로고·이미지 중심 (크기는 image.scale) */
+  image: ElementPlacement | null;
+  /** NFC 칩 중심 (크기는 칩 규격 고정) */
+  chip: { x: number; y: number } | null;
+};
+
+export const PLACEMENT_SCALE_MIN = 0.4;
+export const PLACEMENT_SCALE_MAX = 2.5;
+export const IMAGE_SCALE_MIN = 0.1;
+export const IMAGE_SCALE_MAX = 2;
+
+export function emptyLayout(lineCount = 3): TagDesignLayout {
+  return { lines: Array.from({ length: lineCount }, () => null), image: null, chip: null };
+}
+
 export type TagDesignSpec = {
   version: 2;
   lines: string[];
@@ -65,6 +89,8 @@ export type TagDesignSpec = {
   faceArtSrc: string | null;
   /** 시작한 템플릿 id (추적·통계용, 없어도 됨) */
   templateId: string | null;
+  /** 문구·로고·NFC 칩 위치·크기 (스튜디오에서 끌어서 편집) */
+  layout: TagDesignLayout;
 };
 
 export function emptyImageLayer(): TagDesignImageLayer {
@@ -83,6 +109,7 @@ export function defaultTagDesign(formFactor: FormFactor, serviceId: PlatformServ
     image: emptyImageLayer(),
     faceArtSrc: null,
     templateId: null,
+    layout: emptyLayout(formFactor.maxTextLines),
   };
 }
 
@@ -107,8 +134,36 @@ function normalizeImage(raw: unknown): TagDesignImageLayer {
   const r = raw as Record<string, unknown>;
   const src = typeof r.src === "string" && isAllowedStudioImageSrc(r.src) ? r.src : null;
   const opacity = typeof r.opacity === "number" && Number.isFinite(r.opacity) ? clamp(r.opacity, 0.15, 1) : base.opacity;
-  const scale = typeof r.scale === "number" && Number.isFinite(r.scale) ? clamp(r.scale, 0.25, 1) : base.scale;
+  const scale =
+    typeof r.scale === "number" && Number.isFinite(r.scale) ? clamp(r.scale, IMAGE_SCALE_MIN, IMAGE_SCALE_MAX) : base.scale;
   return { src, opacity, scale };
+}
+
+function finite(n: unknown): n is number {
+  return typeof n === "number" && Number.isFinite(n);
+}
+
+function normalizePlacement(raw: unknown): ElementPlacement | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  if (!finite(r.x) || !finite(r.y)) return null;
+  const s = finite(r.s) ? clamp(r.s, PLACEMENT_SCALE_MIN, PLACEMENT_SCALE_MAX) : 1;
+  return { x: clamp(r.x, 0, 1), y: clamp(r.y, 0, 1), s };
+}
+
+function normalizeLayout(raw: unknown, lineCount: number): TagDesignLayout {
+  const base = emptyLayout(lineCount);
+  if (!raw || typeof raw !== "object") return base;
+  const r = raw as Record<string, unknown>;
+  const lines = Array.isArray(r.lines) ? r.lines.slice(0, lineCount).map(normalizePlacement) : base.lines;
+  while (lines.length < lineCount) lines.push(null);
+  const image = normalizePlacement(r.image);
+  let chip: TagDesignLayout["chip"] = null;
+  if (r.chip && typeof r.chip === "object") {
+    const c = r.chip as Record<string, unknown>;
+    if (finite(c.x) && finite(c.y)) chip = { x: clamp(c.x, 0, 1), y: clamp(c.y, 0, 1) };
+  }
+  return { lines, image, chip };
 }
 
 /** 신뢰할 수 없는 입력(JSON)을 폼팩터 제약에 맞게 정규화. 형식이 틀리면 기본값으로 채운다. */
@@ -150,7 +205,9 @@ export function normalizeTagDesign(
         ? r.templateId.trim().slice(0, 64)
         : null;
 
-  return { version: 2, lines, bodyColor, textColor, materialId, textStyle, image, faceArtSrc, templateId };
+  const layout = normalizeLayout(r.layout, ff.maxTextLines);
+
+  return { version: 2, lines, bodyColor, textColor, materialId, textStyle, image, faceArtSrc, templateId, layout };
 }
 
 /** 템플릿 기본값 + 서비스/폼팩터로 완성된 spec 생성 */
