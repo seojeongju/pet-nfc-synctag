@@ -24,7 +24,7 @@ export function faceGeometryFor(ff: FormFactor): FaceGeometry {
     }
     case "stand_plate":
       return {
-        textArea: { cx: 0, cy: ff.heightMm * 0.12, w: ff.widthMm * 0.82, h: ff.heightMm * 0.42 },
+        textArea: { cx: 0, cy: 0, w: ff.widthMm * 0.96, h: ff.heightMm * 0.96 },
         chipCenter: [0, -ff.heightMm * 0.22],
       };
     case "card_plate":
