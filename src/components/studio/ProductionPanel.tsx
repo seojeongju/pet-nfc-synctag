@@ -30,21 +30,21 @@ const LEVEL_UI = {
 } as const;
 
 export function ProductionPanel({ formFactor, spec, title, locked, onIssuesChange, onFocusTarget }: Props) {
-  const { faceEl, logoEl } = useFaceImages(spec);
+  const { faceEl, fgEl, logoEl } = useFaceImages(spec);
   const fontsVersion = useStudioFonts(spec);
   const [exporting, setExporting] = useState<"stl" | "3mf" | null>(null);
   const [exportMsg, setExportMsg] = useState<string | null>(null);
 
   const issues = useMemo<ProductionIssue[]>(() => {
     const { textArea } = faceGeometryFor(formFactor);
-    const face = paintFace(spec, textArea, faceEl, logoEl);
+    const face = paintFace(spec, textArea, faceEl, logoEl, { fgEl });
     const info = face
       ? { pxPerMm: face.canvas.width / textArea.w, width: face.canvas.width, height: face.canvas.height, boxes: face.boxes }
       : null;
     return runProductionChecks(formFactor, spec, info);
     // fontsVersion: 글꼴이 도착하면 글자 폭이 바뀌므로 다시 검사
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formFactor, spec, faceEl, logoEl, fontsVersion]);
+  }, [formFactor, spec, faceEl, fgEl, logoEl, fontsVersion]);
 
   const errorCount = issues.filter((i) => i.level === "error").length;
   useEffect(() => onIssuesChange?.(errorCount), [errorCount, onIssuesChange]);
@@ -54,7 +54,7 @@ export function ProductionPanel({ formFactor, spec, title, locked, onIssuesChang
     setExportMsg(null);
     try {
       const mod = await import("@/components/studio/tag-export");
-      const objects = mod.buildExportObjects(formFactor, spec);
+      const objects = mod.buildExportObjects(formFactor, spec, { faceEl, fgEl, logoEl });
       try {
         const blob = kind === "stl" ? mod.exportStl(objects) : mod.export3mf(objects, { title, formFactor, spec });
         mod.downloadBlob(mod.exportFilename(title, kind), blob);

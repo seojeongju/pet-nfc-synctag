@@ -239,7 +239,7 @@ export default function TagPreview2D({
   specRef.current = spec;
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [guides, setGuides] = useState<Guides | null>(null);
-  const { faceEl, logoEl } = useFaceImages(spec);
+  const { faceEl, fgEl, logoEl } = useFaceImages(spec);
   const fontsVersion = useStudioFonts(spec);
   const chipVisible = showChip || selected === "chip";
 
@@ -299,7 +299,7 @@ export default function TagPreview2D({
     const fw = textArea.w * s;
     const fh = textArea.h * s;
     const hasContent = Boolean(spec.faceArtSrc) || spec.lines.some((l) => l.trim()) || Boolean(spec.image?.src);
-    const face = hasContent ? paintFace(spec, textArea, faceEl, logoEl) : null;
+    const face = hasContent ? paintFace(spec, textArea, faceEl, logoEl, { fgEl }) : null;
     if (face) {
       ctx.save();
       ctx.clip(body, "nonzero");
@@ -418,7 +418,7 @@ export default function TagPreview2D({
       }
       ctx.restore();
     }
-  }, [size, formFactor, spec, chipVisible, faceEl, logoEl, editable, selected, guides, fontsVersion]);
+  }, [size, formFactor, spec, chipVisible, faceEl, fgEl, logoEl, editable, selected, guides, fontsVersion]);
 
   const pointFrom = (e: { clientX: number; clientY: number }) => {
     const rect = canvasRef.current!.getBoundingClientRect();

@@ -42,9 +42,10 @@ function paintFaceTexture(
   area: TextArea,
   faceEl: HTMLImageElement | null,
   logoEl: HTMLImageElement | null,
-  mode: FacePaintMode = "full"
+  mode: FacePaintMode = "full",
+  fgEl: HTMLImageElement | null = null
 ): THREE.CanvasTexture | null {
-  const canvas = paintFaceCanvas(spec, area, faceEl, logoEl, mode);
+  const canvas = paintFaceCanvas(spec, area, faceEl, logoEl, mode, fgEl);
   if (!canvas) return null;
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -70,7 +71,8 @@ function buildTagGroup(
   spec: TagDesignSpec,
   showChip: boolean,
   faceEl: HTMLImageElement | null,
-  logoEl: HTMLImageElement | null
+  logoEl: HTMLImageElement | null,
+  fgEl: HTMLImageElement | null
 ): THREE.Group {
   const t = effectiveBodyThicknessMm(formFactor, spec);
   const { parts, textArea } = buildBody(formFactor, t);
@@ -118,7 +120,7 @@ function buildTagGroup(
 
   const surfaceZ = t + BEVEL_MM + 0.04;
   const hasContent = hasFaceArt || hasText || Boolean(spec.image?.src);
-  const texture = hasContent ? paintFaceTexture(spec, textArea, faceEl, logoEl, "full") : null;
+  const texture = hasContent ? paintFaceTexture(spec, textArea, faceEl, logoEl, "full", fgEl) : null;
   if (texture) {
     const face = new THREE.Mesh(
       new THREE.PlaneGeometry(textArea.w, textArea.h),
@@ -135,10 +137,10 @@ function buildTagGroup(
     group.add(face);
   }
 
-  // 3D 문구 양각 돌출 / 음각 깊이 적층 레이어
-  if (hasText && !showChip) {
-    const topTex = paintFaceTexture(spec, textArea, null, null, "text-top");
-    const wallTex = paintFaceTexture(spec, textArea, null, null, "text-wall");
+  // 3D 문구 + 템플릿 자체 디자인 + 로고 양각 돌출 / 음각 깊이 적층 레이어
+  if (hasContent && !showChip) {
+    const topTex = paintFaceTexture(spec, textArea, faceEl, logoEl, "text-top", fgEl);
+    const wallTex = paintFaceTexture(spec, textArea, faceEl, logoEl, "text-wall", fgEl);
     if (topTex && wallTex) {
       if (spec.textStyle === "raised") {
         // 양각: 표면 위로 실제 Z축 다층 적층하여 회전 시 돌출 높이가 선명히 보이게
@@ -236,7 +238,7 @@ export default function TagPreview3D({ formFactor, spec, showChip }: Props) {
   const stageRef = useRef<Stage | null>(null);
   const [stageVersion, setStageVersion] = useState(0);
   const [webglFailed, setWebglFailed] = useState(false);
-  const { faceEl, logoEl } = useFaceImages(spec);
+  const { faceEl, fgEl, logoEl } = useFaceImages(spec);
   const fontsVersion = useStudioFonts(spec);
 
   // 장면·카메라·조명·컨트롤 — 폼팩터가 바뀔 때만 다시 만든다
@@ -337,10 +339,10 @@ export default function TagPreview3D({ formFactor, spec, showChip }: Props) {
       stage.scene.remove(stage.model);
       disposeObject(stage.model);
     }
-    const model = buildTagGroup(formFactor, spec, showChip, faceEl, logoEl);
+    const model = buildTagGroup(formFactor, spec, showChip, faceEl, logoEl, fgEl);
     stage.scene.add(model);
     stage.model = model;
-  }, [stageVersion, formFactor, spec, showChip, faceEl, logoEl, fontsVersion]);
+  }, [stageVersion, formFactor, spec, showChip, faceEl, fgEl, logoEl, fontsVersion]);
 
   if (webglFailed) {
     return (

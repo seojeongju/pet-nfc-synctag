@@ -145,12 +145,16 @@ export function runProductionChecks(ff: FormFactor, spec: TagDesignSpec, face?: 
     issues.push({
       level: "info",
       code: "logo_print",
-      message: "로고·사진은 표면 인쇄(UV/전사)로 처리되며 3D 형상 파일에는 포함되지 않습니다.",
+      message: "업로드한 로고·이미지도 선택한 양각·음각 형상으로 함께 적용됩니다.",
       target: "image",
     });
   }
   if (spec.faceArtSrc) {
-    issues.push({ level: "info", code: "art_print", message: "템플릿 전면 디자인은 표면 인쇄로, 문구는 양각/음각 형상으로 제작됩니다." });
+    issues.push({
+      level: "info",
+      code: "art_print",
+      message: "템플릿 자체 디자인(아이콘·프레임·하단 글씨)과 작성 문구가 모두 양각·음각 형상으로 함께 제작됩니다.",
+    });
   }
 
   return issues.sort((a, b) => LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level]);

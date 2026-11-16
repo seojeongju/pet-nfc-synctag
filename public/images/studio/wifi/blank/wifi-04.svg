@@ -19,30 +19,10 @@
     </clipPath>
   </defs>
   <g clip-path="url(#clip-04)">
+    
     <rect width="800" height="1000" rx="56" fill="url(#bg-04)"/>
     
-        <rect x="32" y="32" width="736" height="936" rx="40" fill="none" stroke="#00A896" stroke-width="3.5" opacity="0.85"/>
-        <rect x="48" y="48" width="704" height="904" rx="32" fill="none" stroke="#00A896" stroke-width="1.5" opacity="0.3"/>
-        <rect x="330" y="30" width="140" height="8" rx="4" fill="#00A896"/>
     
-    <circle cx="400" cy="225" r="88" fill="rgba(255,255,255,0.85)" stroke="#00A896" stroke-width="3" opacity="0.95"/>
-    <g fill="none" stroke="#00A896" stroke-width="10" stroke-linecap="round">
-      <path d="M 350 221 A 68 68 0 0 1 450 221"/>
-      <path d="M 367 239 A 45 45 0 0 1 433 239"/>
-      <path d="M 384 257 A 22 22 0 0 1 416 257"/>
-    </g>
-    <circle cx="400" cy="275" r="8.5" fill="#00A896"/>
-    
-    <!-- 실제 NFC 칩 위치(y=735)에 맞춘 터치 가이드 존 -->
-    <circle cx="400" cy="735" r="128" fill="none" stroke="#00A896" stroke-width="2" stroke-dasharray="10 10" opacity="0.35"/>
-    <circle cx="400" cy="735" r="98" fill="rgba(255,255,255,0.72)" stroke="#00A896" stroke-width="2.5" opacity="0.55"/>
-    <!-- NFC 전파 심볼 -->
-    <g fill="none" stroke="#00A896" stroke-width="5.5" stroke-linecap="round" opacity="0.9">
-      <path d="M 382 701 A 26 26 0 0 1 382 733" transform="rotate(-90 400 717)"/>
-      <path d="M 390 689 A 42 42 0 0 1 390 745" transform="rotate(-90 400 717)"/>
-    </g>
-    <rect x="282" y="753" width="236" height="52" rx="26" fill="#0F172A"/>
-    <text x="400" y="786" text-anchor="middle" font-family="Outfit, Arial, sans-serif" font-size="22" font-weight="800" letter-spacing="1.5" fill="#FFFFFF">NFC · TAP</text>
     
   </g>
 </svg>

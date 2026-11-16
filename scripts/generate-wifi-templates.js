@@ -1,7 +1,8 @@
 /**
  * Wi-Fi 스탠드 플레이트(80×100×5mm, 4:5) 고도화 전면 아트 SVG 10종 생성
- * - 원본(800×1000): wifi-XX.svg (제목·부제 포함 완성 이미지)
- * - 배경(800×1000): blank/wifi-XX.svg (슬롯 문구 렌더링용 배경)
+ * - 원본(800×1000): wifi-XX.svg (바탕 + 전경 디자인 + 기본 문구 완성본)
+ * - 바탕(800×1000): blank/wifi-XX.svg (순수 배경 플레이트 — 그라데이션·은은한 배경 글로우만)
+ * - 전경(800×1000): fg/wifi-XX.svg (양각·음각 입체 적용 대상 — 프레임·아치·Wi-Fi 아이콘·NFC 터치링·NFC·TAP 배지 및 글씨)
  * - 썸네일(240×300, viewBox 800×1000 유지): thumb/wifi-XX.svg
  *
  * 실행: node scripts/generate-wifi-templates.js
@@ -11,8 +12,10 @@ const path = require("path");
 
 const dir = path.join("public", "images", "studio", "wifi");
 const blankDir = path.join(dir, "blank");
+const fgDir = path.join(dir, "fg");
 const thumbDir = path.join(dir, "thumb");
 fs.mkdirSync(blankDir, { recursive: true });
+fs.mkdirSync(fgDir, { recursive: true });
 fs.mkdirSync(thumbDir, { recursive: true });
 
 const W = 800;
@@ -205,61 +208,78 @@ function defsFor(d) {
   </defs>`;
 }
 
-function backgroundDecor(d) {
+/** 플레이트 바닥에 깔리는 순수 배경 요소 (그라데이션·부드러운 면) */
+function basePlateDecor(d) {
+  switch (d.theme) {
+    case "sky_air":
+      return `<circle cx="400" cy="140" r="240" fill="url(#glow-${d.id})"/>
+              <path d="M0 860 Q 200 790 400 850 T 800 830 V 1000 H 0 Z" fill="#FFFFFF" opacity="0.45"/>`;
+    case "midnight_tech":
+      return `<circle cx="400" cy="230" r="260" fill="url(#glow-${d.id})"/>`;
+    case "cafe_cream":
+      return `<rect x="36" y="36" width="${W - 72}" height="${H - 72}" rx="${RX - 18}" fill="#FFFFFF" opacity="0.55"/>`;
+    case "linku_signature":
+      return `<circle cx="690" cy="110" r="190" fill="#FFFFFF" opacity="0.08"/>
+              <circle cx="110" cy="890" r="210" fill="#FFFFFF" opacity="0.07"/>`;
+    case "boutique_gold":
+      return `<circle cx="400" cy="230" r="140" fill="url(#glow-${d.id})"/>`;
+    case "aurora_glass":
+      return `<circle cx="160" cy="180" r="240" fill="${d.accent2}" opacity="0.18"/>
+              <circle cx="660" cy="760" r="260" fill="${d.accent}" opacity="0.16"/>`;
+    case "botanical_mint":
+      return `<path d="M 0 0 H 800 V 180 Q 600 240 400 180 T 0 210 Z" fill="${d.accent2}" opacity="0.18"/>
+              <path d="M 0 850 Q 220 790 420 845 T 800 815 V 1000 H 0 Z" fill="${d.accent}" opacity="0.12"/>`;
+    case "architect_slate":
+      return `<rect x="52" y="52" width="${W - 104}" height="${H - 104}" rx="28" fill="#FFFFFF" opacity="0.72"/>`;
+    case "rose_blush":
+      return `<circle cx="400" cy="230" r="210" fill="#FFFFFF" opacity="0.55"/>
+              <path d="M 0 840 Q 200 780 400 835 T 800 810 V 1000 H 0 Z" fill="${d.accent2}" opacity="0.22"/>`;
+    default:
+      return "";
+  }
+}
+
+/** 양각·음각이 적용될 전경 프레임·라인·장식 요소 */
+function foregroundDecor(d) {
   switch (d.theme) {
     case "sky_air":
       return `
-        <circle cx="400" cy="140" r="240" fill="url(#glow-${d.id})"/>
-        <circle cx="400" cy="120" r="190" fill="none" stroke="${d.accent}" stroke-width="3" opacity="0.12"/>
-        <circle cx="400" cy="120" r="145" fill="none" stroke="${d.accent}" stroke-width="2" opacity="0.18"/>
-        <path d="M0 860 Q 200 790 400 850 T 800 830 V 1000 H 0 Z" fill="#FFFFFF" opacity="0.45"/>`;
+        <circle cx="400" cy="120" r="190" fill="none" stroke="${d.accent}" stroke-width="5" opacity="0.35"/>
+        <circle cx="400" cy="120" r="145" fill="none" stroke="${d.accent}" stroke-width="4" opacity="0.45"/>`;
     case "midnight_tech":
       return `
-        <circle cx="400" cy="230" r="260" fill="url(#glow-${d.id})"/>
-        ${Array.from({ length: 7 }, (_, i) => `<line x1="0" y1="${110 + i * 130}" x2="${W}" y2="${110 + i * 130}" stroke="${d.accent}" stroke-width="1" opacity="0.08"/>`).join("")}
-        ${Array.from({ length: 6 }, (_, i) => `<line x1="${120 + i * 112}" y1="0" x2="${120 + i * 112}" y2="${H}" stroke="${d.accent}" stroke-width="1" opacity="0.08"/>`).join("")}
-        <rect x="34" y="34" width="${W - 68}" height="${H - 68}" rx="${RX - 18}" fill="none" stroke="url(#acc-${d.id})" stroke-width="2" opacity="0.35"/>`;
+        <rect x="34" y="34" width="${W - 68}" height="${H - 68}" rx="${RX - 18}" fill="none" stroke="${d.accent}" stroke-width="4" opacity="0.65"/>
+        <path d="M 34 120 H 95 M 705 120 H 766 M 34 880 H 95 M 705 880 H 766" stroke="${d.accent2}" stroke-width="5" stroke-linecap="round"/>`;
     case "cafe_cream":
       return `
-        <rect x="36" y="36" width="${W - 72}" height="${H - 72}" rx="${RX - 18}" fill="#FFFFFF" opacity="0.55"/>
-        <path d="M 100 964 V 280 A 300 300 0 0 1 700 280 V 964" fill="none" stroke="${d.accent}" stroke-width="2.5" opacity="0.22"/>
-        <circle cx="400" cy="235" r="96" fill="${d.accent}" opacity="0.08"/>`;
+        <path d="M 100 940 V 280 A 300 300 0 0 1 700 280 V 940" fill="none" stroke="${d.accent}" stroke-width="5" stroke-linecap="round" opacity="0.55"/>
+        <line x1="100" y1="940" x2="700" y2="940" stroke="${d.accent}" stroke-width="5" stroke-linecap="round" opacity="0.55"/>`;
     case "modern_minimal":
       return `
-        <rect x="32" y="32" width="${W - 64}" height="${H - 64}" rx="${RX - 16}" fill="none" stroke="${d.accent}" stroke-width="3.5" opacity="0.85"/>
-        <rect x="48" y="48" width="${W - 96}" height="${H - 96}" rx="${RX - 24}" fill="none" stroke="${d.accent}" stroke-width="1.5" opacity="0.3"/>
-        <rect x="330" y="30" width="140" height="8" rx="4" fill="${d.accent}"/>`;
+        <rect x="32" y="32" width="${W - 64}" height="${H - 64}" rx="${RX - 16}" fill="none" stroke="${d.accent}" stroke-width="6"/>
+        <rect x="52" y="52" width="${W - 104}" height="${H - 104}" rx="${RX - 24}" fill="none" stroke="${d.accent}" stroke-width="3" opacity="0.55"/>
+        <rect x="320" y="28" width="160" height="12" rx="6" fill="${d.accent}"/>`;
     case "linku_signature":
       return `
-        <circle cx="690" cy="110" r="190" fill="#FFFFFF" opacity="0.08"/>
-        <circle cx="110" cy="890" r="210" fill="#FFFFFF" opacity="0.07"/>
-        <rect x="44" y="44" width="${W - 88}" height="${H - 88}" rx="${RX - 20}" fill="none" stroke="#FFFFFF" stroke-width="2" opacity="0.22"/>`;
+        <rect x="44" y="44" width="${W - 88}" height="${H - 88}" rx="${RX - 20}" fill="none" stroke="${d.accent}" stroke-width="4" opacity="0.55"/>`;
     case "boutique_gold":
       return `
-        <rect x="28" y="28" width="${W - 56}" height="${H - 56}" rx="${RX - 14}" fill="none" stroke="url(#acc-${d.id})" stroke-width="4"/>
-        <rect x="44" y="44" width="${W - 88}" height="${H - 88}" rx="${RX - 22}" fill="none" stroke="url(#acc-${d.id})" stroke-width="1.2" opacity="0.5"/>
-        <path d="M 28 110 H 110 M 690 110 H 772" stroke="${d.accent}" stroke-width="1.5" opacity="0.4"/>
-        <circle cx="400" cy="230" r="140" fill="url(#glow-${d.id})"/>`;
+        <rect x="28" y="28" width="${W - 56}" height="${H - 56}" rx="${RX - 14}" fill="none" stroke="${d.accent}" stroke-width="6"/>
+        <rect x="46" y="46" width="${W - 92}" height="${H - 92}" rx="${RX - 22}" fill="none" stroke="${d.accent2}" stroke-width="2.5" opacity="0.7"/>
+        <path d="M 28 110 H 110 M 690 110 H 772" stroke="${d.accent}" stroke-width="4"/>`;
     case "aurora_glass":
       return `
-        <circle cx="160" cy="180" r="240" fill="${d.accent2}" opacity="0.18"/>
-        <circle cx="660" cy="760" r="260" fill="${d.accent}" opacity="0.16"/>
-        <rect x="48" y="48" width="${W - 96}" height="${H - 96}" rx="${RX - 20}" fill="#FFFFFF" fill-opacity="0.05" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="2"/>`;
+        <rect x="44" y="44" width="${W - 88}" height="${H - 88}" rx="${RX - 20}" fill="none" stroke="${d.accent}" stroke-width="4" opacity="0.65"/>`;
     case "botanical_mint":
       return `
-        <path d="M 0 0 H 800 V 180 Q 600 240 400 180 T 0 210 Z" fill="${d.accent2}" opacity="0.18"/>
-        <path d="M 0 850 Q 220 790 420 845 T 800 815 V 1000 H 0 Z" fill="${d.accent}" opacity="0.12"/>
-        <circle cx="670" cy="130" r="54" fill="${d.accent}" opacity="0.1"/>`;
+        <rect x="38" y="38" width="${W - 76}" height="${H - 76}" rx="${RX - 18}" fill="none" stroke="${d.accent}" stroke-width="4" opacity="0.5"/>`;
     case "architect_slate":
       return `
         <rect x="0" y="0" width="28" height="${H}" fill="${d.accent2}"/>
-        <rect x="52" y="52" width="${W - 104}" height="${H - 104}" rx="28" fill="#FFFFFF" opacity="0.72"/>
-        <line x1="100" y1="575" x2="700" y2="575" stroke="${d.accent}" stroke-width="2" opacity="0.12"/>`;
+        <line x1="100" y1="575" x2="700" y2="575" stroke="${d.accent}" stroke-width="4" opacity="0.35"/>`;
     case "rose_blush":
       return `
-        <circle cx="400" cy="230" r="210" fill="#FFFFFF" opacity="0.55"/>
-        <path d="M 0 840 Q 200 780 400 835 T 800 810 V 1000 H 0 Z" fill="${d.accent2}" opacity="0.22"/>
-        <rect x="40" y="40" width="${W - 80}" height="${H - 80}" rx="${RX - 18}" fill="none" stroke="${d.accent}" stroke-width="2" opacity="0.2"/>`;
+        <rect x="40" y="40" width="${W - 80}" height="${H - 80}" rx="${RX - 18}" fill="none" stroke="${d.accent}" stroke-width="4.5" opacity="0.55"/>`;
     default:
       return "";
   }
@@ -268,52 +288,62 @@ function backgroundDecor(d) {
 function wifiEmblem(d) {
   const cx = 400;
   const cy = 225;
-  const ringBg = d.dark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.85)";
   const ringStroke = d.dark ? d.accent2 : d.accent;
   return `
-    <circle cx="${cx}" cy="${cy}" r="88" fill="${ringBg}" stroke="${ringStroke}" stroke-width="3" opacity="0.95"/>
-    <g fill="none" stroke="${d.accent}" stroke-width="10" stroke-linecap="round">
+    <circle cx="${cx}" cy="${cy}" r="88" fill="none" stroke="${ringStroke}" stroke-width="6"/>
+    <g fill="none" stroke="${d.accent}" stroke-width="12" stroke-linecap="round">
       <path d="M ${cx - 50} ${cy - 4} A 68 68 0 0 1 ${cx + 50} ${cy - 4}"/>
       <path d="M ${cx - 33} ${cy + 14} A 45 45 0 0 1 ${cx + 33} ${cy + 14}"/>
       <path d="M ${cx - 16} ${cy + 32} A 22 22 0 0 1 ${cx + 16} ${cy + 32}"/>
     </g>
-    <circle cx="${cx}" cy="${cy + 50}" r="8.5" fill="${d.accent}"/>`;
+    <circle cx="${cx}" cy="${cy + 50}" r="10" fill="${d.accent}"/>`;
 }
 
 function nfcTouchZone(d) {
   const cx = 400;
   const cy = CHIP_Y;
   const ringColor = d.dark ? d.accent2 : d.accent;
-  const innerBg = d.dark ? "rgba(255,255,255,0.07)" : "rgba(255,255,255,0.72)";
+  const labelColor = d.dark ? d.titleColor : d.accent;
   return `
-    <!-- 실제 NFC 칩 위치(y=${CHIP_Y})에 맞춘 터치 가이드 존 -->
-    <circle cx="${cx}" cy="${cy}" r="128" fill="none" stroke="${ringColor}" stroke-width="2" stroke-dasharray="10 10" opacity="0.35"/>
-    <circle cx="${cx}" cy="${cy}" r="98" fill="${innerBg}" stroke="${ringColor}" stroke-width="2.5" opacity="0.55"/>
+    <!-- 실제 NFC 칩 위치(y=${CHIP_Y})에 맞춘 터치 가이드 존 (양각·음각 최적화 벡터) -->
+    <circle cx="${cx}" cy="${cy}" r="128" fill="none" stroke="${ringColor}" stroke-width="4" stroke-dasharray="12 10" opacity="0.65"/>
+    <circle cx="${cx}" cy="${cy}" r="98" fill="none" stroke="${ringColor}" stroke-width="4.5" opacity="0.85"/>
     <!-- NFC 전파 심볼 -->
-    <g fill="none" stroke="${ringColor}" stroke-width="5.5" stroke-linecap="round" opacity="0.9">
+    <g fill="none" stroke="${ringColor}" stroke-width="6.5" stroke-linecap="round">
       <path d="M ${cx - 18} ${cy - 34} A 26 26 0 0 1 ${cx - 18} ${cy - 2}" transform="rotate(-90 ${cx} ${cy - 18})"/>
       <path d="M ${cx - 10} ${cy - 46} A 42 42 0 0 1 ${cx - 10} ${cy + 10}" transform="rotate(-90 ${cx} ${cy - 18})"/>
     </g>
-    <rect x="${cx - 118}" y="${cy + 18}" width="236" height="52" rx="26" fill="${d.badgeBg}"/>
-    <text x="${cx}" y="${cy + 51}" text-anchor="middle" font-family="Outfit, Arial, sans-serif" font-size="22" font-weight="800" letter-spacing="1.5" fill="${d.badgeText}">${d.tapLabel}</text>`;
+    <circle cx="${cx}" cy="${cy - 8}" r="5.5" fill="${ringColor}"/>
+    <!-- 캡슐 테두리 + 양각/음각 텍스트 -->
+    <rect x="${cx - 122}" y="${cy + 16}" width="244" height="54" rx="27" fill="none" stroke="${d.badgeBg}" stroke-width="6"/>
+    <text x="${cx}" y="${cy + 51}" text-anchor="middle" font-family="Outfit, Arial, sans-serif" font-size="22" font-weight="900" letter-spacing="1.5" fill="${labelColor}">${d.tapLabel}</text>`;
 }
 
-function buildSvg(d, { withText, thumb }) {
+function buildSvg(d, { includeBase, includeFg, includeText, thumb }) {
   const sizeAttrs = thumb ? `width="240" height="300"` : `width="${W}" height="${H}"`;
-  const textLayer = withText
+  const baseLayer = includeBase
     ? `
-  <text x="400" y="422" text-anchor="middle" font-family="Outfit, 'Noto Sans KR', Arial, sans-serif" font-size="60" font-weight="900" fill="${d.titleColor}">${d.title}</text>
-  <text x="400" y="492" text-anchor="middle" font-family="'Noto Sans KR', Arial, sans-serif" font-size="28" font-weight="700" fill="${d.subColor}">${d.subtext}</text>`
+    <rect width="${W}" height="${H}" rx="${RX}" fill="url(#bg-${d.id})"/>
+    ${basePlateDecor(d)}`
+    : "";
+  const fgLayer = includeFg
+    ? `
+    ${foregroundDecor(d)}
+    ${wifiEmblem(d)}
+    ${nfcTouchZone(d)}`
+    : "";
+  const textLayer = includeText
+    ? `
+    <text x="400" y="422" text-anchor="middle" font-family="Outfit, 'Noto Sans KR', Arial, sans-serif" font-size="60" font-weight="900" fill="${d.titleColor}">${d.title}</text>
+    <text x="400" y="492" text-anchor="middle" font-family="'Noto Sans KR', Arial, sans-serif" font-size="28" font-weight="700" fill="${d.subColor}">${d.subtext}</text>`
     : "";
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" ${sizeAttrs} viewBox="0 0 ${W} ${H}">
   ${defsFor(d)}
   <g clip-path="url(#clip-${d.id})">
-    <rect width="${W}" height="${H}" rx="${RX}" fill="url(#bg-${d.id})"/>
-    ${backgroundDecor(d)}
-    ${wifiEmblem(d)}
-    ${nfcTouchZone(d)}
+    ${baseLayer}
+    ${fgLayer}
     ${textLayer}
   </g>
 </svg>
@@ -321,8 +351,9 @@ function buildSvg(d, { withText, thumb }) {
 }
 
 for (const d of designs) {
-  fs.writeFileSync(path.join(dir, `wifi-${d.id}.svg`), buildSvg(d, { withText: true, thumb: false }));
-  fs.writeFileSync(path.join(blankDir, `wifi-${d.id}.svg`), buildSvg(d, { withText: false, thumb: false }));
-  fs.writeFileSync(path.join(thumbDir, `wifi-${d.id}.svg`), buildSvg(d, { withText: true, thumb: true }));
-  console.log("generated wifi template", d.id);
+  fs.writeFileSync(path.join(dir, `wifi-${d.id}.svg`), buildSvg(d, { includeBase: true, includeFg: true, includeText: true, thumb: false }));
+  fs.writeFileSync(path.join(blankDir, `wifi-${d.id}.svg`), buildSvg(d, { includeBase: true, includeFg: false, includeText: false, thumb: false }));
+  fs.writeFileSync(path.join(fgDir, `wifi-${d.id}.svg`), buildSvg(d, { includeBase: false, includeFg: true, includeText: false, thumb: false }));
+  fs.writeFileSync(path.join(thumbDir, `wifi-${d.id}.svg`), buildSvg(d, { includeBase: true, includeFg: true, includeText: true, thumb: true }));
+  console.log("generated wifi template (full/blank/fg/thumb)", d.id);
 }

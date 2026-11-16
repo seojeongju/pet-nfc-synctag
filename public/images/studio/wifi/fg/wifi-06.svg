@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000">
+  
+  <defs>
+    <linearGradient id="bg-06" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#18181B"/>
+      <stop offset="100%" stop-color="#27272A"/>
+    </linearGradient>
+    <linearGradient id="acc-06" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#FDE68A"/>
+    </linearGradient>
+    <radialGradient id="glow-06" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FDE68A" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#FDE68A" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="clip-06">
+      <rect width="800" height="1000" rx="56"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#clip-06)">
+    
+    
+    
+        <rect x="28" y="28" width="744" height="944" rx="42" fill="none" stroke="#F59E0B" stroke-width="6"/>
+        <rect x="46" y="46" width="708" height="908" rx="34" fill="none" stroke="#FDE68A" stroke-width="2.5" opacity="0.7"/>
+        <path d="M 28 110 H 110 M 690 110 H 772" stroke="#F59E0B" stroke-width="4"/>
+    
+    <circle cx="400" cy="225" r="88" fill="none" stroke="#FDE68A" stroke-width="6"/>
+    <g fill="none" stroke="#F59E0B" stroke-width="12" stroke-linecap="round">
+      <path d="M 350 221 A 68 68 0 0 1 450 221"/>
+      <path d="M 367 239 A 45 45 0 0 1 433 239"/>
+      <path d="M 384 257 A 22 22 0 0 1 416 257"/>
+    </g>
+    <circle cx="400" cy="275" r="10" fill="#F59E0B"/>
+    
+    <!-- 실제 NFC 칩 위치(y=735)에 맞춘 터치 가이드 존 (양각·음각 최적화 벡터) -->
+    <circle cx="400" cy="735" r="128" fill="none" stroke="#FDE68A" stroke-width="4" stroke-dasharray="12 10" opacity="0.65"/>
+    <circle cx="400" cy="735" r="98" fill="none" stroke="#FDE68A" stroke-width="4.5" opacity="0.85"/>
+    <!-- NFC 전파 심볼 -->
+    <g fill="none" stroke="#FDE68A" stroke-width="6.5" stroke-linecap="round">
+      <path d="M 382 701 A 26 26 0 0 1 382 733" transform="rotate(-90 400 717)"/>
+      <path d="M 390 689 A 42 42 0 0 1 390 745" transform="rotate(-90 400 717)"/>
+    </g>
+    <circle cx="400" cy="727" r="5.5" fill="#FDE68A"/>
+    <!-- 캡슐 테두리 + 양각/음각 텍스트 -->
+    <rect x="278" y="751" width="244" height="54" rx="27" fill="none" stroke="#F59E0B" stroke-width="6"/>
+    <text x="400" y="786" text-anchor="middle" font-family="Outfit, Arial, sans-serif" font-size="22" font-weight="900" letter-spacing="1.5" fill="#FAFAF9">NFC · TOUCH</text>
+    
+  </g>
+</svg>

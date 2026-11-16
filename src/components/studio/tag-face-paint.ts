@@ -52,16 +52,22 @@ export function useLoadedImage(src: string | null): HTMLImageElement | null {
   return img;
 }
 
-/** 윗면에 깔 아트 경로. 명함 템플릿은 자리표시 글자를 지운 배경을 쓴다 */
+/** 윗면에 깔 아트 경로. 명함·Wi-Fi 템플릿은 자리표시 글자를 지운 배경을 쓴다 */
 export function faceArtLoadSrc(spec: TagDesignSpec): string | null {
   return getCardFaceLayout(spec.faceArtSrc)?.blankSrc ?? spec.faceArtSrc ?? null;
 }
 
-/** 템플릿 아트·로고 이미지를 불러온다 */
+/** 템플릿 자체 디자인(아이콘·프레임·하단 글씨 등) 전경 레이어 경로 */
+export function faceFgLoadSrc(spec: TagDesignSpec): string | null {
+  return getCardFaceLayout(spec.faceArtSrc)?.fgSrc ?? null;
+}
+
+/** 템플릿 아트·전경 디자인·로고 이미지를 불러온다 */
 export function useFaceImages(spec: TagDesignSpec) {
   const faceEl = useLoadedImage(faceArtLoadSrc(spec));
+  const fgEl = useLoadedImage(faceFgLoadSrc(spec));
   const logoEl = useLoadedImage(spec.image?.src ?? null);
-  return { faceEl, logoEl };
+  return { faceEl, fgEl, logoEl };
 }
 
 export function isLightColor(hex: string): boolean {
@@ -286,8 +292,196 @@ function fitSize(
   return measured > maxW ? size * (maxW / measured) : size;
 }
 
+/** 캔버스 알파 채널을 유지한 채 단색 실루엣 캔버스를 만든다 */
+function makeSilhouette(src: HTMLCanvasElement, fillStyle: string): HTMLCanvasElement {
+  const c = document.createElement("canvas");
+  c.width = src.width;
+  c.height = src.height;
+  const g = c.getContext("2d");
+  if (!g) return c;
+  g.drawImage(src, 0, 0);
+  g.globalCompositeOperation = "source-in";
+  g.fillStyle = fillStyle;
+  g.fillRect(0, 0, c.width, c.height);
+  return c;
+}
+
+/** 획 두께(strokeAdj > 0) 조절 시 그래픽/글씨 선 두께를 8방향으로 확장 */
+function dilateCanvas(src: HTMLCanvasElement, radiusPx: number): HTMLCanvasElement {
+  if (radiusPx <= 0.25) return src;
+  const c = document.createElement("canvas");
+  c.width = src.width;
+  c.height = src.height;
+  const g = c.getContext("2d");
+  if (!g) return src;
+  for (let a = 0; a < 8; a++) {
+    const rad = (a * Math.PI) / 4;
+    g.drawImage(src, Math.cos(rad) * radiusPx, Math.sin(rad) * radiusPx);
+  }
+  g.drawImage(src, 0, 0);
+  return c;
+}
+
+/** fgEl이 따로 없는 템플릿(명함 등)에서 배경 주조색 대비 그래픽·디자인 요소를 전경 캔버스로 추출 */
+function extractForegroundFromBase(
+  faceEl: HTMLImageElement,
+  W: number,
+  H: number,
+  art: { x: number; y: number; w: number; h: number }
+): HTMLCanvasElement | null {
+  const c = document.createElement("canvas");
+  c.width = W;
+  c.height = H;
+  const g = c.getContext("2d");
+  if (!g) return null;
+  try {
+    g.drawImage(faceEl, art.x, art.y, art.w, art.h);
+    const imgData = g.getImageData(0, 0, W, H);
+    const d = imgData.data;
+    // 중앙·테두리 안쪽 샘플들의 중앙값으로 주 배경색 추정
+    const samplesR: number[] = [];
+    const samplesG: number[] = [];
+    const samplesB: number[] = [];
+    const pts = [
+      [0.5, 0.5],
+      [0.25, 0.5],
+      [0.75, 0.5],
+      [0.5, 0.25],
+      [0.5, 0.75],
+      [0.2, 0.2],
+      [0.8, 0.2],
+      [0.2, 0.8],
+      [0.8, 0.8],
+    ] as const;
+    for (const [px, py] of pts) {
+      const ix = Math.floor(px * (W - 1));
+      const iy = Math.floor(py * (H - 1));
+      const idx = (iy * W + ix) * 4;
+      samplesR.push(d[idx]!);
+      samplesG.push(d[idx + 1]!);
+      samplesB.push(d[idx + 2]!);
+    }
+    samplesR.sort((a, b) => a - b);
+    samplesG.sort((a, b) => a - b);
+    samplesB.sort((a, b) => a - b);
+    const mid = Math.floor(samplesR.length / 2);
+    const bgR = samplesR[mid]!;
+    const bgG = samplesG[mid]!;
+    const bgB = samplesB[mid]!;
+
+    for (let i = 0; i < d.length; i += 4) {
+      const dr = d[i]! - bgR;
+      const dg = d[i + 1]! - bgG;
+      const db = d[i + 2]! - bgB;
+      const dist = Math.hypot(dr, dg, db);
+      if (dist < 36) {
+        d[i + 3] = 0;
+      } else {
+        const alpha = Math.min(255, Math.round(((dist - 36) / 48) * 255));
+        d[i + 3] = Math.min(d[i + 3]!, alpha);
+      }
+    }
+    g.putImageData(imgData, 0, 0);
+    return c;
+  } catch {
+    return null;
+  }
+}
+
+/** 템플릿 전경 디자인·로고 캔버스에 양각/음각 입체 효과(2D/3D/마스크)를 적용해 그린다 */
+function drawReliefCanvas(
+  ctx: CanvasRenderingContext2D,
+  rawCanvas: HTMLCanvasElement,
+  style: "raised" | "engraved",
+  depthMm: number,
+  strokeAdj: number,
+  pxPerMm: number,
+  mode: FacePaintMode
+) {
+  const dilatePx = strokeAdj > 0 ? strokeAdj * pxPerMm * 0.14 : 0;
+  const fg = dilateCanvas(rawCanvas, dilatePx);
+
+  if (mode === "text-mask") {
+    const mask = makeSilhouette(fg, "#FFFFFF");
+    ctx.drawImage(mask, 0, 0);
+    return;
+  }
+
+  const darkSil = makeSilhouette(fg, "#020617");
+
+  if (mode === "text-wall") {
+    ctx.save();
+    ctx.drawImage(fg, 0, 0);
+    ctx.globalAlpha = style === "engraved" ? 0.68 : 0.45;
+    ctx.drawImage(darkSil, 0, 0);
+    ctx.restore();
+    return;
+  }
+
+  if (mode === "text-top") {
+    ctx.save();
+    ctx.drawImage(fg, 0, 0);
+    if (style === "engraved") {
+      ctx.globalAlpha = 0.28;
+      ctx.drawImage(darkSil, 0, 0);
+    }
+    ctx.restore();
+    return;
+  }
+
+  const lightSil = makeSilhouette(fg, "#FFFFFF");
+  const offsetPx = Math.max(1.5, depthMm * pxPerMm * 0.48);
+  const steps = Math.max(2, Math.min(8, Math.round(offsetPx)));
+
+  if (style === "engraved") {
+    // 음각(파임): 우하단 깎인 테두리 밝은 하이라이트 + 오목 바닥면 + 좌상단 내벽 다단계 그림자
+    ctx.save();
+    ctx.globalAlpha = 0.78;
+    ctx.drawImage(lightSil, offsetPx * 0.48, offsetPx * 0.58);
+    ctx.restore();
+
+    ctx.drawImage(fg, 0, 0);
+    ctx.save();
+    ctx.globalAlpha = 0.22;
+    ctx.drawImage(darkSil, 0, 0);
+    ctx.restore();
+
+    for (let s = steps; s >= 1; s--) {
+      const t = s / steps;
+      ctx.save();
+      ctx.globalAlpha = 0.24 * (1 - t * 0.45);
+      ctx.drawImage(darkSil, -offsetPx * 0.55 * t, -offsetPx * 0.7 * t);
+      ctx.restore();
+    }
+  } else {
+    // 양각(튀어나옴): 바닥 드롭 섀도우 + 다단계 3D 돌출 측면 + 좌상단 베벨 하이라이트 + 전면 그래픽
+    ctx.save();
+    ctx.globalAlpha = 0.25;
+    ctx.drawImage(darkSil, offsetPx * 0.85, offsetPx * 1.15);
+    ctx.restore();
+
+    for (let s = steps; s >= 1; s--) {
+      const t = s / steps;
+      const dx = offsetPx * 0.55 * t;
+      const dy = offsetPx * 0.75 * t;
+      ctx.drawImage(fg, dx, dy);
+      ctx.save();
+      ctx.globalAlpha = 0.42;
+      ctx.drawImage(darkSil, dx, dy);
+      ctx.restore();
+    }
+
+    ctx.save();
+    ctx.globalAlpha = 0.65;
+    ctx.drawImage(lightSil, -offsetPx * 0.2, -offsetPx * 0.25);
+    ctx.restore();
+
+    ctx.drawImage(fg, 0, 0);
+  }
+}
+
 /**
- * 윗면 캔버스: 템플릿 전면 아트 · 사용자 로고 · 문구.
+ * 윗면 캔버스: 템플릿 전면 아트(바탕 + 양각/음각 전경 디자인) · 사용자 로고 · 문구.
  * spec.layout의 배치(끌어서 옮긴 위치·크기·회전)·줄별 색/글꼴·겹침 순서를 반영하고, 요소별 영역(boxes)을 함께 돌려준다.
  */
 export function paintFace(
@@ -295,12 +489,13 @@ export function paintFace(
   area: FaceArea,
   faceEl: HTMLImageElement | null,
   logoEl: HTMLImageElement | null,
-  opts?: { mode?: FacePaintMode }
+  opts?: { mode?: FacePaintMode; fgEl?: HTMLImageElement | null }
 ): FacePaintResult | null {
   if (typeof document === "undefined") return null;
   const mode: FacePaintMode = opts?.mode ?? "full";
+  const fgEl = opts?.fgEl ?? null;
   const includeBase = mode === "full" || mode === "base";
-  const includeText = mode !== "base";
+  const includeRelief = mode !== "base";
   const faceSrc = spec.faceArtSrc ?? null;
   const logoSrc = spec.image?.src ?? null;
   const pxPerMm = faceSrc ? 18 : 24;
@@ -316,6 +511,7 @@ export function paintFace(
   const styles = spec.layout?.styles ?? [];
   const depthMm = effectiveTextDepthMm(spec);
   const strokeAdj = effectiveTextStroke(spec);
+  const globalStyle: LineDraw["style"] = spec.textStyle === "engraved" ? "engraved" : "raised";
 
   // 템플릿 전면 아트(명함·Wi-Fi 등) — cover. 슬롯 계산을 위해 faceEl이 없어도 cardLayout이면 art 영역을 잡는다.
   const cardLayout = getCardFaceLayout(faceSrc);
@@ -328,8 +524,30 @@ export function paintFace(
     if (includeBase) {
       ctx.drawImage(faceEl, art.x, art.y, dw, dh);
     }
+  } else if (fgEl && faceSrc) {
+    const ratio = Math.max(W / fgEl.width, H / fgEl.height);
+    const dw = fgEl.width * ratio;
+    const dh = fgEl.height * ratio;
+    art = { x: (W - dw) / 2, y: (H - dh) / 2, w: dw, h: dh };
   } else if (cardLayout) {
     art = { x: 0, y: 0, w: W, h: H };
+  }
+
+  // 템플릿 자체 디자인(글씨·아이콘·프레임 등) 양각/음각 입체 적용
+  if (includeRelief && faceSrc && art) {
+    let fgCanvas: HTMLCanvasElement | null = null;
+    if (fgEl) {
+      fgCanvas = document.createElement("canvas");
+      fgCanvas.width = W;
+      fgCanvas.height = H;
+      const fgCtx = fgCanvas.getContext("2d");
+      if (fgCtx) fgCtx.drawImage(fgEl, art.x, art.y, art.w, art.h);
+    } else if (faceEl) {
+      fgCanvas = extractForegroundFromBase(faceEl, W, H, art);
+    }
+    if (fgCanvas) {
+      drawReliefCanvas(ctx, fgCanvas, globalStyle, depthMm, strokeAdj, pxPerMm, mode);
+    }
   }
 
   const lines = spec.lines.map((l) => l.trim());
@@ -341,7 +559,6 @@ export function paintFace(
     filled.length > 0 &&
     filled.every((l) => /^(NAME|SHORT TEXT|HELLO|LINK-U)$/i.test(l));
   const globalColor = faceSrc || spec.textColor === TEXT_COLOR_DESIGN ? "#0F172A" : spec.textColor;
-  const globalStyle: LineDraw["style"] = spec.textStyle === "engraved" ? "engraved" : "raised";
 
   // 일반(비슬롯) 배치: 채워진 줄을 위에서부터 쌓는다
   const stackTop = faceSrc ? H * 0.32 : logoEl && logoSrc && !spec.layout?.image ? H * 0.55 : 0;
@@ -423,7 +640,7 @@ export function paintFace(
   const defaults = lines.map((line, i) => (line ? lineDefaults(i, line) : null));
 
   const drawLogo = () => {
-    if (!includeBase || !logoEl || !logoSrc) return;
+    if (!includeRelief || !logoEl || !logoSrc) return;
     const scale = spec.image?.scale ?? 0.55;
     const opacity = spec.image?.opacity ?? 0.95;
     const maxW = W * scale * (faceSrc ? 0.28 : 1);
@@ -435,21 +652,28 @@ export function paintFace(
     const dx = p ? p.x * W - dw / 2 : faceSrc ? W * 0.08 : (W - dw) / 2;
     const dy = p ? p.y * H - dh / 2 : faceSrc ? H * 0.12 : H * 0.08;
     const rot = p?.r ?? 0;
-    ctx.save();
-    ctx.globalAlpha = opacity;
-    if (rot) {
-      ctx.translate(dx + dw / 2, dy + dh / 2);
-      ctx.rotate((rot * Math.PI) / 180);
-      ctx.drawImage(logoEl, -dw / 2, -dh / 2, dw, dh);
-    } else {
-      ctx.drawImage(logoEl, dx, dy, dw, dh);
+    const logoCanvas = document.createElement("canvas");
+    logoCanvas.width = W;
+    logoCanvas.height = H;
+    const lc = logoCanvas.getContext("2d");
+    if (lc) {
+      lc.save();
+      lc.globalAlpha = opacity;
+      if (rot) {
+        lc.translate(dx + dw / 2, dy + dh / 2);
+        lc.rotate((rot * Math.PI) / 180);
+        lc.drawImage(logoEl, -dw / 2, -dh / 2, dw, dh);
+      } else {
+        lc.drawImage(logoEl, dx, dy, dw, dh);
+      }
+      lc.restore();
+      drawReliefCanvas(ctx, logoCanvas, globalStyle, depthMm, strokeAdj, pxPerMm, mode);
     }
-    ctx.restore();
     boxes.image = rot ? { x: dx, y: dy, w: dw, h: dh, r: rot } : { x: dx, y: dy, w: dw, h: dh };
   };
 
   const drawText = (i: number) => {
-    if (!includeText) return;
+    if (!includeRelief) return;
     const d = defaults[i];
     if (!d) return;
     const p = placements[i];
@@ -474,7 +698,8 @@ export function paintFaceCanvas(
   area: FaceArea,
   faceEl: HTMLImageElement | null,
   logoEl: HTMLImageElement | null,
-  mode: FacePaintMode = "full"
+  mode: FacePaintMode = "full",
+  fgEl: HTMLImageElement | null = null
 ): HTMLCanvasElement | null {
-  return paintFace(spec, area, faceEl, logoEl, { mode })?.canvas ?? null;
+  return paintFace(spec, area, faceEl, logoEl, { mode, fgEl })?.canvas ?? null;
 }

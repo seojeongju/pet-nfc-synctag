@@ -33,11 +33,20 @@ export type ExportObject = {
 const TEXT_CELL_MM = 0.4;
 const MAX_TEXT_BOXES = 24000;
 
-/** 윗면 캔버스의 글자 마스크를 격자 상자로 돌출 (순수 글자 마스크 mode: "text-mask" 사용) */
-function buildTextGeometry(ff: FormFactor, spec: TagDesignSpec): THREE.BufferGeometry | null {
+export type ExportImages = {
+  faceEl?: HTMLImageElement | null;
+  fgEl?: HTMLImageElement | null;
+  logoEl?: HTMLImageElement | null;
+};
+
+/** 윗면 캔버스의 문구·템플릿 디자인·로고 마스크를 격자 상자로 돌출 (mode: "text-mask" 사용) */
+function buildTextGeometry(ff: FormFactor, spec: TagDesignSpec, imgs?: ExportImages): THREE.BufferGeometry | null {
   const t = effectiveBodyThicknessMm(ff, spec);
   const { textArea } = buildBody(ff, t);
-  const face = paintFace({ ...spec, image: { ...spec.image, src: null } }, textArea, null, null, { mode: "text-mask" });
+  const face = paintFace(spec, textArea, imgs?.faceEl ?? null, imgs?.logoEl ?? null, {
+    mode: "text-mask",
+    fgEl: imgs?.fgEl ?? null,
+  });
   if (!face) return null;
   const canvas = face.canvas;
   const ctx = canvas.getContext("2d");
@@ -88,7 +97,7 @@ function toNonIndexed(g: THREE.BufferGeometry): THREE.BufferGeometry {
   return g.index ? g.toNonIndexed() : g;
 }
 
-export function buildExportObjects(ff: FormFactor, spec: TagDesignSpec): ExportObject[] {
+export function buildExportObjects(ff: FormFactor, spec: TagDesignSpec, imgs?: ExportImages): ExportObject[] {
   const t = effectiveBodyThicknessMm(ff, spec);
   const { parts } = buildBody(ff, t);
   const bodyParts = parts.map((p) =>
@@ -99,7 +108,7 @@ export function buildExportObjects(ff: FormFactor, spec: TagDesignSpec): ExportO
 
   const objects: ExportObject[] = [{ name: "body", role: "body", geometry: body, color: spec.bodyColor }];
 
-  const text = buildTextGeometry(ff, spec);
+  const text = buildTextGeometry(ff, spec, imgs);
   if (text) {
     const engraved = spec.textStyle === "engraved";
     objects.push({

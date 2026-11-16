@@ -16,6 +16,8 @@ export type CardTextSlot = {
 
 export type CardFaceLayout = {
   blankSrc: string;
+  /** 템플릿 자체 디자인(아이콘·프레임·하단 글씨 등) 전경 레이어 — 양각·음각 입체 적용 대상 */
+  fgSrc?: string | null;
   slots: readonly CardTextSlot[];
 };
 
@@ -96,6 +98,7 @@ export function getCardFaceLayout(faceArtSrc: string | null | undefined): CardFa
     if (!c) return null;
     return {
       blankSrc: `/images/studio/wifi/blank/wifi-${wm[1]}.svg`,
+      fgSrc: `/images/studio/wifi/fg/wifi-${wm[1]}.svg`,
       slots: [
         { x: 0.08, y: 0.365, w: 0.84, h: 0.095, align: "center", color: c.title },
         { x: 0.1, y: 0.468, w: 0.8, h: 0.055, align: "center", color: c.sub },

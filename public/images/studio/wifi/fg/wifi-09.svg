@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000">
+  
+  <defs>
+    <linearGradient id="bg-09" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F1F5F9"/>
+      <stop offset="100%" stop-color="#E2E8F0"/>
+    </linearGradient>
+    <linearGradient id="acc-09" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E293B"/>
+      <stop offset="100%" stop-color="#0284C7"/>
+    </linearGradient>
+    <radialGradient id="glow-09" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#0284C7" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#0284C7" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="clip-09">
+      <rect width="800" height="1000" rx="56"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#clip-09)">
+    
+    
+    
+        <rect x="0" y="0" width="28" height="1000" fill="#0284C7"/>
+        <line x1="100" y1="575" x2="700" y2="575" stroke="#1E293B" stroke-width="4" opacity="0.35"/>
+    
+    <circle cx="400" cy="225" r="88" fill="none" stroke="#1E293B" stroke-width="6"/>
+    <g fill="none" stroke="#1E293B" stroke-width="12" stroke-linecap="round">
+      <path d="M 350 221 A 68 68 0 0 1 450 221"/>
+      <path d="M 367 239 A 45 45 0 0 1 433 239"/>
+      <path d="M 384 257 A 22 22 0 0 1 416 257"/>
+    </g>
+    <circle cx="400" cy="275" r="10" fill="#1E293B"/>
+    
+    <!-- 실제 NFC 칩 위치(y=735)에 맞춘 터치 가이드 존 (양각·음각 최적화 벡터) -->
+    <circle cx="400" cy="735" r="128" fill="none" stroke="#1E293B" stroke-width="4" stroke-dasharray="12 10" opacity="0.65"/>
+    <circle cx="400" cy="735" r="98" fill="none" stroke="#1E293B" stroke-width="4.5" opacity="0.85"/>
+    <!-- NFC 전파 심볼 -->
+    <g fill="none" stroke="#1E293B" stroke-width="6.5" stroke-linecap="round">
+      <path d="M 382 701 A 26 26 0 0 1 382 733" transform="rotate(-90 400 717)"/>
+      <path d="M 390 689 A 42 42 0 0 1 390 745" transform="rotate(-90 400 717)"/>
+    </g>
+    <circle cx="400" cy="727" r="5.5" fill="#1E293B"/>
+    <!-- 캡슐 테두리 + 양각/음각 텍스트 -->
+    <rect x="278" y="751" width="244" height="54" rx="27" fill="none" stroke="#1E293B" stroke-width="6"/>
+    <text x="400" y="786" text-anchor="middle" font-family="Outfit, Arial, sans-serif" font-size="22" font-weight="900" letter-spacing="1.5" fill="#1E293B">NFC · ACCESS</text>
+    
+  </g>
+</svg>
