@@ -66,12 +66,42 @@ const SLOTS: Record<string, readonly CardTextSlot[]> = {
 };
 
 const CARD_ART_RE = /^\/images\/studio\/card\/(?:thumb\/)?card-(\d{2})\.(?:webp|png)$/;
+const WIFI_ART_RE = /^\/images\/studio\/wifi\/(?:thumb\/)?wifi-(\d{2})\.svg$/;
 
-/** 명함 템플릿 아트 경로면 글자 없는 배경과 문구 슬롯을 돌려준다 */
+const WIFI_COLORS: Record<string, { title: string; sub: string }> = {
+  "01": { title: "#0C4A6E", sub: "#0369A1" },
+  "02": { title: "#F8FAFC", sub: "#94A3B8" },
+  "03": { title: "#451A03", sub: "#78350F" },
+  "04": { title: "#0F172A", sub: "#64748B" },
+  "05": { title: "#FFFFFF", sub: "#CCFBF1" },
+  "06": { title: "#FAFAF9", sub: "#D4D4D8" },
+  "07": { title: "#FFFFFF", sub: "#BAE6FD" },
+  "08": { title: "#134E4A", sub: "#0F766E" },
+  "09": { title: "#0F172A", sub: "#475569" },
+  "10": { title: "#881337", sub: "#9F1239" },
+};
+
+/** 명함·Wi-Fi 템플릿 아트 경로면 글자 없는 배경과 문구 슬롯을 돌려준다 */
 export function getCardFaceLayout(faceArtSrc: string | null | undefined): CardFaceLayout | null {
   if (!faceArtSrc) return null;
-  const m = CARD_ART_RE.exec(faceArtSrc);
-  const slots = m ? SLOTS[m[1]!] : undefined;
-  if (!m || !slots) return null;
-  return { blankSrc: `/images/studio/card/blank/card-${m[1]}.webp`, slots };
+  const cm = CARD_ART_RE.exec(faceArtSrc);
+  if (cm) {
+    const slots = SLOTS[cm[1]!];
+    if (!slots) return null;
+    return { blankSrc: `/images/studio/card/blank/card-${cm[1]}.webp`, slots };
+  }
+  const wm = WIFI_ART_RE.exec(faceArtSrc);
+  if (wm) {
+    const c = WIFI_COLORS[wm[1]!];
+    if (!c) return null;
+    return {
+      blankSrc: `/images/studio/wifi/blank/wifi-${wm[1]}.svg`,
+      slots: [
+        { x: 0.08, y: 0.365, w: 0.84, h: 0.095, align: "center", color: c.title },
+        { x: 0.1, y: 0.468, w: 0.8, h: 0.055, align: "center", color: c.sub },
+        { x: 0.12, y: 0.532, w: 0.76, h: 0.045, align: "center", color: c.sub },
+      ],
+    };
+  }
+  return null;
 }

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000">
+  
+  <defs>
+    <linearGradient id="bg-07" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#082F49"/>
+      <stop offset="100%" stop-color="#1E1B4B"/>
+    </linearGradient>
+    <linearGradient id="acc-07" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22D3EE"/>
+      <stop offset="100%" stop-color="#A78BFA"/>
+    </linearGradient>
+    <radialGradient id="glow-07" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#A78BFA" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#A78BFA" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="clip-07">
+      <rect width="800" height="1000" rx="56"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#clip-07)">
+    <rect width="800" height="1000" rx="56" fill="url(#bg-07)"/>
+    
+        <circle cx="160" cy="180" r="240" fill="#A78BFA" opacity="0.18"/>
+        <circle cx="660" cy="760" r="260" fill="#22D3EE" opacity="0.16"/>
+        <rect x="48" y="48" width="704" height="904" rx="36" fill="#FFFFFF" fill-opacity="0.05" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="2"/>
+    
+    <circle cx="400" cy="225" r="88" fill="rgba(255,255,255,0.08)" stroke="#A78BFA" stroke-width="3" opacity="0.95"/>
+    <g fill="none" stroke="#22D3EE" stroke-width="10" stroke-linecap="round">
+      <path d="M 350 221 A 68 68 0 0 1 450 221"/>
+      <path d="M 367 239 A 45 45 0 0 1 433 239"/>
+      <path d="M 384 257 A 22 22 0 0 1 416 257"/>
+    </g>
+    <circle cx="400" cy="275" r="8.5" fill="#22D3EE"/>
+    
+    <!-- 실제 NFC 칩 위치(y=735)에 맞춘 터치 가이드 존 -->
+    <circle cx="400" cy="735" r="128" fill="none" stroke="#A78BFA" stroke-width="2" stroke-dasharray="10 10" opacity="0.35"/>
+    <circle cx="400" cy="735" r="98" fill="rgba(255,255,255,0.07)" stroke="#A78BFA" stroke-width="2.5" opacity="0.55"/>
+    <!-- NFC 전파 심볼 -->
+    <g fill="none" stroke="#A78BFA" stroke-width="5.5" stroke-linecap="round" opacity="0.9">
+      <path d="M 382 701 A 26 26 0 0 1 382 733" transform="rotate(-90 400 717)"/>
+      <path d="M 390 689 A 42 42 0 0 1 390 745" transform="rotate(-90 400 717)"/>
+    </g>
+    <rect x="282" y="753" width="236" height="52" rx="26" fill="#22D3EE"/>
+    <text x="400" y="786" text-anchor="middle" font-family="Outfit, Arial, sans-serif" font-size="22" font-weight="800" letter-spacing="1.5" fill="#082F49">NFC · TAP</text>
+    
+  </g>
+</svg>

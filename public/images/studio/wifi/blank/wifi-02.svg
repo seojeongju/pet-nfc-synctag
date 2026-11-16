@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000">
+  
+  <defs>
+    <linearGradient id="bg-02" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#09152B"/>
+      <stop offset="100%" stop-color="#0F294A"/>
+    </linearGradient>
+    <linearGradient id="acc-02" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#22D3EE"/>
+    </linearGradient>
+    <radialGradient id="glow-02" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#22D3EE" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#22D3EE" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="clip-02">
+      <rect width="800" height="1000" rx="56"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#clip-02)">
+    <rect width="800" height="1000" rx="56" fill="url(#bg-02)"/>
+    
+        <circle cx="400" cy="230" r="260" fill="url(#glow-02)"/>
+        <line x1="0" y1="110" x2="800" y2="110" stroke="#38BDF8" stroke-width="1" opacity="0.08"/><line x1="0" y1="240" x2="800" y2="240" stroke="#38BDF8" stroke-width="1" opacity="0.08"/><line x1="0" y1="370" x2="800" y2="370" stroke="#38BDF8" stroke-width="1" opacity="0.08"/><line x1="0" y1="500" x2="800" y2="500" stroke="#38BDF8" stroke-width="1" opacity="0.08"/><line x1="0" y1="630" x2="800" y2="630" stroke="#38BDF8" stroke-width="1" opacity="0.08"/><line x1="0" y1="760" x2="800" y2="760" stroke="#38BDF8" stroke-width="1" opacity="0.08"/><line x1="0" y1="890" x2="800" y2="890" stroke="#38BDF8" stroke-width="1" opacity="0.08"/>
+        <line x1="120" y1="0" x2="120" y2="1000" stroke="#38BDF8" stroke-width="1" opacity="0.08"/><line x1="232" y1="0" x2="232" y2="1000" stroke="#38BDF8" stroke-width="1" opacity="0.08"/><line x1="344" y1="0" x2="344" y2="1000" stroke="#38BDF8" stroke-width="1" opacity="0.08"/><line x1="456" y1="0" x2="456" y2="1000" stroke="#38BDF8" stroke-width="1" opacity="0.08"/><line x1="568" y1="0" x2="568" y2="1000" stroke="#38BDF8" stroke-width="1" opacity="0.08"/><line x1="680" y1="0" x2="680" y2="1000" stroke="#38BDF8" stroke-width="1" opacity="0.08"/>
+        <rect x="34" y="34" width="732" height="932" rx="38" fill="none" stroke="url(#acc-02)" stroke-width="2" opacity="0.35"/>
+    
+    <circle cx="400" cy="225" r="88" fill="rgba(255,255,255,0.08)" stroke="#22D3EE" stroke-width="3" opacity="0.95"/>
+    <g fill="none" stroke="#38BDF8" stroke-width="10" stroke-linecap="round">
+      <path d="M 350 221 A 68 68 0 0 1 450 221"/>
+      <path d="M 367 239 A 45 45 0 0 1 433 239"/>
+      <path d="M 384 257 A 22 22 0 0 1 416 257"/>
+    </g>
+    <circle cx="400" cy="275" r="8.5" fill="#38BDF8"/>
+    
+    <!-- 실제 NFC 칩 위치(y=735)에 맞춘 터치 가이드 존 -->
+    <circle cx="400" cy="735" r="128" fill="none" stroke="#22D3EE" stroke-width="2" stroke-dasharray="10 10" opacity="0.35"/>
+    <circle cx="400" cy="735" r="98" fill="rgba(255,255,255,0.07)" stroke="#22D3EE" stroke-width="2.5" opacity="0.55"/>
+    <!-- NFC 전파 심볼 -->
+    <g fill="none" stroke="#22D3EE" stroke-width="5.5" stroke-linecap="round" opacity="0.9">
+      <path d="M 382 701 A 26 26 0 0 1 382 733" transform="rotate(-90 400 717)"/>
+      <path d="M 390 689 A 42 42 0 0 1 390 745" transform="rotate(-90 400 717)"/>
+    </g>
+    <rect x="282" y="753" width="236" height="52" rx="26" fill="#0EA5E9"/>
+    <text x="400" y="786" text-anchor="middle" font-family="Outfit, Arial, sans-serif" font-size="22" font-weight="800" letter-spacing="1.5" fill="#082F49">TAP PHONE</text>
+    
+  </g>
+</svg>

@@ -1,17 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="400" height="500" viewBox="0 0 400 500">
-  <rect width="400" height="500" rx="24" fill="#1C1917"/>
-  <rect x="0" y="0" width="400" height="14" fill="#FBBF24"/>
-              <rect x="0" y="486" width="400" height="14" fill="#FBBF24"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000">
   
-  <g fill="none" stroke="#FBBF24" stroke-width="4.32" stroke-linecap="round">
-    <path d="M 175.7 130 a 24.3 24.3 0 0 1 48.6 0" />
-    <path d="M 184.934 135.4 a 15.066 15.066 0 0 1 30.132 0" />
-    <path d="M 193.196 140.8 a 6.804000000000001 6.804000000000001 0 0 1 13.608000000000002 0" />
+  <defs>
+    <linearGradient id="bg-06" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#18181B"/>
+      <stop offset="100%" stop-color="#27272A"/>
+    </linearGradient>
+    <linearGradient id="acc-06" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#FDE68A"/>
+    </linearGradient>
+    <radialGradient id="glow-06" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FDE68A" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#FDE68A" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="clip-06">
+      <rect width="800" height="1000" rx="56"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#clip-06)">
+    <rect width="800" height="1000" rx="56" fill="url(#bg-06)"/>
+    
+        <rect x="28" y="28" width="744" height="944" rx="42" fill="none" stroke="url(#acc-06)" stroke-width="4"/>
+        <rect x="44" y="44" width="712" height="912" rx="34" fill="none" stroke="url(#acc-06)" stroke-width="1.2" opacity="0.5"/>
+        <path d="M 28 110 H 110 M 690 110 H 772" stroke="#F59E0B" stroke-width="1.5" opacity="0.4"/>
+        <circle cx="400" cy="230" r="140" fill="url(#glow-06)"/>
+    
+    <circle cx="400" cy="225" r="88" fill="rgba(255,255,255,0.08)" stroke="#FDE68A" stroke-width="3" opacity="0.95"/>
+    <g fill="none" stroke="#F59E0B" stroke-width="10" stroke-linecap="round">
+      <path d="M 350 221 A 68 68 0 0 1 450 221"/>
+      <path d="M 367 239 A 45 45 0 0 1 433 239"/>
+      <path d="M 384 257 A 22 22 0 0 1 416 257"/>
+    </g>
+    <circle cx="400" cy="275" r="8.5" fill="#F59E0B"/>
+    
+    <!-- 실제 NFC 칩 위치(y=735)에 맞춘 터치 가이드 존 -->
+    <circle cx="400" cy="735" r="128" fill="none" stroke="#FDE68A" stroke-width="2" stroke-dasharray="10 10" opacity="0.35"/>
+    <circle cx="400" cy="735" r="98" fill="rgba(255,255,255,0.07)" stroke="#FDE68A" stroke-width="2.5" opacity="0.55"/>
+    <!-- NFC 전파 심볼 -->
+    <g fill="none" stroke="#FDE68A" stroke-width="5.5" stroke-linecap="round" opacity="0.9">
+      <path d="M 382 701 A 26 26 0 0 1 382 733" transform="rotate(-90 400 717)"/>
+      <path d="M 390 689 A 42 42 0 0 1 390 745" transform="rotate(-90 400 717)"/>
+    </g>
+    <rect x="282" y="753" width="236" height="52" rx="26" fill="#F59E0B"/>
+    <text x="400" y="786" text-anchor="middle" font-family="Outfit, Arial, sans-serif" font-size="22" font-weight="800" letter-spacing="1.5" fill="#18181B">NFC · TOUCH</text>
+    
+  <text x="400" y="422" text-anchor="middle" font-family="Outfit, 'Noto Sans KR', Arial, sans-serif" font-size="60" font-weight="900" fill="#FAFAF9">GUEST Wi-Fi</text>
+  <text x="400" y="492" text-anchor="middle" font-family="'Noto Sans KR', Arial, sans-serif" font-size="28" font-weight="700" fill="#D4D4D8">Tap your phone here</text>
   </g>
-  <circle cx="200" cy="148.9" r="4.7250000000000005" fill="#FBBF24"/>
-  <text x="200" y="208" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="36" font-weight="900" fill="#FAFAF9">Hotel Wi-Fi</text>
-  <text x="200" y="242" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="700" fill="#D6D3D1">Tap your phone</text>
-  <rect x="146" y="422" width="108" height="32" rx="16" fill="#FBBF24"/>
-  <text x="200" y="444" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="800" fill="#FFFFFF">NFC · TAP</text>
 </svg>

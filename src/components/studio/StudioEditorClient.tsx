@@ -349,7 +349,9 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
               />
             </div>
             <p className="mt-2 text-[11px] font-semibold leading-relaxed text-slate-500 break-keep [word-break:keep-all]">
-              전면 디자인은 템플릿 이미지를 사용합니다. 아래 문구를 실제 이름·직함으로 바꾸면 미리보기에 바로 반영됩니다.
+              {formFactor.id === "stand_plate"
+                ? "전면 디자인은 템플릿 이미지를 사용합니다. 아래 문구를 매장명·안내 문구로 바꾸면 미리보기에 바로 반영됩니다."
+                : "전면 디자인은 템플릿 이미지를 사용합니다. 아래 문구를 실제 이름·직함으로 바꾸면 미리보기에 바로 반영됩니다."}
             </p>
           </Panel>
         ) : null}
@@ -371,9 +373,15 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
                       extra
                         ? `추가 문구 ${i - formFactor.maxTextLines + 1}`
                         : hasFaceArt
-                          ? i === 0
-                            ? "이름 (NAME 자리)"
-                            : "직함·한 줄 소개 (SHORT TEXT)"
+                          ? formFactor.id === "stand_plate"
+                            ? i === 0
+                              ? "제목 (예: FREE Wi-Fi)"
+                              : i === 1
+                                ? "안내 문구 (예: 태그하여 바로 연결)"
+                                : "네트워크명·부가 안내 (선택)"
+                            : i === 0
+                              ? "이름 (NAME 자리)"
+                              : "직함·한 줄 소개 (SHORT TEXT)"
                           : i === 0
                             ? "이름 또는 문구"
                             : `${i + 1}번째 줄 (선택)`
