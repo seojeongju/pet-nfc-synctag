@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Check, LayoutTemplate, PenTool, Trash2 } from "lucide-react";
+import { ArrowRight, Check, Download, LayoutTemplate, PenTool, Trash2 } from "lucide-react";
 import { PlatformTopNav } from "@/components/platform/PlatformTopNav";
 import { platformServiceIcons } from "@/components/platform/service-icons";
 import { createTagDesignFromTemplateAction, deleteTagDesignAction, listMyTagDesigns } from "@/app/actions/studio";
@@ -123,7 +123,12 @@ export default async function StudioPage({
                         )}
                       >
                         {thumb ? (
-                          <span className="relative block aspect-[86/54] w-full bg-slate-100">
+                          <span
+                            className={cn(
+                              "relative block w-full bg-slate-100",
+                              t.formFactorId === "stand_plate" ? "aspect-[4/5]" : "aspect-[86/54]"
+                            )}
+                          >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={thumb} alt="" className="h-full w-full object-cover" />
                             <span className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[9px] font-black text-slate-600 shadow-sm">
@@ -199,6 +204,26 @@ export default async function StudioPage({
                         {statusLabel[d.status] ?? d.status} · {formatDateTimeKoSeoul(d.updatedAt)}
                       </span>
                     </Link>
+                    {d.printModels?.stlUrl ? (
+                      <a
+                        href={d.printModels.stlUrl}
+                        download={`${d.title.trim() || "linku-tag"}.stl`}
+                        className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full border border-teal-200 bg-teal-50/70 px-2.5 text-[10px] font-black text-teal-700 hover:bg-teal-100"
+                      >
+                        <Download className="h-3 w-3" aria-hidden />
+                        STL
+                      </a>
+                    ) : null}
+                    {d.printModels?.threemfUrl ? (
+                      <a
+                        href={d.printModels.threemfUrl}
+                        download={`${d.title.trim() || "linku-tag"}.3mf`}
+                        className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full border border-teal-200 bg-teal-50/70 px-2.5 text-[10px] font-black text-teal-700 hover:bg-teal-100"
+                      >
+                        <Download className="h-3 w-3" aria-hidden />
+                        3MF
+                      </a>
+                    ) : null}
                     {editable ? (
                       <form action={deleteTagDesignAction}>
                         <input type="hidden" name="designId" value={d.id} />

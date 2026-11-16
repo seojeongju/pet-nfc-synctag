@@ -371,6 +371,39 @@ export function getTagMaterial(id: TagMaterialId): TagMaterial {
 
 export type TagDesignStatus = "draft" | "ready" | "requested" | "locked";
 
+export type SavedPrintModels = {
+  stlUrl: string | null;
+  threemfUrl: string | null;
+  updatedAt: string | null;
+};
+
+export function parsePrintModelKey(raw: string | null | undefined): SavedPrintModels | null {
+  if (!raw || typeof raw !== "string") return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("{")) {
+    try {
+      const obj = JSON.parse(trimmed) as Record<string, unknown>;
+      const stlUrl = typeof obj.stlUrl === "string" && obj.stlUrl.startsWith("/api/r2/studio/") ? obj.stlUrl : null;
+      const threemfUrl =
+        typeof obj.threemfUrl === "string" && obj.threemfUrl.startsWith("/api/r2/studio/") ? obj.threemfUrl : null;
+      const updatedAt = typeof obj.updatedAt === "string" ? obj.updatedAt : null;
+      if (!stlUrl && !threemfUrl) return null;
+      return { stlUrl, threemfUrl, updatedAt };
+    } catch {
+      return null;
+    }
+  }
+  if (trimmed.startsWith("/api/r2/studio/")) {
+    return {
+      stlUrl: trimmed.endsWith(".stl") ? trimmed : null,
+      threemfUrl: trimmed.endsWith(".3mf") ? trimmed : null,
+      updatedAt: null,
+    };
+  }
+  return null;
+}
+
 export type TagDesignRecord = {
   id: string;
   serviceId: PlatformServiceId;
@@ -379,4 +412,5 @@ export type TagDesignRecord = {
   spec: TagDesignSpec;
   status: TagDesignStatus;
   updatedAt: string;
+  printModels?: SavedPrintModels | null;
 };

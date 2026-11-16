@@ -3,8 +3,8 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { ArrowLeft, Box, Calculator, Check, CircleDot, ImagePlus, Loader2, Lock, PenLine, Plus, Save, Trash2 } from "lucide-react";
-import { saveTagDesign, uploadStudioImage } from "@/app/actions/studio";
+import { ArrowLeft, Box, Calculator, Check, CircleDot, Download, ImagePlus, Loader2, Lock, PenLine, Plus, Save, Trash2 } from "lucide-react";
+import { saveStudioPrintModels, saveTagDesign, uploadStudioImage } from "@/app/actions/studio";
 import type { FormFactor } from "@/lib/platform/form-factors";
 import {
   BODY_THICKNESS_MAX_MM,
@@ -26,11 +26,13 @@ import {
   TAG_MATERIALS,
   TAG_TEXT_COLORS,
   TEXT_COLOR_DESIGN,
+  type SavedPrintModels,
   type TagDesignRecord,
   type TagDesignSpec,
   type TagDesignStatus,
 } from "@/lib/platform/tag-design";
 import { getCardFaceLayout } from "@/lib/platform/card-face-layouts";
+import { useFaceImages } from "@/components/studio/tag-face-paint";
 import TagPreview2D, { type StudioCanvasApi, type StudioEditTarget } from "@/components/studio/TagPreview2D";
 import { LayoutToolbar } from "@/components/studio/LayoutToolbar";
 import { ProductionPanel } from "@/components/studio/ProductionPanel";
@@ -72,6 +74,9 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
   const [dirty, setDirty] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [savedPrintModels, setSavedPrintModels] = useState<SavedPrintModels | null>(design.printModels ?? null);
+  const [quickExporting, setQuickExporting] = useState<"stl" | "3mf" | null>(null);
+  const { faceEl, fgEl, logoEl } = useFaceImages(spec);
   const [isPending, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
   const locked = status === "requested" || status === "locked";
@@ -198,6 +203,34 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  const quickDownload = async (kind: "stl" | "3mf") => {
+    if (productionErrors > 0) {
+      setMessage({ kind: "error", text: "제작 검사에서 수정이 필요한 항목이 있습니다. 아래 제작 검사 목록을 확인해 주세요." });
+      return;
+    }
+    setQuickExporting(kind);
+    setMessage(null);
+    try {
+      const mod = await import("@/components/studio/tag-export");
+      const imgs = { faceEl, fgEl, logoEl };
+      const objects = mod.buildExportObjects(formFactor, spec, imgs);
+      try {
+        const blob =
+          kind === "stl"
+            ? mod.exportStl(objects, { formFactor, spec, imgs })
+            : mod.export3mf(objects, { title, formFactor, spec });
+        mod.downloadBlob(mod.exportFilename(title, kind), blob);
+        setMessage({ kind: "ok", text: `${kind.toUpperCase()} 파일을 내려받았습니다 (${(blob.size / 1024).toFixed(0)}KB).` });
+      } finally {
+        mod.disposeExportObjects(objects);
+      }
+    } catch (e) {
+      setMessage({ kind: "error", text: e instanceof Error ? `내보내기 실패: ${e.message}` : "내보내기에 실패했습니다." });
+    } finally {
+      setQuickExporting(null);
+    }
+  };
+
   const save = (markReady: boolean) => {
     if (markReady && productionErrors > 0) {
       setMessage({ kind: "error", text: "제작 검사에서 수정이 필요한 항목이 있습니다. 아래 제작 검사 목록을 확인해 주세요." });
@@ -209,8 +242,36 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
         setSpec(res.spec);
         setStatus(res.status);
         setDirty(false);
-        setMessage({ kind: "ok", text: markReady ? "디자인을 완료했습니다. 3D로 확인하고 견적·제작 단계로 이어가세요." : "저장했습니다." });
-        if (markReady) setView("3d");
+        if (markReady) {
+          setView("3d");
+          // 디자인 완료 시 STL · 3MF 모델 파일도 서버에 함께 생성·보관
+          try {
+            const mod = await import("@/components/studio/tag-export");
+            const imgs = { faceEl, fgEl, logoEl };
+            const objects = mod.buildExportObjects(formFactor, res.spec, imgs);
+            let stlBlob: Blob;
+            let threemfBlob: Blob;
+            try {
+              stlBlob = mod.exportStl(objects, { formFactor, spec: res.spec, imgs });
+              threemfBlob = mod.export3mf(objects, { title, formFactor, spec: res.spec });
+            } finally {
+              mod.disposeExportObjects(objects);
+            }
+            const fd = new FormData();
+            fd.append("designId", design.id);
+            fd.append("stlFile", new File([stlBlob], mod.exportFilename(title, "stl"), { type: "model/stl" }));
+            fd.append("threemfFile", new File([threemfBlob], mod.exportFilename(title, "3mf"), { type: "model/3mf" }));
+            const mRes = await saveStudioPrintModels(fd);
+            if (mRes.ok) {
+              setSavedPrintModels(mRes.printModels);
+            }
+          } catch {
+            // 모델 보관 실패 시에도 디자인 저장 자체는 완료 유지
+          }
+          setMessage({ kind: "ok", text: "디자인 완료 및 STL·3MF 3D 파일 서버 보관을 마쳤습니다." });
+        } else {
+          setMessage({ kind: "ok", text: "저장했습니다." });
+        }
       } else {
         setMessage({ kind: "error", text: res.error });
       }
@@ -700,10 +761,13 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
         </Panel>
 
         <ProductionPanel
+          designId={design.id}
           formFactor={formFactor}
           spec={spec}
           title={title}
           locked={locked}
+          savedPrintModels={savedPrintModels}
+          onPrintModelsSaved={setSavedPrintModels}
           onIssuesChange={setProductionErrors}
           onFocusTarget={(t) => {
             setView("design");
@@ -737,7 +801,25 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
               {message.text}
             </p>
           ) : null}
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <button
+              type="button"
+              onClick={() => void quickDownload("stl")}
+              disabled={quickExporting !== null || productionErrors > 0}
+              className="inline-flex h-11 items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 text-[13px] font-black text-slate-700 transition hover:border-teal-300 hover:bg-white hover:text-teal-700 disabled:opacity-50"
+            >
+              {quickExporting === "stl" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Download className="h-4 w-4" aria-hidden />}
+              STL 받기
+            </button>
+            <button
+              type="button"
+              onClick={() => void quickDownload("3mf")}
+              disabled={quickExporting !== null || productionErrors > 0}
+              className="inline-flex h-11 items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 text-[13px] font-black text-slate-700 transition hover:border-teal-300 hover:bg-white hover:text-teal-700 disabled:opacity-50"
+            >
+              {quickExporting === "3mf" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Download className="h-4 w-4" aria-hidden />}
+              3MF 받기
+            </button>
             <button
               type="button"
               onClick={() => save(false)}
@@ -754,7 +836,7 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
               className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-teal-600 px-4 text-sm font-black text-white shadow-sm transition hover:bg-teal-700 active:scale-[0.98] disabled:opacity-50"
             >
               <Check className="h-4 w-4" aria-hidden />
-              {status === "ready" && !dirty ? "디자인 완료됨" : "디자인 완료"}
+              {status === "ready" && !dirty ? "디자인 완료됨" : "디자인 완료·보관"}
             </button>
           </div>
         </div>

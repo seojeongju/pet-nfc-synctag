@@ -39,6 +39,75 @@ export type ExportImages = {
   logoEl?: HTMLImageElement | null;
 };
 
+/** 마스크 픽셀(또는 반전 마스크)을 2D 직사각형 병합 격자 상자로 돌출 */
+function buildMaskBoxGeometry(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+  textArea: { cx: number; cy: number; w: number; h: number },
+  z0: number,
+  z1: number,
+  invertMask = false
+): THREE.BufferGeometry | null {
+  const pxPerMm = width / textArea.w;
+  let cell = TEXT_CELL_MM;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const cols = Math.floor(textArea.w / cell);
+    const rows = Math.floor(textArea.h / cell);
+    const boxes: THREE.BufferGeometry[] = [];
+    // 이전 줄에서 이어지는 열린 직사각형 (key: `${run}:${end}`)
+    let active = new Map<string, { run: number; end: number; startRow: number; endRow: number }>();
+
+    const flushRect = (r: { run: number; end: number; startRow: number; endRow: number }) => {
+      const x0 = textArea.cx - textArea.w / 2 + r.run * cell;
+      const x1 = textArea.cx - textArea.w / 2 + r.end * cell;
+      const yTop = textArea.cy + textArea.h / 2 - r.startRow * cell;
+      const yBot = textArea.cy + textArea.h / 2 - r.endRow * cell;
+      const h = yTop - yBot;
+      const g = new THREE.BoxGeometry(x1 - x0, h, z1 - z0);
+      g.translate((x0 + x1) / 2, (yTop + yBot) / 2, (z0 + z1) / 2);
+      boxes.push(g);
+    };
+
+    for (let j = 0; j < rows; j++) {
+      const py = Math.min(height - 1, Math.round((j + 0.5) * cell * pxPerMm));
+      const nextActive = new Map<string, { run: number; end: number; startRow: number; endRow: number }>();
+      let run = -1;
+      for (let i = 0; i <= cols; i++) {
+        const px = Math.min(width - 1, Math.round((i + 0.5) * cell * pxPerMm));
+        const alpha = i < cols ? data[(py * width + px) * 4 + 3]! : 0;
+        const on = i < cols && (invertMask ? alpha < 180 : alpha >= 180);
+        if (on && run < 0) run = i;
+        if (!on && run >= 0) {
+          const key = `${run}:${i}`;
+          const prev = active.get(key);
+          if (prev) {
+            prev.endRow = j + 1;
+            nextActive.set(key, prev);
+            active.delete(key);
+          } else {
+            nextActive.set(key, { run, end: i, startRow: j, endRow: j + 1 });
+          }
+          run = -1;
+        }
+      }
+      for (const r of active.values()) flushRect(r);
+      active = nextActive;
+    }
+    for (const r of active.values()) flushRect(r);
+
+    if (boxes.length === 0) return null;
+    if (boxes.length <= MAX_TEXT_BOXES) {
+      const merged = mergeGeometries(boxes, false);
+      boxes.forEach((b) => b.dispose());
+      return merged;
+    }
+    boxes.forEach((b) => b.dispose());
+    cell *= 1.5;
+  }
+  return null;
+}
+
 /** 윗면 캔버스의 문구·템플릿 디자인·로고 마스크를 격자 상자로 돌출 (mode: "text-mask" 사용) */
 function buildTextGeometry(ff: FormFactor, spec: TagDesignSpec, imgs?: ExportImages): THREE.BufferGeometry | null {
   const t = effectiveBodyThicknessMm(ff, spec);
@@ -52,45 +121,28 @@ function buildTextGeometry(ff: FormFactor, spec: TagDesignSpec, imgs?: ExportIma
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
   const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-  const pxPerMm = canvas.width / textArea.w;
   const engraved = spec.textStyle === "engraved";
   const depthMm = effectiveTextDepthMm(spec);
   const z0 = engraved ? Math.max(0.4, t - depthMm) : t - 0.1;
   const z1 = engraved ? t + 0.1 : t + depthMm;
+  return buildMaskBoxGeometry(data, canvas.width, canvas.height, textArea, z0, z1, false);
+}
 
-  let cell = TEXT_CELL_MM;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const cols = Math.floor(textArea.w / cell);
-    const rows = Math.floor(textArea.h / cell);
-    const boxes: THREE.BufferGeometry[] = [];
-    for (let j = 0; j < rows; j++) {
-      const py = Math.min(canvas.height - 1, Math.round((j + 0.5) * cell * pxPerMm));
-      let run = -1;
-      for (let i = 0; i <= cols; i++) {
-        const px = Math.min(canvas.width - 1, Math.round((i + 0.5) * cell * pxPerMm));
-        const on = i < cols && data[(py * canvas.width + px) * 4 + 3]! >= 240;
-        if (on && run < 0) run = i;
-        if (!on && run >= 0) {
-          const x0 = textArea.cx - textArea.w / 2 + run * cell;
-          const x1 = textArea.cx - textArea.w / 2 + i * cell;
-          const yTop = textArea.cy + textArea.h / 2 - j * cell;
-          const g = new THREE.BoxGeometry(x1 - x0, cell, z1 - z0);
-          g.translate((x0 + x1) / 2, yTop - cell / 2, (z0 + z1) / 2);
-          boxes.push(g);
-          run = -1;
-        }
-      }
-    }
-    if (boxes.length === 0) return null;
-    if (boxes.length <= MAX_TEXT_BOXES) {
-      const merged = mergeGeometries(boxes, false);
-      boxes.forEach((b) => b.dispose());
-      return merged;
-    }
-    boxes.forEach((b) => b.dispose());
-    cell *= 1.5;
-  }
-  return null;
+/** 음각(engraved) 선택 시 STL 단일 메시에서 음각 홈이 실제로 파여 보이도록 상단 표면 층을 생성 */
+function buildEngravedStlTopLayer(ff: FormFactor, spec: TagDesignSpec, imgs?: ExportImages): THREE.BufferGeometry | null {
+  const t = effectiveBodyThicknessMm(ff, spec);
+  const depthMm = Math.min(effectiveTextDepthMm(spec), t - 0.6);
+  const { textArea } = buildBody(ff, t);
+  const face = paintFace(spec, textArea, imgs?.faceEl ?? null, imgs?.logoEl ?? null, {
+    mode: "text-mask",
+    fgEl: imgs?.fgEl ?? null,
+  });
+  if (!face) return null;
+  const canvas = face.canvas;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  return buildMaskBoxGeometry(data, canvas.width, canvas.height, textArea, t - depthMm, t, true);
 }
 
 function toNonIndexed(g: THREE.BufferGeometry): THREE.BufferGeometry {
@@ -137,14 +189,47 @@ export function disposeExportObjects(objects: ExportObject[]) {
   objects.forEach((o) => o.geometry.dispose());
 }
 
-/** STL(바이너리): 본체 + 양각 문구. 음각·포켓은 빼기 연산이 필요해 STL에는 넣지 않는다 */
-export function exportStl(objects: ExportObject[]): Blob {
+/**
+ * STL(바이너리):
+ * - 양각(raised): 본체 + 양각 문구·디자인 메시
+ * - 음각(engraved): 바닥 본체(0 ~ t - depth) + 음각 홈이 파인 상단 표면 층(t - depth ~ t)
+ */
+export function exportStl(
+  objects: ExportObject[],
+  opts?: { formFactor?: FormFactor; spec?: TagDesignSpec; imgs?: ExportImages }
+): Blob {
   const scene = new THREE.Scene();
-  for (const o of objects) {
-    if (o.role === "body" || o.role === "text-raised") scene.add(new THREE.Mesh(o.geometry));
+  const tempGeos: THREE.BufferGeometry[] = [];
+  try {
+    if (opts?.formFactor && opts?.spec && opts.spec.textStyle === "engraved") {
+      const ff = opts.formFactor;
+      const spec = opts.spec;
+      const t = effectiveBodyThicknessMm(ff, spec);
+      const depthMm = Math.min(effectiveTextDepthMm(spec), t - 0.6);
+      const baseDepth = Math.max(0.6, t - depthMm);
+      const { parts } = buildBody(ff, baseDepth);
+      for (const p of parts) {
+        const g = toNonIndexed(new THREE.ExtrudeGeometry(p.shape, { depth: p.depth, bevelEnabled: false, curveSegments: 64 }));
+        tempGeos.push(g);
+        scene.add(new THREE.Mesh(g));
+      }
+      const topLayer = buildEngravedStlTopLayer(ff, spec, opts.imgs);
+      if (topLayer) {
+        const topNonIdx = toNonIndexed(topLayer);
+        topLayer.dispose();
+        tempGeos.push(topNonIdx);
+        scene.add(new THREE.Mesh(topNonIdx));
+      }
+    } else {
+      for (const o of objects) {
+        if (o.role === "body" || o.role === "text-raised") scene.add(new THREE.Mesh(o.geometry));
+      }
+    }
+    const out = new STLExporter().parse(scene, { binary: true }) as DataView;
+    return new Blob([out.buffer as ArrayBuffer], { type: "model/stl" });
+  } finally {
+    tempGeos.forEach((g) => g.dispose());
   }
-  const out = new STLExporter().parse(scene, { binary: true }) as DataView;
-  return new Blob([out.buffer as ArrayBuffer], { type: "model/stl" });
 }
 
 // ── 3MF (zip 저장 방식 + core XML) ─────────────────────────────
@@ -261,11 +346,14 @@ export function export3mf(objects: ExportObject[], meta: { title: string; formFa
     .join("");
   const items = objects.map((_, i) => `<item objectid="${i + 2}"/>`).join("");
   const mat = getTagMaterial(meta.spec.materialId);
+  const t = effectiveBodyThicknessMm(meta.formFactor, meta.spec);
+  const depthMm = effectiveTextDepthMm(meta.spec);
   const notes = [
     `tag:${meta.formFactor.id}`,
+    `size:${meta.formFactor.widthMm}x${meta.formFactor.heightMm}x${t}mm`,
     `chip:${meta.formFactor.chip.type}`,
     `material:${mat.name}(${mat.process})`,
-    `text:${meta.spec.textStyle}`,
+    `text:${meta.spec.textStyle}(${depthMm}mm)`,
     "subtract: chip-pocket" + (meta.spec.textStyle === "engraved" ? ", text-engrave" : ""),
   ].join("; ");
   const model =
@@ -302,6 +390,47 @@ export function downloadBlob(filename: string, blob: Blob) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+/**
+ * 브라우저 File System Access API(`showSaveFilePicker`)를 지원하면 원하는 폴더·이름으로 저장 대화상자를 열고,
+ * 지원하지 않는 환경에서는 일반 다운로드로 폴백한다.
+ */
+export async function saveBlobAsFile(filename: string, blob: Blob, ext: "stl" | "3mf"): Promise<boolean> {
+  if (typeof window !== "undefined" && "showSaveFilePicker" in window) {
+    try {
+      const picker = (
+        window as unknown as {
+          showSaveFilePicker: (opts: {
+            suggestedName: string;
+            types: Array<{ description: string; accept: Record<string, string[]> }>;
+          }) => Promise<{
+            createWritable: () => Promise<{ write: (data: Blob) => Promise<void>; close: () => Promise<void> }>;
+          }>;
+        }
+      ).showSaveFilePicker;
+      const handle = await picker({
+        suggestedName: filename,
+        types: [
+          {
+            description: ext === "stl" ? "STL 3D 모델 파일 (.stl)" : "3MF 3D 제조 파일 (.3mf)",
+            accept: ext === "stl" ? { "model/stl": [".stl"] } : { "model/3mf": [".3mf"] },
+          },
+        ],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return true;
+    } catch (e) {
+      if (e && typeof e === "object" && "name" in e && (e as { name?: string }).name === "AbortError") {
+        return false;
+      }
+      // 기타 오류 시 일반 다운로드 폴백
+    }
+  }
+  downloadBlob(filename, blob);
+  return true;
 }
 
 export function exportFilename(title: string, ext: "stl" | "3mf") {

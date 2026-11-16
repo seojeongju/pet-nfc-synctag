@@ -14,6 +14,8 @@ import {
   defaultTagDesign,
   isAllowedStudioImageSrc,
   normalizeTagDesign,
+  parsePrintModelKey,
+  type SavedPrintModels,
   type TagDesignRecord,
   type TagDesignSpec,
   type TagDesignStatus,
@@ -23,6 +25,7 @@ import { resolveTemplate, templateToInitialSpec } from "@/lib/platform/tag-templ
 const MAX_DESIGNS_PER_USER = 50;
 const MAX_TITLE_LENGTH = 40;
 const MAX_STUDIO_IMAGE_BYTES = 2 * 1024 * 1024;
+const MAX_STUDIO_MODEL_BYTES = 20 * 1024 * 1024;
 
 async function getActorId(): Promise<string | null> {
   const context = getCfRequestContext();
@@ -44,6 +47,7 @@ type TagDesignRow = {
   form_factor_id: string;
   title: string;
   design_json: string;
+  print_model_key: string | null;
   status: string;
   updated_at: string;
 };
@@ -65,6 +69,7 @@ function rowToRecord(row: TagDesignRow): TagDesignRecord {
     spec: normalizeTagDesign(parsed, formFactorId, serviceId),
     status: row.status as TagDesignStatus,
     updatedAt: row.updated_at,
+    printModels: parsePrintModelKey(row.print_model_key),
   };
 }
 
@@ -157,7 +162,7 @@ export async function getMyTagDesign(designId: string): Promise<TagDesignRecord 
   const userId = await requireActorId();
   const row = await getDB()
     .prepare(
-      `SELECT id, user_id, service_id, form_factor_id, title, design_json, status, updated_at
+      `SELECT id, user_id, service_id, form_factor_id, title, design_json, print_model_key, status, updated_at
        FROM tag_designs WHERE id = ? AND user_id = ?`
     )
     .bind(designId, userId)
@@ -170,7 +175,7 @@ export async function listMyTagDesigns(): Promise<TagDesignRecord[]> {
   if (!userId) return [];
   const { results } = await getDB()
     .prepare(
-      `SELECT id, user_id, service_id, form_factor_id, title, design_json, status, updated_at
+      `SELECT id, user_id, service_id, form_factor_id, title, design_json, print_model_key, status, updated_at
        FROM tag_designs WHERE user_id = ? ORDER BY updated_at DESC LIMIT ?`
     )
     .bind(userId, MAX_DESIGNS_PER_USER)
@@ -263,5 +268,79 @@ export async function uploadStudioImage(
     return { ok: true, url };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "업로드에 실패했습니다." };
+  }
+}
+
+/** 스튜디오 3D 제작 모델(STL / 3MF) 서버 저장 → R2 업로드 후 `tag_designs.print_model_key`에 보관 */
+export async function saveStudioPrintModels(
+  formData: FormData
+): Promise<{ ok: true; printModels: SavedPrintModels } | { ok: false; error: string }> {
+  try {
+    const userId = await requireActorId();
+    const designId = String(formData.get("designId") ?? "").trim();
+    if (!designId) return { ok: false, error: "디자인 정보를 확인해 주세요." };
+
+    const db = getDB();
+    const row = await db
+      .prepare("SELECT id, title, print_model_key FROM tag_designs WHERE id = ? AND user_id = ?")
+      .bind(designId, userId)
+      .first<{ id: string; title: string; print_model_key: string | null }>();
+    if (!row) return { ok: false, error: "디자인을 찾을 수 없습니다." };
+
+    const stlFile = formData.get("stlFile");
+    const threemfFile = formData.get("threemfFile");
+    if (!(stlFile instanceof File && stlFile.size > 0) && !(threemfFile instanceof File && threemfFile.size > 0)) {
+      return { ok: false, error: "저장할 STL 또는 3MF 파일이 없습니다." };
+    }
+
+    const context = getCfRequestContext();
+    const r2 = context.env.R2;
+    const prev = parsePrintModelKey(row.print_model_key);
+    let stlUrl = prev?.stlUrl ?? null;
+    let threemfUrl = prev?.threemfUrl ?? null;
+    const safeTitle = (row.title || "tag").replace(/[^\w.\-가-힣]/g, "_").slice(0, 32) || "tag";
+    const stamp = nanoid(8);
+
+    if (stlFile instanceof File && stlFile.size > 0) {
+      if (stlFile.size > MAX_STUDIO_MODEL_BYTES) {
+        return { ok: false, error: "STL 파일 크기가 너무 큽니다." };
+      }
+      const key = `studio/${userId}/models/${designId}-${stamp}-${safeTitle}.stl`;
+      await r2.put(key, await stlFile.arrayBuffer(), {
+        httpMetadata: { contentType: "model/stl" },
+      });
+      stlUrl = `/api/r2/${key}`;
+    }
+
+    if (threemfFile instanceof File && threemfFile.size > 0) {
+      if (threemfFile.size > MAX_STUDIO_MODEL_BYTES) {
+        return { ok: false, error: "3MF 파일 크기가 너무 큽니다." };
+      }
+      const key = `studio/${userId}/models/${designId}-${stamp}-${safeTitle}.3mf`;
+      await r2.put(key, await threemfFile.arrayBuffer(), {
+        httpMetadata: { contentType: "model/3mf" },
+      });
+      threemfUrl = `/api/r2/${key}`;
+    }
+
+    const printModels: SavedPrintModels = {
+      stlUrl,
+      threemfUrl,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await db
+      .prepare(
+        `UPDATE tag_designs SET print_model_key = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ? AND user_id = ?`
+      )
+      .bind(JSON.stringify(printModels), designId, userId)
+      .run();
+
+    revalidatePath("/studio");
+    revalidatePath(`/studio/${designId}`);
+    return { ok: true, printModels };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "3D 파일 저장에 실패했습니다." };
   }
 }
