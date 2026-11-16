@@ -13,7 +13,12 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import type { FormFactor } from "@/lib/platform/form-factors";
 import { PRODUCTION_RULES } from "@/lib/platform/production-check";
 import { chipCenterMm } from "@/lib/platform/tag-geometry";
-import { getTagMaterial, type TagDesignSpec } from "@/lib/platform/tag-design";
+import {
+  effectiveBodyThicknessMm,
+  effectiveTextDepthMm,
+  getTagMaterial,
+  type TagDesignSpec,
+} from "@/lib/platform/tag-design";
 import { buildBody } from "@/components/studio/tag-body-shapes";
 import { paintFace } from "@/components/studio/tag-face-paint";
 
@@ -28,20 +33,21 @@ export type ExportObject = {
 const TEXT_CELL_MM = 0.4;
 const MAX_TEXT_BOXES = 24000;
 
-/** 윗면 캔버스의 글자 마스크를 격자 상자로 돌출 (알파 240 이상 = 글자 본체, 그림자·스트립 제외) */
+/** 윗면 캔버스의 글자 마스크를 격자 상자로 돌출 (순수 글자 마스크 mode: "text-mask" 사용) */
 function buildTextGeometry(ff: FormFactor, spec: TagDesignSpec): THREE.BufferGeometry | null {
-  const { textArea } = buildBody(ff);
-  const face = paintFace({ ...spec, image: { ...spec.image, src: null } }, textArea, null, null);
+  const t = effectiveBodyThicknessMm(ff, spec);
+  const { textArea } = buildBody(ff, t);
+  const face = paintFace({ ...spec, image: { ...spec.image, src: null } }, textArea, null, null, { mode: "text-mask" });
   if (!face) return null;
   const canvas = face.canvas;
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
   const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
   const pxPerMm = canvas.width / textArea.w;
-  const t = ff.thicknessMm;
   const engraved = spec.textStyle === "engraved";
-  const z0 = engraved ? t - PRODUCTION_RULES.engraveDepthMm : t - 0.1;
-  const z1 = engraved ? t + 0.1 : t + PRODUCTION_RULES.raisedTextMm;
+  const depthMm = effectiveTextDepthMm(spec);
+  const z0 = engraved ? Math.max(0.4, t - depthMm) : t - 0.1;
+  const z1 = engraved ? t + 0.1 : t + depthMm;
 
   let cell = TEXT_CELL_MM;
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -83,7 +89,8 @@ function toNonIndexed(g: THREE.BufferGeometry): THREE.BufferGeometry {
 }
 
 export function buildExportObjects(ff: FormFactor, spec: TagDesignSpec): ExportObject[] {
-  const { parts } = buildBody(ff);
+  const t = effectiveBodyThicknessMm(ff, spec);
+  const { parts } = buildBody(ff, t);
   const bodyParts = parts.map((p) =>
     toNonIndexed(new THREE.ExtrudeGeometry(p.shape, { depth: p.depth, bevelEnabled: false, curveSegments: 64 }))
   );
@@ -107,7 +114,7 @@ export function buildExportObjects(ff: FormFactor, spec: TagDesignSpec): ExportO
   const [cx, cy] = chipCenterMm(ff, spec);
   const tol = PRODUCTION_RULES.chipPocketToleranceMm;
   const depth = ff.chip.depthMm + tol;
-  const top = ff.thicknessMm - PRODUCTION_RULES.chipCoverMm;
+  const top = t - PRODUCTION_RULES.chipCoverMm;
   const bottom = Math.max(0.6, top - depth);
   const pocket = new THREE.CylinderGeometry(ff.chip.diameterMm / 2 + tol, ff.chip.diameterMm / 2 + tol, top - bottom, 64);
   pocket.rotateX(Math.PI / 2);

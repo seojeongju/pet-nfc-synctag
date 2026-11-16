@@ -5,7 +5,15 @@
  * three.js에 의존하지 않는다(2D 탭은 three.js를 불러오지 않음).
  */
 import { useEffect, useState } from "react";
-import { TEXT_COLOR_DESIGN, getTagFont, layerOrderFor, type TagDesignSpec, type TagFontId } from "@/lib/platform/tag-design";
+import {
+  TEXT_COLOR_DESIGN,
+  effectiveTextDepthMm,
+  effectiveTextStroke,
+  getTagFont,
+  layerOrderFor,
+  type TagDesignSpec,
+  type TagFontId,
+} from "@/lib/platform/tag-design";
 import { getCardFaceLayout } from "@/lib/platform/card-face-layouts";
 import type { FaceArea } from "@/lib/platform/tag-geometry";
 
@@ -63,6 +71,23 @@ export function isLightColor(hex: string): boolean {
   return 0.299 * r! + 0.587 * g! + 0.114 * b! > 160;
 }
 
+/** hex 색상을 밝게(>1) 또는 어둡게(<1) 조정 */
+export function shadeColor(hex: string, factor: number): string {
+  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+  if (!m) return hex;
+  const clamp255 = (n: number) => Math.max(0, Math.min(255, Math.round(n)));
+  const [r, g, b] = [m[1], m[2], m[3]].map((v) => parseInt(v!, 16));
+  const nr = factor >= 1 ? r! + (255 - r!) * (factor - 1) : r! * factor;
+  const ng = factor >= 1 ? g! + (255 - g!) * (factor - 1) : g! * factor;
+  const nb = factor >= 1 ? b! + (255 - b!) * (factor - 1) : b! * factor;
+  return (
+    "#" +
+    [clamp255(nr), clamp255(ng), clamp255(nb)]
+      .map((v) => v.toString(16).padStart(2, "0"))
+      .join("")
+  );
+}
+
 /** 끌어서 편집할 수 있는 윗면 요소 (문구 줄은 최대 MAX_TEXT_LINES_TOTAL) */
 export type FaceElementId = "line0" | "line1" | "line2" | "line3" | "line4" | "image";
 
@@ -74,7 +99,12 @@ export type FacePaintResult = {
   boxes: Partial<Record<FaceElementId, FaceBox>>;
 };
 
-const fontCss = (px: number, fontId?: TagFontId | null) => `900 ${px}px ${getTagFont(fontId).family}`;
+export type FacePaintMode = "full" | "base" | "text-top" | "text-wall" | "text-mask";
+
+const fontCss = (px: number, fontId?: TagFontId | null, strokeAdj = 0) => {
+  const weight = strokeAdj < -0.1 ? 700 : 900;
+  return `${weight} ${px}px ${getTagFont(fontId).family}`;
+};
 
 /** 디자인에 쓰인 웹폰트가 준비됐는지. 글꼴을 쓰는 줄이 있으면 Google Fonts를 불러오고, 로드되면 값이 바뀌어 다시 그리게 한다 */
 export function useStudioFonts(spec: TagDesignSpec): number {
@@ -122,14 +152,30 @@ type LineDraw = {
   size: number;
   align: CanvasTextAlign;
   color: string;
-  style: "raised" | "engraved" | "card";
+  style: "raised" | "engraved";
   strip: boolean;
   rot: number;
   font?: TagFontId;
+  depthMm: number;
+  strokeAdj: number;
+  pxPerMm: number;
+  mode: FacePaintMode;
 };
 
+function stampText(ctx: CanvasRenderingContext2D, line: string, x: number, y: number, fill: string, strokePx: number) {
+  if (strokePx > 0.15) {
+    ctx.strokeStyle = fill;
+    ctx.lineWidth = strokePx;
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.strokeText(line, x, y);
+  }
+  ctx.fillStyle = fill;
+  ctx.fillText(line, x, y);
+}
+
 function drawLine(ctx: CanvasRenderingContext2D, d: LineDraw): FaceBox {
-  const { line, x, y, size, align, color, style, strip, rot, font } = d;
+  const { line, x, y, size, align, color, style, strip, rot, font, depthMm, strokeAdj, pxPerMm, mode } = d;
   if (rot) {
     // 회전: 중심(x,y) 기준으로 돌려 가운데 정렬로 그린다
     ctx.save();
@@ -139,38 +185,104 @@ function drawLine(ctx: CanvasRenderingContext2D, d: LineDraw): FaceBox {
     ctx.restore();
     return { x: x + b.x, y: y + b.y, w: b.w, h: b.h, r: rot };
   }
-  ctx.font = fontCss(size, font);
+  ctx.font = fontCss(size, font, strokeAdj);
   ctx.textAlign = align;
   ctx.textBaseline = "middle";
-  const tw = ctx.measureText(line).width;
-  const left = align === "center" ? x - tw / 2 : x;
-  if (strip) {
+  const strokePx = strokeAdj > 0 ? size * 0.055 * strokeAdj : 0;
+  const tw = ctx.measureText(line).width + strokePx;
+  const left = align === "center" ? x - tw / 2 : x - strokePx / 2;
+
+  if (mode === "text-mask") {
+    stampText(ctx, line, x, y, "#FFFFFF", strokePx);
+    return { x: left, y: y - size * 0.6, w: tw, h: size * 1.2 };
+  }
+
+  if (mode === "text-wall") {
+    const wallColor =
+      style === "engraved"
+        ? isLightColor(color)
+          ? shadeColor(color, 0.42)
+          : "#020617"
+        : isLightColor(color)
+          ? shadeColor(color, 0.68)
+          : shadeColor(color, 1.35);
+    stampText(ctx, line, x, y, wallColor, strokePx);
+    return { x: left, y: y - size * 0.6, w: tw, h: size * 1.2 };
+  }
+
+  if (mode === "text-top") {
+    const topColor = style === "engraved" ? shadeColor(color, isLightColor(color) ? 0.78 : 0.65) : color;
+    stampText(ctx, line, x, y, topColor, strokePx);
+    return { x: left, y: y - size * 0.6, w: tw, h: size * 1.2 };
+  }
+
+  if (strip && mode === "full") {
     // 전면 아트 위에서는 가독성을 위해 살짝 배경 스트립
     const padX = size * 0.2;
     const padY = size * 0.35;
     ctx.fillStyle = "rgba(255,255,255,0.82)";
     ctx.fillRect(left - padX, y - size / 2 - padY * 0.2, tw + padX * 2, size + padY);
   }
-  if (style === "card") {
-    // 원본 아트의 입체 글자 느낌: 아래쪽 옅은 그림자 (밝은 글자일수록 진하게)
-    ctx.fillStyle = isLightColor(color) ? "rgba(0,0,0,0.28)" : "rgba(15,23,42,0.18)";
-    ctx.fillText(line, x + size * 0.02, y + size * 0.05);
-  } else if (style === "engraved") {
-    ctx.fillStyle = "rgba(0,0,0,0.35)";
-    ctx.fillText(line, x, y - size * 0.04);
-  } else if (!strip) {
-    ctx.fillStyle = "rgba(0,0,0,0.22)";
-    ctx.fillText(line, x + size * 0.03, y + size * 0.05);
+
+  const offsetPx = Math.max(1.5, depthMm * pxPerMm * 0.48);
+  const steps = Math.max(2, Math.min(8, Math.round(offsetPx)));
+
+  if (style === "engraved") {
+    // 음각(파임): 우하단 깎인 테두리 밝은 하이라이트 + 좌상단 안쪽 내벽 어두운 그림자 + 약간 어두운 바닥면
+    stampText(
+      ctx,
+      line,
+      x + offsetPx * 0.45,
+      y + offsetPx * 0.55,
+      isLightColor(color) ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.68)",
+      strokePx
+    );
+    const cavityFloor = isLightColor(color) ? shadeColor(color, 0.72) : shadeColor(color, 0.85);
+    stampText(ctx, line, x, y, cavityFloor, strokePx);
+    const innerShadow = isLightColor(color) ? "rgba(15,23,42,0.52)" : "rgba(0,0,0,0.62)";
+    for (let s = steps; s >= 1; s--) {
+      const t = s / steps;
+      ctx.save();
+      ctx.globalAlpha = 0.22 * (1 - t * 0.5);
+      stampText(ctx, line, x - offsetPx * 0.55 * t, y - offsetPx * 0.7 * t, innerShadow, strokePx);
+      ctx.restore();
+    }
+  } else {
+    // 양각(튀어나옴): 바닥 드롭 섀도우 + 다단계 3D 돌출 옆면 + 상단 밝은 하이라이트 + 전면 글자
+    ctx.save();
+    ctx.globalAlpha = isLightColor(color) ? 0.28 : 0.22;
+    stampText(ctx, line, x + offsetPx * 0.85, y + offsetPx * 1.15, "#020617", strokePx);
+    ctx.restore();
+    const sideColor = isLightColor(color) ? shadeColor(color, 0.65) : shadeColor(color, 0.45);
+    for (let s = steps; s >= 1; s--) {
+      const t = s / steps;
+      stampText(ctx, line, x + offsetPx * 0.55 * t, y + offsetPx * 0.75 * t, sideColor, strokePx);
+    }
+    stampText(
+      ctx,
+      line,
+      x - offsetPx * 0.18,
+      y - offsetPx * 0.22,
+      isLightColor(color) ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.38)",
+      strokePx
+    );
+    stampText(ctx, line, x, y, color, strokePx);
   }
-  ctx.fillStyle = color;
-  ctx.fillText(line, x, y);
   return { x: left, y: y - size * 0.6, w: tw, h: size * 1.2 };
 }
 
 /** 문구 폭이 maxW를 넘지 않도록 글자 크기를 줄인다 */
-function fitSize(ctx: CanvasRenderingContext2D, line: string, size: number, maxW: number, font?: TagFontId): number {
-  ctx.font = fontCss(size, font);
-  const measured = ctx.measureText(line).width;
+function fitSize(
+  ctx: CanvasRenderingContext2D,
+  line: string,
+  size: number,
+  maxW: number,
+  font?: TagFontId,
+  strokeAdj = 0
+): number {
+  ctx.font = fontCss(size, font, strokeAdj);
+  const strokePx = strokeAdj > 0 ? size * 0.055 * strokeAdj : 0;
+  const measured = ctx.measureText(line).width + strokePx;
   return measured > maxW ? size * (maxW / measured) : size;
 }
 
@@ -182,9 +294,13 @@ export function paintFace(
   spec: TagDesignSpec,
   area: FaceArea,
   faceEl: HTMLImageElement | null,
-  logoEl: HTMLImageElement | null
+  logoEl: HTMLImageElement | null,
+  opts?: { mode?: FacePaintMode }
 ): FacePaintResult | null {
   if (typeof document === "undefined") return null;
+  const mode: FacePaintMode = opts?.mode ?? "full";
+  const includeBase = mode === "full" || mode === "base";
+  const includeText = mode !== "base";
   const faceSrc = spec.faceArtSrc ?? null;
   const logoSrc = spec.image?.src ?? null;
   const pxPerMm = faceSrc ? 18 : 24;
@@ -198,8 +314,10 @@ export function paintFace(
   const boxes: FacePaintResult["boxes"] = {};
   const placements = spec.layout?.lines ?? [];
   const styles = spec.layout?.styles ?? [];
+  const depthMm = effectiveTextDepthMm(spec);
+  const strokeAdj = effectiveTextStroke(spec);
 
-  // 템플릿 전면 아트(명함 등) — cover. 명함 템플릿은 글자 없는 배경(blank)이 faceEl로 들어온다
+  // 템플릿 전면 아트(명함·Wi-Fi 등) — cover. 슬롯 계산을 위해 faceEl이 없어도 cardLayout이면 art 영역을 잡는다.
   const cardLayout = getCardFaceLayout(faceSrc);
   let art: { x: number; y: number; w: number; h: number } | null = null;
   if (faceEl && faceSrc) {
@@ -207,24 +325,31 @@ export function paintFace(
     const dw = faceEl.width * ratio;
     const dh = faceEl.height * ratio;
     art = { x: (W - dw) / 2, y: (H - dh) / 2, w: dw, h: dh };
-    ctx.drawImage(faceEl, art.x, art.y, dw, dh);
+    if (includeBase) {
+      ctx.drawImage(faceEl, art.x, art.y, dw, dh);
+    }
+  } else if (cardLayout) {
+    art = { x: 0, y: 0, w: W, h: H };
   }
 
   const lines = spec.lines.map((l) => l.trim());
   const filled = lines.filter(Boolean);
-  // 플레이스홀더(NAME 등)만 있으면 전면 아트에 이미 있으므로 겹쳐 그리지 않음
+  // 플레이스홀더(NAME 등)만 있으면 전면 아트에 이미 있으므로 겹쳐 그리지 않음 (슬롯형 템플릿은 제외)
   const placeholderOnly =
-    Boolean(faceSrc) && filled.length > 0 && filled.every((l) => /^(NAME|SHORT TEXT|HELLO|LINK-U)$/i.test(l));
+    Boolean(faceSrc) &&
+    !cardLayout &&
+    filled.length > 0 &&
+    filled.every((l) => /^(NAME|SHORT TEXT|HELLO|LINK-U)$/i.test(l));
   const globalColor = faceSrc || spec.textColor === TEXT_COLOR_DESIGN ? "#0F172A" : spec.textColor;
   const globalStyle: LineDraw["style"] = spec.textStyle === "engraved" ? "engraved" : "raised";
 
-  // 일반(비명함) 배치: 채워진 줄을 위에서부터 쌓는다
+  // 일반(비슬롯) 배치: 채워진 줄을 위에서부터 쌓는다
   const stackTop = faceSrc ? H * 0.32 : logoEl && logoSrc && !spec.layout?.image ? H * 0.55 : 0;
   const stackH = faceSrc ? H * 0.36 : H - stackTop;
   const lineH = stackH / Math.max(filled.length, 1);
   let stackRow = 0;
 
-  /** 줄 i의 기본 그리기 값 (템플릿 슬롯 → 명함 추가 줄 → 일반 쌓기) */
+  /** 줄 i의 기본 그리기 값 (템플릿 슬롯 → 슬롯 추가 줄 → 일반 쌓기) */
   const lineDefaults = (i: number, line: string): LineDraw | null => {
     const slot = cardLayout?.slots[i];
     const st = styles[i];
@@ -240,29 +365,37 @@ export function paintFace(
           line,
           x: slot.align === "center" ? sx + sw / 2 : sx,
           y: sy + sh / 2,
-          size: fitSize(ctx, line, sh * 0.82, sw, font),
+          size: fitSize(ctx, line, sh * 0.82, sw, font, strokeAdj),
           align: slot.align,
           color,
-          style: "card",
+          style: globalStyle,
           strip: false,
           rot: 0,
           font,
+          depthMm,
+          strokeAdj,
+          pxPerMm,
+          mode,
         };
       }
-      // 명함 템플릿에 추가한 줄: 가운데 아래쪽에 차례로
+      // 슬롯형 템플릿에 추가한 줄: 가운데 아래쪽에 차례로
       const k = i - cardLayout.slots.length;
       const color = st?.color ?? (spec.textColor === TEXT_COLOR_DESIGN ? "#0F172A" : spec.textColor);
       return {
         line,
         x: W / 2,
-        y: H * (0.5 + 0.13 * k),
-        size: fitSize(ctx, line, H * 0.1, W * 0.8, font),
+        y: H * (0.58 + 0.08 * k),
+        size: fitSize(ctx, line, H * 0.075, W * 0.8, font, strokeAdj),
         align: "center",
         color,
-        style: "card",
+        style: globalStyle,
         strip: false,
         rot: 0,
         font,
+        depthMm,
+        strokeAdj,
+        pxPerMm,
+        mode,
       };
     }
     if (placeholderOnly) return null;
@@ -272,13 +405,17 @@ export function paintFace(
       line,
       x: faceSrc ? W * 0.1 : W / 2,
       y: stackTop + lineH * (row + 0.5),
-      size: fitSize(ctx, line, size0, W * (faceSrc ? 0.55 : 0.94), font),
+      size: fitSize(ctx, line, size0, W * (faceSrc ? 0.55 : 0.94), font, strokeAdj),
       align: faceSrc ? "left" : "center",
       color: st?.color ?? globalColor,
       style: globalStyle,
       strip: Boolean(faceSrc),
       rot: 0,
       font,
+      depthMm,
+      strokeAdj,
+      pxPerMm,
+      mode,
     };
   };
 
@@ -286,7 +423,7 @@ export function paintFace(
   const defaults = lines.map((line, i) => (line ? lineDefaults(i, line) : null));
 
   const drawLogo = () => {
-    if (!logoEl || !logoSrc) return;
+    if (!includeBase || !logoEl || !logoSrc) return;
     const scale = spec.image?.scale ?? 0.55;
     const opacity = spec.image?.opacity ?? 0.95;
     const maxW = W * scale * (faceSrc ? 0.28 : 1);
@@ -312,6 +449,7 @@ export function paintFace(
   };
 
   const drawText = (i: number) => {
+    if (!includeText) return;
     const d = defaults[i];
     if (!d) return;
     const p = placements[i];
@@ -335,7 +473,8 @@ export function paintFaceCanvas(
   spec: TagDesignSpec,
   area: FaceArea,
   faceEl: HTMLImageElement | null,
-  logoEl: HTMLImageElement | null
+  logoEl: HTMLImageElement | null,
+  mode: FacePaintMode = "full"
 ): HTMLCanvasElement | null {
-  return paintFace(spec, area, faceEl, logoEl)?.canvas ?? null;
+  return paintFace(spec, area, faceEl, logoEl, { mode })?.canvas ?? null;
 }

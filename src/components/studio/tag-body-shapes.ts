@@ -39,8 +39,8 @@ export function roundedRectShape(w: number, h: number, r: number, cx = 0, cy = 0
   return s;
 }
 
-export function buildBody(ff: FormFactor): { parts: BodyPart[] } & FaceGeometry {
-  const t = ff.thicknessMm;
+export function buildBody(ff: FormFactor, thicknessMm?: number): { parts: BodyPart[] } & FaceGeometry {
+  const t = typeof thicknessMm === "number" && Number.isFinite(thicknessMm) ? thicknessMm : ff.thicknessMm;
   switch (ff.id) {
     case "keyring_round": {
       const r = ff.widthMm / 2;

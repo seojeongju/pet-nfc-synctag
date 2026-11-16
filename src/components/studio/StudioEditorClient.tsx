@@ -7,6 +7,18 @@ import { ArrowLeft, Box, Calculator, Check, CircleDot, ImagePlus, Loader2, Lock,
 import { saveTagDesign, uploadStudioImage } from "@/app/actions/studio";
 import type { FormFactor } from "@/lib/platform/form-factors";
 import {
+  BODY_THICKNESS_MAX_MM,
+  BODY_THICKNESS_MIN_MM,
+  DEFAULT_ENGRAVED_DEPTH_MM,
+  DEFAULT_RAISED_DEPTH_MM,
+  DEFAULT_TEXT_STROKE,
+  TEXT_DEPTH_MAX_MM,
+  TEXT_DEPTH_MIN_MM,
+  TEXT_STROKE_MAX,
+  TEXT_STROKE_MIN,
+  effectiveBodyThicknessMm,
+  effectiveTextDepthMm,
+  effectiveTextStroke,
   emptyImageLayer,
   MAX_TEXT_LINE_LENGTH,
   MAX_TEXT_LINES_TOTAL,
@@ -290,7 +302,7 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
             NFC 칩 위치
           </button>
           <span className="absolute bottom-3 right-3 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-bold text-slate-500 shadow-sm">
-            {formFactor.widthMm}×{formFactor.heightMm}×{formFactor.thicknessMm}mm
+            {formFactor.widthMm}×{formFactor.heightMm}×{effectiveBodyThicknessMm(formFactor, spec)}mm
           </span>
         </div>
         {view === "3d" ? (
@@ -418,10 +430,158 @@ export default function StudioEditorClient({ design, formFactor, serviceName }: 
           ) : null}
           <div className="mt-2 grid grid-cols-2 gap-2">
             {(["raised", "engraved"] as const).map((style) => (
-              <ChoiceButton key={style} active={spec.textStyle === style} disabled={locked} onClick={() => update({ textStyle: style })}>
+              <ChoiceButton
+                key={style}
+                active={spec.textStyle === style}
+                disabled={locked}
+                onClick={() =>
+                  update({
+                    textStyle: style,
+                    textDepthMm:
+                      spec.textStyle !== style
+                        ? style === "engraved"
+                          ? DEFAULT_ENGRAVED_DEPTH_MM
+                          : DEFAULT_RAISED_DEPTH_MM
+                        : effectiveTextDepthMm(spec),
+                  })
+                }
+              >
                 {style === "raised" ? "양각 (튀어나옴)" : "음각 (파임)"}
               </ChoiceButton>
             ))}
+          </div>
+
+          {/* 양각/음각 높이 · 문구 획 두께 · 본체 두께 조절 */}
+          <div className="mt-3 space-y-3 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3.5">
+            <div>
+              <div className="flex items-center justify-between text-[11px] font-bold text-slate-600">
+                <span>{spec.textStyle === "raised" ? "양각 돌출 높이" : "음각 파임 깊이"}</span>
+                <span className="font-black text-teal-700">{effectiveTextDepthMm(spec).toFixed(1)}mm</span>
+              </div>
+              <input
+                type="range"
+                min={TEXT_DEPTH_MIN_MM}
+                max={TEXT_DEPTH_MAX_MM}
+                step={0.1}
+                disabled={locked}
+                value={effectiveTextDepthMm(spec)}
+                onPointerDown={beginInteraction}
+                onPointerUp={endInteraction}
+                onChange={(e) => update({ textDepthMm: Number(e.target.value) })}
+                className="mt-1.5 w-full accent-teal-600"
+              />
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {[
+                  { label: "낮게 0.4mm", v: 0.4 },
+                  { label: "기본 0.8mm", v: 0.8 },
+                  { label: "높게 1.4mm", v: 1.4 },
+                  { label: "최대 2.0mm", v: 2.0 },
+                ].map((preset) => (
+                  <button
+                    key={preset.v}
+                    type="button"
+                    disabled={locked}
+                    onClick={() => update({ textDepthMm: preset.v })}
+                    className={cn(
+                      "rounded-full border px-2.5 py-0.5 text-[10px] font-extrabold transition",
+                      Math.abs(effectiveTextDepthMm(spec) - preset.v) < 0.05
+                        ? "border-teal-400 bg-teal-600 text-white"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-teal-200"
+                    )}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t border-slate-200/70 pt-2.5">
+              <div className="flex items-center justify-between text-[11px] font-bold text-slate-600">
+                <span>문구 획 두께 (굵기)</span>
+                <span className="font-black text-teal-700">
+                  {effectiveTextStroke(spec) === 0
+                    ? "기본"
+                    : effectiveTextStroke(spec) > 0
+                      ? `+${effectiveTextStroke(spec).toFixed(1)} (굵게)`
+                      : `${effectiveTextStroke(spec).toFixed(1)} (얇게)`}
+                </span>
+              </div>
+              <input
+                type="range"
+                min={TEXT_STROKE_MIN}
+                max={TEXT_STROKE_MAX}
+                step={0.1}
+                disabled={locked}
+                value={effectiveTextStroke(spec)}
+                onPointerDown={beginInteraction}
+                onPointerUp={endInteraction}
+                onChange={(e) => update({ textStroke: Number(e.target.value) })}
+                className="mt-1.5 w-full accent-teal-600"
+              />
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {[
+                  { label: "얇게", v: -0.2 },
+                  { label: "기본", v: DEFAULT_TEXT_STROKE },
+                  { label: "굵게", v: 0.5 },
+                  { label: "아주 굵게", v: 1.0 },
+                ].map((preset) => (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    disabled={locked}
+                    onClick={() => update({ textStroke: preset.v })}
+                    className={cn(
+                      "rounded-full border px-2.5 py-0.5 text-[10px] font-extrabold transition",
+                      Math.abs(effectiveTextStroke(spec) - preset.v) < 0.05
+                        ? "border-teal-400 bg-teal-600 text-white"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-teal-200"
+                    )}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t border-slate-200/70 pt-2.5">
+              <div className="flex items-center justify-between text-[11px] font-bold text-slate-600">
+                <span>태그 본체 두께</span>
+                <span className="font-black text-teal-700">
+                  {effectiveBodyThicknessMm(formFactor, spec).toFixed(1)}mm
+                  <span className="ml-1 text-[10px] font-semibold text-slate-400">(기본 {formFactor.thicknessMm}mm)</span>
+                </span>
+              </div>
+              <input
+                type="range"
+                min={BODY_THICKNESS_MIN_MM}
+                max={BODY_THICKNESS_MAX_MM}
+                step={0.5}
+                disabled={locked}
+                value={effectiveBodyThicknessMm(formFactor, spec)}
+                onPointerDown={beginInteraction}
+                onPointerUp={endInteraction}
+                onChange={(e) => update({ bodyThicknessMm: Number(e.target.value) })}
+                className="mt-1.5 w-full accent-teal-600"
+              />
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {[3, 4, 5, 6, 8].map((mm) => (
+                  <button
+                    key={mm}
+                    type="button"
+                    disabled={locked}
+                    onClick={() => update({ bodyThicknessMm: mm })}
+                    className={cn(
+                      "rounded-full border px-2.5 py-0.5 text-[10px] font-extrabold transition",
+                      Math.abs(effectiveBodyThicknessMm(formFactor, spec) - mm) < 0.1
+                        ? "border-teal-400 bg-teal-600 text-white"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-teal-200"
+                    )}
+                  >
+                    {mm}mm{mm === formFactor.thicknessMm ? " (기본)" : ""}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </Panel>
 

@@ -3,7 +3,12 @@
  * 캔버스 결과(요소 영역)가 있으면 글자 크기·영역 밖·칩 위 문구까지 검사하고, 없으면 칩 여유만 검사한다.
  */
 import type { FormFactor } from "@/lib/platform/form-factors";
-import { getTagMaterial, type TagDesignSpec } from "@/lib/platform/tag-design";
+import {
+  effectiveBodyThicknessMm,
+  effectiveTextDepthMm,
+  getTagMaterial,
+  type TagDesignSpec,
+} from "@/lib/platform/tag-design";
 import { chipEdgeClearanceMm, chipPlacementFor } from "@/lib/platform/tag-geometry";
 
 export const PRODUCTION_RULES = {
@@ -80,6 +85,16 @@ export function runProductionChecks(ff: FormFactor, spec: TagDesignSpec, face?: 
 
   const chip = checkChipMargin(ff, spec);
   if (chip) issues.push(chip);
+
+  const bodyMm = effectiveBodyThicknessMm(ff, spec);
+  const depthMm = effectiveTextDepthMm(spec);
+  if (hasText && spec.textStyle === "engraved" && depthMm > bodyMm - 1.2) {
+    issues.push({
+      level: "warn",
+      code: "engrave_too_deep",
+      message: `음각 깊이(${depthMm.toFixed(1)}mm)가 본체 두께(${bodyMm.toFixed(1)}mm) 대비 깊습니다. 파임 깊이를 줄이거나 본체 두께를 늘려 주세요.`,
+    });
+  }
 
   if (face) {
     const process = getTagMaterial(spec.materialId).process;

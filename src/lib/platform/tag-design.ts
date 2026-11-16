@@ -106,6 +106,21 @@ export const PLACEMENT_SCALE_MAX = 2.5;
 export const IMAGE_SCALE_MIN = 0.1;
 export const IMAGE_SCALE_MAX = 2;
 
+/** 양각 높이 / 음각 깊이 (mm) 범위 및 기본값 */
+export const TEXT_DEPTH_MIN_MM = 0.2;
+export const TEXT_DEPTH_MAX_MM = 2.5;
+export const DEFAULT_RAISED_DEPTH_MM = 0.8;
+export const DEFAULT_ENGRAVED_DEPTH_MM = 0.6;
+
+/** 글자 획 두께 보정 배율 (-0.3 ~ +1.5, 기본 0) */
+export const TEXT_STROKE_MIN = -0.3;
+export const TEXT_STROKE_MAX = 1.5;
+export const DEFAULT_TEXT_STROKE = 0;
+
+/** 본체 두께 조절 범위 (mm) */
+export const BODY_THICKNESS_MIN_MM = 2.5;
+export const BODY_THICKNESS_MAX_MM = 10.0;
+
 export function emptyLayout(lineCount = 3): TagDesignLayout {
   return {
     lines: Array.from({ length: lineCount }, () => null),
@@ -131,6 +146,12 @@ export type TagDesignSpec = {
   materialId: TagMaterialId;
   /** 문구 표현: 양각(raised) / 음각(engraved) */
   textStyle: "raised" | "engraved";
+  /** 양각 돌출 높이 또는 음각 파임 깊이 (mm, 0.2~2.5) */
+  textDepthMm?: number;
+  /** 글자 획 두께 보정 배율 (-0.3~1.5, 기본 0) */
+  textStroke?: number;
+  /** 태그 본체 두께 오버라이드 (mm). 없으면 formFactor.thicknessMm 사용 */
+  bodyThicknessMm?: number | null;
   image: TagDesignImageLayer;
   /** 템플릿 전면 아트 (`/images/studio/...`) — 명함 등 풀페이스 디자인 */
   faceArtSrc: string | null;
@@ -139,6 +160,30 @@ export type TagDesignSpec = {
   /** 문구·로고·NFC 칩 위치·크기 (스튜디오에서 끌어서 편집) */
   layout: TagDesignLayout;
 };
+
+/** 현재 spec의 유효 양각 높이 / 음각 깊이 (mm) */
+export function effectiveTextDepthMm(spec: Pick<TagDesignSpec, "textStyle" | "textDepthMm">): number {
+  if (typeof spec.textDepthMm === "number" && Number.isFinite(spec.textDepthMm)) {
+    return Math.min(TEXT_DEPTH_MAX_MM, Math.max(TEXT_DEPTH_MIN_MM, spec.textDepthMm));
+  }
+  return spec.textStyle === "engraved" ? DEFAULT_ENGRAVED_DEPTH_MM : DEFAULT_RAISED_DEPTH_MM;
+}
+
+/** 현재 spec의 유효 글자 획 두께 보정값 */
+export function effectiveTextStroke(spec: Pick<TagDesignSpec, "textStroke">): number {
+  if (typeof spec.textStroke === "number" && Number.isFinite(spec.textStroke)) {
+    return Math.min(TEXT_STROKE_MAX, Math.max(TEXT_STROKE_MIN, spec.textStroke));
+  }
+  return DEFAULT_TEXT_STROKE;
+}
+
+/** 현재 spec의 유효 본체 두께 (mm) */
+export function effectiveBodyThicknessMm(ff: FormFactor, spec?: Pick<TagDesignSpec, "bodyThicknessMm"> | null): number {
+  if (spec && typeof spec.bodyThicknessMm === "number" && Number.isFinite(spec.bodyThicknessMm)) {
+    return Math.min(BODY_THICKNESS_MAX_MM, Math.max(BODY_THICKNESS_MIN_MM, spec.bodyThicknessMm));
+  }
+  return ff.thicknessMm;
+}
 
 export function emptyImageLayer(): TagDesignImageLayer {
   return { src: null, opacity: 0.95, scale: 0.55 };
@@ -153,6 +198,9 @@ export function defaultTagDesign(formFactor: FormFactor, serviceId: PlatformServ
     textColor: TAG_TEXT_COLORS[0]!.hex,
     materialId: "pla_matte",
     textStyle: "raised",
+    textDepthMm: DEFAULT_RAISED_DEPTH_MM,
+    textStroke: DEFAULT_TEXT_STROKE,
+    bodyThicknessMm: formFactor.thicknessMm,
     image: emptyImageLayer(),
     faceArtSrc: null,
     templateId: null,
@@ -267,6 +315,17 @@ export function normalizeTagDesign(
       : base.textColor;
   const materialId = TAG_MATERIALS.some((m) => m.id === r.materialId) ? (r.materialId as TagMaterialId) : base.materialId;
   const textStyle = r.textStyle === "engraved" ? "engraved" : "raised";
+  const textDepthMm = finite(r.textDepthMm)
+    ? Math.round(clamp(r.textDepthMm, TEXT_DEPTH_MIN_MM, TEXT_DEPTH_MAX_MM) * 10) / 10
+    : textStyle === "engraved"
+      ? DEFAULT_ENGRAVED_DEPTH_MM
+      : DEFAULT_RAISED_DEPTH_MM;
+  const textStroke = finite(r.textStroke)
+    ? Math.round(clamp(r.textStroke, TEXT_STROKE_MIN, TEXT_STROKE_MAX) * 10) / 10
+    : DEFAULT_TEXT_STROKE;
+  const bodyThicknessMm = finite(r.bodyThicknessMm)
+    ? Math.round(clamp(r.bodyThicknessMm, BODY_THICKNESS_MIN_MM, BODY_THICKNESS_MAX_MM) * 10) / 10
+    : ff.thicknessMm;
   const image = normalizeImage(r.image);
   const faceArtSrc =
     typeof r.faceArtSrc === "string" && isAllowedStudioImageSrc(r.faceArtSrc) ? r.faceArtSrc : null;
@@ -279,7 +338,21 @@ export function normalizeTagDesign(
 
   const layout = normalizeLayout(r.layout, lines.length);
 
-  return { version: 2, lines, bodyColor, textColor, materialId, textStyle, image, faceArtSrc, templateId, layout };
+  return {
+    version: 2,
+    lines,
+    bodyColor,
+    textColor,
+    materialId,
+    textStyle,
+    textDepthMm,
+    textStroke,
+    bodyThicknessMm,
+    image,
+    faceArtSrc,
+    templateId,
+    layout,
+  };
 }
 
 /** 템플릿 기본값 + 서비스/폼팩터로 완성된 spec 생성 */

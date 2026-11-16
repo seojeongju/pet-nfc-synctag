@@ -12,7 +12,12 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { FormFactor } from "@/lib/platform/form-factors";
-import { getTagMaterial, type TagDesignSpec } from "@/lib/platform/tag-design";
+import {
+  effectiveBodyThicknessMm,
+  effectiveTextDepthMm,
+  getTagMaterial,
+  type TagDesignSpec,
+} from "@/lib/platform/tag-design";
 import { BEVEL_MM, buildBody } from "@/components/studio/tag-body-shapes";
 import {
   chipCenterMm,
@@ -20,6 +25,7 @@ import {
   useFaceImages,
   useStudioFonts,
   type FaceArea,
+  type FacePaintMode,
 } from "@/components/studio/tag-face-paint";
 
 type Props = {
@@ -35,9 +41,10 @@ function paintFaceTexture(
   spec: TagDesignSpec,
   area: TextArea,
   faceEl: HTMLImageElement | null,
-  logoEl: HTMLImageElement | null
+  logoEl: HTMLImageElement | null,
+  mode: FacePaintMode = "full"
 ): THREE.CanvasTexture | null {
-  const canvas = paintFaceCanvas(spec, area, faceEl, logoEl);
+  const canvas = paintFaceCanvas(spec, area, faceEl, logoEl, mode);
   if (!canvas) return null;
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -65,15 +72,17 @@ function buildTagGroup(
   faceEl: HTMLImageElement | null,
   logoEl: HTMLImageElement | null
 ): THREE.Group {
-  const { parts, textArea } = buildBody(formFactor);
+  const t = effectiveBodyThicknessMm(formFactor, spec);
+  const { parts, textArea } = buildBody(formFactor, t);
   // 사용자가 옮긴 칩 위치(없으면 폼팩터 기본)
   const chipCenter = chipCenterMm(formFactor, spec);
   const material = getTagMaterial(spec.materialId);
-  const t = formFactor.thicknessMm;
   const bodyOpacity = showChip ? Math.min(material.opacity, 0.35) : material.opacity;
   const isStand = formFactor.id === "stand_plate";
   const isCard = formFactor.id === "card_plate";
   const hasFaceArt = Boolean(spec.faceArtSrc);
+  const hasText = spec.lines.some((l) => l.trim());
+  const depthMm = effectiveTextDepthMm(spec);
 
   // 윗면(+Z)이 카메라를 보도록 눕힌 상태가 기본. 스탠드는 세워서 받침을 붙인다.
   const group = new THREE.Group();
@@ -107,8 +116,9 @@ function buildTagGroup(
     group.add(mesh);
   }
 
-  const hasContent = hasFaceArt || spec.lines.some((l) => l.trim()) || Boolean(spec.image?.src);
-  const texture = hasContent ? paintFaceTexture(spec, textArea, faceEl, logoEl) : null;
+  const surfaceZ = t + BEVEL_MM + 0.04;
+  const hasContent = hasFaceArt || hasText || Boolean(spec.image?.src);
+  const texture = hasContent ? paintFaceTexture(spec, textArea, faceEl, logoEl, "full") : null;
   if (texture) {
     const face = new THREE.Mesh(
       new THREE.PlaneGeometry(textArea.w, textArea.h),
@@ -121,8 +131,76 @@ function buildTagGroup(
         depthWrite: false,
       })
     );
-    face.position.set(textArea.cx, textArea.cy, t + BEVEL_MM + (spec.textStyle === "raised" ? 0.12 : 0.06));
+    face.position.set(textArea.cx, textArea.cy, surfaceZ);
     group.add(face);
+  }
+
+  // 3D 문구 양각 돌출 / 음각 깊이 적층 레이어
+  if (hasText && !showChip) {
+    const topTex = paintFaceTexture(spec, textArea, null, null, "text-top");
+    const wallTex = paintFaceTexture(spec, textArea, null, null, "text-wall");
+    if (topTex && wallTex) {
+      if (spec.textStyle === "raised") {
+        // 양각: 표면 위로 실제 Z축 다층 적층하여 회전 시 돌출 높이가 선명히 보이게
+        const visualHeight = Math.max(0.35, depthMm * 1.45);
+        const layers = Math.max(6, Math.min(18, Math.round(visualHeight * 9)));
+        for (let i = 1; i < layers; i++) {
+          const z = surfaceZ + (visualHeight * i) / layers;
+          const slice = new THREE.Mesh(
+            new THREE.PlaneGeometry(textArea.w, textArea.h),
+            new THREE.MeshStandardMaterial({
+              map: wallTex,
+              transparent: true,
+              alphaTest: 0.15,
+              roughness: 0.65,
+              metalness: 0.05,
+            })
+          );
+          slice.position.set(textArea.cx, textArea.cy, z);
+          group.add(slice);
+        }
+        const cap = new THREE.Mesh(
+          new THREE.PlaneGeometry(textArea.w, textArea.h),
+          new THREE.MeshStandardMaterial({
+            map: topTex,
+            transparent: true,
+            alphaTest: 0.15,
+            roughness: 0.4,
+            metalness: 0.08,
+          })
+        );
+        cap.position.set(textArea.cx, textArea.cy, surfaceZ + visualHeight);
+        group.add(cap);
+      } else {
+        // 음각: 내벽 음영 레이어와 오목한 바닥면 레이어로 파임 깊이감 표현
+        const recessShift = Math.min(1.2, depthMm * 0.45);
+        const innerWall = new THREE.Mesh(
+          new THREE.PlaneGeometry(textArea.w, textArea.h),
+          new THREE.MeshStandardMaterial({
+            map: wallTex,
+            transparent: true,
+            opacity: 0.72,
+            roughness: 0.9,
+            depthWrite: false,
+          })
+        );
+        innerWall.position.set(textArea.cx - recessShift * 0.35, textArea.cy + recessShift * 0.45, surfaceZ + 0.02);
+        group.add(innerWall);
+
+        const floor = new THREE.Mesh(
+          new THREE.PlaneGeometry(textArea.w, textArea.h),
+          new THREE.MeshStandardMaterial({
+            map: topTex,
+            transparent: true,
+            opacity: 0.92,
+            roughness: 0.85,
+            depthWrite: false,
+          })
+        );
+        floor.position.set(textArea.cx + recessShift * 0.15, textArea.cy - recessShift * 0.2, surfaceZ + 0.03);
+        group.add(floor);
+      }
+    }
   }
 
   if (showChip) {
